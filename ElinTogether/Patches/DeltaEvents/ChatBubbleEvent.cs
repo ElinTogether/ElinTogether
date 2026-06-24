@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -17,9 +18,10 @@ internal class ChatBubbleEvent
             return true;
         }
 
-        if (connection.IsHost) {
+        var chara = __instance.owner.Chara;
+        if ((connection.IsHost && !chara.IsRemotePlayer) || chara.IsPC) {
             connection.Delta.AddRemote(new CardRendererTalkDelta {
-                Card = __instance.owner,
+                Card = chara,
                 Text = text,
                 Duration = duration,
             });
@@ -68,5 +70,24 @@ internal class ChatBubbleEvent
                 A = color.a,
             });
         }
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(AM_Adv), nameof(AM_Adv.OnEnterChat))]
+    internal static void OnEnterChat()
+    {
+        if (NetSession.Instance.Connection is not { } connection) {
+            return;
+        }
+
+        var text = EClass.game.log.dict[EClass.game.log.currentLogIndex - 1].text;
+        var color = MsgBlock.lastBlock.txt.color;
+        connection.Delta.AddRemote(new MsgSayDelta {
+            Text = text,
+            R = color.r,
+            G = color.g,
+            B = color.b,
+            A = color.a,
+        });
     }
 }
