@@ -25,7 +25,7 @@ internal static class CardGenEvent
             return;
         }
 
-        if (SerializedCardsRestore.IsHappening) {
+        if (ZoneActivateEvent.IsHappening) {
             return;
         }
 

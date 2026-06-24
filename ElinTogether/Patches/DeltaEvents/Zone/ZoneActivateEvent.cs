@@ -5,12 +5,21 @@ using HarmonyLib;
 namespace ElinTogether.Patches;
 
 [HarmonyPatch]
+[HarmonyPatch(typeof(Zone), nameof(Zone.Activate))]
 internal static class ZoneActivateEvent
 {
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(Zone), nameof(Zone.Activate))]
+    internal static bool IsHappening = false;
+
+    [HarmonyPrefix]
     internal static void OnActivateZone(Zone __instance)
     {
+        IsHappening = true;
+    }
+
+    [HarmonyPostfix]
+    internal static void OnActivateZoneEnd(Zone __instance)
+    {
+        IsHappening = false;
         if (NetSession.Instance.Connection is not null) {
             CardCache.CacheCurrentZone();
         }

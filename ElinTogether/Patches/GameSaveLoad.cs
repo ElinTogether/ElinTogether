@@ -1,3 +1,4 @@
+using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
 
@@ -7,14 +8,15 @@ namespace ElinTogether.Patches;
 internal class GameSaveLoad
 {
     [HarmonyPrefix]
-    [HarmonyPatch(typeof(GameIO), nameof(GameIO.SaveGame))]
-    internal static bool OnSaveRemoteGame()
+    [HarmonyPatch(typeof(Game), nameof(Game.Save))]
+    internal static bool OnSaveRemoteGame(ref bool __result)
     {
         if (NetSession.Instance.Connection is not ElinNetClient) {
             return true;
         }
 
         EmpLog.Debug("Blocked saving game with active client connection");
+        __result = true;
         return false;
     }
 
