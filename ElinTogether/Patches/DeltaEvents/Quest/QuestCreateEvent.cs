@@ -13,7 +13,7 @@ internal static class QuestCreateEvent
         }
 
         // we can't create a quest that we can't find on the client
-        if (__result.person.chara.quest != __result) {
+        if (__result.person.chara?.quest != __result) {
             return;
         }
 
