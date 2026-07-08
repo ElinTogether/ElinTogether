@@ -16,4 +16,5 @@ public static class EmpDisconnectInfo
     public const string Timeout = "emp_dc_timeout";
     public const string RejoinFailed = "emp_dc_rejoin_failed";
     public const string RemoteClosed = "emp_dc_remote_closed";
+    public const string ClientCancel = "emp_dc_client_cancel";
 }
