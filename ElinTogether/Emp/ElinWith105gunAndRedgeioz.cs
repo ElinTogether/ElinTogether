@@ -48,6 +48,7 @@ internal sealed class EmpMod : BaseUnityPlugin
 #endif
 
         ResourceFetch.InvalidateTemp();
+        EmpConfig.InvalidateConfigs();
         EmpConfig.EnableReloadWatcher();
 
         SteamNetworkingUtils.InitRelayNetworkAccess();

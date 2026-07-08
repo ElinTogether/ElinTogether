@@ -9,7 +9,6 @@ namespace ElinTogether.Patches;
 [HarmonyPatch]
 internal class ActionModeCombat
 {
-    internal static bool InCombat { get; private set; }
     internal static bool Paused { get; private set; }
     internal static bool WaitForSelf { get; private set; }
 
@@ -18,9 +17,9 @@ internal class ActionModeCombat
     [HarmonyPatch(typeof(Game), nameof(Game.OnUpdate))]
     internal static void CheckIfPauseNeeded()
     {
-        if (!InCombat
-            || NetSession.Instance.Connection is null
-            || NetSession.Instance.CurrentPlayers.Count < 2) {
+        if (!EmpConfig.Server.TurnBasedCombat.Value ||
+            NetSession.Instance.Connection is null ||
+            NetSession.Instance.CurrentPlayers.Count < 2) {
             Paused = false;
             WaitForSelf = false;
             return;
