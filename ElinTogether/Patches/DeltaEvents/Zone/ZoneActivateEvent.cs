@@ -8,19 +8,19 @@ namespace ElinTogether.Patches;
 [HarmonyPatch(typeof(Zone), nameof(Zone.Activate))]
 internal static class ZoneActivateEvent
 {
-    internal static bool IsHappening = false;
+    internal static bool IsActivating { get; private set; }
 
     [HarmonyPrefix]
     internal static void OnActivateZone(Zone __instance)
     {
-        IsHappening = true;
+        IsActivating = true;
         ActionModeCombat.EnemyVisibility.Clear();
     }
 
     [HarmonyPostfix]
     internal static void OnActivateZoneEnd(Zone __instance)
     {
-        IsHappening = false;
+        IsActivating = false;
         if (NetSession.Instance.Connection is not null) {
             CardCache.CacheCurrentZone();
         }

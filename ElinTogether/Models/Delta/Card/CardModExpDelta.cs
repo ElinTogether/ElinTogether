@@ -28,7 +28,7 @@ public class CardModExpDelta : ElinDelta
             net.Delta.AddRemote(this);
         }
 
-        if (chara.elements.GetElement(Ele) is not {} element) {
+        if (chara.elements.GetElement(Ele) is not { } element) {
             return;
         }
 
