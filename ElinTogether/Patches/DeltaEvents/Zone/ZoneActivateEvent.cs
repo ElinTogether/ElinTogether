@@ -14,6 +14,7 @@ internal static class ZoneActivateEvent
     internal static void OnActivateZone(Zone __instance)
     {
         IsHappening = true;
+        ActionModeCombat.EnemyVisibility.Clear();
     }
 
     [HarmonyPostfix]
