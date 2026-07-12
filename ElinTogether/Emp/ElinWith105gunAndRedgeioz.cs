@@ -58,7 +58,7 @@ internal sealed class EmpMod : BaseUnityPlugin
         TitleButtonPatch.RegisterTitleButton(Scene.Mode.Title);
     }
 
-    private void OnApplicationQuit()
+    private void OnDestroy()
     {
         NetSession.Instance.RemoveComponent();
         StringAllocator.UnpinSharedStringHandles();
