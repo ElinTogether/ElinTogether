@@ -27,7 +27,7 @@ internal class ActionModeCombat
             }
         });
 
-        if (!EmpConfig.Server.TurnBasedCombat.Value ||
+        if (!NetSession.Instance.Rules.UseTurnBasedCombat ||
             EnemyVisibility.Values.All(v => !v) ||
             NetSession.Instance.Connection is null ||
             NetSession.Instance.CurrentPlayers.Count < 2) {
