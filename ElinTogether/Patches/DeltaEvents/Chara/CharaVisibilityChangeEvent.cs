@@ -3,6 +3,7 @@ using ElinTogether.Models;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using HarmonyLib;
+using NPOI.SS.Formula.Functions;
 
 [HarmonyPatch]
 internal static class CharaVisibilityChangeEvent
@@ -16,10 +17,11 @@ internal static class CharaVisibilityChangeEvent
         }
 
         if (__instance.owner.ExistsOnMap && !EClass._zone.IsRegion && __instance.owner.IsHostile() && EClass.pc.CanSeeLos(__instance.owner, -1)) {
-            if (connection.IsHost) {
-                ActionModeCombat.EnemyVisibility[EClass.pc.uid] = true;
+            if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && value is true) {
+                return;
             }
 
+            ActionModeCombat.EnemyVisibility[EClass.pc.uid] = true;
             connection.Delta.AddRemote(new EnemyVisibilityDelta {
                 PlayerId = EClass.pc.uid,
                 Visible = true,
@@ -35,11 +37,12 @@ internal static class CharaVisibilityChangeEvent
             return;
         }
 
-        if (HasEnemyInSight()) {
-            if (connection.IsHost) {
-                ActionModeCombat.EnemyVisibility[EClass.pc.uid] = false;
+        if (HasNoEnemyInSight()) {
+            if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && value is false) {
+                return;
             }
 
+            ActionModeCombat.EnemyVisibility[EClass.pc.uid] = false;
             connection.Delta.AddRemote(new EnemyVisibilityDelta {
                 PlayerId = EClass.pc.uid,
                 Visible = false,
@@ -56,11 +59,12 @@ internal static class CharaVisibilityChangeEvent
             return;
         }
 
-        if (HasEnemyInSight()) {
-            if (connection.IsHost) {
-                ActionModeCombat.EnemyVisibility[EClass.pc.uid] = false;
+        if (HasNoEnemyInSight()) {
+            if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && value is false) {
+                return;
             }
 
+            ActionModeCombat.EnemyVisibility[EClass.pc.uid] = false;
             connection.Delta.AddRemote(new EnemyVisibilityDelta {
                 PlayerId = EClass.pc.uid,
                 Visible = false,
@@ -68,8 +72,8 @@ internal static class CharaVisibilityChangeEvent
         }
     }
 
-    internal static bool HasEnemyInSight()
+    internal static bool HasNoEnemyInSight()
     {
-        return !EClass._map.charas.Any(c => !c.isDead && c.ExistsOnMap && c.IsHostile() && EClass.pc.CanSeeLos(c));
+        return EClass.game?.activeZone?.map.charas.Any(c => !c.isDead && c.ExistsOnMap && c.IsHostile() && EClass.pc.CanSeeLos(c)) is false;
     }
 }

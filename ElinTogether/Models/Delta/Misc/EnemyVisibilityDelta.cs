@@ -16,20 +16,33 @@ public class EnemyVisibilityDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        ActionModeCombat.EnemyVisibility[PlayerId] = Visible;
         if (net.IsHost) {
+            var visiblePrev = ActionModeCombat.EnemyVisibility.Values.Any(v => v);
+            ActionModeCombat.EnemyVisibility[PlayerId] = Visible;
             var visible = ActionModeCombat.EnemyVisibility.Values.Any(v => v);
+            if (visible == visiblePrev) {
+                return;
+            }
+
             net.Delta.AddRemote(new EnemyVisibilityDelta {
                 PlayerId = pc.uid,
                 Visible = visible,
             });
-        } else {
-            if (CharaVisibilityChangeEvent.HasEnemyInSight()) {
-                net.Delta.AddRemote(new EnemyVisibilityDelta {
-                    PlayerId = pc.uid,
-                    Visible = false,
-                });
+
+            return;
+        }
+
+        ActionModeCombat.EnemyVisibility[PlayerId] = Visible;
+        if (CharaVisibilityChangeEvent.HasNoEnemyInSight()) {
+            if (ActionModeCombat.EnemyVisibility.TryGetValue(pc.uid, out var value) && value is false) {
+                return;
             }
+
+            ActionModeCombat.EnemyVisibility[pc.uid] = false;
+            net.Delta.AddRemote(new EnemyVisibilityDelta {
+                PlayerId = pc.uid,
+                Visible = false,
+            });
         }
     }
 }
