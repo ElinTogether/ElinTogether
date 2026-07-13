@@ -21,16 +21,20 @@ internal class ActionModeCombat
     [HarmonyPatch(typeof(Game), nameof(Game.OnUpdate))]
     internal static void CheckIfPauseNeeded()
     {
-        EnemyVisibility.ForEach(kv => {
-            if (NetSession.Instance.CurrentPlayers.All(p => p.CharaUid != kv.Key)) {
-                EnemyVisibility.Remove(kv.Key);
-            }
-        });
+        var players = NetSession.Instance.CurrentPlayers.ToList();
+        var keysToRemove = EnemyVisibility
+            .Where(kv => players.All(p => p.CharaUid != kv.Key))
+            .Select(kv => kv.Key)
+            .ToList();
+
+        foreach (var key in keysToRemove) {
+            EnemyVisibility.Remove(key);
+        }
 
         if (!NetSession.Instance.Rules.UseTurnBasedCombat ||
             EnemyVisibility.Values.All(v => !v) ||
             NetSession.Instance.Connection is null ||
-            NetSession.Instance.CurrentPlayers.Count < 2) {
+            players.Count < 2) {
             if (Activated) {
                 Msg.SayGod("Exit combat mode. ");
             }
