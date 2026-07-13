@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using HarmonyLib;
-using Newtonsoft.Json;
 
 namespace ElinTogether.Helper.String;
 
 public static class StringHelper
 {
-    private static readonly string[] _memSizeSuffixes = ["B", "KB", "MB", "GB", "TB", "PB"];
-
     extension(string input)
     {
         public string Truncate(int length)
@@ -61,25 +57,6 @@ public static class StringHelper
         public string RemoveTagColor()
         {
             return Regex.Replace(input.ToString(), "<color(=[^>]*)?>|</color>", "");
-        }
-
-        public string TryToString(string nullFallback = "")
-        {
-            switch (input) {
-                case null:
-                    return nullFallback;
-                case string str:
-                    return str;
-                default:
-                    try {
-                        return input.GetType().GetRuntimeMethod(nameof(input.ToString), [])?.DeclaringType == typeof(object)
-                            ? JsonConvert.SerializeObject(input, Formatting.Indented)
-                            : input.ToString();
-                    } catch {
-                        return nullFallback.IsEmpty(input.ToString());
-                        // noexcept
-                    }
-            }
         }
     }
 
