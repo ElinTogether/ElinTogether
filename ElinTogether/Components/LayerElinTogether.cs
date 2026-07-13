@@ -13,7 +13,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
     private readonly List<TabEmpBase> _tabs = [];
 
-    public override string Title => "Elin Together";
+    public override string Title => "emp_ui_title".lang();
     public override Rect Bound => FitWindow();
 
     public static LayerElinTogether? Instance { get; private set; }

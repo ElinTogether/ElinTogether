@@ -33,7 +33,7 @@ internal class TitleButtonPatch
         empButtonGo.SetSiblingIndex(button.GetSiblingIndex() + 2);
 
         var empButton = empButtonGo.GetComponent<UIButton>();
-        empButton.mainText.text = "Elin Together";
+        empButton.mainText.text = "emp_ui_title".lang();
         empButton.onClick.SetPersistentListenerState(0, UnityEventCallState.Off);
         empButton.onClick.AddListener(() => LayerElinTogether.OpenPanelSesame());
     }

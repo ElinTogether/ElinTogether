@@ -87,14 +87,14 @@ internal class TabSessionInfo : TabEmpBase
     private static string BuildPingStat(NetPeerState player)
     {
         if (player.Index == 0) {
-            return "Ping: N/A (Host)";
+            return "emp_ui_ping_host".lang();
         }
 
         var ping = player.AvgPingMs > 0 ? player.AvgPingMs : player.LastPingMs;
         var quality = player.ConnectionQualityLocal > 0
-            ? $" | Quality: {player.ConnectionQualityLocal:P0}"
+            ? "emp_ui_quality_format".Loc(player.ConnectionQualityLocal.ToString("P0"))
             : "";
 
-        return $"Ping: {ping:F0}ms{quality}";
+        return "emp_ui_ping_format".Loc(ping.ToString("F0"), quality);
     }
 }

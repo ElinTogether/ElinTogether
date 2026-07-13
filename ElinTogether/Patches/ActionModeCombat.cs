@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Elements;
 using ElinTogether.Helper;
-using ElinTogether.Helper.Extensions;
 using ElinTogether.Net;
 using HarmonyLib;
 
@@ -16,7 +15,6 @@ internal class ActionModeCombat
     internal static bool WaitForSelf { get; private set; }
     internal static bool Activated { get; private set; }
 
-    // TODO: loc
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Game), nameof(Game.OnUpdate))]
     internal static void CheckIfPauseNeeded()
@@ -36,7 +34,7 @@ internal class ActionModeCombat
             NetSession.Instance.Connection is null ||
             players.Count < 2) {
             if (Activated) {
-                Msg.SayGod("Exit combat mode. ");
+                Msg.SayGod("emp_ui_combat_exit".lang());
             }
             Activated = false;
             Paused = false;
@@ -46,7 +44,7 @@ internal class ActionModeCombat
 
         if (!Activated) {
             EClass.pc.ai.Cancel();
-            Msg.SayGod("Enter combat mode. ");
+            Msg.SayGod("emp_ui_combat_enter".lang());
         }
 
         Activated = true;
@@ -58,7 +56,7 @@ internal class ActionModeCombat
 
             Paused = true;
             WaitForSelf = true;
-            Msg.SayGod("Decide your next action. ");
+            Msg.SayGod("emp_ui_combat_decide".lang());
 
             return;
         }
@@ -71,7 +69,7 @@ internal class ActionModeCombat
 
             Paused = true;
             WaitForSelf = false;
-            Msg.SayGod("Wait for others to decide their next action. ");
+            Msg.SayGod("emp_ui_combat_wait".lang());
 
             return;
         }
