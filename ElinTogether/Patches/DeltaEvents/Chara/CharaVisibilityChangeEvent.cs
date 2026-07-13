@@ -50,7 +50,7 @@ internal static class CharaVisibilityChangeEvent
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
-    internal static void OnDie(Chara __instance)
+    internal static void OnDie()
     {
         if (NetSession.Instance.Connection is not { } connection || EClass._zone.IsRegion) {
             return;
