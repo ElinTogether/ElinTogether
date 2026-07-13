@@ -14,7 +14,7 @@ public partial class SteamNetManager
     {
         EmpLog.Debug("Starting relay server via SDR");
 
-        _listenSocket = SteamNetworkingSockets.CreateListenSocketP2P(0, 1, [_connectionKeyConfig]);
+        _listenSocket = SteamNetworkingSockets.CreateListenSocketP2P(0, 1, SteamNetConfig.Default.Create());
         if (_listenSocket == HSteamListenSocket.Invalid) {
             throw new InvalidOperationException("Failed to create listen socket via SDR");
         }
@@ -34,7 +34,7 @@ public partial class SteamNetManager
         localhost.Clear();
         localhost.m_port = port;
 
-        _listenSocket = SteamNetworkingSockets.CreateListenSocketIP(ref localhost, 1, [_connectionKeyConfig]);
+        _listenSocket = SteamNetworkingSockets.CreateListenSocketIP(ref localhost, 1, SteamNetConfig.Default.Create());
         if (_listenSocket == HSteamListenSocket.Invalid) {
             throw new InvalidOperationException("Failed to create listen socket via UDP");
         }
@@ -52,7 +52,8 @@ public partial class SteamNetManager
             userId);
 
 #if !DEBUG
-        if (info.m_nUserData != _connectionKey) {
+        var connectionKey = Helper.BuildVersionIntegrity.VersionStringToLong(ModInfo.BuildVersion);
+        if (info.m_nUserData != connectionKey) {
             EmpPop.Debug("Rejected connection request from {SteamIdentity}\nBuildVersions mismatch\n" +
                          "Host version is {HostVersion}\nClient version is {ClientVersion}",
                 info.m_identityRemote.GetSteamID64(), ModInfo.BuildVersion.TagColor(UnityEngine.Color.green),

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using ElinTogether.Common;
-using ElinTogether.Helper;
 using ElinTogether.Helper.Steam;
 using Steamworks;
 
@@ -11,16 +10,6 @@ namespace ElinTogether.Net.Steam;
 
 public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : IDisposable
 {
-    private static readonly long _connectionKey = BuildVersionIntegrity.VersionStringToLong(ModInfo.BuildVersion);
-
-    private static readonly SteamNetworkingConfigValue_t _connectionKeyConfig = new() {
-        m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_ConnectionUserData,
-        m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int64,
-        m_val = new() {
-            m_int64 = _connectionKey,
-        },
-    };
-
     private readonly IntPtr[] _batchedMessages = new IntPtr[EmpConstants.MaxBatchedMessages];
     private readonly SteamNetPeerBroadcast _broadcast = new(serializer ?? new SteamNetSerializer());
     private readonly List<SteamNetPeer> _peers = [];
