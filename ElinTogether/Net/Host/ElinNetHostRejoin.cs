@@ -42,9 +42,21 @@ internal partial class ElinNetHost
 
     private void HandleRejoin(ISteamNetPeer peer, SessionRejoinRequest req)
     {
-        if (!SavedRemoteCharas.TryGetValue(peer.Uid, out var savedUid) ||
-            game.cards.globalCharas.Find(savedUid) is not { } chara) {
+        int charaUid;
+        if (SavedRemoteCharas.TryGetValue(peer.Uid, out var savedUid)) {
+            charaUid = savedUid;
+        } else if (PendingReconnects.TryGetValue(peer.Uid, out var pending)) {
+            charaUid = pending.CharaUid;
+        } else {
             EmpLog.Warning("Rejoin failed: no saved chara for peer {Peer}", peer);
+            peer.Send(new SessionRejoinResponse { Success = false, Reason = "chara_not_found" });
+            _pendingRejoinIntents.Remove(peer.Uid);
+            PendingReconnects.Remove(peer.Uid);
+            return;
+        }
+
+        if (game.cards.globalCharas.Find(charaUid) is not { } chara) {
+            EmpLog.Warning("Rejoin failed: chara {CharaUid} not found for peer {Peer}", charaUid, peer);
             peer.Send(new SessionRejoinResponse { Success = false, Reason = "chara_not_found" });
             _pendingRejoinIntents.Remove(peer.Uid);
             PendingReconnects.Remove(peer.Uid);

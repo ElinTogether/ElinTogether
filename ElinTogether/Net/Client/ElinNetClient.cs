@@ -9,20 +9,25 @@ namespace ElinTogether.Net;
 
 internal partial class ElinNetClient : ElinNetBase
 {
+    private bool _isStoppingForReconnect;
     public override bool IsHost => false;
     public ISteamNetPeer Host => Socket.FirstPeer;
 
     public void ConnectLocalPort(ushort port = EmpConstants.LocalPort)
     {
+        _isStoppingForReconnect = true;
         Stop();
+        _isStoppingForReconnect = false;
         Socket.Connect(port);
     }
 
     public void ConnectSteamUser(ulong steamId)
     {
+        _isStoppingForReconnect = true;
         Stop();
-        // store for potential rejoin after transient disconnect
-        Session.LastSession = new() { HostSteamId = steamId };
+        _isStoppingForReconnect = false;
+        // preserve existing session info for rejoin, only update HostSteamId
+        Session.LastSession = (Session.LastSession ?? new()) with { HostSteamId = steamId };
         Socket.Connect(new CSteamID(steamId));
     }
 
@@ -110,6 +115,11 @@ internal partial class ElinNetClient : ElinNetBase
     /// </summary>
     protected override void OnPeerDisconnected(ISteamNetPeer host, string disconnectInfo)
     {
+        // Ignore disconnect events triggered internally by Stop() during reconnect
+        if (_isStoppingForReconnect) {
+            return;
+        }
+
         StopWorldStateUpdate();
         StopAllCoroutines();
 

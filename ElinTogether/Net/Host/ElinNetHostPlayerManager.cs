@@ -90,12 +90,12 @@ internal partial class ElinNetHost
         SendSaveProbe(chara, peer);
     }
 
-    public static void RemoveRemoteChara(Chara remoteChara)
+    public static void RemoveRemoteChara(Chara remoteChara, bool broadcast = true)
     {
         pc.party.RemoveMember(remoteChara);
         _zone.RemoveCard(remoteChara);
 
-        if (Session.Connection is ElinNetHost host) {
+        if (broadcast && Session.Connection is ElinNetHost host) {
             host.Delta.AddRemote(new CharaRemoveFromGameDelta {
                 Owner = remoteChara,
             });

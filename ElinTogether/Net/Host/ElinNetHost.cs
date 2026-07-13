@@ -167,6 +167,7 @@ internal partial class ElinNetHost : ElinNetBase
             if (ActiveRemoteCharas.TryGetValue(peer.Id, out var remoteChara)) {
                 // keep the chara in the world but mark it as pending reconnect
                 remoteChara.SetBool("pending_reconnect", true);
+                RemoveRemoteChara(remoteChara, false);
 
                 PendingReconnects[peer.Uid] = new(
                     remoteChara.uid,
@@ -179,6 +180,7 @@ internal partial class ElinNetHost : ElinNetBase
                     state.Name, remoteChara.uid);
             }
 
+            _pendingRejoinIntents.Remove(peer.Uid);
             Session.CurrentPlayers.Remove(state);
         }
 
