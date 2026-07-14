@@ -12,6 +12,9 @@ public class InvSaveDataDelta : ElinDelta
     [Key(1)]
     public required LZ4Bytes Data { get; init; }
 
+    [Key(2)]
+    public required bool IsShop { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Data.Decompress<Window.SaveData>() is not { } data) {
@@ -20,11 +23,20 @@ public class InvSaveDataDelta : ElinDelta
 
         if (Window.dictData.TryGetValue(WindowId, out var saveData)) {
             saveData.CopyFrom(data);
-            return;
+        }
+
+        // refresh sort
+        var pref = EMono.player.pref;
+        if (IsShop) {
+            pref.sortInvShop = data.sortMode;
+            pref.sort_ascending_shop = data.sort_ascending;
+        } else {
+            pref.sortInv = data.sortMode;
+            pref.sort_ascending = data.sort_ascending;
         }
 
         var inv = LayerInventory.listInv.Find(l => l.invs[0].window.idWindow == WindowId)?.invs[0];
-        if (inv is null) {
+        if (inv == null) {
             Window.dictData[WindowId] = data;
             return;
         }
@@ -36,6 +48,5 @@ public class InvSaveDataDelta : ElinDelta
         var flag = data.sharedType == ContainerSharedType.Shared;
         inv.window.buttonShared.image.sprite = flag ? EMono.core.refs.icons.shared : EMono.core.refs.icons.personal;
         inv.window.buttonShared.tooltip.lang = flag ? "hintShared" : "hintPrivate";
-        inv.window.buttonShared.ShowTooltipForced();
     }
 }
