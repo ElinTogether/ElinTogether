@@ -21,10 +21,6 @@ public class InvSaveDataDelta : ElinDelta
             return;
         }
 
-        if (Window.dictData.TryGetValue(WindowId, out var saveData)) {
-            saveData.CopyFrom(data);
-        }
-
         // refresh sort
         var pref = EMono.player.pref;
         if (IsShop) {
@@ -37,7 +33,11 @@ public class InvSaveDataDelta : ElinDelta
 
         var inv = LayerInventory.listInv.Find(l => l.invs[0].window.idWindow == WindowId)?.invs[0];
         if (inv == null) {
-            Window.dictData[WindowId] = data;
+            if (Window.dictData.TryGetValue(WindowId, out var saveData)) {
+                saveData.CopyFrom(data);
+            } else {
+                Window.dictData[WindowId] = data;
+            }
             return;
         }
 
