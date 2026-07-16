@@ -86,6 +86,10 @@ internal static class Synchronization
         [HarmonyPostfix]
         internal static void OnCoreUpdateEnd()
         {
+            if (EClass.game is null) {
+                return;
+            }
+
             CardCache.Update();
             NetProfileSynchronizationContext.Update();
             switch (NetSession.Instance.Connection) {
