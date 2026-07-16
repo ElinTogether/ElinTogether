@@ -87,6 +87,7 @@ internal static class Synchronization
         internal static void OnCoreUpdateEnd()
         {
             CardCache.Update();
+            NetProfileSynchronizationContext.Update();
             switch (NetSession.Instance.Connection) {
                 case ElinNetHost host:
                     if (!EMono.scene.paused) {
