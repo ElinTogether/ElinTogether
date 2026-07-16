@@ -45,6 +45,10 @@ public class CharaBuildDelta : ElinDelta
             bridgeHeight = BridgeHeight,
         };
 
+        if (taskBuild.useHeld && chara.held != held) {
+            chara.HoldCard(held);
+        }
+
         taskBuild.recipe._dir = Dir;
         taskBuild.OnProgressComplete();
     }
