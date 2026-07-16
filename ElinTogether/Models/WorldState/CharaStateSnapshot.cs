@@ -60,7 +60,6 @@ public class CharaStateSnapshot : EClass
                 Speed = pc.Stub_get_Speed(),
                 HeldMainHand = heldMainHand,
                 HeldOffHand = heldOffHand,
-                Dir = pc.dir,
             },
         };
     }
@@ -116,17 +115,5 @@ public class CharaStateSnapshot : EClass
         // update tool visual
         chara.NetProfile.RemoteMainHand = new(State.HeldMainHand, false);
         chara.NetProfile.RemoteOffHand = new(State.HeldOffHand, false);
-
-        // apply held visual
-        if (State.HeldMainHand?.Find() is { } mainHand &&
-            State.HeldOffHand?.Find() is { } offHand &&
-            mainHand == offHand) {
-            chara.HoldCard(mainHand);
-        }
-
-        // apply direction
-        if (chara.dir != State.Dir) {
-            chara.SetDir(State.Dir);
-        }
     }
 }

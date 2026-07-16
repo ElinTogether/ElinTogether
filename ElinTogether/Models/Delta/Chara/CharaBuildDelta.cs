@@ -26,7 +26,7 @@ public class CharaBuildDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (Owner.Find() is not Chara chara || Held.Find() is not Card held) {
+        if (Owner.Find() is not Chara chara || Held.Find() is not { } held) {
             return;
         }
 

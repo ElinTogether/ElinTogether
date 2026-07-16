@@ -13,6 +13,7 @@ namespace ElinTogether.Models;
 [Union(106, typeof(CardOnUseDelta))]
 [Union(107, typeof(CardTryStackToDelta))]
 [Union(108, typeof(CardModExpDelta))]
+[Union(109, typeof(CardSetDirDelta))]
 // Chara
 [Union(200, typeof(CharaMoveDelta))]
 [Union(201, typeof(CharaTickDelta))]
