@@ -31,6 +31,7 @@ namespace ElinTogether.Models;
 [Union(213, typeof(CharaTaskCancelDelta))]
 [Union(214, typeof(CharaHitFishDelta))]
 [Union(215, typeof(CharaGiveGiftDelta))]
+[Union(216, typeof(CharaSwitchHeldDelta))]
 // Thing
 [Union(300, typeof(ThingDelta))]
 [Union(301, typeof(ThingRequest))]
