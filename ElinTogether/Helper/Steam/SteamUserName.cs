@@ -24,6 +24,19 @@ internal class SteamUserName
         }
     }
 
+    public static void Shutdown()
+    {
+        if (!_allocated) {
+            return;
+        }
+
+        SteamCallback<PersonaStateChange_t>.Remove(HandlePersonaNameChange);
+        SteamCallback<PersonaStateChange_t>.Shutdown();
+
+        _deferredPins.Clear();
+        _allocated = false;
+    }
+
     private static void HandlePersonaNameChange(PersonaStateChange_t state)
     {
         var steamId = state.m_ulSteamID;

@@ -10,9 +10,11 @@ internal class SteamCallback
     public static readonly object EventLock = new();
 }
 
-internal class SteamCallback<T> where T : struct
+// ReSharper disable once StaticMemberInGenericType
+internal class SteamCallback<T> : IDisposable where T : struct
 {
-    private static readonly Callback<T> _callback;
+    private static Callback<T>? _callback;
+    private static bool _shutdown;
 
     static SteamCallback()
     {
@@ -23,35 +25,60 @@ internal class SteamCallback<T> where T : struct
         void SafeCallback(T callbackStruct)
         {
             try {
-                Event?.Invoke(callbackStruct);
+                OnEvent?.Invoke(callbackStruct);
             } catch (Exception ex) {
                 EmpLog.Verbose(ex, "Exception at steam callback {CallbackName}",
                     typeof(T).FullName);
+                // noexcept
             }
         }
     }
 
-    private static event Action<T>? Event;
+    public void Dispose()
+    {
+        Shutdown();
+    }
+
+    private static event Action<T>? OnEvent;
 
     internal static void Add(Action<T> handler)
     {
         lock (SteamCallback.EventLock) {
-            Event -= handler;
-            Event += handler;
+            if (_shutdown) {
+                return;
+            }
+
+            OnEvent -= handler;
+            OnEvent += handler;
         }
     }
 
     internal static void Remove(Action<T> handler)
     {
         lock (SteamCallback.EventLock) {
-            Event -= handler;
+            OnEvent -= handler;
         }
     }
 
     internal static void Clear()
     {
         lock (SteamCallback.EventLock) {
-            Event = null;
+            OnEvent = null;
+        }
+    }
+
+    internal static void Shutdown()
+    {
+        lock (SteamCallback.EventLock) {
+            if (_shutdown) {
+                return;
+            }
+
+            _shutdown = true;
+            OnEvent = null;
+
+            _callback?.Dispose();
+            _callback = null;
         }
     }
 }

@@ -11,6 +11,7 @@ public class SteamNetLobbyManager : EClass
 {
     private readonly HashSet<ulong> _blocked = [];
     private Action<SteamNetLobby[]>? _deferOnComplete;
+    private bool _shutdown;
 
     internal SteamNetLobbyManager()
     {
@@ -23,6 +24,34 @@ public class SteamNetLobbyManager : EClass
     }
 
     public SteamNetLobby? Current { get; private set; }
+
+    /// <summary>
+    ///     Unregister all Steam callbacks
+    /// </summary>
+    internal void Shutdown()
+    {
+        if (_shutdown) {
+            return;
+        }
+
+        _shutdown = true;
+
+        LeaveLobby();
+
+        SteamCallback<LobbyCreated_t>.Remove(OnLobbyCreated);
+        SteamCallback<LobbyChatUpdate_t>.Remove(OnLobbyChatUpdate);
+        SteamCallback<GameLobbyJoinRequested_t>.Remove(OnLobbyJoinRequested);
+        SteamCallback<LobbyEnter_t>.Remove(OnLobbyEntered);
+        SteamCallback<LobbyMatchList_t>.Remove(OnLobbyMatchListComplete);
+
+        SteamCallback<LobbyCreated_t>.Shutdown();
+        SteamCallback<LobbyChatUpdate_t>.Shutdown();
+        SteamCallback<GameLobbyJoinRequested_t>.Shutdown();
+        SteamCallback<LobbyEnter_t>.Shutdown();
+        SteamCallback<LobbyMatchList_t>.Shutdown();
+
+        _deferOnComplete = null;
+    }
 
     /// <summary>
     ///     Create a new lobby. We do this automatically on Host
