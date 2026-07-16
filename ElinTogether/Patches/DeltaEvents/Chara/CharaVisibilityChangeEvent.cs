@@ -1,9 +1,9 @@
 using System.Linq;
 using ElinTogether.Models;
 using ElinTogether.Net;
-using ElinTogether.Patches;
 using HarmonyLib;
-using NPOI.SS.Formula.Functions;
+
+namespace ElinTogether.Patches;
 
 [HarmonyPatch]
 internal static class CharaVisibilityChangeEvent
@@ -17,7 +17,7 @@ internal static class CharaVisibilityChangeEvent
         }
 
         if (__instance.owner.ExistsOnMap && !EClass._zone.IsRegion && __instance.owner.IsHostile() && EClass.pc.CanSeeLos(__instance.owner, -1)) {
-            if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && value is true) {
+            if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && value) {
                 return;
             }
 
@@ -38,7 +38,7 @@ internal static class CharaVisibilityChangeEvent
         }
 
         if (HasNoEnemyInSight()) {
-            if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && value is false) {
+            if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && !value) {
                 return;
             }
 

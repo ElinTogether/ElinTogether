@@ -115,7 +115,6 @@ internal partial class ElinNetClient
     /// </summary>
     public void StopWorldStateUpdate()
     {
-        Scheduler.Unsubscribe(WorldStateDeltaUpdate);
         Scheduler.Unsubscribe(Synchronization.AllowDeltaSending);
 
         _pauseUpdate = false;

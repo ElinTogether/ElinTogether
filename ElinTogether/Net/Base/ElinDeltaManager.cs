@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Models;
 
 namespace ElinTogether.Net;
@@ -89,8 +90,8 @@ public class ElinDeltaManager
             }
         }
         if (EnableDebugging) {
-            EmpLog.Debug("[Delta] ProcessLocalBatch #{Batch}: applied {TotalDeltaCount} deltas",
-                BatchCount, batch.Count);
+            EmpLog.Debug("[Delta] ProcessLocalBatch #{Batch}: applied {TotalDeltaCount} deltas\n{DeltaList}",
+                BatchCount, batch.Count, string.Join('\n', batch.Select(c => c.GetType().Name)));
         }
         BatchCount++;
     }

@@ -91,10 +91,5 @@ public class CharaStateSnapshot : EClass
                 chara.Stub_Move(Pos, Card.MoveType.Force);
             }
         }
-
-        // this is from remote players
-        if (State is null) {
-            return;
-        }
     }
 }

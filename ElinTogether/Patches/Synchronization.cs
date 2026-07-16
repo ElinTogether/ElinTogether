@@ -121,7 +121,7 @@ internal static class Synchronization
 
         internal static void Update()
         {
-            if (NetSession.Instance.Connection is not {} connection) {
+            if (NetSession.Instance.Connection is not { } connection) {
                 return;
             }
 
