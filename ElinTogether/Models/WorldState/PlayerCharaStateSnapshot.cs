@@ -19,7 +19,4 @@ public class PlayerCharaStateSnapshot
 
     [Key(5)]
     public required RemoteCard? HeldOffHand { get; init; }
-
-    [Key(6)]
-    public required int Dir { get; init; }
 }
