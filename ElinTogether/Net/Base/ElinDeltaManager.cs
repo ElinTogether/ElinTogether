@@ -29,14 +29,16 @@ public class ElinDeltaManager
     /// </summary>
     private readonly ConcurrentQueue<ElinDelta> _outBufferDeferred = [];
 
-    private float _averageIn;
-
     // smoothed stat
+    private float _averageIn;
     private float _averageOut;
 
     public bool HasPendingOut => !_outBuffer.IsEmpty || !_outBufferDeferred.IsEmpty;
     public bool HasPendingIn => !_inBuffer.IsEmpty || !_inBufferDeferred.IsEmpty;
     public bool IsIdle => !HasPendingOut && !HasPendingIn;
+
+    public int BatchCount { get; private set; }
+    public bool EnableDebugging { get; set; }
 
     /// <summary>
     ///     Sending out
@@ -86,6 +88,11 @@ public class ElinDeltaManager
                 // noexcept
             }
         }
+        if (EnableDebugging) {
+            EmpLog.Debug("[Delta] ProcessLocalBatch #{Batch}: applied {TotalDeltaCount} deltas",
+                BatchCount, batch.Count);
+        }
+        BatchCount++;
     }
 
     public List<ElinDelta> FlushOutBuffer(int batchSize = -1)

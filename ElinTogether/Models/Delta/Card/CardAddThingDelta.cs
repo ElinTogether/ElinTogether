@@ -24,7 +24,7 @@ public class CardAddThingDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (Thing.Find() is not Thing thing || Parent?.Find() is not { } parent) {
+        if (Thing.Find() is not Thing thing || Parent.Find() is not { } parent) {
             return;
         }
 
