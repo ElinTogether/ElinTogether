@@ -109,6 +109,29 @@ internal static class Synchronization
         }
     }
 
+    internal static class NetProfileSynchronizationContext
+    {
+        private static RemoteCard? HeldMainHand;
+        private static RemoteCard? HeldOffHand;
+
+        internal static void Update()
+        {
+            if (NetSession.Instance.Connection is not {} connection) {
+                return;
+            }
+
+            var delta = CharaSwitchHeldDelta.Create();
+            if (HeldMainHand == delta.HeldMainHand && HeldOffHand == delta.HeldOffHand) {
+                return;
+            }
+
+            HeldMainHand = delta.HeldMainHand;
+            HeldOffHand = delta.HeldOffHand;
+
+            connection.Delta.AddRemote(delta);
+        }
+    }
+
     [HarmonyPatch(typeof(Game), nameof(Game.OnUpdate))]
     internal static class GameSynchronizationContext
     {

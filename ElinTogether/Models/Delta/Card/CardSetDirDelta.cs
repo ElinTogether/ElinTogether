@@ -8,6 +8,7 @@ public class CardSetDirDelta : ElinDelta
 {
     [Key(0)]
     public required RemoteCard Card { get; init; }
+
     [Key(1)]
     public required int Dir { get; init; }
 

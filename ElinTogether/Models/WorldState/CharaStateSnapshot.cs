@@ -111,9 +111,5 @@ public class CharaStateSnapshot : EClass
         if (State is null) {
             return;
         }
-
-        // update tool visual
-        chara.NetProfile.RemoteMainHand = new(State.HeldMainHand, false);
-        chara.NetProfile.RemoteOffHand = new(State.HeldOffHand, false);
     }
 }
