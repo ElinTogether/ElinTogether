@@ -28,7 +28,13 @@ public class CharaMakeAllyDelta : ElinDelta
             return;
         }
 
-        if (Owner.Find() is not Chara chara || chara.IsPC) {
+        if (Owner.Find() is not Chara chara) {
+            // chara doesn't exist yet
+            net.Delta.DeferLocal(this);
+            return;
+        }
+
+        if (chara.IsPC) {
             return;
         }
 
