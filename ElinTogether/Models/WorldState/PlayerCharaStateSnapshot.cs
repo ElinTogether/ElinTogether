@@ -13,10 +13,4 @@ public class PlayerCharaStateSnapshot
 
     [Key(3)]
     public required int Speed { get; init; }
-
-    [Key(4)]
-    public required RemoteCard? HeldMainHand { get; init; }
-
-    [Key(5)]
-    public required RemoteCard? HeldOffHand { get; init; }
 }

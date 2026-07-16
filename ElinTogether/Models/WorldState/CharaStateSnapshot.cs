@@ -36,19 +36,6 @@ public class CharaStateSnapshot : EClass
 
     public static CharaStateSnapshot CreateSelf()
     {
-        var hideWeapon = pc.combatCount <= 0 && core.config.game.hideWeapons;
-
-        RemoteCard? heldMainHand = player.currentHotItem.RenderThing
-                                   ?? (hideWeapon ? pc.held : pc.body.slotMainHand?.thing);
-        RemoteCard? heldOffHand = core.config.game.showOffhand
-            ? pc.body.slotOffHand?.thing
-            : pc.held;
-
-        // held item override
-        if (pc.held is not null) {
-            heldMainHand = heldOffHand = pc.held;
-        }
-
         return new() {
             Owner = pc,
             Pos = pc.pos,
@@ -58,8 +45,6 @@ public class CharaStateSnapshot : EClass
                 LastAct = SourceValidation.ActToIdMapping[pc.ai.GetType()],
                 LastReceivedTick = NetSession.Instance.Tick,
                 Speed = pc.Stub_get_Speed(),
-                HeldMainHand = heldMainHand,
-                HeldOffHand = heldOffHand,
             },
         };
     }
