@@ -1,6 +1,7 @@
 using System.Linq;
 using ElinTogether.Elements;
 using ElinTogether.Helper;
+using ElinTogether.Net;
 using HarmonyLib;
 
 namespace ElinTogether.Patches;
@@ -22,5 +23,14 @@ internal class PauseGame
         __result &= EClass.pc.party.members
             .Where(c => c.IsRemotePlayer)
             .All(c => c.ai is GoalRemote { child: null });
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(UI), nameof(UI.IsPauseGame), MethodType.Getter)]
+    public static void GetIsPauseGame(UI __instance, ref bool __result)
+    {
+        if (NetSession.Instance.HasActiveConnection) {
+            __result = false;
+        }
     }
 }
