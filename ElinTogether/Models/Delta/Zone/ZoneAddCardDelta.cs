@@ -46,7 +46,7 @@ public class ZoneAddCardDelta : ElinDelta
         // do not update it again if same position
         // we derive all other state changes to sub deltas
         if (card.parent != zone || card.pos != Pos) {
-            zone.Stub_AddCard(card, Pos.X, Pos.Z);
+            zone.AddCard(card, Pos.X, Pos.Z);
         }
     }
 }

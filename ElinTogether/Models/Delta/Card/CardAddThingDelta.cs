@@ -33,7 +33,7 @@ public class CardAddThingDelta : ElinDelta
         }
 
         if (thing.parent != parent) {
-            parent.Stub_AddThing(thing, TryStack, DestInvX, DestInvY);
+            parent.AddThing(thing, TryStack, DestInvX, DestInvY);
         }
     }
 }

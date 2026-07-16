@@ -11,7 +11,7 @@ internal static class CardAddThingEvent
     [HarmonyPrefix]
     internal static bool OnCardAddThing(Card __instance, Thing t, bool tryStack, int destInvX, int destInvY)
     {
-        if (NetSession.Instance.Connection is not { } connection) {
+        if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
             return true;
         }
 

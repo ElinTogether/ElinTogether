@@ -1,4 +1,3 @@
-using System;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -11,7 +10,7 @@ internal static class ZoneAddCardEvent
     [HarmonyPrefix]
     internal static bool OnAddCardToZone(Zone __instance, Card t, int x, int z)
     {
-        if (NetSession.Instance.Connection is not { } connection) {
+        if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
             return true;
         }
 
@@ -20,7 +19,7 @@ internal static class ZoneAddCardEvent
         }
 
         // only host can propagate add card event to remotes
-        RemoteCard card = RemoteCard.Create(t, true);
+        var card = RemoteCard.Create(t, true);
         connection.Delta.AddRemote(new ZoneAddCardDelta {
             Card = card,
             ZoneUid = __instance.uid,
@@ -28,14 +27,5 @@ internal static class ZoneAddCardEvent
         });
 
         return true;
-    }
-
-    extension(Zone zone)
-    {
-        [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
-        internal Card Stub_AddCard(Card card, int x, int z)
-        {
-            throw new NotImplementedException("Zone.AddCard");
-        }
     }
 }
