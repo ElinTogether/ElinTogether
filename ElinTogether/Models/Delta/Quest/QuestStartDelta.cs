@@ -20,24 +20,23 @@ public class QuestStartDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (Data?.Decompress<Quest>() is { } quest) {
-            game.quests.Start(quest);
-            return;
+        var quest = Data?.Decompress<Quest>();
+        if (quest is null) {
+            if (IsGlobal) {
+                quest = game.quests.globalList.Find(q => q.uid == Uid);
+            } else if (Owner?.Find() is Chara owner && owner.quest.uid == Uid) {
+                quest = owner.quest;
+            } else {
+                return;
+            }
+
+            if (game.quests.list.Contains(quest)) {
+                return;
+            }
         }
 
-        if (IsGlobal) {
-            var i = game.quests.globalList.FindIndex(q => q.uid == Uid);
-            quest = game.quests.globalList[i];
-            game.quests.globalList.RemoveAt(i);
-        } else if (Owner?.Find() is Chara owner && owner.quest.uid == Uid) {
-            quest = owner.quest;
-        } else {
-            return;
-        }
-
-        if (game.quests.list.Contains(quest)) {
-            return;
-        }
+        var i = game.quests.globalList.FindIndex(q => q.uid == Uid);
+        game.quests.globalList.RemoveAt(i);
 
         game.quests.Start(quest);
     }
