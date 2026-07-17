@@ -15,14 +15,14 @@ public class LZ4Bytes
     [Key(0)]
     public required byte[] Bytes { get; init; }
 
-    public static LZ4Bytes Create(object data)
+    public static LZ4Bytes Create<T>(T data)
     {
         using var ms = new MemoryStream();
         using var lz4 = new LZ4Stream(ms, CompressionMode.Compress);
         using var sw = new StreamWriter(lz4, Encoding.UTF8);
         using var jw = new JsonTextWriter(sw);
 
-        _serializer.Serialize(jw, data);
+        _serializer.Serialize(jw, data, typeof(T));
         jw.Flush();
         sw.Flush();
         lz4.Flush();
