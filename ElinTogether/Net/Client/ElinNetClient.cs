@@ -9,25 +9,18 @@ namespace ElinTogether.Net;
 
 internal partial class ElinNetClient : ElinNetBase
 {
-    private bool _isStoppingForReconnect;
     public override bool IsHost => false;
     public ISteamNetPeer Host => Socket.FirstPeer;
 
     public void ConnectLocalPort(ushort port = EmpConstants.LocalPort)
     {
-        _isStoppingForReconnect = true;
         Stop();
-        _isStoppingForReconnect = false;
         Socket.Connect(port);
     }
 
     public void ConnectSteamUser(ulong steamId)
     {
-        _isStoppingForReconnect = true;
         Stop();
-        _isStoppingForReconnect = false;
-        // preserve existing session info for rejoin, only update HostSteamId
-        Session.LastSession = (Session.LastSession ?? new()) with { HostSteamId = steamId };
         Socket.Connect(new CSteamID(steamId));
     }
 
@@ -45,7 +38,6 @@ internal partial class ElinNetClient : ElinNetBase
 
         // session
         Router.RegisterHandler<SessionNewPlayerRequest>(OnSessionNewPlayerRequest);
-        Router.RegisterHandler<SessionRejoinResponse>(OnSessionRejoinResponse);
         Router.RegisterHandler<SaveDataProbe>(OnSaveDataProbe);
         Router.RegisterHandler<SteamLobbyRequest>(OnSteamLobbyRequest);
         Router.RegisterHandler<SessionPlayersSnapshot>(OnSessionStatesUpdate);
@@ -94,32 +86,14 @@ internal partial class ElinNetClient : ElinNetBase
 #if DEBUG
         DebugProgress ??= EGui.CreatePopup(() => new(BuildDebugInfo()), _ => false, 1f);
 #endif
-
-        // Rejoin path: if we are attempting to resume an existing session, declare intent early.
-        // Host will short-circuit PreparePlayerJoin if it has a saved remote chara for us.
-        if (Session.CurrentPhase == ConnectionPhase.Reconnecting &&
-            Session.LastSession is { CharaUid: > 0 } last) {
-            Host.Send(new SessionRejoinRequest {
-                LastKnownServerTick = last.LastServerTick,
-                CharaUid = last.CharaUid,
-                LastZoneUid = last.LastZoneUid,
-            });
-            EmpLog.Debug("Sent SessionRejoinRequest for chara {CharaUid}", last.CharaUid);
-        }
     }
 
     /// <summary>
     ///     Net event: On disconnected from host.
-    ///     On transient DC while Synchronized, attempt lightweight rejoin instead of
-    ///     forcing title + full reconnect.
+    ///     Fully clean up resources and return to title.
     /// </summary>
     protected override void OnPeerDisconnected(ISteamNetPeer host, string disconnectInfo)
     {
-        // Ignore disconnect events triggered internally by Stop() during reconnect
-        if (_isStoppingForReconnect) {
-            return;
-        }
-
         StopWorldStateUpdate();
         StopAllCoroutines();
 
@@ -127,20 +101,7 @@ internal partial class ElinNetClient : ElinNetBase
             ReflexUIManager.StaticClose();
         }
 
-        // Only attempt reconnect if we were fully synchronized (happy path).
-        // Otherwise fall back to title.
-        if (Session.CurrentPhase == ConnectionPhase.Synchronized &&
-            Session.LastSession is { HostSteamId: > 0 } last) {
-            Session.SetPhase(ConnectionPhase.Reconnecting);
-            EmpPop.Information("Connection lost. Attempting to rejoin...");
-
-            // keep local game state; do not call RemoveComponent / go to title yet
-            ConnectSteamUser(last.HostSteamId);
-            return;
-        }
-
-        // Non-recoverable path: clean up and return to title
-        EmpLog.Warning("Non-recoverable disconnect (phase={Phase}): {Reason}",
+        EmpLog.Warning("Disconnected from host (phase={Phase}): {Reason}",
             Session.CurrentPhase, disconnectInfo);
 
         if (core.IsGameStarted) {

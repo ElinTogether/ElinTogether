@@ -47,7 +47,6 @@ internal partial class ElinNetClient
                 if (parent is null) {
                     EmpLog.Warning("Remote zone parent does not exist in current game");
 
-                    // TODO: add reconnect logic to resync save probe
                     Socket.Disconnect(Host, EmpDisconnectInfo.InvalidZone);
                     return;
                 }
@@ -67,7 +66,6 @@ internal partial class ElinNetClient
         if (remoteZone?.ZoneFullName != response.ZoneFullName) {
             EmpLog.Warning("Zone state mismatch");
 
-            // TODO: add reconnect logic to resync save probe
             Socket.Disconnect(Host, EmpDisconnectInfo.InvalidZone);
             return;
         }

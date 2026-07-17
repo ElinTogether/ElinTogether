@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Threading;
 using ElinTogether.Helper.Steam;
@@ -13,7 +12,6 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     private const int MemoryArenaInitialSize = 4 * (1 << 10);
     private const int MemoryArenaGrowthRatio = 2;
 
-    private static readonly ConcurrentDictionary<ulong, int> _recentPeers = [];
     private static readonly Func<int, IntPtr> _allocator = Marshal.AllocHGlobal;
     private static readonly Action<IntPtr> _deallocator = Marshal.FreeHGlobal;
     private static readonly Func<IntPtr, IntPtr, IntPtr> _reallocator = Marshal.ReAllocHGlobal;
@@ -41,12 +39,7 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
         Uid = RemoteIdentity.GetSteamID64();
         SteamUserName.PinUserName(RemoteIdentity.GetSteamID64(), name => Name = name);
 
-        // use recent Id if it's a reconnection
-        if (!_recentPeers.TryGetValue(Uid, out var id)) {
-            _recentPeers[Uid] = id = Interlocked.Increment(ref _nextId);
-        }
-
-        Id = id;
+        Id = Interlocked.Increment(ref _nextId);
 
         Serializer = serializer;
         ArenaSize = MemoryArenaInitialSize;

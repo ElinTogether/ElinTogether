@@ -11,7 +11,6 @@ public static class EmpDisconnectInfo
     public const string NetSessionInitialize = "emp_dc_net_session_initialize";
     public const string InactivePeer = "emp_dc_inactive_peer";
     public const string Timeout = "emp_dc_timeout";
-    public const string RejoinFailed = "emp_dc_rejoin_failed";
     public const string RemoteClosed = "emp_dc_remote_closed";
     public const string ClientCancel = "emp_dc_client_cancel";
 }

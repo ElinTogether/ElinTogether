@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -75,7 +74,6 @@ internal partial class ElinNetHost : ElinNetBase
 
         // source validation
         Router.RegisterHandler<SourceValidationResponse>(OnSourceListResponse);
-        Router.RegisterHandler<SessionRejoinRequest>(OnSessionRejoinRequest);
     }
 
     private void Broadcast<T>(T packet)
@@ -104,29 +102,6 @@ internal partial class ElinNetHost : ElinNetBase
         foreach (var chara in _map.charas.ToArray()) {
             if (chara.GetBool("remote_chara") && !ActiveRemoteCharas.Values.Contains(chara)) {
                 RemoveRemoteChara(chara);
-            }
-        }
-
-        // Evict stale pending reconnects (simple time-based window).
-        // If a player does not rejoin within the window we finally remove the remote chara.
-        var now = DateTime.UtcNow;
-        var toEvict = new List<ulong>();
-        foreach (var (steamUid, info) in PendingReconnects) {
-            if ((now - info.DcTime).TotalSeconds > 90) { // 90s reconnect window
-                toEvict.Add(steamUid);
-            }
-        }
-
-        foreach (var steamUid in toEvict) {
-            if (PendingReconnects.Remove(steamUid, out var stale)) {
-                // find and remove the corresponding remote chara
-                var deadEntry = ActiveRemoteCharas.FirstOrDefault(kv => kv.Value.uid == stale.CharaUid);
-                if (deadEntry.Value is not null) {
-                    ActiveRemoteCharas.Remove(deadEntry.Key);
-                    RemoveRemoteChara(deadEntry.Value);
-                    EmpLog.Information("Evicted pending reconnect for steam {Uid} (chara {CharaUid}) after timeout",
-                        steamUid, stale.CharaUid);
-                }
             }
         }
     }
@@ -161,32 +136,20 @@ internal partial class ElinNetHost : ElinNetBase
         EmpPop.Information("Player {@Peer} disconnected\n{DisconnectInfo}",
             peer, disconnectInfo);
 
-        // Rejoin support: do NOT immediately remove the remote chara.
-        // Instead, record a pending reconnect entry so the same Steam UID can
-        // perform a lightweight SessionRejoinRequest / HandleRejoin later.
         if (States.Remove(peer.Id, out var state)) {
-            if (ActiveRemoteCharas.TryGetValue(peer.Id, out var remoteChara)) {
-                // keep the chara in the world but mark it as pending reconnect
-                remoteChara.SetBool("pending_reconnect", true);
-                RemoveRemoteChara(remoteChara, false);
-
-                PendingReconnects[peer.Uid] = new(
-                    remoteChara.uid,
-                    state.LastReceivedTick,
-                    DateTime.UtcNow,
-                    disconnectInfo);
-
-                EmpLog.Information("Player {Name} marked for pending reconnect (chara {Uid}). " +
-                                   "Will be evicted on timeout or successful rejoin.",
+            // Fully remove remote chara from the map (saved chara remains via ElinGameIOProperty)
+            if (ActiveRemoteCharas.Remove(peer.Id, out var remoteChara)) {
+                RemoveRemoteChara(remoteChara);
+                EmpLog.Information("Player {Name} remote chara {Uid} removed from map. " +
+                                   "Saved chara retained for future new connections.",
                     state.Name, remoteChara.uid);
             }
 
-            _pendingRejoinIntents.Remove(peer.Uid);
             Session.CurrentPlayers.Remove(state);
         }
 
-        EmpLog.Debug("Player {Name} disconnected. {Remaining} players remaining, {Pending} pending reconnects",
-            state?.Name ?? "unknown", States.Count, PendingReconnects.Count);
+        EmpLog.Debug("Player {Name} disconnected. {Remaining} players remaining",
+            state?.Name ?? "unknown", States.Count);
 
         // keep ticking but no update
         if (States.Count == 0) {

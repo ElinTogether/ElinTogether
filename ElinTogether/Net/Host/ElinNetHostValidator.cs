@@ -43,11 +43,7 @@ internal partial class ElinNetHost
                 peer);
             Session.SetPhase(ConnectionPhase.SourceSynced);
 
-            if (_pendingRejoinIntents.Remove(peer.Uid, out var rejoinReq)) {
-                HandleRejoin(peer, rejoinReq);
-            } else {
-                PreparePlayerJoin(peer);
-            }
+            PreparePlayerJoin(peer);
 
             return;
         }

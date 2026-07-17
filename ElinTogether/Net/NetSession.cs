@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using ElinTogether.Helper;
-using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using Object = UnityEngine.Object;
 
@@ -36,7 +35,6 @@ public class NetSession : EClass
     public int Tick { get; internal set; }
     public ulong SessionId { get; internal set; }
     public NetSessionRules Rules { get; internal set; } = NetSessionRules.Default;
-    public bool IsRejoining { get; internal set; }
 
     public List<NetPeerState> CurrentPlayers => field ??= [];
     public SteamNetLobbyManager Lobby => field ??= new();
@@ -48,7 +46,6 @@ public class NetSession : EClass
     public bool IsClient => !IsHost;
     public bool ShouldSimulate => IsHost || SyncMode == Mode.PartialSync;
 
-    public LastSessionInfo? LastSession { get; internal set; }
     public ConnectionPhase CurrentPhase { get; private set; } = ConnectionPhase.None;
 
     public event Action<ConnectionPhase>? OnPhaseChanged;

@@ -35,6 +35,7 @@ internal partial class ElinNetClient
         embark.SetOnKill(() => {
             if (!ready) {
                 Socket.Disconnect(Host, EmpDisconnectInfo.ClientCancel);
+                OnPeerDisconnected(Host, EmpDisconnectInfo.ClientCancel);
             }
         });
     }
@@ -55,16 +56,6 @@ internal partial class ElinNetClient
 
         player.uidChara = remoteChara.uid;
         player.chara = remoteChara;
-
-        var hostSteamId = Session.LastSession?.HostSteamId ?? Host?.Uid ?? 0;
-        Session.LastSession = new() {
-            HostSteamId = hostSteamId,
-            SessionId = Session.SessionId,
-            CharaUid = remoteChara.uid,
-            LastServerTick = Session.Tick,
-            LastZoneUid = Session.CurrentZone?.uid,
-            LastZoneFullName = Session.CurrentZone?.ZoneFullName,
-        };
 
         probeGame.isCloud = false;
         probeGame.isLoading = true;
@@ -92,41 +83,6 @@ internal partial class ElinNetClient
     {
         if (Session.Lobby.Current?.LobbyId != (CSteamID)request.LobbyId) {
             Session.Lobby.ConnectLobby(request.LobbyId);
-        }
-    }
-
-    private void OnSessionRejoinResponse(SessionRejoinResponse response)
-    {
-        if (!response.Success) {
-            EmpLog.Warning("Rejoin rejected by host: {Reason}", response.Reason);
-            // fall back as non-recoverable
-            Session.RemoveComponent();
-            if (core.IsGameStarted) {
-                scene.Init(Scene.Mode.Title);
-            }
-            return;
-        }
-
-        if (Session.LastSession is { } last) {
-            Session.LastSession = last with {
-                LastServerTick = response.CurrentServerTick,
-                LastZoneUid = response.CurrentZoneUid,
-                LastZoneFullName = response.CurrentZoneFullName,
-            };
-        }
-
-        Session.SetPhase(ConnectionPhase.Synchronized);
-        EmpLog.Information("Rejoin successful. Resuming at tick {Tick}", response.CurrentServerTick);
-
-        var current = Session.CurrentZone;
-        if (response.CurrentZoneUid != null &&
-            (response.CurrentZoneUid != current?.uid || response.CurrentZoneFullName != current.ZoneFullName)) {
-            EmpLog.Debug("Rejoin zone mismatch detected, requesting zone {ZoneUid} {ZoneFullName}",
-                response.CurrentZoneUid, response.CurrentZoneFullName);
-            RequestZoneState(new() {
-                ZoneUid = (int)response.CurrentZoneUid,
-                ZoneFullName = response.CurrentZoneFullName ?? "",
-            });
         }
     }
 }
