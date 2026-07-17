@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using ElinTogether.Net;
@@ -9,7 +10,7 @@ namespace ElinTogether.Models;
 ///     Card surrogate
 /// </summary>
 [MessagePackObject]
-public class RemoteCard
+public class RemoteCard : IEquatable<RemoteCard>
 {
     public enum CardType : byte
     {
@@ -105,5 +106,82 @@ public class RemoteCard
     public override string ToString()
     {
         return $"{Find()}";
+    }
+
+    public static bool operator ==(RemoteCard? lhs, RemoteCard? rhs)
+    {
+        if (lhs is null) {
+            return rhs is null;
+        }
+
+        return lhs.Equals(rhs);
+    }
+
+    public static bool operator !=(RemoteCard? lhs, RemoteCard? rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    public static bool operator ==(RemoteCard? lhs, Card? rhs)
+    {
+        if (lhs is null) {
+            return rhs is null;
+        }
+
+        if (rhs is null) {
+            return false;
+        }
+
+        return lhs.Uid == rhs.uid && lhs.Type == (rhs is Thing ? CardType.Thing : CardType.Chara);
+    }
+
+    public static bool operator !=(RemoteCard? lhs, Card? rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    public static bool operator ==(Card? lhs, RemoteCard? rhs)
+    {
+        return rhs == lhs;
+    }
+
+    public static bool operator !=(Card? lhs, RemoteCard? rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    public bool Equals(RemoteCard? other)
+    {
+        if (other is null) {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other)) {
+            return true;
+        }
+
+        return Uid == other.Uid && Type == other.Type;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is null) {
+            return false;
+        }
+
+        if (ReferenceEquals(this, obj)) {
+            return true;
+        }
+
+        if (obj.GetType() != GetType()) {
+            return false;
+        }
+
+        return Equals((RemoteCard)obj);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Uid, Type);
     }
 }

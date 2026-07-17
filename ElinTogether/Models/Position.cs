@@ -1,10 +1,11 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using MessagePack;
 
 namespace ElinTogether.Models;
 
 [MessagePackObject]
-public class Position
+public class Position : IEquatable<Position>
 {
     [Key(0)]
     public required int X { get; init; }
@@ -24,6 +25,20 @@ public class Position
         return position is null ? null : new(position.X, position.Z);
     }
 
+    public static bool operator ==(Position? lhs, Position? rhs)
+    {
+        if (lhs is null) {
+            return rhs is null;
+        }
+
+        return lhs.Equals(rhs);
+    }
+
+    public static bool operator !=(Position? lhs, Position? rhs)
+    {
+        return !(lhs == rhs);
+    }
+
     public static bool operator ==(Position? lhs, Point? rhs)
     {
         if (lhs is null || rhs is null) {
@@ -38,10 +53,33 @@ public class Position
         return !(lhs == rhs);
     }
 
+    public static bool operator ==(Point? lhs, Position? rhs)
+    {
+        return rhs == lhs;
+    }
+
+    public static bool operator !=(Point? lhs, Position? rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    public bool Equals(Position? other)
+    {
+        if (other is null) {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other)) {
+            return true;
+        }
+
+        return X == other.X && Z == other.Z;
+    }
+
     public override bool Equals(object? other)
     {
         return other switch {
-            Position pos => X == pos.X && Z == pos.Z,
+            Position pos => Equals(pos),
             Point point => X == point.x && Z == point.z,
             _ => false,
         };
@@ -49,7 +87,7 @@ public class Position
 
     public override int GetHashCode()
     {
-        return X ^ Z;
+        return HashCode.Combine(X, Z);
     }
 
     public override string ToString()
