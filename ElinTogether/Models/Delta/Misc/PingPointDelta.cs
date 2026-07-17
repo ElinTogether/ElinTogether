@@ -20,7 +20,11 @@ public class PingPointDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (SenderIndex == NetSession.Instance.Self!.Index) {
+        if (NetSession.Instance.Self is null) {
+            return;
+        }
+
+        if (SenderIndex == NetSession.Instance.Self.Index) {
             return;
         }
 
@@ -43,7 +47,7 @@ public class PingPointDelta : ElinDelta
         effect.Play(Pos);
 
         var sender = NetSession.Instance.CurrentPlayers.Find(p => p.Index == SenderIndex);
-        WidgetPopText.Say("emp_ui_ping".Loc(sender?.Name ?? $"Player {SenderIndex}"));
+        WidgetPopText.Say("emp_ui_ping".Loc(sender?.Name ?? $"Player {SenderIndex}"), sprite: UIHelper.FindSprite("emo2_hint"));
     }
 
     public static PingPointDelta Ping(Point point)
