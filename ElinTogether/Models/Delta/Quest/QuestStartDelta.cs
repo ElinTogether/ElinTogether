@@ -26,7 +26,9 @@ public class QuestStartDelta : ElinDelta
         }
 
         if (IsGlobal) {
-            quest = game.quests.globalList.Find(q => q.uid == Uid);
+            var i = game.quests.globalList.FindIndex(q => q.uid == Uid);
+            quest = game.quests.globalList[i];
+            game.quests.globalList.RemoveAt(i);
         } else if (Owner?.Find() is Chara owner && owner.quest.uid == Uid) {
             quest = owner.quest;
         } else {
