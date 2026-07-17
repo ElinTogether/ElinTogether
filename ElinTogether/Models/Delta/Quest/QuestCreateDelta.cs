@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using ElinTogether.Net;
 using MessagePack;
@@ -9,10 +8,10 @@ namespace ElinTogether.Models;
 public class QuestCreateDelta : ElinDelta
 {
     [IgnoreMember]
-    public int Uid;
+    public Chara? Owner;
 
     [IgnoreMember]
-    public Chara? Owner;
+    public int Uid;
 
     [Key(0)]
     public required LZ4Bytes Data { get; set; }
@@ -27,7 +26,7 @@ public class QuestCreateDelta : ElinDelta
         }
 
         var quest = Data.Decompress<Quest>();
-        if (quest.person.chara is not Chara chara) {
+        if (quest.person.chara is not { } chara) {
             return;
         }
 
@@ -72,12 +71,7 @@ public class QuestCreateDelta : ElinDelta
             return false;
         });
 
-        deltaList.RemoveAll(delta => {
-            if (delta is not QuestSetClientDelta questSetClientDelta) {
-                return false;
-            }
-
-            return alreadySent.Contains(questSetClientDelta.Uid);
-        });
+        deltaList.RemoveAll(delta => delta is QuestSetClientDelta questSetClientDelta &&
+                                     alreadySent.Contains(questSetClientDelta.Uid));
     }
 }

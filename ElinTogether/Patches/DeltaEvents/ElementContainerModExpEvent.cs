@@ -18,12 +18,8 @@ internal class ElementContainerModExpEvent
             return true;
         }
 
-        if (connection.IsHost && chara.IsRemotePlayer is true) {
-            __state = false;
-            return false;
-        }
-
-        if (connection.IsClient && chara.IsPC is not true) {
+        if ((connection.IsHost && chara.IsRemotePlayer) ||
+            (connection.IsClient && chara.IsPC is not true)) {
             __state = false;
             return false;
         }

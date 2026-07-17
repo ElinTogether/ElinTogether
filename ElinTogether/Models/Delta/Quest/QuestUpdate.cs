@@ -22,7 +22,7 @@ public class QuestUpdateDelta : ElinDelta
 
         var i = game.quests.list.FindIndex(q => q.uid == quest.uid);
         game.quests.list[i] = quest;
-        if (quest.person.chara is not Chara chara) {
+        if (quest.person.chara is not { } chara) {
             return;
         }
 

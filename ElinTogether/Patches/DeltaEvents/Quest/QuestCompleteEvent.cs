@@ -2,6 +2,8 @@ using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
 
+namespace ElinTogether.Patches;
+
 [HarmonyPatch]
 internal static class QuestCompleteEvent
 {

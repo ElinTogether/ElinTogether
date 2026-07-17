@@ -1,7 +1,8 @@
 using ElinTogether.Models;
 using ElinTogether.Net;
-using ElinTogether.Patches;
 using HarmonyLib;
+
+namespace ElinTogether.Patches;
 
 [HarmonyPatch]
 internal static class QuestCreateEvent

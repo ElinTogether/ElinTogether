@@ -2,13 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
-using System.Text;
-using ElinTogether.Helper;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
-using Newtonsoft.Json;
 using UnityEngine;
 
 namespace ElinTogether.Patches;
@@ -120,18 +117,18 @@ internal static class Synchronization
 
     internal static class NetProfileSynchronizationContext
     {
-        private static RemoteCard? HeldMainHand;
-        private static RemoteCard? HeldOffHand;
+        private static RemoteCard? _heldMainHand;
+        private static RemoteCard? _heldOffHand;
 
         internal static void Update()
         {
             var delta = CharaSwitchHeldDelta.Create();
-            if (HeldMainHand == delta.HeldMainHand && HeldOffHand == delta.HeldOffHand) {
+            if (_heldMainHand == delta.HeldMainHand && _heldOffHand == delta.HeldOffHand) {
                 return;
             }
 
-            HeldMainHand = delta.HeldMainHand;
-            HeldOffHand = delta.HeldOffHand;
+            _heldMainHand = delta.HeldMainHand;
+            _heldOffHand = delta.HeldOffHand;
 
             NetSession.Instance.Connection!.Delta.AddRemote(delta);
         }

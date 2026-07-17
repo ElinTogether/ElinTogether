@@ -35,7 +35,7 @@ public class QuestSetClientDelta : ElinDelta
         }
 
         quest = chara.quest;
-        if (quest.uid == Uid) {
+        if (quest?.uid == Uid) {
             quest.SetClient(owner, AssignQuest);
         }
     }

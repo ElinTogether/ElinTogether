@@ -22,7 +22,7 @@ internal class QuestStartEvent
         }
 
         var owner = q.person.chara;
-        var canFind = owner?.quest == q;
+        var canFind = ReferenceEquals(owner?.quest, q);
         var isGlobal = quests.globalList.Contains(q);
         connection.Delta.AddRemote(new QuestStartDelta {
             Uid = q.uid,

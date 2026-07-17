@@ -1,4 +1,3 @@
-using System;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -21,12 +20,11 @@ public class QuestStartDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (Data?.Decompress<Quest>() is Quest q) {
-            game.quests.Start(q);
+        if (Data?.Decompress<Quest>() is { } quest) {
+            game.quests.Start(quest);
             return;
         }
 
-        Quest quest;
         if (IsGlobal) {
             quest = game.quests.globalList.Find(q => q.uid == Uid);
         } else if (Owner?.Find() is Chara owner && owner.quest.uid == Uid) {

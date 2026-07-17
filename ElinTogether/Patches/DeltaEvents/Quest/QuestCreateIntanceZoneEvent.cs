@@ -1,14 +1,24 @@
+using System.Collections.Generic;
+using System.Reflection;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
 
-[HarmonyPatch(typeof(QuestInstance), nameof(QuestInstance.CreateInstanceZone))]
+namespace ElinTogether.Patches;
+
+[HarmonyPatch]
 internal static class QuestCreateInstanceZoneEvent
 {
-    [HarmonyPostfix]
-    internal static void OnCreateInstanceZone(QuestInstance __instance, Chara c)
+    internal static IEnumerable<MethodBase> TargetMethods()
     {
-        if (NetSession.Instance.Connection is not ElinNetClient client) {
+        return OverrideMethodComparer.FindAllOverrides(typeof(Quest), nameof(Quest.CreateInstanceZone), typeof(Chara));
+    }
+
+    [HarmonyPostfix]
+    internal static void OnCreateInstanceZone(Quest __instance, Chara c)
+    {
+        if (NetSession.Instance.Connection is not ElinNetClient client || ElinDelta.IsApplying) {
             return;
         }
 

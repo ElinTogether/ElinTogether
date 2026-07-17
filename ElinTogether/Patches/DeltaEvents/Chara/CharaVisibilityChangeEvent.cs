@@ -16,7 +16,8 @@ internal static class CharaVisibilityChangeEvent
             return;
         }
 
-        if (__instance.owner.ExistsOnMap && !EClass._zone.IsRegion && __instance.owner.IsHostile() && EClass.pc.CanSeeLos(__instance.owner, -1)) {
+        if (__instance.owner.ExistsOnMap && !EClass._zone.IsRegion && __instance.owner.IsHostile() &&
+            EClass.pc.CanSeeLos(__instance.owner)) {
             if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && value) {
                 return;
             }
@@ -55,7 +56,7 @@ internal static class CharaVisibilityChangeEvent
     [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
     internal static void OnDie()
     {
-        if (NetSession.Instance.Connection is not {} connection || EClass._zone.IsRegion) {
+        if (NetSession.Instance.Connection is not { } connection || EClass._zone.IsRegion) {
             return;
         }
 
@@ -74,6 +75,7 @@ internal static class CharaVisibilityChangeEvent
 
     internal static bool HasNoEnemyInSight()
     {
-        return EClass.game?.activeZone?.map.charas.Any(c => !c.isDead && c.ExistsOnMap && c.IsHostile() && EClass.pc.CanSeeLos(c)) is false;
+        return EClass.game?.activeZone?.map.charas.Any(c =>
+            !c.isDead && c.ExistsOnMap && c.IsHostile() && EClass.pc.CanSeeLos(c)) is false;
     }
 }
