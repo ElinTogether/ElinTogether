@@ -14,6 +14,9 @@ public class QuestStartDelta : ElinDelta
     public required RemoteCard? Owner { get; init; }
 
     [Key(2)]
+    public required bool IsGlobal { get; init; }
+
+    [Key(3)]
     public required LZ4Bytes? Data { get; init; }
 
     protected override void OnApply(ElinNetBase net)
@@ -23,12 +26,16 @@ public class QuestStartDelta : ElinDelta
             return;
         }
 
-        if (Owner?.Find() is not Chara owner) {
+        Quest quest;
+        if (IsGlobal) {
+            quest = game.quests.globalList.Find(q => q.uid == Uid);
+        } else if (Owner?.Find() is Chara owner && owner.quest.uid == Uid) {
+            quest = owner.quest;
+        } else {
             return;
         }
 
-        var quest = owner.quest;
-        if (quest.uid != Uid || game.quests.list.Contains(quest)) {
+        if (game.quests.list.Contains(quest)) {
             return;
         }
 

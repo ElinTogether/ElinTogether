@@ -16,16 +16,19 @@ internal class QuestStartEvent
         }
 
         // already started
-        if (EClass.game.quests.list.Contains(q)) {
+        var quests = EClass.game.quests;
+        if (quests.list.Contains(q)) {
             return;
         }
 
         var owner = q.person.chara;
         var canFind = owner?.quest == q;
+        var isGlobal = quests.globalList.Contains(q);
         connection.Delta.AddRemote(new QuestStartDelta {
             Uid = q.uid,
             Owner = owner,
-            Data = canFind ? null : LZ4Bytes.Create(q),
+            IsGlobal = isGlobal,
+            Data = (!canFind && !isGlobal) ? LZ4Bytes.Create(q) : null,
         });
     }
 }
