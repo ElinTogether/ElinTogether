@@ -1,5 +1,6 @@
 using BepInEx.Configuration;
 using ReflexCLI.Attributes;
+using UnityEngine;
 
 namespace ElinTogether;
 
@@ -45,6 +46,13 @@ internal partial class EmpConfig
                 "请求失败后的重试次数",
                 new AcceptableValueRange<int>(0, 5)));
 
+        Client.PingKeybind = config.Bind(
+            "Client",
+            "PingKeybind",
+            KeyCode.P,
+            "Keybind for pinging map\n" +
+            "键盘键位用于标记一处地点");
+
         Server.SourceValidationSet = config.Bind(
             "Server",
             "SourceValidation",
@@ -76,6 +84,11 @@ internal partial class EmpConfig
         internal static ConfigEntry<float> Timeout { get; set; } = null!;
         internal static ConfigEntry<int> Retries { get; set; } = null!;
         internal static ConfigEntry<bool> Verbose { get; set; } = null!;
+    }
+
+    internal static class Client
+    {
+        internal static ConfigEntry<KeyCode> PingKeybind { get; set; } = null!;
     }
 
     internal static class Server

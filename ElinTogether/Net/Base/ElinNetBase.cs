@@ -1,9 +1,11 @@
 using System.Text;
 using ElinTogether.Helper;
 using ElinTogether.Helper.Steam;
+using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using ReflexCLI.UI;
 using Steamworks;
+using UnityEngine;
 
 namespace ElinTogether.Net;
 
@@ -39,6 +41,13 @@ public abstract partial class ElinNetBase : EMono
     {
         Scheduler.Tick();
         Socket.Poll();
+
+        if (Input.GetKeyDown(EmpConfig.Client.PingKeybind.Value) && !ui.BlockActions) {
+            var point = Scene.HitPoint;
+            if (point is not null) {
+                Delta.AddRemote(PingPointDelta.Ping(point));
+            }
+        }
     }
 
     private void OnDestroy()

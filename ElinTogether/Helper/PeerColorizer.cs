@@ -6,7 +6,7 @@ namespace ElinTogether.Helper;
 
 internal static class PeerColorizer
 {
-    internal static int GetColor(int peerIndex)
+    internal static int GetColorInt(int peerIndex)
     {
         return peerIndex switch {
             1 => 0x0072b2,
@@ -23,11 +23,21 @@ internal static class PeerColorizer
         }
     }
 
+    internal static Color GetColor(int peerIndex)
+    {
+        var rgb = GetColorInt(peerIndex);
+        return new Color32(
+            (byte)((rgb >> 16) & 0xFF),
+            (byte)((rgb >> 8) & 0xFF),
+            (byte)(rgb & 0xFF),
+            255);
+    }
+
     extension(ISteamNetPeer peer)
     {
         internal string Colorize(object input)
         {
-            return input.TagColor(GetColor(peer.Id));
+            return input.TagColor(GetColorInt(peer.Id));
         }
     }
 }
