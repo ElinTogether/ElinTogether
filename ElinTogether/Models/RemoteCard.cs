@@ -30,6 +30,19 @@ public class RemoteCard : IEquatable<RemoteCard>
     [Key(3)]
     public LZ4Bytes? Data { get; set; }
 
+    public bool Equals(RemoteCard? other)
+    {
+        if (other is null) {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other)) {
+            return true;
+        }
+
+        return Uid == other.Uid && Type == other.Type;
+    }
+
     [return: NotNullIfNotNull("card")]
     public static RemoteCard? Create(Card? card, bool withData = false)
     {
@@ -120,47 +133,6 @@ public class RemoteCard : IEquatable<RemoteCard>
     public static bool operator !=(RemoteCard? lhs, RemoteCard? rhs)
     {
         return !(lhs == rhs);
-    }
-
-    public static bool operator ==(RemoteCard? lhs, Card? rhs)
-    {
-        if (lhs is null) {
-            return rhs is null;
-        }
-
-        if (rhs is null) {
-            return false;
-        }
-
-        return lhs.Uid == rhs.uid && lhs.Type == (rhs is Thing ? CardType.Thing : CardType.Chara);
-    }
-
-    public static bool operator !=(RemoteCard? lhs, Card? rhs)
-    {
-        return !(lhs == rhs);
-    }
-
-    public static bool operator ==(Card? lhs, RemoteCard? rhs)
-    {
-        return rhs == lhs;
-    }
-
-    public static bool operator !=(Card? lhs, RemoteCard? rhs)
-    {
-        return !(lhs == rhs);
-    }
-
-    public bool Equals(RemoteCard? other)
-    {
-        if (other is null) {
-            return false;
-        }
-
-        if (ReferenceEquals(this, other)) {
-            return true;
-        }
-
-        return Uid == other.Uid && Type == other.Type;
     }
 
     public override bool Equals(object? obj)
