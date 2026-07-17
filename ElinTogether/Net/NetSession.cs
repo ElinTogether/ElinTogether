@@ -40,6 +40,8 @@ public class NetSession : EClass
 
     public List<NetPeerState> CurrentPlayers => field ??= [];
     public SteamNetLobbyManager Lobby => field ??= new();
+    public NetPeerState? Self { get; internal set; }
+    public ulong? LocalPeerUid { get; internal set; }
 
     public bool HasActiveConnection => Connection != null && Connection.IsConnected;
     public bool IsHost => Connection?.IsHost is not false;
@@ -85,6 +87,7 @@ public class NetSession : EClass
 
         Connection = null;
         Tick = 0;
+        Self = null;
         CurrentPlayers.Clear();
 
         ResourceFetch.InvalidateTemp();

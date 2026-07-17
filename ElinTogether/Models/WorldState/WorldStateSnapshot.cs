@@ -30,8 +30,10 @@ public class WorldStateSnapshot : EClass
     {
         CachedRemoteSnapshots.Add(CharaStateSnapshot.CreateSelf());
 
-        var selfState = NetSession.Instance.CurrentPlayers.Find(n => n.CharaUid == pc.uid);
-        selfState.Speed = pc.Stub_get_Speed();
+        var selfState = NetSession.Instance.Self;
+        if (selfState != null) {
+            selfState.Speed = pc.Stub_get_Speed();
+        }
 
         var snapshots = new Dictionary<int, CharaStateSnapshot>();
         foreach (var chara in _map.charas) {

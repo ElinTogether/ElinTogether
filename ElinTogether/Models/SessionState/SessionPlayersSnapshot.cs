@@ -22,7 +22,13 @@ public class SessionPlayersSnapshot
 
     public void Apply()
     {
-        NetSession.Instance.CurrentPlayers.Clear();
-        NetSession.Instance.CurrentPlayers.AddRange(Current);
+        var session = NetSession.Instance;
+        session.CurrentPlayers.Clear();
+        session.CurrentPlayers.AddRange(Current);
+
+        // resolve self state
+        session.Self =
+            session.CurrentPlayers.Find(n => session.Player is { } player && n.CharaUid == player.uid) ??
+            session.CurrentPlayers.Find(n => session.LocalPeerUid is not null && n.PeerUid == (ulong)session.LocalPeerUid);
     }
 }

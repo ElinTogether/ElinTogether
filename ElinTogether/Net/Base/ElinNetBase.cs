@@ -74,6 +74,8 @@ public abstract partial class ElinNetBase : EMono
 
         Socket.Initialize(Router);
 
+        Session.LocalPeerUid = (ulong)SteamUser.GetSteamID();
+
         RegisterPackets();
 
         CreateValidation();
