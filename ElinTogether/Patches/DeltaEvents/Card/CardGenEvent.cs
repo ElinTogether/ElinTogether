@@ -25,7 +25,7 @@ internal static class CardGenEvent
             return;
         }
 
-        if (ZoneActivateEvent.IsActivating) {
+        if (ZoneActivateEvent.IsHappening) {
             return;
         }
 

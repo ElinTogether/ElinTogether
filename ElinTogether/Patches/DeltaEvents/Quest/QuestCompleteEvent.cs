@@ -1,16 +1,20 @@
-// maybe not needed
-// [HarmonyPatch(typeof(Quest), nameof(Quest.Complete))]
-// internal static class QuestCompleteEvent
-// {
-//     [HarmonyPostfix]
-//     internal static void OnComplete(Quest __instance)
-//     {
-//         if (NetSession.Instance.Connection is not ElinNetHost host) {
-//             return;
-//         }
+using ElinTogether.Models;
+using ElinTogether.Net;
+using HarmonyLib;
 
-//         // host.Delta.AddRemote(new QuestCompleteDelta {
-//         //     PeerUid = __instance.uid,
-//         // });
-//     }
-// }
+[HarmonyPatch]
+internal static class QuestCompleteEvent
+{
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Quest), nameof(Quest.Complete))]
+    internal static void OnQuestComplete(Quest __instance)
+    {
+        if (NetSession.Instance.Connection is not { } connection) {
+            return;
+        }
+
+        connection.Delta.AddRemote(new QuestCompleteDelta {
+            Uid = __instance.uid,
+        });
+    }
+}

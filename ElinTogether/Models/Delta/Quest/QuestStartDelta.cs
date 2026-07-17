@@ -1,3 +1,4 @@
+using System;
 using ElinTogether.Net;
 using MessagePack;
 

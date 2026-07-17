@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ElinTogether.Net;
 using MessagePack;
@@ -10,11 +11,14 @@ public class QuestCreateDelta : ElinDelta
     [IgnoreMember]
     public int Uid;
 
+    [IgnoreMember]
+    public Chara? Owner;
+
     [Key(0)]
     public required LZ4Bytes Data { get; set; }
 
     [Key(1)]
-    public required bool AssignQuest { get; set; }
+    public required bool IsGlobal { get; set; }
 
     protected override void OnApply(ElinNetBase net)
     {
@@ -27,15 +31,21 @@ public class QuestCreateDelta : ElinDelta
             return;
         }
 
-        quest.SetClient(chara, AssignQuest);
+        quest.SetClient(chara, !IsGlobal);
+
+        if (IsGlobal) {
+            game.quests.globalList.Add(quest);
+        }
     }
 
     public static QuestCreateDelta Create(Quest quest)
     {
         return new() {
             Uid = quest.uid,
+            Owner = quest.person.chara,
             Data = LZ4Bytes.Create(quest),
-            AssignQuest = quest.person.chara.quest == quest,
+            // unknown at the moment
+            IsGlobal = false,
         };
     }
 
@@ -47,14 +57,18 @@ public class QuestCreateDelta : ElinDelta
                 return false;
             }
 
-            var quest = game.quests.list.Find(q => q.uid == questCreateDelta.Uid);
-            if (quest is null) {
-                return true;
+            var quest = game.quests.globalList.Find(q => q.uid == questCreateDelta.Uid);
+            if (quest is not null) {
+                questCreateDelta.IsGlobal = true;
+            } else {
+                quest = questCreateDelta.Owner?.quest;
+                if (quest?.uid != questCreateDelta.Uid) {
+                    return true;
+                }
             }
 
             alreadySent.Add(quest.uid);
             questCreateDelta.Data = LZ4Bytes.Create(quest);
-            questCreateDelta.AssignQuest = quest.person.chara.quest == quest;
             return false;
         });
 

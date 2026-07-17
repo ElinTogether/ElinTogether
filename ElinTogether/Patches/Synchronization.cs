@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
+using System.Text;
+using ElinTogether.Helper;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
+using Newtonsoft.Json;
 using UnityEngine;
 
 namespace ElinTogether.Patches;
@@ -86,12 +89,13 @@ internal static class Synchronization
         [HarmonyPostfix]
         internal static void OnCoreUpdateEnd()
         {
-            if (EClass.game is null) {
+            if (EClass.game is null || NetSession.Instance.Connection is null) {
                 return;
             }
 
             CardCache.Update();
             NetProfileSynchronizationContext.Update();
+            QuestSynchronizationContext.Update();
             switch (NetSession.Instance.Connection) {
                 case ElinNetHost host:
                     if (!EMono.scene.paused) {
@@ -121,10 +125,6 @@ internal static class Synchronization
 
         internal static void Update()
         {
-            if (NetSession.Instance.Connection is not { } connection) {
-                return;
-            }
-
             var delta = CharaSwitchHeldDelta.Create();
             if (HeldMainHand == delta.HeldMainHand && HeldOffHand == delta.HeldOffHand) {
                 return;
@@ -133,7 +133,32 @@ internal static class Synchronization
             HeldMainHand = delta.HeldMainHand;
             HeldOffHand = delta.HeldOffHand;
 
-            connection.Delta.AddRemote(delta);
+            NetSession.Instance.Connection!.Delta.AddRemote(delta);
+        }
+    }
+
+    internal static class QuestSynchronizationContext
+    {
+        // private static Dictionary<int, string> Store = [];
+
+        internal static void Update()
+        {
+            EClass.game.quests.list.RemoveAll(q => q.uid < 0);
+            EClass.game.quests.globalList.RemoveAll(q => q.uid < 0);
+
+            // static void CheckQuest(Quest q)
+            // {
+            //     var str = q.ToCompactJson();
+            //     var bytes = Encoding.UTF8.GetBytes(str);
+            //     var hashBytes = System.Security.Cryptography.SHA256.Create().ComputeHash(bytes);
+            //     var newHash = BitConverter.ToString(hashBytes).Replace("-", "");
+
+            //     if (Store.TryGetValue(q.uid, out var hash) && hash != newHash) {
+            //         NetSession.Instance.Connection!.Delta.AddRemote(QuestUpdateDelta.Create(q));
+            //     }
+
+            //     Store[q.uid] = newHash;
+            // }
         }
     }
 
