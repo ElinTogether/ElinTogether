@@ -12,7 +12,7 @@ internal static class CharaDieEvent
     internal static bool OnCharaDie(Chara __instance, Element? e, Card? origin, AttackSource attackSource, Chara? originalTarget)
     {
         switch (NetSession.Instance.Connection) {
-            case ElinNetHost host:
+            case ElinNetHost host when !ElinDelta.IsApplying:
                 host.Delta.DeferRemote(new CharaDieDelta {
                     Owner = __instance,
                     ElementId = e?.id,
@@ -22,20 +22,11 @@ internal static class CharaDieEvent
                 });
 
                 return true;
-            case ElinNetClient:
+            case ElinNetClient when !ElinDelta.IsApplying:
                 // we are clients, drop the update and wait for delta
                 return false;
             default:
                 return true;
-        }
-    }
-
-    extension(Chara chara)
-    {
-        [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
-        internal void Stub_Die(Element e, Card origin, AttackSource attackSource, Chara originalTarget)
-        {
-            throw new NotImplementedException("Chara.Die");
         }
     }
 }

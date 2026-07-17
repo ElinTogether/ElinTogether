@@ -34,6 +34,6 @@ public class CharaDieDelta : ElinDelta
         }
 
         var element = ElementId is null ? null : Element.Create(ElementId.Value);
-        chara.Stub_Die(element, Origin, AttackSource, OriginalTarget);
+        chara.Die(element, Origin, AttackSource, OriginalTarget);
     }
 }

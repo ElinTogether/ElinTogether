@@ -55,16 +55,21 @@ internal static class CharaVisibilityChangeEvent
     [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
     internal static void OnDie()
     {
-        if (NetSession.Instance.Connection is not ElinNetHost connection || EClass._zone.IsRegion) {
+        if (NetSession.Instance.Connection is not {} connection || EClass._zone.IsRegion) {
             return;
         }
 
-        var hasEnemyInSight = !HasNoEnemyInSight();
-        ActionModeCombat.EnemyVisibility[EClass.pc.uid] = hasEnemyInSight;
-        connection.Delta.AddRemote(new EnemyVisibilityDelta {
-            PlayerId = EClass.pc.uid,
-            Visible = hasEnemyInSight,
-        });
+        if (HasNoEnemyInSight()) {
+            if (ActionModeCombat.EnemyVisibility.TryGetValue(EClass.pc.uid, out var value) && !value) {
+                return;
+            }
+
+            ActionModeCombat.EnemyVisibility[EClass.pc.uid] = false;
+            connection.Delta.AddRemote(new EnemyVisibilityDelta {
+                PlayerId = EClass.pc.uid,
+                Visible = false,
+            });
+        }
     }
 
     internal static bool HasNoEnemyInSight()
