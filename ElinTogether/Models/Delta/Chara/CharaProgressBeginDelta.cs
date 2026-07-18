@@ -1,5 +1,5 @@
+using ElinTogether.API.SourceValidation;
 using ElinTogether.Elements;
-using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -31,7 +31,7 @@ public class CharaProgressBeginDelta : ElinDelta
             return;
         }
 
-        var type = SourceValidation.IdToActMapping[ActId];
+        var type = ActMappingValidator.Default.IdToActMapping[ActId];
         var ai = remote.Current;
         while (ai is not null && ai.GetType() != type) {
             ai = ai.parent;

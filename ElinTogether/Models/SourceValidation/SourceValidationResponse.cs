@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using ElinTogether.Helper;
+using ElinTogether.API.SourceValidation;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -8,24 +8,26 @@ namespace ElinTogether.Models;
 public class SourceValidationResponse
 {
     [Key(0)]
-    public required Dictionary<string, string> Checksums { get; init; }
+    public required Dictionary<string, string> SourceHashes { get; init; }
 
     [Key(1)]
-    public required List<string> Assemblies { get; init; }
+    public required Dictionary<string, string> PluginHashes { get; init; }
 
-    public static SourceValidationResponse Create(IEnumerable<string> sourceNames)
-    {
-        return new() {
-            Checksums = SourceValidation.GenerateAll(sourceNames),
-            Assemblies = SourceValidation.GetSourceAssemblies(),
-        };
-    }
+    [Key(2)]
+    public required Dictionary<string, string> FileHashes { get; init; }
 
-    public static SourceValidationResponse Create(Dictionary<string, string> checksums)
+    [Key(3)]
+    public required Dictionary<string, string> ActMapping { get; init; }
+
+    public static SourceValidationResponse Create(IEnumerable<string> sourceNames, IEnumerable<string> filePaths)
     {
+        var fileValidator = new FileDataValidator(filePaths);
+
         return new() {
-            Checksums = checksums,
-            Assemblies = SourceValidation.GetSourceAssemblies(),
+            SourceHashes = SourceDataValidator.Default.GetValidation(sourceNames),
+            PluginHashes = PluginDataValidator.Default.GetValidation(),
+            FileHashes = fileValidator.GetValidation(),
+            ActMapping = ActMappingValidator.Default.GetValidation(),
         };
     }
 }

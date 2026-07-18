@@ -26,10 +26,7 @@ internal partial class ElinNetHost : ElinNetBase
             return;
         }
 
-        Session.SetPhase(ConnectionPhase.LobbyCreating);
         Session.Lobby.CreateLobby(SteamNetLobbyType.Public);
-
-        Session.SetPhase(ConnectionPhase.HostingListening);
 
         if (localUdp) {
             Socket.StartServerUdp();
@@ -55,7 +52,6 @@ internal partial class ElinNetHost : ElinNetBase
             ? SharedSpeed
             : -1;
 
-        Session.SetPhase(ConnectionPhase.HostingReady);
         EmpPop.Information("Started server");
 
         CardCache.CacheCurrentZone();
@@ -73,7 +69,8 @@ internal partial class ElinNetHost : ElinNetBase
         Router.RegisterHandler<CharaStateSnapshot>(OnClientRemoteCharaSnapshot);
 
         // source validation
-        Router.RegisterHandler<SourceValidationResponse>(OnSourceListResponse);
+        Router.RegisterHandler<SourceValidationResponse>(OnSourceValidationResponse);
+        Router.RegisterHandler<SourceValidationContinue>(OnSourceValidationContinue);
     }
 
     private void Broadcast<T>(T packet)
@@ -81,7 +78,7 @@ internal partial class ElinNetHost : ElinNetBase
         Socket.Broadcast.Send(packet);
     }
 
-    protected override void DisconnectInactive()
+    protected virtual void DisconnectInactive()
     {
         foreach (var peer in Socket.Peers) {
             if (!States.TryGetValue(peer.Id, out var state)) {

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
+using ElinTogether.API.SourceValidation;
 using ElinTogether.Elements;
-using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -27,7 +27,7 @@ public class CharaProgressCompleteDelta : ElinDelta
         }
 
         // complete remote tasks because we assigned them max value to prevent randomness
-        var type = SourceValidation.IdToActMapping[CompletedActId];
+        var type = ActMappingValidator.Default.IdToActMapping[CompletedActId];
         var ai = chara.ai.Current;
         while (ai is not null && ai.GetType() != type) {
             ai = ai.parent;

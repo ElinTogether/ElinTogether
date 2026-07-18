@@ -1,4 +1,4 @@
-using ElinTogether.Helper;
+using ElinTogether.API.SourceValidation;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -42,7 +42,7 @@ public class CharaStateSnapshot : EClass
             CurrentZoneUid = pc.currentZone.uid,
             Hp = pc.hp,
             State = new() {
-                LastAct = SourceValidation.ActToIdMapping[pc.ai.GetType()],
+                LastAct = ActMappingValidator.Default.ActToIdMapping[pc.ai.GetType()],
                 LastReceivedTick = NetSession.Instance.Tick,
                 Speed = pc.Stub_get_Speed(),
             },

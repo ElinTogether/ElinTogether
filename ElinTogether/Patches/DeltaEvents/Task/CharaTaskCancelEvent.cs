@@ -1,6 +1,6 @@
 using System;
+using ElinTogether.API.SourceValidation;
 using ElinTogether.Elements;
-using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -32,7 +32,7 @@ internal static class CharaTaskCancelEvent
 
         net.Delta.AddRemote(new CharaTaskCancelDelta {
             Owner = owner,
-            ActId = SourceValidation.ActToIdMapping[current.parent.GetType()],
+            ActId = ActMappingValidator.Default.ActToIdMapping[current.parent.GetType()],
         });
 
         return !prevent;

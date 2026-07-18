@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using ElinTogether.API.SourceValidation;
 using ElinTogether.Elements;
 using ElinTogether.Helper;
 using ElinTogether.Models;
@@ -45,7 +46,7 @@ internal static class CharaTaskProgressEvents
             Owner = owner,
             Pos = owner.pos,
             MaxProgress = __instance.MaxProgress,
-            ActId = SourceValidation.ActToIdMapping[__instance.parent.GetType()],
+            ActId = ActMappingValidator.Default.ActToIdMapping[__instance.parent.GetType()],
         });
     }
 }

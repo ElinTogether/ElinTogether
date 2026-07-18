@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using ElinTogether.API.SourceValidation;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -69,7 +70,7 @@ internal static class CharaProgressCompleteEvent
         // remote needs to be notified that a remote task is completed before starting anew
         connection.Delta.AddRemote(new CharaProgressCompleteDelta {
             Owner = __instance.owner,
-            CompletedActId = SourceValidation.ActToIdMapping[__instance.parent.GetType()],
+            CompletedActId = ActMappingValidator.Default.ActToIdMapping[__instance.parent.GetType()],
             DeltaList = DeltaList.ToList(),
         });
 

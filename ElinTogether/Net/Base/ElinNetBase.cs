@@ -28,7 +28,6 @@ public abstract partial class ElinNetBase : EMono
     private void Awake()
     {
         Initialize();
-        SourceValidation.BuildActMapping();
 
 #if !DEBUG
         if (!HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
@@ -70,8 +69,6 @@ public abstract partial class ElinNetBase : EMono
 
     protected abstract void RegisterPackets();
 
-    protected abstract void DisconnectInactive();
-
     protected void Initialize()
     {
         if (_initialized) {
@@ -100,6 +97,16 @@ public abstract partial class ElinNetBase : EMono
 
         Socket.Stop();
         DebugProgress?.Kill();
+    }
+
+    internal void DisconnectPeer(int peerIndex, string reason)
+    {
+        foreach (var peer in Socket.Peers) {
+            if (peer.Id == peerIndex) {
+                Socket.Disconnect(peer, reason);
+                return;
+            }
+        }
     }
 
     protected string BuildDebugInfo()

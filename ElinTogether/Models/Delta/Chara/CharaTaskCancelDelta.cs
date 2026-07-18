@@ -1,4 +1,4 @@
-using ElinTogether.Helper;
+using ElinTogether.API.SourceValidation;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -20,7 +20,7 @@ public class CharaTaskCancelDelta : ElinDelta
             return;
         }
 
-        var type = SourceValidation.IdToActMapping[ActId];
+        var type = ActMappingValidator.Default.IdToActMapping[ActId];
         var ai = chara.ai.Current;
         while (ai is not null && ai.GetType() != type) {
             ai = ai.parent;

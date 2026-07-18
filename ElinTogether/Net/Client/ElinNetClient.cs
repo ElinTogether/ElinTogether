@@ -34,7 +34,7 @@ internal partial class ElinNetClient : ElinNetBase
 
         // source validation
         Router.RegisterHandler<SourceValidationRequest>(OnSourceValidationRequest);
-        Router.RegisterHandler<SourceListSync>(OnSourceListSync);
+        Router.RegisterHandler<SourceValidationFailed>(OnSourceValidationFailed);
 
         // session
         Router.RegisterHandler<SessionNewPlayerRequest>(OnSessionNewPlayerRequest);
@@ -42,10 +42,6 @@ internal partial class ElinNetClient : ElinNetBase
         Router.RegisterHandler<SteamLobbyRequest>(OnSteamLobbyRequest);
         Router.RegisterHandler<SessionPlayersSnapshot>(OnSessionStatesUpdate);
         Router.RegisterHandler<NetSessionRules>(OnSessionRulesUpdate);
-    }
-
-    protected override void DisconnectInactive()
-    {
     }
 
     internal override void Stop()
@@ -66,7 +62,6 @@ internal partial class ElinNetClient : ElinNetBase
     /// </summary>
     protected override void OnPeerConnected(ISteamNetPeer host)
     {
-        Session.SetPhase(ConnectionPhase.Authenticating);
         EmpPop.Information("Connecting to host {@Peer}",
             Host);
 
@@ -101,8 +96,8 @@ internal partial class ElinNetClient : ElinNetBase
             ReflexUIManager.StaticClose();
         }
 
-        EmpLog.Warning("Disconnected from host (phase={Phase}): {Reason}",
-            Session.CurrentPhase, disconnectInfo);
+        EmpLog.Warning("Disconnected from host: {Reason}",
+            disconnectInfo);
 
         if (core.IsGameStarted) {
             scene.Init(Scene.Mode.Title);

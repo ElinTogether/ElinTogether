@@ -57,8 +57,26 @@ internal partial class EmpConfig
             "Server",
             "SourceValidation",
             "",
-            "Source validation sets\n" +
-            "源表校验类型");
+            "Source validation sets.\n" +
+            "  none (or empty): skip all validation\n" +
+            "  source: validate Elin source table checksums\n" +
+            "  plugin: validate plugin DLL hashes\n" +
+            "  file: validate configured file hashes\n" +
+            "  all: enable all checks\n" +
+            "Combinations: \"source,plugin\" \"plugin,\" etc.\n" +
+            "File paths: append \":path1,path2\" after flags, e.g. \"file:Data/xxx.json\"\n" +
+            "File must be the last set\n" +
+            "源表校验类型组合：none=跳过 source=源表 plugin=插件DLL file=文件\n" +
+            "file必须放置于最后");
+
+        Server.StrictValidationMode = config.Bind(
+            "Server",
+            "StrictValidationMode",
+            false,
+            "Server & Client integrity validation mode.\n" +
+            "Set to true to block any mismatching clients from joining\n" +
+            "双端数据完整性校验模式\n" +
+            "开启时禁止任何不匹配的客机加入");
 
         Server.SharedAverageSpeed = config.Bind(
             "Server",
@@ -94,6 +112,7 @@ internal partial class EmpConfig
     internal static class Server
     {
         internal static ConfigEntry<string> SourceValidationSet { get; set; } = null!;
+        internal static ConfigEntry<bool> StrictValidationMode { get; set; } = null!;
         internal static ConfigEntry<bool> SharedAverageSpeed { get; set; } = null!;
         internal static ConfigEntry<bool> TurnBasedCombat { get; set; } = null!;
     }
