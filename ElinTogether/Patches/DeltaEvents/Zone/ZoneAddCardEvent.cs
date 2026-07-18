@@ -4,10 +4,11 @@ using HarmonyLib;
 
 namespace ElinTogether.Patches;
 
-[HarmonyPatch(typeof(Zone), nameof(Zone.AddCard), typeof(Card), typeof(int), typeof(int))]
+[HarmonyPatch]
 internal static class ZoneAddCardEvent
 {
     [HarmonyPrefix]
+    [HarmonyPatch(typeof(Zone), nameof(Zone.AddCard), typeof(Card), typeof(int), typeof(int))]
     internal static bool OnAddCardToZone(Zone __instance, Card t, int x, int z)
     {
         if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {

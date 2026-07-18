@@ -38,7 +38,10 @@ internal static class CharaActPerformEvent
         // host propagates every act perform event
         // clients only propagate self
         if (connection.IsHost || Act.CC.IsPC) {
-            connection.Delta.AddRemote(CharaActPerformDelta.Create(__instance));
+            var delta = CharaActPerformDelta.Create(__instance);
+            connection.Delta.AddRemote(delta);
+            EmpLog.Debug("Act {ActId}, {Owner}, {Pos}, {Target}" ,
+                delta.ActId, delta.Owner.Uid, delta.Pos, delta.TargetCard?.Uid);
         }
     }
 }

@@ -10,7 +10,7 @@ internal class PluginDataValidator : ISourceValidator
 {
     public static PluginDataValidator Default => field ??= new();
 
-    public string Category => "plugins";
+    public string Category => "plugin";
 
     public bool TryValidate(
         Dictionary<string, string> clientHashes,

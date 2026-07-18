@@ -73,7 +73,7 @@ public static class ValidationConfig
 
     /// <summary>
     ///     Parse file paths from config (after colon separator).
-    ///     Format: "source,files:path1.dll,path2.dll"
+    ///     Format: "source,file:path1.dll,path2.dll"
     /// </summary>
     public static List<string> GetConfiguredFilePaths()
     {
