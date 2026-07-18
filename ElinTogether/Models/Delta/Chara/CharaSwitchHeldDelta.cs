@@ -34,6 +34,12 @@ public class CharaSwitchHeldDelta : ElinDelta
         chara.NetProfile.RemoteMainHand = new(HeldMainHand, false);
         chara.NetProfile.RemoteOffHand = new(HeldOffHand, false);
 
+        // empty hand
+        if (HeldMainHand is null && HeldOffHand is null) {
+            chara.PickHeld();
+            return;
+        }
+
         // apply held visual
         if (HeldMainHand?.Find() is { } mainHand &&
             HeldOffHand?.Find() is { } offHand &&
