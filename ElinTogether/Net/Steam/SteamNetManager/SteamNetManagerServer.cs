@@ -2,6 +2,9 @@ using System;
 using ElinTogether.Common;
 using Serilog.Events;
 using Steamworks;
+#if !DEBUG
+using ElinTogether.LangMod;
+#endif
 
 namespace ElinTogether.Net.Steam;
 
