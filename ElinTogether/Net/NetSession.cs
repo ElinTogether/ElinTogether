@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using ElinTogether.Helper;
 using ElinTogether.Net.Steam;
@@ -46,28 +45,6 @@ public class NetSession : EClass
     public bool IsClient => !IsHost;
     public bool ShouldSimulate => IsHost || SyncMode == Mode.PartialSync;
 
-    public ConnectionPhase CurrentPhase { get; private set; } = ConnectionPhase.None;
-
-    public event Action<ConnectionPhase>? OnPhaseChanged;
-
-    public void SetPhase(ConnectionPhase phase)
-    {
-        if (CurrentPhase == phase) {
-            return;
-        }
-
-        var previous = CurrentPhase;
-        CurrentPhase = phase;
-
-        EmpLog.Debug("ConnectionPhase: {Previous} -> {Current}", previous, phase);
-        OnPhaseChanged?.Invoke(phase);
-    }
-
-    public void ResetPhase()
-    {
-        CurrentPhase = ConnectionPhase.None;
-    }
-
     public void RemoveComponent()
     {
         if (Connection != null) {
@@ -76,7 +53,7 @@ public class NetSession : EClass
                 game.Kill();
             }
 
-            Object.DestroyImmediate(Connection);
+            Object.Destroy(Connection);
 
             EmpLog.Debug("Removed connection component of {NetType}",
                 Connection.GetType().Name);
@@ -90,7 +67,6 @@ public class NetSession : EClass
         ResourceFetch.InvalidateTemp();
 
         SwitchSyncMode(Mode.None);
-        ResetPhase();
 
         EmpLog.Information("Connection component removed, session reset to None");
     }
