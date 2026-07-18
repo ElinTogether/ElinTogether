@@ -139,6 +139,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
         // only call OnPeerDisconnect from steam callback
         // so we can clean up on our side without self triggering peer disconnected
+        // TODO: maybe we can use a reciprocal disconnect
 
         peer.Dispose();
     }

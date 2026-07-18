@@ -1,3 +1,4 @@
+using ElinTogether.Common;
 using ElinTogether.Helper;
 using ElinTogether.Helper.String;
 using ElinTogether.LangMod;
@@ -82,6 +83,19 @@ internal class TabSessionInfo : TabEmpBase
         infoGroup.TextFlavor(player.Name.TagColor(PeerColorizer.GetColorInt(player.Index)));
         infoGroup.TextMedium(chara.Name);
         infoGroup.Text(BuildPingStat(player));
+
+        // kick button: only show for host when viewing non-host players
+        if (NetSession.Instance.IsHost && player.Index != 0) {
+            var btnRow = bannerGroup.Vertical();
+            btnRow.LayoutElement().preferredWidth = _refSize.width * 0.08f;
+            btnRow.Button("emp_ui_kick".lang(), () => KickPlayer(player.Index));
+        }
+    }
+
+    private static void KickPlayer(int peerIndex)
+    {
+        NetSession.Instance.Connection?.DisconnectPeer(peerIndex, EmpDisconnectInfo.HostKick);
+        LayerElinTogether.Instance?.Reopen();
     }
 
     private static string BuildPingStat(NetPeerState player)

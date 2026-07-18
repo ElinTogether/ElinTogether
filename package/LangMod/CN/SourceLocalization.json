@@ -59,5 +59,6 @@
     "LangGeneral.emp_ui_combat_enter.text": "进入战斗模式。",
     "LangGeneral.emp_ui_combat_decide.text": "决定你的下一步行动。",
     "LangGeneral.emp_ui_combat_wait.text": "等待其他玩家决定下一步行动。",
-    "LangGeneral.emp_ui_ping.text": "{0} 标记了一处地点。"
+    "LangGeneral.emp_ui_ping.text": "{0} 标记了一处地点。",
+    "LangGeneral.emp_ui_ping_keymap.text": "绑定标记键: {0}"
 }

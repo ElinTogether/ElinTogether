@@ -1,3 +1,4 @@
+using ElinTogether.Common;
 using ElinTogether.Net;
 using ElinTogether.Net.Steam;
 using ReflexCLI.Attributes;
@@ -11,7 +12,7 @@ internal class EmpConsole
     internal static void AddLocalServerUdp()
     {
         var server = NetSession.Instance.InitializeComponent<ElinNetHost>();
-        server.StartServer(true);
+        server.StartServer(localUdp: true);
     }
 
     [ConsoleCommand("add_server")]
@@ -27,6 +28,24 @@ internal class EmpConsole
         NetSession.Instance.RemoveComponent();
     }
 
+    [ConsoleCommand("kick")]
+    internal static void KickPlayer(int playerIndex)
+    {
+        if (NetSession.Instance.Connection is not ElinNetHost) {
+            EmpLog.Warning("Only the host can kick players.");
+            return;
+        }
+
+        if (playerIndex == 0) {
+            EmpLog.Warning("Cannot kick the host.");
+            return;
+        }
+
+        NetSession.Instance.Connection.DisconnectPeer(playerIndex, EmpDisconnectInfo.HostKick);
+        EmpLog.Information("Kicked player at index {Index}", playerIndex);
+    }
+
+#if DEBUG
     [ConsoleCommand("d1")]
     internal static void AddClientD1()
     {
@@ -38,6 +57,7 @@ internal class EmpConsole
     {
         AddClientToSteamId(76561198254677013UL);
     }
+#endif
 
     [ConsoleCommand("connect_udp")]
     internal static void AddClientToUdpPort()
