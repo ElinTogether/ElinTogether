@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using ElinTogether.Helper;
 using ElinTogether.Net;
@@ -41,7 +40,7 @@ internal class TabServerConfiguration : TabEmpBase
         };
 
         foreach (var option in options) {
-            list.Toggle(option, EmpConfig.Server.SourceValidationSet.Value.Contains(option), value => {
+            list.Toggle($"emp_validation_{option}", EmpConfig.Server.SourceValidationSet.Value.Contains(option), value => {
                 var raw = EmpConfig.Server.SourceValidationSet.Value;
                 raw = raw.Replace($"{option},", "").Replace(option, "");
                 if (value) {

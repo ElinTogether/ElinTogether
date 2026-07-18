@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using ElinTogether.Common;
+using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using ReflexCLI.UI;
@@ -62,8 +63,7 @@ internal partial class ElinNetClient : ElinNetBase
     /// </summary>
     protected override void OnPeerConnected(ISteamNetPeer host)
     {
-        EmpPop.Information("Connecting to host {@Peer}",
-            Host);
+        EmpPop.Information("emp_connecting_host".lang(), Host);
 
         // CLIENT-ONLY
         var sw = Stopwatch.StartNew();
@@ -103,8 +103,7 @@ internal partial class ElinNetClient : ElinNetBase
             scene.Init(Scene.Mode.Title);
         }
 
-        EmpPop.Information("Disconnected from host\n{DisconnectInfo}",
-            disconnectInfo);
+        EmpPop.Information("emp_disconnected_host".Loc(disconnectInfo));
 
         Session.RemoveComponent();
     }

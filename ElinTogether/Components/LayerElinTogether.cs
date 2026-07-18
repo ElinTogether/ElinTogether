@@ -74,7 +74,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         OpenPanelSesame(_lastOpenedTab);
     }
 
-    [ElinContextMenuEntry("Elin Together")]
+    [ElinContextMenuEntry("emp_ui_title")]
     private static void OpenInternal()
     {
         OpenPanelSesame();

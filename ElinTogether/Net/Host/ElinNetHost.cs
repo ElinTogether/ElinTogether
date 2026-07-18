@@ -52,7 +52,7 @@ internal partial class ElinNetHost : ElinNetBase
             ? SharedSpeed
             : -1;
 
-        EmpPop.Information("Started server");
+        EmpPop.Information("emp_server_started".lang());
 
         CardCache.CacheCurrentZone();
 
@@ -112,8 +112,7 @@ internal partial class ElinNetHost : ElinNetBase
             // do a spin wait to pin the username
         }
 
-        EmpPop.Information("Player {@Peer} connected",
-            peer);
+        EmpPop.Information("emp_player_connected".lang(), peer);
 
         // do source validations
         RequestSourceValidation(peer);
@@ -130,8 +129,7 @@ internal partial class ElinNetHost : ElinNetBase
 
     protected override void OnPeerDisconnected(ISteamNetPeer peer, string disconnectInfo)
     {
-        EmpPop.Information("Player {@Peer} disconnected\n{DisconnectInfo}",
-            peer, disconnectInfo);
+        EmpPop.Information("emp_player_disconnected".lang(), peer, disconnectInfo);
 
         if (States.Remove(peer.Id, out var state)) {
             // Fully remove remote chara from the map (saved chara remains via ElinGameIOProperty)

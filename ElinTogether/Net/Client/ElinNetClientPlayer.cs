@@ -71,7 +71,7 @@ internal partial class ElinNetClient
         // do an initial zone request to load in
         RequestZoneState(MapDataRequest.CurrentRemoteZone);
 
-        EmpPop.Debug("Waiting on zone state complete...");
+        EmpPop.Debug("emp_wait_zone".lang());
 
         probeGame.isLoading = false;
     }

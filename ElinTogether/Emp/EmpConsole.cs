@@ -12,7 +12,7 @@ internal class EmpConsole
     internal static void AddLocalServerUdp()
     {
         var server = NetSession.Instance.InitializeComponent<ElinNetHost>();
-        server.StartServer(localUdp: true);
+        server.StartServer(true);
     }
 
     [ConsoleCommand("add_server")]
@@ -45,20 +45,6 @@ internal class EmpConsole
         EmpLog.Information("Kicked player at index {Index}", playerIndex);
     }
 
-#if DEBUG
-    [ConsoleCommand("d1")]
-    internal static void AddClientD1()
-    {
-        AddClientToSteamId(76561198412175578UL);
-    }
-
-    [ConsoleCommand("d2")]
-    internal static void AddClientD2()
-    {
-        AddClientToSteamId(76561198254677013UL);
-    }
-#endif
-
     [ConsoleCommand("connect_udp")]
     internal static void AddClientToUdpPort()
     {
@@ -90,4 +76,18 @@ internal class EmpConsole
     {
         NetSession.Instance.Lobby.InviteSteamOverlay();
     }
+
+#if DEBUG
+    [ConsoleCommand("d1")]
+    internal static void AddClientD1()
+    {
+        AddClientToSteamId(76561198412175578UL);
+    }
+
+    [ConsoleCommand("d2")]
+    internal static void AddClientD2()
+    {
+        AddClientToSteamId(76561198254677013UL);
+    }
+#endif
 }

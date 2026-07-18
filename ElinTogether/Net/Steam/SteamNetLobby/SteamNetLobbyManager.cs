@@ -176,7 +176,7 @@ public class SteamNetLobbyManager : EClass
 
     private void OnLobbyCreated(LobbyCreated_t lobby)
     {
-        EmpPop.Information("Steam lobby created");
+        EmpPop.Information("emp_lobby_created".lang());
 
         Current = new((CSteamID)lobby.m_ulSteamIDLobby);
 
@@ -194,8 +194,7 @@ public class SteamNetLobbyManager : EClass
     {
         var lobbyId = request.m_steamIDLobby;
 
-        EmpPop.Information("Received lobby join request {LobbyId}",
-            lobbyId);
+        EmpPop.Information("emp_lobby_join_request".lang(), lobbyId);
 
         ConnectLobby((ulong)lobbyId);
     }
@@ -204,8 +203,7 @@ public class SteamNetLobbyManager : EClass
     {
         var lobbyId = request.m_rgchConnect;
 
-        EmpPop.Information("Received lobby join request {LobbyId}",
-            lobbyId);
+        EmpPop.Information("emp_lobby_join_request".lang(), lobbyId);
 
         ConnectLobby(ulong.Parse(lobbyId));
     }
@@ -228,8 +226,7 @@ public class SteamNetLobbyManager : EClass
             return;
         }
 
-        EmpPop.Information("Joined lobby, current EmpVersion is {EmpVersion}",
-            Current.EmpVersion);
+        EmpPop.Information("emp_lobby_joined".lang(), Current.EmpVersion);
 
         // connect automatically as clients
         if (NetSession.Instance.Connection is not ElinNetClient) {
@@ -245,11 +242,7 @@ public class SteamNetLobbyManager : EClass
         var state = (SteamNetLobbyMemberState)update.m_rgfChatMemberStateChange;
 
         SteamUserName.PinUserName(update.m_ulSteamIDUserChanged, name => EmpPop.Information(
-            "Player lobby state changed\n{@LobbyState}",
-            new {
-                Name = name,
-                State = state,
-            }));
+            "emp_lobby_state_changed".lang(), new { Name = name, State = state }));
 
         if (member != Current?.GetLobbyOwner()) {
             return;

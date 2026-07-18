@@ -14,7 +14,7 @@ internal partial class ElinNetHost
     {
         using var _ = LogContext.PushProperty("Zone", new { zone.ZoneFullName, ZoneUid = zone.uid }, true);
 
-        EmpPop.Debug("Initiating zone state change");
+        EmpPop.Debug("emp_zone_change".lang());
 
         var packet = ZoneDataResponse.Create(zone);
 
