@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using ElinTogether.Helper.Extensions;
+using EModding.Helper;
 using EModding.Helper.Runtime;
 using HarmonyLib;
 

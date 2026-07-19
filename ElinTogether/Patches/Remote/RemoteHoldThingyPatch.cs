@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection.Emit;
 using ElinTogether.Helper;
-using ElinTogether.Helper.Extensions;
+using EModding.Helper;
 using HarmonyLib;
 
 namespace ElinTogether.Patches;
