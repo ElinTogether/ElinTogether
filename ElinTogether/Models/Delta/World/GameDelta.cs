@@ -12,6 +12,6 @@ public class GameDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        Synchronization.GameDelta += Delta;
+        SynchronizationContext.GameDelta += Delta;
     }
 }

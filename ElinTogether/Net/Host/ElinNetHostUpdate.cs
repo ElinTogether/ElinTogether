@@ -170,7 +170,7 @@ internal partial class ElinNetHost
         // 5hz world snapshot reconciliation
         Scheduler.Subscribe(WorldStateSnapshotUpdate, 5f);
         // 50hz delta dispatch
-        Scheduler.Subscribe(Synchronization.AllowDeltaSending, 50f);
+        Scheduler.Subscribe(SynchronizationContext.AllowDeltaSending, 50f);
 
         _pauseUpdate = false;
     }
@@ -182,7 +182,7 @@ internal partial class ElinNetHost
     {
         Scheduler.Unsubscribe(UpdateRemotePlayerStates);
         Scheduler.Unsubscribe(WorldStateSnapshotUpdate);
-        Scheduler.Unsubscribe(Synchronization.AllowDeltaSending);
+        Scheduler.Unsubscribe(SynchronizationContext.AllowDeltaSending);
 
         Session.Tick = 0;
 

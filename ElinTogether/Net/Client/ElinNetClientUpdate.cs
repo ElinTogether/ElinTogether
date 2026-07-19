@@ -105,7 +105,7 @@ internal partial class ElinNetClient
     public void StartWorldStateUpdate()
     {
         // 50hz delta dispatch
-        Scheduler.Subscribe(Synchronization.AllowDeltaSending, 50f);
+        Scheduler.Subscribe(SynchronizationContext.AllowDeltaSending, 50f);
 
         _pauseUpdate = false;
     }
@@ -115,7 +115,7 @@ internal partial class ElinNetClient
     /// </summary>
     public void StopWorldStateUpdate()
     {
-        Scheduler.Unsubscribe(Synchronization.AllowDeltaSending);
+        Scheduler.Unsubscribe(SynchronizationContext.AllowDeltaSending);
 
         _pauseUpdate = false;
 
