@@ -75,6 +75,8 @@ public class NetSession : EClass
     {
         RemoveComponent();
 
+        Lobby.Reset();
+
         Connection = EmpMod.Instance.gameObject.AddComponent<T>();
 
         EmpLog.Debug("Initialized new connection component of {NetType}",

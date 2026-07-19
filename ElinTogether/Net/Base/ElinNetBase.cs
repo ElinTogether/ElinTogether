@@ -55,7 +55,6 @@ public abstract partial class ElinNetBase : EMono
         Socket.Dispose();
 
         SteamCallback<SteamNetConnectionStatusChangedCallback_t>.Shutdown();
-        NetSession.Instance.Lobby.Shutdown();
         SteamUserName.Shutdown();
 
 #if !DEBUG

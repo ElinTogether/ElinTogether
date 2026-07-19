@@ -15,6 +15,22 @@ public class SteamNetLobbyManager : EClass
 
     internal SteamNetLobbyManager()
     {
+        RegisterCallbacks();
+    }
+
+    internal void Reset()
+    {
+        if (!_shutdown) {
+            return;
+        }
+
+        _shutdown = false;
+        RegisterCallbacks();
+        EmpLog.Debug("Lobby manager reset, callbacks re-registered");
+    }
+
+    private void RegisterCallbacks()
+    {
         SteamCallback<LobbyCreated_t>.Add(OnLobbyCreated);
         SteamCallback<LobbyChatUpdate_t>.Add(OnLobbyChatUpdate);
         SteamCallback<GameLobbyJoinRequested_t>.Add(OnLobbyJoinRequested);

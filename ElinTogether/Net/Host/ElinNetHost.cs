@@ -146,6 +146,8 @@ internal partial class ElinNetHost : ElinNetBase
         EmpLog.Debug("Player {Name} disconnected. {Remaining} players remaining",
             state?.Name ?? "unknown", States.Count);
 
+        Broadcast(SessionPlayersSnapshot.Create());
+
         // keep ticking but no update
         if (States.Count == 0) {
             PauseWorldStateUpdate();

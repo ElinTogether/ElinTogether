@@ -105,6 +105,8 @@ internal partial class ElinNetClient : ElinNetBase
 
         EmpPop.Information("emp_disconnected_host".Loc(disconnectInfo));
 
+        Session.Lobby.LeaveLobby();
+
         Session.RemoveComponent();
     }
 
