@@ -13,11 +13,6 @@ internal class TabSessionInfo : TabEmpBase
 {
     private Rect _refSize = LayerElinTogether.Instance!.Bound;
 
-    private void Update()
-    {
-
-    }
-
     public override void OnLayout()
     {
         BuildOverviewSection();
@@ -86,8 +81,9 @@ internal class TabSessionInfo : TabEmpBase
 
         // kick button: only show for host when viewing non-host players
         if (NetSession.Instance.IsHost && player.Index != 0) {
-            var btnRow = bannerGroup.Vertical();
-            btnRow.LayoutElement().preferredWidth = _refSize.width * 0.08f;
+            var btnRow = infoGroup.Horizontal();
+            btnRow.LayoutElement().preferredWidth = 1f;
+            btnRow.Layout.childAlignment = TextAnchor.MiddleCenter;
             btnRow.Button("emp_ui_kick".lang(), () => KickPlayer(player.Index));
         }
     }
