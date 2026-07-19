@@ -27,7 +27,6 @@ internal class QuestStartEvent
         connection.Delta.AddRemote(new QuestStartDelta {
             Uid = q.uid,
             Owner = owner,
-            IsGlobal = isGlobal,
             Data = (!canFind && !isGlobal) ? LZ4Bytes.Create(q) : null,
         });
     }
