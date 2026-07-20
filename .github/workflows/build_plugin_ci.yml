@@ -26,6 +26,8 @@ on:
 permissions:
   contents: write
   id-token: write
+  pull-requests: write
+  actions: read
 
 jobs:
   build-and-upload:
@@ -121,13 +123,13 @@ jobs:
 
           Compress-Archive -Path "$source\*" -DestinationPath $destination -Force
           $path = $destination -Replace '\\', '/'
-      
+
           $tag = "${{ inputs.tag_prefix }}-${{ steps.build.outputs.file_version_short }}"
 
           gh api repos/${{ github.repository }}/git/refs/tags/$tag -q "if .object then true else false" 2>$null
           if ($LASTEXITCODE -eq 0) { gh api -X DELETE repos/${{ github.repository }}/git/refs/tags/$tag }
           if (git tag -l $tag) { git tag -d $tag }
-          
+
           $lastTag = git describe --tags --abbrev=0 --match="${{ inputs.tag_prefix }}-*"
           $lastTagSha = git rev-parse $lastTag
           $commits = @(git log "$($lastTag)..HEAD" --date=format:"%y-%m-%d %H:%M" --pretty=format:"- %cd %h %s @%an" |
@@ -155,3 +157,106 @@ jobs:
           files: ${{ steps.artifact.outputs.artifact_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  pr-comment:
+    name: PR Comment
+    if: |
+      !cancelled() &&
+      (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
+    needs: build-and-upload
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update PR Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number;
+            if (!prNumber) {
+              core.warning('No PR number found in event payload, skipping comment.');
+              return;
+            }
+
+            const buildResult = '${{ needs.build-and-upload.result }}';
+            const buildSucceeded = buildResult === 'success';
+            const statusIcon = buildSucceeded ? '✅' : '❌';
+            const statusText = buildSucceeded ? 'Succeeded' : 'Failed';
+
+            let artifactRows = '';
+            try {
+              const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: context.runId,
+              });
+
+              if (artifacts.artifacts.length > 0) {
+                const lines = artifacts.artifacts.map(a => {
+                  const sizeMb = (a.size_in_bytes / (1024 * 1024)).toFixed(1);
+                  const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${a.id}`;
+                  // Expire info
+                  const expireDate = new Date(a.expires_at);
+                  const now = new Date();
+                  const daysLeft = Math.max(0, Math.ceil((expireDate - now) / (1000 * 60 * 60 * 24)));
+                  return `| \`${a.name}\` | ${sizeMb} MB | ${daysLeft}d | [Download](${url}) |`;
+                });
+                artifactRows = [
+                  '| Artifact | Size | Expires | Link |',
+                  '|---|---|---|---|',
+                  ...lines,
+                ].join('\n');
+              } else {
+                artifactRows = '_No artifacts were produced._';
+              }
+            } catch (err) {
+              core.warning(`Failed to list artifacts: ${err.message}`);
+              artifactRows = '_Unable to fetch artifact list._';
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const commitSha = context.sha.substring(0, 7);
+            const commitUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+            const branchName = context.payload.pull_request?.head?.ref || context.ref.replace('refs/heads/', '');
+
+            const body = [
+              '<!-- ci-build-comment -->',
+              `## ${statusIcon} CI Build — ${statusText}`,
+              '',
+              '| | |',
+              '|---|---|',
+              `| **Workflow** | [${context.workflow}](${runUrl}) |`,
+              `| **Commit** | [\`${commitSha}\`](${commitUrl}) |`,
+              `| **Branch** | \`${branchName}\` |`,
+              `| **Trigger** | \`${context.eventName}\` |`,
+              '',
+              '### 📦 Artifacts',
+              '',
+              artifactRows,
+            ].join('\n');
+
+            const marker = '<!-- ci-build-comment -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c => c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated existing comment #${existing.id}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              core.info('Created new PR comment');
+            }
