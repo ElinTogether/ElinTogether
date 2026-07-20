@@ -7,7 +7,7 @@ namespace ElinTogether.API.SourceValidation;
 
 public class FileDataValidator(IEnumerable<string> filePaths) : ISourceValidator
 {
-    public string Category => "file";
+    public string Category => "files";
 
     public bool TryValidate(
         Dictionary<string, string> clientHashes,

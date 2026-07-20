@@ -17,9 +17,9 @@ public static class ValidationConfig
 {
     // ReSharper disable StringLiteralTypo
     public static readonly HashSet<string> ExcludedPlugins = [
-        //"lafrontier.minigame",        // Mod_Slot
-        "com.sinai.unityexplorer",      // Unity Explorer
-        "jp.cmbc.mod.elin.yk-devtool",  // 3400020855
+        "lafrontier.minigame", // Mod_Slot
+        "com.sinai.unityexplorer", // Unity Explorer
+        "jp.cmbc.mod.elin.yk-devtool", // 3400020855
     ];
 
     public static readonly HashSet<string> DefaultFilePaths = [];
@@ -56,13 +56,13 @@ public static class ValidationConfig
         var flags = ValidationFlags.None;
         foreach (var part in raw!.Split(',')) {
             switch (part.Trim().ToLower()) {
-                case "source":
+                case "sources":
                     flags |= ValidationFlags.Sources;
                     break;
-                case "plugin":
+                case "plugins":
                     flags |= ValidationFlags.Plugins;
                     break;
-                case "file":
+                case "files":
                     flags |= ValidationFlags.Files;
                     break;
             }

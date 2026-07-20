@@ -17,7 +17,7 @@ public class ActMappingValidator : ISourceValidator
 
     public static ActMappingValidator Default => field ??= new();
 
-    public string Category => "act";
+    public string Category => "acts";
 
     public bool TryValidate(
         Dictionary<string, string> clientMapping,

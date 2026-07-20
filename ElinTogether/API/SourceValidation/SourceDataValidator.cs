@@ -12,7 +12,7 @@ internal class SourceDataValidator : ISourceValidator
 {
     public static SourceDataValidator Default => field ??= new();
 
-    public string Category => "source";
+    public string Category => "sources";
 
     public bool TryValidate(
         Dictionary<string, string> clientChecksums,

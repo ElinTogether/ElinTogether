@@ -24,13 +24,13 @@ internal partial class ElinNetHost
 
             peer.Send(packet);
         } else {
-            EmpLog.Debug("Dispatching zone to all player");
+            EmpLog.Debug("Dispatching zone to all players");
 
             Broadcast(packet);
         }
 
         // update lobby data
-        Session.Lobby.Current?.SetLobbyData(EmpLobbyData.CurrentZone, zone.ZoneFullName);
+        Session.Lobby.Current?.SetLobbyData(EmpLobbyData.CurrentZone, zone.NameWithLevel);
     }
 
     /// <summary>

@@ -12,13 +12,7 @@ internal class TabServerConfiguration : TabEmpBase
     {
         BuildValidationSets();
 
-        Toggle("emp_ui_sv_cfg_shared_speed", EmpConfig.Server.SharedAverageSpeed.Value, value => {
-            EmpConfig.Server.SharedAverageSpeed.Value = value;
-        });
-
-        Toggle("emp_ui_sv_cfg_turn_combat", EmpConfig.Server.TurnBasedCombat.Value, value => {
-            EmpConfig.Server.TurnBasedCombat.Value = value;
-        });
+        BuildSyncMode();
     }
 
     private void BuildValidationSets()
@@ -34,8 +28,8 @@ internal class TabServerConfiguration : TabEmpBase
 
         var options = new List<string> {
             "none",
-            "source",
-            "plugin",
+            "sources",
+            "plugins",
             "all",
         };
 
@@ -50,5 +44,18 @@ internal class TabServerConfiguration : TabEmpBase
                 NetSession.Instance.Connection?.CreateValidation();
             });
         }
+    }
+
+    private void BuildSyncMode()
+    {
+        var modes = this.MakeCard();
+
+        modes.Toggle("emp_ui_sv_cfg_shared_speed", EmpConfig.Server.SharedAverageSpeed.Value, value => {
+            EmpConfig.Server.SharedAverageSpeed.Value = value;
+        });
+
+        modes.Toggle("emp_ui_sv_cfg_turn_combat", EmpConfig.Server.TurnBasedCombat.Value, value => {
+            EmpConfig.Server.TurnBasedCombat.Value = value;
+        });
     }
 }

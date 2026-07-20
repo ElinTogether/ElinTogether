@@ -59,9 +59,9 @@ internal partial class EmpConfig
             "",
             "Source validation sets.\n" +
             "  none (or empty): skip all validation\n" +
-            "  source: validate Elin source table checksums\n" +
-            "  plugin: validate plugin DLL hashes\n" +
-            "  file: validate configured file hashes\n" +
+            "  sources: validate Elin source table checksums\n" +
+            "  plugins: validate plugin DLL hashes\n" +
+            "  files: validate configured file hashes\n" +
             "  all: enable all checks\n" +
             "Combinations: \"source,plugin\" \"plugin,\" etc.\n" +
             "File paths: append \":path1,path2\" after flags, e.g. \"file:Data/xxx.json\"\n" +
