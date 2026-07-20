@@ -78,7 +78,7 @@ public class ElinDeltaManager
         var batch = FlushInBuffer(batchSize);
 #if DEBUG
         var clientFiltered = batch
-            .Where(d => d is not DynamicDelta or GameDelta)
+            .Where(d => d is not (DynamicDelta or GameDelta))
             .ToList();
         if (clientFiltered.Count > 0) {
             _ = 0xb;
