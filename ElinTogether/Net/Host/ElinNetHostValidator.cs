@@ -126,7 +126,5 @@ internal partial class ElinNetHost
             FileMismatches = fileMismatches,
             ActMismatches = actMismatches,
         });
-
-        CoroutineHelper.Deferred(() => Socket.Disconnect(peer, EmpDisconnectInfo.InvalidSource), 3f);
     }
 }

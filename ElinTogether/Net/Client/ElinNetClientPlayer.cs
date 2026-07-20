@@ -35,7 +35,6 @@ internal partial class ElinNetClient
         embark.SetOnKill(() => {
             if (!ready) {
                 Socket.Disconnect(Host, EmpDisconnectInfo.ClientCancel);
-                OnPeerDisconnected(Host, EmpDisconnectInfo.ClientCancel);
             }
         });
     }

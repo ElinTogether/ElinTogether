@@ -143,6 +143,9 @@ internal partial class ElinNetHost : ElinNetBase
             Session.CurrentPlayers.Remove(state);
         }
 
+        // reciprocal disconnect
+        Socket.Disconnect(peer, disconnectInfo);
+
         EmpLog.Debug("Player {Name} disconnected. {Remaining} players remaining",
             state?.Name ?? "unknown", States.Count);
 
