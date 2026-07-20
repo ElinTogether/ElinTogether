@@ -30,18 +30,15 @@ public class ActThrowDelta : ElinDelta
             return;
         }
 
-        Thing t = Thing!;
+        var t = ((Thing)Thing)!.Split(SplitNum);
         if (net.IsHost) {
-            if (SplitNum > 0) {
-                t = t.Split(SplitNum);
-            }
             net.Delta.DeferRemote(new ActThrowDelta {
                 Owner = Owner,
                 Point = Point,
                 Target = Target,
                 Thing = t,
                 Method = Method,
-                SplitNum = 0,
+                SplitNum = SplitNum,
             });
         }
 

@@ -29,9 +29,9 @@ internal static class CardGenEvent
             return;
         }
 
-        // we use negative uid to avoid conflicting with host
+        // we use 0 uid to avoid conflicting with host
         if (connection.IsClient) {
-            __result.uid = -__result.uid;
+            __result.uid = 0;
             return;
         }
 

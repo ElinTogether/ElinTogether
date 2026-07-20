@@ -1,4 +1,3 @@
-using ElinTogether.Helper;
 using ElinTogether.Net;
 using HarmonyLib;
 
@@ -9,14 +8,15 @@ internal class CardSplitEvent
 {
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Card), nameof(Card.Split))]
-    internal static void OnClientSplit(Card __instance, Thing __result, int a)
+    internal static void OnClientSplit(Card __instance, Thing __result)
     {
         if (__instance == __result) {
             return;
         }
 
+        // we use negative uid to mark the parent stack
         if (NetSession.Instance.IsClient) {
-            __result.SetSplitContext(__instance, a);
+            __result.uid = -__instance.uid;
         }
     }
 }

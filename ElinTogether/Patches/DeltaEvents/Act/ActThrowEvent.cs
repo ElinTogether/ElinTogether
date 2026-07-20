@@ -1,4 +1,3 @@
-using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -10,21 +9,27 @@ namespace ElinTogether.Patches;
 internal class ActThrowEvent
 {
     [HarmonyPrefix]
-    internal static bool OnClientThrow(ActThrow __instance, Card c, Point p, Card target, Thing t, ThrowMethod method)
+    internal static bool OnClientThrow(Card c, Point p, Card target, Thing t, ThrowMethod method)
     {
         if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
             return true;
         }
 
+        // perform throw on host via ActThrowDelta
         if (connection.IsHost || c.IsPC) {
-            // perform throw on host via ActThrowDelta
+            // split
+            var thing = t;
+            if (t.uid < 0 && CardCache.Find(-t.uid) is Thing split) {
+                thing = split;
+            }
+
             connection.Delta.DeferRemote(new ActThrowDelta {
                 Owner = c,
                 Point = p,
                 Target = target,
-                Thing = t.SplitContext,
+                Thing = thing,
                 Method = method,
-                SplitNum = t.SplitCount,
+                SplitNum = t.Num,
             });
         }
 
