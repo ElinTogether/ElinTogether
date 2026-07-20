@@ -1,0 +1,92 @@
+name: Feature Request
+description: Suggest a new feature or improvement for the mod.
+title: "[Request]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you begin**
+        - Check if the feature has already been [requested](https://github.com/gottyduke/test-issue-template/ssues?q=label%3Aenhancement).
+
+  - type: input
+    id: game-version
+    attributes:
+      label: Game Version
+      description: What version of the game are you running?
+      placeholder: e.g. Nightly 23.329 / Stable 23.325.2
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod Version
+      description: What version of the mod are you running?
+      placeholder: e.g. 0.21.0 / Steam Workshop latest
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: |
+        What operating system are you using?
+        If not on Windows, please specify the details of your setup (e.g. Proton/SteamDeck, CrossOver, Emulator, etc.).
+      value: Windows 11 23H2
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: A clear and concise description of the problem or need.
+      placeholder: I'm always frustrated when [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: What do you want to happen? How should it work?
+      placeholder: I would like to see [...]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this to you?
+      options:
+        - Essential — can't play without it
+        - Important — significantly improves experience
+        - Nice to have — would be cool but not urgent
+    validations:
+      required: true
+
+  - type: dropdown
+    id: workaround
+    attributes:
+      label: Is there a workaround?
+      description: Can you achieve the same goal with existing features or tools?
+      options:
+        - No workaround exists
+        - Yes, but it's cumbersome
+        - Yes, there's an acceptable workaround
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe any workarounds or alternative approaches you've thought about.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context, mockups, or references.

@@ -1,0 +1,85 @@
+name: Bug Report
+description: The mod is not working as intended.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you begin**
+        - Make sure your mod and game are up to date. [Verify game files integrity in Steam](https://help.steampowered.com/en/faqs/view/0C48-FCBD-DA71-93EB) first.  
+        - Please check if the issue has already been reported before creating a new one.
+        - Attach your Player.log file. Provide as much details as possible.
+
+  - type: input
+    id: game-version
+    attributes:
+      label: Game Version
+      description: What version of the game are you running?
+      placeholder: e.g. Nightly 23.329 / Stable 23.325.2
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod Version
+      description: What version of the mod are you running?
+      placeholder: e.g. 0.21.0 / Steam Workshop latest
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: |
+        What operating system are you using?
+        If not on Windows, please specify the details of your setup (e.g. Proton/SteamDeck, CrossOver, Emulator, etc.).
+      value: Windows 11 23H2
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: steps
+    attributes:
+      label: I have tried the following steps
+      description: Check all that apply.
+      options:
+        - label: All players have the same modlist and verified game files.
+        - label: Restart the game.
+        - label: Restart Steam (if networking issue).
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug and how to reproduce it
+      description: |
+        Attach your **Player.log** — critical for diagnosis.
+        - `%localappdata%low/Lafrontier/Elin/Player.log`
+        - (Optional) `%localappdata%low/Lafrontier/Elin/ElinMP/Session_latest.log`
+        - (Optional) Screenshots or videos.
+      value: |
+        1. Go to [...]
+        2. Click on [...]
+        3. Do [...]
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: "I expected X to happen..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.

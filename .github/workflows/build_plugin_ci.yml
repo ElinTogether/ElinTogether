@@ -15,10 +15,6 @@ on:
       release_name_prefix:
         required: true
         type: string
-      include_cwl:
-        required: false
-        type: boolean
-        default: true
       prerelease:
         required: false
         type: boolean
@@ -44,18 +40,19 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           sparse-checkout: |
-            ${{ inputs.include_cwl && 'CustomWhateverLoader/' || '' }}
             ${{ inputs.plugin_name }}/
+            assets/
+            package/
             Directory.Build.props
             global.json
           sparse-checkout-cone-mode: false
 
       - name: Checkout Deps
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           path: ${{ matrix.version }}
@@ -73,17 +70,15 @@ jobs:
           echo "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Setup DotNet
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: ${{ github.workspace }}\global.json
           cache: true
           cache-dependency-path: |
-            ${{ inputs.include_cwl && format('{0}\CustomWhateverLoader\packages.lock.json', github.workspace) || '' }}
             ${{ github.workspace }}\${{ inputs.plugin_path }}\packages.lock.json
 
       - name: Setup Packages
         run: |
-          ${{ inputs.include_cwl && format('dotnet restore {0}\CustomWhateverLoader\ --locked-mode', github.workspace) || '' }}
           dotnet restore ${{ github.workspace }}\${{ inputs.plugin_path }}\ --locked-mode
 
       - name: Build
@@ -96,7 +91,6 @@ jobs:
           $config = if ('${{ matrix.version }}' -eq 'nightly') { "${cfgBase}Nightly" } else { $cfgBase }
 
           $outDir = "${{ github.workspace }}\out\${{ matrix.version }}-${{ matrix.configuration }}"
-          ${{ inputs.include_cwl && format('dotnet build {0}\CustomWhateverLoader\CustomWhateverLoader.csproj -o {0}\{1}\Package\Mod_CustomWhateverLoader -c $config --no-restore', github.workspace, matrix.version) || '' }}
           dotnet build ${{ github.workspace }}\${{ inputs.plugin_path }}\${{ inputs.plugin_name }}.csproj -o $outDir -c $config --no-restore
 
           $dllPath = Join-Path -Path $outDir -ChildPath "${{ inputs.plugin_name }}.dll"
