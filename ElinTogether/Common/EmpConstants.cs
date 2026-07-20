@@ -16,4 +16,8 @@ public static class EmpConstants
     ///     Times per second for delta dispatching
     /// </summary>
     public const int DeltaDispatchFrequency = 10;
+
+    public const string EmpThingSplitContext = "emp_split_context";
+
+    public const string EmpThingSplitCount = "emp_split_num";
 }

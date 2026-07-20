@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using ElinTogether.Common;
 using ElinTogether.Elements;
+using ElinTogether.Models;
 using ElinTogether.Net;
 
 namespace ElinTogether.Helper;
@@ -48,5 +50,24 @@ internal static class RemoteCardHelper
         }
 
         internal bool IsPlayer => chara.IsPC || chara.IsRemotePlayer;
+    }
+
+    extension(Thing thing)
+    {
+        internal Thing SplitContext => CardCache.Find(thing.GetInt(EmpConstants.EmpThingSplitContext)) as Thing ?? thing;
+
+        internal int SplitCount => thing.GetInt(EmpConstants.EmpThingSplitCount);
+
+        internal void SetSplitContext(Card original, int num)
+        {
+            thing.SetInt(EmpConstants.EmpThingSplitContext, original.uid);
+            thing.SetInt(EmpConstants.EmpThingSplitCount, num);
+        }
+
+        internal Thing SplitWithContext()
+        {
+            var num = thing.SplitCount;
+            return num == 0 ? thing : thing.SplitContext.Split(num);
+        }
     }
 }
