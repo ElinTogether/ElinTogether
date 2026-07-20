@@ -80,8 +80,40 @@ internal partial class ElinNetClient
     /// </summary>
     private void OnSteamLobbyRequest(SteamLobbyRequest request)
     {
+        EmpLog.Information("Connecting to steam lobby {LobbyId}",
+            request.LobbyId);
+
         if (Session.Lobby.Current?.LobbyId != (CSteamID)request.LobbyId) {
             Session.Lobby.ConnectLobby(request.LobbyId);
         }
+    }
+
+    /// <summary>
+    ///     Net event: Reconnect to host for full synchronization
+    /// </summary>
+    private void OnSessionReconnectRequest(SessionReconnectRequest request)
+    {
+        EmpLog.Information("Reconnecting to steam lobby {LobbyId}",
+            request.LobbyId);
+
+        // Disconnect triggers OnPeerDisconnected → RemoveComponent → LeaveLobby
+        Socket.Disconnect(Host, EmpDisconnectInfo.JoinWhileConnected);
+        CoroutineHelper.Deferred(() => Session.Lobby.ConnectLobby(request.LobbyId));
+    }
+
+    public void ReconnectSelf()
+    {
+        if (Session.Lobby.Current is null) {
+            EmpLog.Warning("Cannot reconnect: not in a lobby");
+            return;
+        }
+
+        var lobbyId = (ulong)Session.Lobby.Current.LobbyId;
+        EmpLog.Information("Manual reconnect to steam lobby {LobbyId}",
+            lobbyId);
+
+        // Disconnect triggers OnPeerDisconnected → RemoveComponent → LeaveLobby
+        Socket.Disconnect(Host, EmpDisconnectInfo.HostReconnectRequest);
+        CoroutineHelper.Deferred(() => Session.Lobby.ConnectLobby(lobbyId));
     }
 }

@@ -8,13 +8,6 @@ namespace ElinTogether;
 [ConsoleCommandClassCustomizer("emp")]
 internal class EmpConsole
 {
-    [ConsoleCommand("add_local")]
-    internal static void AddLocalServerUdp()
-    {
-        var server = NetSession.Instance.InitializeComponent<ElinNetHost>();
-        server.StartServer(true);
-    }
-
     [ConsoleCommand("add_server")]
     internal static void AddServer()
     {
@@ -29,27 +22,47 @@ internal class EmpConsole
     }
 
     [ConsoleCommand("kick")]
-    internal static void KickPlayer(int playerIndex)
+    internal static string KickPlayer(int playerIndex)
     {
         if (NetSession.Instance.Connection is not ElinNetHost) {
-            EmpLog.Warning("Only the host can kick players.");
-            return;
+            return "Only the host can kick players";
         }
 
         if (playerIndex == 0) {
-            EmpLog.Warning("Cannot kick the host.");
-            return;
+            return "Cannot kick the host";
         }
 
         NetSession.Instance.Connection.DisconnectPeer(playerIndex, EmpDisconnectInfo.HostKick);
         EmpLog.Information("Kicked player at index {Index}", playerIndex);
+        return $"Kicked player {playerIndex}";
     }
 
-    [ConsoleCommand("connect_udp")]
-    internal static void AddClientToUdpPort()
+    [ConsoleCommand("reconnect")]
+    internal static string ReconnectPlayer(int playerIndex)
     {
-        var client = NetSession.Instance.InitializeComponent<ElinNetClient>();
-        client.ConnectLocalPort();
+        if (NetSession.Instance.Connection is not ElinNetHost host) {
+            return "Only the host can request a client to reconnect";
+        }
+
+        if (playerIndex == 0) {
+            return "Cannot request the host to reconnect";
+        }
+
+        host.RequestClientReconnect(playerIndex);
+        EmpLog.Information("Requested reconnect for player at index {Index}", playerIndex);
+        return $"Requested reconnect for player {playerIndex}";
+    }
+
+    [ConsoleCommand("reconnect_self")]
+    internal static string ReconnectSelf()
+    {
+        if (NetSession.Instance.Connection is not ElinNetClient client) {
+            return "Only a client can manually reconnect";
+        }
+
+        client.ReconnectSelf();
+        EmpLog.Information("Manual reconnect initiated");
+        return "Manual reconnect initiated";
     }
 
     [ConsoleCommand("connect_steam")]
@@ -78,6 +91,20 @@ internal class EmpConsole
     }
 
 #if DEBUG
+    [ConsoleCommand("add_local")]
+    internal static void AddLocalServerUdp()
+    {
+        var server = NetSession.Instance.InitializeComponent<ElinNetHost>();
+        server.StartServer(true);
+    }
+
+    [ConsoleCommand("connect_udp")]
+    internal static void AddClientToUdpPort()
+    {
+        var client = NetSession.Instance.InitializeComponent<ElinNetClient>();
+        client.ConnectLocalPort();
+    }
+
     [ConsoleCommand("d1")]
     internal static void AddClientD1()
     {

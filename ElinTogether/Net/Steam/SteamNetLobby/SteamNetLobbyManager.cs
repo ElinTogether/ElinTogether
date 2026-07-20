@@ -109,7 +109,10 @@ public class SteamNetLobbyManager : EClass
     /// </summary>
     public void ConnectLobby(ulong lobbyId)
     {
-        LeaveLobby();
+        var steamLobby = (CSteamID)lobbyId;
+        if (Current is not null && Current.LobbyId != steamLobby) {
+            LeaveLobby();
+        }
 
         Challenge((ulong)SteamUser.GetSteamID());
 
@@ -119,7 +122,7 @@ public class SteamNetLobbyManager : EClass
 
         ELayerCleanup.Cleanup<LayerHelp>();
 
-        SteamMatchmaking.JoinLobby((CSteamID)lobbyId);
+        SteamMatchmaking.JoinLobby(steamLobby);
     }
 
     /// <summary>

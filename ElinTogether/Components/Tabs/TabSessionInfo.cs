@@ -79,12 +79,29 @@ internal class TabSessionInfo : TabEmpBase
         infoGroup.TextMedium(chara.Name);
         infoGroup.Text(BuildPingStat(player));
 
-        // kick button: only show for host when viewing non-host players
-        if (NetSession.Instance.IsHost && player.Index != 0) {
+        // action buttons: only show for non-host players
+        if (player.Index != 0) {
             var btnRow = infoGroup.Horizontal();
-            btnRow.LayoutElement().preferredWidth = 1f;
+            btnRow.Layout.childForceExpandWidth = true;
             btnRow.Layout.childAlignment = TextAnchor.MiddleCenter;
-            btnRow.Button("emp_ui_kick".lang(), () => KickPlayer(player.Index));
+
+            btnRow.Button("emp_ui_reconnect".lang(), () => ReconnectPlayer(player.Index));
+
+            if (NetSession.Instance.IsHost) {
+                btnRow.Button("emp_ui_kick".lang(), () => KickPlayer(player.Index));
+            }
+        }
+    }
+
+    private static void ReconnectPlayer(int peerIndex)
+    {
+        switch (NetSession.Instance.Connection) {
+            case ElinNetHost host:
+                host.RequestClientReconnect(peerIndex);
+                break;
+            case ElinNetClient client:
+                client.ReconnectSelf();
+                break;
         }
     }
 

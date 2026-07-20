@@ -29,7 +29,7 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     protected IntPtr Arena;
     protected int ArenaSize;
 
-    public SteamNetPeer(HSteamNetConnection connection, ISteamNetSerializer serializer)
+    public SteamNetPeer(HSteamNetConnection connection, ISteamNetSerializer serializer, int? preferredId = null)
     {
         Connection = connection;
 
@@ -39,7 +39,15 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
         Uid = RemoteIdentity.GetSteamID64();
         SteamUserName.PinUserName(RemoteIdentity.GetSteamID64(), name => Name = name);
 
-        Id = Interlocked.Increment(ref _nextId);
+        if (preferredId is { } id) {
+            Id = id;
+            int current;
+            while ((current = Volatile.Read(ref _nextId)) < id) {
+                Interlocked.CompareExchange(ref _nextId, id, current);
+            }
+        } else {
+            Id = Interlocked.Increment(ref _nextId);
+        }
 
         Serializer = serializer;
         ArenaSize = MemoryArenaInitialSize;

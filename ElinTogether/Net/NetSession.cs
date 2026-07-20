@@ -63,6 +63,7 @@ public class NetSession : EClass
         Tick = 0;
         Self = null;
         CurrentPlayers.Clear();
+        Lobby.LeaveLobby();
 
         ResourceFetch.InvalidateTemp();
 

@@ -43,6 +43,7 @@ internal partial class ElinNetClient : ElinNetBase
         Router.RegisterHandler<SteamLobbyRequest>(OnSteamLobbyRequest);
         Router.RegisterHandler<SessionPlayersSnapshot>(OnSessionStatesUpdate);
         Router.RegisterHandler<NetSessionRules>(OnSessionRulesUpdate);
+        Router.RegisterHandler<SessionReconnectRequest>(OnSessionReconnectRequest);
     }
 
     internal override void Stop()
@@ -103,12 +104,7 @@ internal partial class ElinNetClient : ElinNetBase
             scene.Init(Scene.Mode.Title);
         }
 
-        // reciprocal disconnect
-        Socket.Disconnect(host, disconnectInfo);
-
         EmpPop.Information("emp_disconnected_host".Loc(disconnectInfo));
-
-        Session.Lobby.LeaveLobby();
 
         Session.RemoveComponent();
     }

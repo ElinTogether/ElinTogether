@@ -93,5 +93,7 @@
     "LangGeneral.emp_validation_plugin.text": "插件",
     "LangGeneral.emp_validation_all.text": "全部",
     "LangGeneral.emp_ui_ping_action.text": "标记",
-    "LangGeneral.emp_ui_unknown_player.text": "玩家 {0}"
+    "LangGeneral.emp_ui_unknown_player.text": "玩家 {0}",
+    "LangGeneral.emp_ui_reconnect.text": "重新连接",
+    "LangGeneral.emp_dc_reconnect_request.text": "重新连接"
 }

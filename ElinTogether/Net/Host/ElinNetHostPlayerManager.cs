@@ -102,6 +102,30 @@ internal partial class ElinNetHost
         }
     }
 
+    /// <summary>
+    ///     Request a specific client to reconnect for full synchronization
+    /// </summary>
+    public void RequestClientReconnect(int peerIndex)
+    {
+        if (!States.ContainsKey(peerIndex)) {
+            EmpLog.Warning("Cannot request reconnect: peer {Index} not found",
+                peerIndex);
+            return;
+        }
+
+        foreach (var peer in Socket.Peers) {
+            if (peer.Id == peerIndex) {
+                EmpLog.Information("Requesting reconnect for peer {@Peer}",
+                    peer);
+                peer.Send(SessionReconnectRequest.Current);
+                return;
+            }
+        }
+
+        EmpLog.Warning("Cannot request reconnect: peer {Index} not connected",
+            peerIndex);
+    }
+
     [ElinPostLoad]
     private static void RemoveLeftOverCharas(GameIOContext context)
     {
