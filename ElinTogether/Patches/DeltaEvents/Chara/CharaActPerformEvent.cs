@@ -35,6 +35,11 @@ internal static class CharaActPerformEvent
             return;
         }
 
+        // perform throw via ActThrowEvent
+        if (__instance is ActThrow) {
+            return;
+        }
+
         // host propagates every act perform event
         // clients only propagate self
         if (connection.IsHost || Act.CC.IsPC) {

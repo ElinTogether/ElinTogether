@@ -58,6 +58,8 @@ namespace ElinTogether.Models;
 [Union(804, typeof(QuestCompleteDelta))]
 [Union(805, typeof(QuestUpdateDelta))]
 [Union(806, typeof(QuestChangePhaseDelta))]
+// Act
+[Union(900, typeof(ActThrowDelta))]
 public abstract class ElinDelta : EClass
 {
     public static bool IsApplying { get; private set; }

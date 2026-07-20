@@ -69,7 +69,7 @@ public static class CardCache
 
     internal static Card? Find(int uid)
     {
-        if (uid >= 0 && _cards.TryGetValue(uid, out var reference)) {
+        if (uid > 0 && _cards.TryGetValue(uid, out var reference)) {
             reference.TryGetTarget(out var card);
             return card;
         }
