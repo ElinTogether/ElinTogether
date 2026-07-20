@@ -18,7 +18,7 @@ internal static class CardOnUseEvent
     [HarmonyPrefix]
     internal static bool OnUseCard(Trait __instance, Chara c)
     {
-        if (NetSession.Instance.Connection is not ElinNetClient connection || ElinDelta.IsApplying) {
+        if (NetSession.Instance.Connection is not ElinNetClient client || ElinDelta.IsApplying) {
             return true;
         }
 
@@ -27,7 +27,7 @@ internal static class CardOnUseEvent
             return false;
         }
 
-        connection.Delta.AddRemote(new CardOnUseDelta {
+        client.Delta.AddRemote(new CardOnUseDelta {
             Card = card,
             RootCard = card.GetRootCard(),
             User = c,

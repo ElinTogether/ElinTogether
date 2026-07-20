@@ -9,6 +9,6 @@ public class DynamicDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        Action.Invoke(net);
+        Action(net);
     }
 }

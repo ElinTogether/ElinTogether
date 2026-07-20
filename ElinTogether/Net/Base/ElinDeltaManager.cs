@@ -76,6 +76,14 @@ public class ElinDeltaManager
     public void ProcessLocalBatch(ElinNetBase net, int batchSize = -1)
     {
         var batch = FlushInBuffer(batchSize);
+#if DEBUG
+        var clientFiltered = batch
+            .Where(d => d is not DynamicDelta or GameDelta)
+            .ToList();
+        if (clientFiltered.Count > 0) {
+            _ = 0xb;
+        }
+#endif
         foreach (var delta in batch) {
             try {
                 if (delta is null) {

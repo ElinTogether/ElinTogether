@@ -58,7 +58,7 @@ internal static class CharaProgressCompleteEvent
         }
 
         // only host can complete progress
-        if (NetSession.Instance.Connection is not ElinNetHost connection) {
+        if (NetSession.Instance.Connection is not ElinNetHost host) {
             return;
         }
 
@@ -68,7 +68,7 @@ internal static class CharaProgressCompleteEvent
 
         // due to randomness in max progress
         // remote needs to be notified that a remote task is completed before starting anew
-        connection.Delta.AddRemote(new CharaProgressCompleteDelta {
+        host.Delta.AddRemote(new CharaProgressCompleteDelta {
             Owner = __instance.owner,
             CompletedActId = ActMappingValidator.Default.ActToIdMapping[__instance.parent.GetType()],
             DeltaList = DeltaList.ToList(),
