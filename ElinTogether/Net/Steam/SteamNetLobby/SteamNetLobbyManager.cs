@@ -18,6 +18,8 @@ public class SteamNetLobbyManager : EClass
         RegisterCallbacks();
     }
 
+    public SteamNetLobby? Current { get; private set; }
+
     internal void Reset()
     {
         if (!_shutdown) {
@@ -38,8 +40,6 @@ public class SteamNetLobbyManager : EClass
         SteamCallback<LobbyEnter_t>.Add(OnLobbyEntered);
         SteamCallback<LobbyMatchList_t>.Add(OnLobbyMatchListComplete);
     }
-
-    public SteamNetLobby? Current { get; private set; }
 
     /// <summary>
     ///     Unregister all Steam callbacks
@@ -154,7 +154,9 @@ public class SteamNetLobbyManager : EClass
         Challenge((ulong)SteamUser.GetSteamID());
 
         _deferOnComplete = onComplete;
-        //SteamMatchmaking.AddRequestLobbyListStringFilter("EmpVersion", ModInfo.BuildVersion, 0);
+#if !DEBUG
+        SteamMatchmaking.AddRequestLobbyListStringFilter("EmpVersion", ModInfo.BuildVersion, 0);
+#endif
         SteamMatchmaking.RequestLobbyList();
     }
 
@@ -201,7 +203,7 @@ public class SteamNetLobbyManager : EClass
         // add our custom lobby data
         Current.SetLobbyData(EmpLobbyData.OwnerName, SteamFriends.GetPersonaName());
         Current.SetLobbyData(EmpLobbyData.GameVersion, core.version.GetText());
-        Current.SetLobbyData(EmpLobbyData.CurrentZone, core.game?.activeZone?.ZoneFullName ?? "");
+        Current.SetLobbyData(EmpLobbyData.CurrentZone, core.game?.activeZone?.NameWithLevel ?? "");
 
         NetSession.Instance.SessionId = lobby.m_ulSteamIDLobby;
     }
@@ -243,6 +245,8 @@ public class SteamNetLobbyManager : EClass
         }
 
         EmpPop.Information("emp_lobby_joined".lang(), Current.EmpVersion);
+
+        ELayerCleanup.Cleanup<LayerHelp>();
 
         // connect automatically as clients
         if (NetSession.Instance.Connection is not ElinNetClient) {

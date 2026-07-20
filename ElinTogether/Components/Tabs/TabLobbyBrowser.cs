@@ -42,8 +42,11 @@ internal class TabLobbyBrowser : TabEmpBase
 
         void SetupLobbyDisplay(SteamNetLobby[] lobbies)
         {
-            var total = 0;
+            if (this == null) {
+                return;
+            }
 
+            var total = 0;
             foreach (var lobby in lobbies) {
                 var count = lobby.GetCurrentPlayersCount();
                 total += count;

@@ -5,7 +5,7 @@
     "LangGeneral.emp_ui_config_changed.text": "Elin Together 配置已更改",
     "LangGeneral.emp_ui_config_open.text": "编辑配置",
     "LangGeneral.emp_ui_config_reset.text": "Elin Together 配置已重置为 {0}",
-    "LangGeneral.emp_ui_lobby_desc.text": "{0} 的游戏 [{1}，{2} 名玩家，位于 {3}",
+    "LangGeneral.emp_ui_lobby_desc.text": "{0} 的游戏 {1}，{2} 名玩家，位于 {3}",
     "LangGeneral.emp_ui_lobby_tally.text": "在线玩家总数：{0}",
     "LangGeneral.emp_ui_sv_cfg_shared_speed.text": "共享平均速度",
     "LangGeneral.emp_ui_sv_dc.text": "断开连接",
