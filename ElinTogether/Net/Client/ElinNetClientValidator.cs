@@ -22,7 +22,7 @@ internal partial class ElinNetClient
             return;
         }
 
-        EmpLog.Information("Client chose to continue despite validation mismatches.");
+        EmpLog.Information("Client chose to continue despite validation mismatches");
         Host.Send(new SourceValidationContinue());
         PendingMismatch = null;
     }
@@ -33,7 +33,7 @@ internal partial class ElinNetClient
             return;
         }
 
-        EmpLog.Information("Client chose to disconnect due to validation mismatches.");
+        EmpLog.Information("Client chose to disconnect due to validation mismatches");
         PendingMismatch = null;
 
         Socket.Disconnect(Host, EmpDisconnectInfo.InvalidSource);

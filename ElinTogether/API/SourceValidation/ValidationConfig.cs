@@ -17,9 +17,9 @@ public static class ValidationConfig
 {
     // ReSharper disable StringLiteralTypo
     public static readonly HashSet<string> ExcludedPlugins = [
-        "lafrontier.minigame",
-        "com.sinai.unityexplorer",
-        "jp.cmbc.mod.elin.yk-devtool",
+        //"lafrontier.minigame",        // Mod_Slot
+        "com.sinai.unityexplorer",      // Unity Explorer
+        "jp.cmbc.mod.elin.yk-devtool",  // 3400020855
     ];
 
     public static readonly HashSet<string> DefaultFilePaths = [];

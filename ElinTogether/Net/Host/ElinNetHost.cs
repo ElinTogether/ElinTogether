@@ -78,7 +78,7 @@ internal partial class ElinNetHost : ElinNetBase
         Socket.Broadcast.Send(packet);
     }
 
-    protected virtual void DisconnectInactive()
+    protected void DisconnectInactive()
     {
         foreach (var peer in Socket.Peers) {
             if (!States.TryGetValue(peer.Id, out var state)) {

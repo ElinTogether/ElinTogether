@@ -6,6 +6,7 @@ namespace ElinTogether.Helper;
 // LiteNetLib
 public static class FastBitConverter
 {
+    // ReSharper disable once UnthrowableException
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe void GetBytes<T>(byte[] bytes, int startIndex, T value) where T : unmanaged
     {
