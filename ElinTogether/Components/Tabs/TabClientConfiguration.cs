@@ -15,7 +15,7 @@ internal class TabClientConfiguration : TabEmpBase
             key = KeyCode.P,
             required = true,
         };
-        btnGroup.Button("emp_ui_chat_keymap".Loc(pingKey.key.ToString()), () => {
+        btnGroup.Button("emp_ui_ping_keymap".Loc(pingKey.key.ToString()), () => {
             var l = global::Layer.Create<Dialog>("DialogKeymap");
             l.textDetail.SetText("dialog_keymap".lang("emp_ui_ping_action".lang()));
             l.keymap = pingKey;
@@ -23,6 +23,7 @@ internal class TabClientConfiguration : TabEmpBase
                 EmpConfig.Client.PingKeybind.Value = pingKey.key;
                 LayerElinTogether.Instance?.Reopen();
             });
+            EMono.ui.AddLayer(l);
         });
     }
 }

@@ -62,7 +62,6 @@
     "LangGeneral.emp_ui_ping.text": "{0} 标记了一处地点。",
     "LangGeneral.emp_ui_ping_keymap.text": "绑定标记键: {0}",
     "LangGeneral.emp_ui_kick.text": "踢出",
-    "LangGeneral.emp_ui_chat_keymap.text": "绑定按键：{0}",
     "LangGeneral.emp_ui_source_mismatch_header.text": "源数据校验失败 — {0} 处不匹配",
     "LangGeneral.emp_ui_source_mismatch_acts.text": "Act 不匹配：",
     "LangGeneral.emp_ui_source_mismatch_sources.text": "源表不匹配：",
