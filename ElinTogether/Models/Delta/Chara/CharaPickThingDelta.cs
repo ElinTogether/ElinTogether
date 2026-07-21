@@ -43,7 +43,7 @@ public class CharaPickThingDelta : ElinDelta
         }
 
         // relay to clients
-        if (net.IsHost) {
+        if (net.IsHost && Type != PickType.Pick) {
             net.Delta.AddRemote(this);
         }
 

@@ -28,6 +28,8 @@ internal static class CharaPickThingEvent
                 Type = CharaPickThingDelta.PickType.Pick,
             });
 
+            CardCache.KeepAlive(t);
+
             return !CharaProgressCompleteEvent.Chara.IsRemotePlayer;
         }
 
