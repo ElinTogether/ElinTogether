@@ -16,7 +16,8 @@ internal static class ZoneAddCardEvent
         }
 
         if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
-            return false;
+            CardCache.DelayDestroy(t);
+            return true;
         }
 
         // only host can propagate add card event to remotes

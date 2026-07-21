@@ -12,6 +12,8 @@ public static class CardCache
     // prevent temporary item cache invalidation
     private static readonly List<Card> _keepalive = [];
 
+    private static readonly List<Card> _invalidCards = [];
+
     private static bool IsHost { get; set; }
 
     private static bool IsClient => !IsHost;
@@ -101,6 +103,11 @@ public static class CardCache
         _keepalive.Add(card);
     }
 
+    internal static void DelayDestroy(Card card)
+    {
+        _invalidCards.Add(card);
+    }
+
     private static void ClearCachedRefs()
     {
         _cards.Clear();
@@ -124,7 +131,11 @@ public static class CardCache
     public static void Update()
     {
         IsHost = NetSession.Instance.IsHost;
+
         _keepalive.RemoveAll(card => card.parent is not null);
+        _invalidCards.ForEach(card => card.Destroy());
+        _invalidCards.Clear();
+
         foreach (var (uid, reference) in _cards.ToArray()) {
             if (!reference.TryGetTarget(out _)) {
                 _cards.Remove(uid);
