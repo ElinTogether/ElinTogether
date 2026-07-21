@@ -1,0 +1,85 @@
+name: Bug 报告
+description: 模组运行不符合预期。
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **提交前请确认**
+        - 确保你的模组和游戏已更新到最新版本。建议先[在 Steam 中验证游戏文件完整性](https://help.steampowered.com/en/faqs/view/0C48-FCBD-DA71-93EB)。
+        - 请先检查该问题是否已被其他人报告过。
+        - 请附上你的 Player.log 文件，并提供尽可能详细的信息。
+
+  - type: input
+    id: game-version
+    attributes:
+      label: 游戏版本
+      description: 你正在运行的游戏版本是什么？
+      placeholder: 例如 Nightly 23.329 / Stable 23.325.2
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: 模组版本
+      description: 你正在运行的模组版本是什么？
+      placeholder: 例如 0.21.0 / Steam 创意工坊最新版
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      description: |
+        你使用的是什么操作系统？
+        如果不是 Windows，请详细说明你的运行环境和参数（例如 Proton/SteamDeck、CrossOver、模拟器等）。
+      value: Windows 11 23H2
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: steps
+    attributes:
+      label: 我已尝试以下步骤
+      description: 勾选所有已尝试的项。
+      options:
+        - label: 所有玩家的模组列表一致，且已验证游戏文件完整性。
+        - label: 重启游戏。
+        - label: （如果是网络相关问题）重启 Steam。
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 描述 bug 及复现步骤
+      description: |
+        请附上你的 **Player.log** — 这对诊断至关重要。
+        - `%localappdata%low/Lafrontier/Elin/Player.log`
+        - （可选）`%localappdata%low/Lafrontier/Elin/ElinMP/Session_latest.log`
+        - （可选）截图或视频。
+      value: |
+        1. 前往 [...]
+        2. 点击 [...]
+        3. 执行 [...]
+        4. 出现错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 清晰简洁地描述你预期会发生什么。
+      placeholder: "我原本期望 X 发生..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充说明
+      description: 在此添加关于该问题的任何其他信息。
