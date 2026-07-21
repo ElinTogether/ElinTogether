@@ -58,5 +58,13 @@ public class CharaPickThingDelta : ElinDelta
                 _map.TrySmoothPick(Pos, thing, chara);
                 break;
         }
+
+        if (thing.parent == _zone) {
+            net.Delta.AddRemote(new ZoneAddCardDelta {
+                Card = Thing,
+                Pos = thing.pos,
+                ZoneUid = _zone.uid,
+            });
+        }
     }
 }
