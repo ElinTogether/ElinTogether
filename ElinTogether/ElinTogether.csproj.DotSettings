@@ -82,6 +82,8 @@
     <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=models_005Cdelta_005Cchara/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean
+        x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=models_005Cdelta_005Celement/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=models_005Cdelta_005Cinv/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=models_005Cdelta_005Cmisc/@EntryIndexedValue">True</s:Boolean>
@@ -175,6 +177,8 @@
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=patches_005Cdeltaevents_005Ccondition/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=patches_005Cdeltaevents_005Cconditions/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean
+        x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=patches_005Cdeltaevents_005Celement/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=patches_005Cdeltaevents_005Cinventory/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean

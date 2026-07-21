@@ -12,7 +12,6 @@ namespace ElinTogether.Models;
 [Union(105, typeof(CardRemoveThingDelta))]
 [Union(106, typeof(CardOnUseDelta))]
 [Union(107, typeof(CardTryStackToDelta))]
-[Union(108, typeof(CardModExpDelta))]
 [Union(109, typeof(CardSetDirDelta))]
 // Chara
 [Union(200, typeof(CharaMoveDelta))]
@@ -60,8 +59,13 @@ namespace ElinTogether.Models;
 [Union(806, typeof(QuestChangePhaseDelta))]
 // Act
 [Union(900, typeof(ActThrowDelta))]
+// Element
+[Union(1000, typeof(ElementChangeDelta))]
 public abstract class ElinDelta : EClass
 {
+    [IgnoreMember]
+    internal virtual OverrideOrder Order { get; } = OverrideOrder.Stack;
+
     public static bool IsApplying { get; private set; }
 
     protected abstract void OnApply(ElinNetBase net);
@@ -71,5 +75,12 @@ public abstract class ElinDelta : EClass
         IsApplying = true;
         OnApply(net);
         IsApplying = false;
+    }
+
+    internal enum OverrideOrder
+    {
+        Stack,
+        Last,
+        First,
     }
 }

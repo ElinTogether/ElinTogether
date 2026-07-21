@@ -75,7 +75,7 @@ public class ElinDeltaManager
 
     public void ProcessLocalBatch(ElinNetBase net, int batchSize = -1)
     {
-        var batch = FlushInBuffer(batchSize);
+        var batch = ApplyOverride(FlushInBuffer(batchSize));
 #if DEBUG
         var clientFiltered = batch
             .Where(d => d is not (DynamicDelta or GameDelta))
@@ -146,6 +146,24 @@ public class ElinDeltaManager
         }
 
         return batch;
+    }
+
+    public List<ElinDelta> ApplyOverride(List<ElinDelta> batch)
+    {
+        return batch.Select((delta, index) => new { delta, index })
+            .GroupBy(x => x.delta.GetType())
+            .SelectMany(g => {
+                var order = g.First().delta.Order;
+                return order switch {
+                    ElinDelta.OverrideOrder.Stack => g,
+                    ElinDelta.OverrideOrder.First => g.Take(1),
+                    ElinDelta.OverrideOrder.Last => g.TakeLast(1),
+                    _ => throw new ArgumentOutOfRangeException(),
+                };
+            })
+            .OrderBy(x => x.index)
+            .Select(x => x.delta)
+            .ToList();
     }
 
     public void ClearOut()
