@@ -146,7 +146,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
         SteamNetworkingSockets.SetConnectionPollGroup(peer.Connection, HSteamNetPollGroup.Invalid);
 
-        SteamNetworkingSockets.CloseConnection(peer.Connection, 0, reason, false);
+        SteamNetworkingSockets.CloseConnection(peer.Connection, 0, reason, true);
 
         _peers.Remove(peer);
         _broadcast.RemoveTarget(peer);
@@ -192,7 +192,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting:
                 if (IsHost) {
                     // we only accept as host
-                    AcceptIfVersionMatch(connection, status.m_info);
+                    AcceptIfHost(connection, status.m_info);
                 }
 
                 break;

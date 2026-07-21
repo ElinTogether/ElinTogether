@@ -1,17 +1,29 @@
+using System;
 using System.Diagnostics;
 using ElinTogether.Common;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
+using HeathenEngineering.SteamworksIntegration;
 using ReflexCLI.UI;
-using Steamworks;
 
 namespace ElinTogether.Net;
 
 internal partial class ElinNetClient : ElinNetBase
 {
+    private DateTime _lastConnection;
+
     public override bool IsHost => false;
     public ISteamNetPeer Host => Socket.FirstPeer;
+
+    protected override void Update()
+    {
+        base.Update();
+
+        if (IsConnected) {
+            _lastConnection = DateTime.Now;
+        }
+    }
 
     public void ConnectLocalPort(ushort port = EmpConstants.LocalPort)
     {
@@ -19,10 +31,10 @@ internal partial class ElinNetClient : ElinNetBase
         Socket.Connect(port);
     }
 
-    public void ConnectSteamUser(ulong steamId)
+    public void ConnectSteamUser(UserData steamId)
     {
         Stop();
-        Socket.Connect(new CSteamID(steamId));
+        Socket.Connect(steamId);
     }
 
     protected override void RegisterPackets()

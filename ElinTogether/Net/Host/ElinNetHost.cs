@@ -26,12 +26,17 @@ internal partial class ElinNetHost : ElinNetBase
             return;
         }
 
-        Session.Lobby.CreateLobby(SteamNetLobbyType.Public);
+        Session.Lobby.CreateLobby();
 
-        if (localUdp) {
-            Socket.StartServerUdp();
-        } else {
-            Socket.StartServerSdr();
+        try {
+            if (localUdp) {
+                Socket.StartServerUdp();
+            } else {
+                Socket.StartServerSdr();
+            }
+        } catch {
+            Session.RemoveComponent();
+            throw;
         }
 
         Scheduler.Subscribe(DisconnectInactive, 1);
@@ -119,7 +124,7 @@ internal partial class ElinNetHost : ElinNetBase
 
         // and invite to steam lobby if clients aren't already in
         peer.Send(new SteamLobbyRequest {
-            LobbyId = (ulong)Session.Lobby.Current!.LobbyId,
+            LobbyId = Session.Lobby.Current,
         });
 
 #if DEBUG

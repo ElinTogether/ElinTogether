@@ -1,15 +1,19 @@
 using System;
+using System.Collections.Generic;
 using ElinTogether.Common;
+using ElinTogether.Helper;
+using ElinTogether.LangMod;
+using HeathenEngineering.SteamworksIntegration;
 using Serilog.Events;
 using Steamworks;
-#if !DEBUG
-using ElinTogether.LangMod;
-#endif
+using UnityEngine;
 
 namespace ElinTogether.Net.Steam;
 
 public partial class SteamNetManager
 {
+    public static readonly Dictionary<UserData, string> ConnectionKeys = [];
+
     /// <summary>
     ///     Start server on valve SDR
     /// </summary>
@@ -17,7 +21,8 @@ public partial class SteamNetManager
     {
         EmpLog.Debug("Starting relay server via SDR");
 
-        _listenSocket = SteamNetworkingSockets.CreateListenSocketP2P(0, 1, SteamNetConfig.Default.Create());
+        var options = SteamNetConfig.Default.Create();
+        _listenSocket = SteamNetworkingSockets.CreateListenSocketP2P(0, options.Length, options);
         if (_listenSocket == HSteamListenSocket.Invalid) {
             throw new InvalidOperationException("Failed to create listen socket via SDR");
         }
@@ -37,7 +42,8 @@ public partial class SteamNetManager
         localhost.Clear();
         localhost.m_port = port;
 
-        _listenSocket = SteamNetworkingSockets.CreateListenSocketIP(ref localhost, 1, SteamNetConfig.Default.Create());
+        var options = SteamNetConfig.Default.Create();
+        _listenSocket = SteamNetworkingSockets.CreateListenSocketIP(ref localhost, options.Length, options);
         if (_listenSocket == HSteamListenSocket.Invalid) {
             throw new InvalidOperationException("Failed to create listen socket via UDP");
         }
@@ -45,34 +51,34 @@ public partial class SteamNetManager
         SetupSteamCallback();
     }
 
-    private void AcceptIfVersionMatch(HSteamNetConnection connection, SteamNetConnectionInfo_t info)
+    private void AcceptIfHost(HSteamNetConnection connection, SteamNetConnectionInfo_t info)
     {
-        var userId = info.m_identityRemote.GetSteamID64();
-
-        NetSession.Instance.Lobby.Challenge(userId);
+        UserData user = info.m_identityRemote.GetSteamID64();
 
         EmpLog.Debug("Received connection request from {RemoteIdentity}",
-            userId);
+            user);
 
-#if !DEBUG
-        var connectionKey = Helper.BuildVersionIntegrity.VersionStringToLong(ModInfo.BuildVersion);
+        var connectionKey = BuildVersionIntegrity.VersionStringToLong(ModInfo.BuildVersion);
         if (info.m_nUserData != connectionKey) {
             EmpPop.Debug("emp_connection_rejected".Loc(
-                ModInfo.BuildVersion.TagColor(UnityEngine.Color.green),
-                Helper.BuildVersionIntegrity.LongToVersionString(info.m_nUserData).TagColor(UnityEngine.Color.red)));
+                ModInfo.BuildVersion.TagColor(Color.green),
+                BuildVersionIntegrity.LongToVersionString(info.m_nUserData).TagColor(Color.red)));
 
             // only connect if we have same build version
             SteamNetworkingSockets.CloseConnection(connection, 0, "emp_version_mismatch", false);
-        } else
-#endif
-        {
-            EmpLog.Debug("Accepting connection request from {RemoteIdentity}",
-                userId);
+        }
 
-            var result = SteamNetworkingSockets.AcceptConnection(connection);
-            if (result != EResult.k_EResultOK) {
-                EmpPop.Popup(LogEventLevel.Warning, "emp_accept_failed".lang());
-            }
+        if (!ConnectionKeys.TryGetValue(user, out var key)) {
+            // only connect if host allows it in the lobby
+            SteamNetworkingSockets.CloseConnection(connection, 0, "emp_not_allowed", false);
+        }
+
+        EmpLog.Debug("Accepting connection request from {RemoteIdentity}",
+            user);
+
+        var result = SteamNetworkingSockets.AcceptConnection(connection);
+        if (result != EResult.k_EResultOK) {
+            EmpPop.Popup(LogEventLevel.Warning, "emp_accept_failed".lang());
         }
     }
 

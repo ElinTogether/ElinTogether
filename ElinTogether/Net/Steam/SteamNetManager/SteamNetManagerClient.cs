@@ -16,7 +16,8 @@ public partial class SteamNetManager
         var identity = new SteamNetworkingIdentity();
         identity.SetSteamID(steamID);
 
-        var connection = SteamNetworkingSockets.ConnectP2P(ref identity, 0, 1, SteamNetConfig.Default.Create());
+        var options = SteamNetConfig.Default.Create();
+        var connection = SteamNetworkingSockets.ConnectP2P(ref identity, 0, options.Length, options);
         if (connection != HSteamNetConnection.Invalid) {
             AddConnection(connection);
         }
@@ -32,7 +33,8 @@ public partial class SteamNetManager
         EmpLog.Debug("Connecting by IP {RemoteIdentity}",
             exposed.RedactedIp);
 
-        var connection = SteamNetworkingSockets.ConnectByIPAddress(ref address, 1, SteamNetConfig.Default.Create());
+        var options = SteamNetConfig.Default.Create();
+        var connection = SteamNetworkingSockets.ConnectByIPAddress(ref address, options.Length, options);
         if (connection != HSteamNetConnection.Invalid) {
             AddConnection(connection);
         }

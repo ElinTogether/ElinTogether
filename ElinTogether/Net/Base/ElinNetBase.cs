@@ -36,7 +36,7 @@ public abstract partial class ElinNetBase : EMono
 #endif
     }
 
-    private void Update()
+    protected virtual void Update()
     {
         Scheduler.Tick();
         Socket.Poll();

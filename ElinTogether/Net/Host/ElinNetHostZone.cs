@@ -30,7 +30,7 @@ internal partial class ElinNetHost
         }
 
         // update lobby data
-        Session.Lobby.Current?.SetLobbyData(EmpLobbyData.CurrentZone, zone.NameWithLevel);
+        Session.Lobby.Current[EmpLobbyData.CurrentZone] = zone.NameWithLevel;
     }
 
     /// <summary>

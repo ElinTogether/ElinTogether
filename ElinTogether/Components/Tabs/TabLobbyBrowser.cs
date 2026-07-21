@@ -1,6 +1,7 @@
+using ElinTogether.Common;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
-using ElinTogether.Net.Steam;
+using HeathenEngineering.SteamworksIntegration;
 
 namespace ElinTogether.Components;
 
@@ -40,7 +41,7 @@ internal class TabLobbyBrowser : TabEmpBase
 
         return;
 
-        void SetupLobbyDisplay(SteamNetLobby[] lobbies)
+        void SetupLobbyDisplay(LobbyData[] lobbies)
         {
             if (this == null) {
                 return;
@@ -48,10 +49,10 @@ internal class TabLobbyBrowser : TabEmpBase
 
             var total = 0;
             foreach (var lobby in lobbies) {
-                var count = lobby.GetCurrentPlayersCount();
+                var count = lobby.MemberCount;
                 total += count;
 
-                HeaderCard("emp_ui_lobby_desc".Loc(lobby.OwnerName, lobby.GameVersion, lobby.PlayerCount, lobby.CurrentZone));
+                HeaderCard("emp_ui_lobby_desc".Loc(lobby.Name, lobby.GameVersion, count, lobby[EmpLobbyData.CurrentZone]));
             }
 
             totalPlayers.text1.text = "emp_ui_lobby_tally".Loc(total);

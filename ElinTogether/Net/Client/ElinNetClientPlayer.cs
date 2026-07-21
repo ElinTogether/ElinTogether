@@ -83,7 +83,7 @@ internal partial class ElinNetClient
         EmpLog.Information("Connecting to steam lobby {LobbyId}",
             request.LobbyId);
 
-        if (Session.Lobby.Current?.LobbyId != (CSteamID)request.LobbyId) {
+        if (Session.Lobby.Current != (CSteamID)request.LobbyId) {
             Session.Lobby.ConnectLobby(request.LobbyId);
         }
     }
@@ -103,17 +103,16 @@ internal partial class ElinNetClient
 
     public void ReconnectSelf()
     {
-        if (Session.Lobby.Current is null) {
+        if (!Session.Lobby.Current.IsValid) {
             EmpLog.Warning("Cannot reconnect: not in a lobby");
             return;
         }
 
-        var lobbyId = (ulong)Session.Lobby.Current.LobbyId;
         EmpLog.Information("Manual reconnect to steam lobby {LobbyId}",
-            lobbyId);
+            Session.Lobby.Current);
 
         // Disconnect triggers OnPeerDisconnected → RemoveComponent → LeaveLobby
         Socket.Disconnect(Host, EmpDisconnectInfo.HostReconnectRequest);
-        CoroutineHelper.Deferred(() => Session.Lobby.ConnectLobby(lobbyId));
+        CoroutineHelper.Deferred(() => Session.Lobby.ConnectLobby(Session.Lobby.Current));
     }
 }

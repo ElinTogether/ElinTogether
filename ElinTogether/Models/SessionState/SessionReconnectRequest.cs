@@ -7,7 +7,7 @@ namespace ElinTogether.Models;
 public class SessionReconnectRequest
 {
     public static SessionReconnectRequest Current => new() {
-        LobbyId = (ulong)NetSession.Instance.Lobby.Current!.LobbyId,
+        LobbyId = NetSession.Instance.Lobby.Current,
     };
 
     [Key(0)]
