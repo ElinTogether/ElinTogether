@@ -36,8 +36,8 @@ internal static class InvStartDragEvent
         ThingRequest
             .Create(thing, thing.Num)
             .Send()
-            .Then(thing => {
-                dragItemCard.from.thing = thing;
+            .Then(t => {
+                dragItemCard.from.thing = t;
                 __instance.StartDrag(dragItemCard);
             });
 

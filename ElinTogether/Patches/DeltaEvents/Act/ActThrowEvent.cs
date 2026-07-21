@@ -25,7 +25,7 @@ internal class ActThrowEvent
                 thing = source;
             }
 
-            __state = new ActThrowDelta {
+            __state = new() {
                 Owner = c,
                 Point = p,
                 Target = target,
@@ -39,7 +39,7 @@ internal class ActThrowEvent
     }
 
     [HarmonyPostfix]
-    internal static void OnClientThrowEnd(ActThrowDelta __state)
+    internal static void OnClientThrowEnd(ActThrowDelta? __state)
     {
         if (__state is not null) {
             NetSession.Instance.Connection!.Delta.AddRemote(__state);

@@ -10,6 +10,10 @@ internal class NetProfileSynchronizationContext : SynchronizationContext
 
     internal static void Update()
     {
+        if (core.game?.player?.chara is null) {
+            return;
+        }
+
         var delta = CharaSwitchHeldDelta.Create();
         if (_heldMainHand == delta.HeldMainHand && _heldOffHand == delta.HeldOffHand) {
             return;

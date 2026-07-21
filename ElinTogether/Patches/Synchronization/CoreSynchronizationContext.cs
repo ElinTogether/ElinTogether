@@ -25,7 +25,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
     [HarmonyPostfix]
     internal static void OnCoreUpdateEnd()
     {
-        if (game is null || NetSession.Instance.Connection is null) {
+        if (NetSession.Instance.Connection is null || !core.IsGameStarted) {
             return;
         }
 
