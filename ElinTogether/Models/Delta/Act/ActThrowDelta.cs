@@ -31,8 +31,10 @@ public class ActThrowDelta : ElinDelta
         }
 
         var t = ((Thing)Thing)!.Split(SplitNum);
+        ActThrow.Throw(Owner, Point, Target, t, Method);
+
         if (net.IsHost) {
-            net.Delta.DeferRemote(new ActThrowDelta {
+            net.Delta.AddRemote(new ActThrowDelta {
                 Owner = Owner,
                 Point = Point,
                 Target = Target,
@@ -41,7 +43,5 @@ public class ActThrowDelta : ElinDelta
                 SplitNum = SplitNum,
             });
         }
-
-        ActThrow.Throw(Owner, Point, Target, t, Method);
     }
 }

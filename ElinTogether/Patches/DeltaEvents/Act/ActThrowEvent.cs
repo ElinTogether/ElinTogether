@@ -9,8 +9,10 @@ namespace ElinTogether.Patches;
 internal class ActThrowEvent
 {
     [HarmonyPrefix]
-    internal static bool OnClientThrow(Card c, Point p, Card target, Thing t, ThrowMethod method)
+    internal static bool OnClientThrow(Card c, Point p, Card target, Thing t, ThrowMethod method, out ActThrowDelta? __state)
     {
+        __state = null;
+
         if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
             return true;
         }
@@ -19,20 +21,28 @@ internal class ActThrowEvent
         if (connection.IsHost || c.IsPC) {
             // split
             var thing = t;
-            if (t.uid < 0 && CardCache.Find(-t.uid) is Thing split) {
-                thing = split;
+            if (t.uid < 0 && CardCache.Find(-t.uid) is Thing source) {
+                thing = source;
             }
 
-            connection.Delta.DeferRemote(new ActThrowDelta {
+            __state = new ActThrowDelta {
                 Owner = c,
                 Point = p,
                 Target = target,
                 Thing = thing,
                 Method = method,
                 SplitNum = t.Num,
-            });
+            };
         }
 
         return connection.IsHost;
+    }
+
+    [HarmonyPostfix]
+    internal static void OnClientThrowEnd(ActThrowDelta __state)
+    {
+        if (__state is not null) {
+            NetSession.Instance.Connection!.Delta.AddRemote(__state);
+        }
     }
 }
