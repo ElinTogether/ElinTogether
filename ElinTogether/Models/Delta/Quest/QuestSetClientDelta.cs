@@ -39,4 +39,9 @@ public class QuestSetClientDelta : ElinDelta
             quest.SetClient(owner, AssignQuest);
         }
     }
+
+    internal override bool OnRefresh()
+    {
+        return !QuestCreateDelta.Contains(Uid);
+    }
 }

@@ -13,6 +13,8 @@ public class CardGenDelta : ElinDelta
     [Key(0)]
     public required RemoteCard Card { get; init; }
 
+    private static readonly HashSet<int> _createdInCurrentFrame = [];
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Card.Data is null) {
@@ -36,42 +38,37 @@ public class CardGenDelta : ElinDelta
         CardCache.CacheContainer(card.things);
     }
 
-    internal static void Refresh(List<ElinDelta> deltaList)
+    internal static CardGenDelta Create(Card card)
     {
-        var alreadySent = new List<int>();
-        deltaList.RemoveAll(delta => {
-            if (delta is not CardGenDelta cardGenDelta) {
+        var remoteCard = RemoteCard.Create(card);
+        _createdInCurrentFrame.Add(remoteCard.Uid);
+
+        return new CardGenDelta {
+            Card = remoteCard,
+        };
+    }
+
+    internal override bool OnRefresh()
+    {
+        var card = Card.Find();
+        if (card is null || card.isDestroyed) {
+            return false;
+        }
+
+        if (card.parent is Card parent) {
+            if (_createdInCurrentFrame.Contains(parent.uid)) {
                 return false;
             }
-
-            var card = cardGenDelta.Card.Find();
-            if (card is null || card.isDestroyed) {
-                return true;
-            }
-
-            card.things.Flatten().ForEach(thing => {
-                alreadySent.Add(thing.uid);
-            });
-
+        } else if (card.things.Count == 0 && !card.IsKeptAlive) {
             return false;
-        });
+        }
 
-        deltaList.RemoveAll(delta => {
-            if (delta is not CardGenDelta cardGenDelta) {
-                return false;
-            }
+        Card.Data = LZ4Bytes.Create(card);
+        return true;
+    }
 
-            if (alreadySent.Contains(cardGenDelta.Card.Uid)) {
-                return true;
-            }
-
-            var card = cardGenDelta.Card.Find();
-            if (card is null || (card.parent is null && card.things.Count == 0 && !card.IsKeptAlive)) {
-                return true;
-            }
-
-            cardGenDelta.Card.Data = LZ4Bytes.Create(card);
-            return false;
-        });
+    internal static void ClearRecordedUids()
+    {
+        _createdInCurrentFrame.Clear();
     }
 }

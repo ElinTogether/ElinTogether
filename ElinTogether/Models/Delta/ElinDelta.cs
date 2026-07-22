@@ -77,6 +77,11 @@ public abstract class ElinDelta : EClass
         IsApplying = false;
     }
 
+    internal virtual bool OnRefresh()
+    {
+        return true;
+    }
+
     internal enum OverrideOrder
     {
         Stack,

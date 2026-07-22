@@ -19,6 +19,8 @@ public class QuestCreateDelta : ElinDelta
     [Key(1)]
     public required bool IsGlobal { get; set; }
 
+    private static readonly HashSet<int> _createdInCurrentFrame = [];
+
     protected override void OnApply(ElinNetBase net)
     {
         if (NetSession.Instance.IsHost) {
@@ -39,39 +41,39 @@ public class QuestCreateDelta : ElinDelta
 
     public static QuestCreateDelta Create(Quest quest)
     {
+        _createdInCurrentFrame.Add(quest.uid);
         return new() {
             Uid = quest.uid,
             Owner = quest.person.chara,
-            Data = LZ4Bytes.Create(quest),
+            Data = null!,
             // unknown at the moment
             IsGlobal = false,
         };
     }
 
-    internal static void Refresh(List<ElinDelta> deltaList)
+    internal override bool OnRefresh()
     {
-        var alreadySent = new List<int>();
-        deltaList.RemoveAll(delta => {
-            if (delta is not QuestCreateDelta questCreateDelta) {
+        var quest = game.quests.globalList.Find(q => q.uid == Uid);
+        if (quest is not null) {
+            IsGlobal = true;
+        } else {
+            quest = Owner?.quest;
+            if (quest?.uid != Uid) {
                 return false;
             }
+        }
 
-            var quest = game.quests.globalList.Find(q => q.uid == questCreateDelta.Uid);
-            if (quest is not null) {
-                questCreateDelta.IsGlobal = true;
-            } else {
-                quest = questCreateDelta.Owner?.quest;
-                if (quest?.uid != questCreateDelta.Uid) {
-                    return true;
-                }
-            }
+        Data = LZ4Bytes.Create(quest);
+        return true;
+    }
 
-            alreadySent.Add(quest.uid);
-            questCreateDelta.Data = LZ4Bytes.Create(quest);
-            return false;
-        });
+    internal static bool Contains(int uid)
+    {
+        return _createdInCurrentFrame.Contains(uid);
+    }
 
-        deltaList.RemoveAll(delta => delta is QuestSetClientDelta questSetClientDelta &&
-                                     alreadySent.Contains(questSetClientDelta.Uid));
+    internal static void ClearRecordedUids()
+    {
+        _createdInCurrentFrame.Clear();
     }
 }

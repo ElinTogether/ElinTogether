@@ -35,8 +35,6 @@ internal static class CardGenEvent
             return;
         }
 
-        connection.Delta.AddRemote(new CardGenDelta {
-            Card = RemoteCard.Create(__result, true),
-        });
+        connection.Delta.AddRemote(CardGenDelta.Create(__result));
     }
 }

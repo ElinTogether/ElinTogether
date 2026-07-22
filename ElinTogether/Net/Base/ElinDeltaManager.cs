@@ -37,8 +37,8 @@ public class ElinDeltaManager
     private float _averageIn;
     private float _averageOut;
 
-    public bool HasPendingOut => _outBuffer.Count > 0 ||  _outBufferDeferred.Count > 0;
-    public bool HasPendingIn =>  _inBuffer.Count > 0 ||  _inBufferDeferred.Count > 0;
+    public bool HasPendingOut => _outBuffer.Count > 0 || _outBufferDeferred.Count > 0;
+    public bool HasPendingIn => _inBuffer.Count > 0 || _inBufferDeferred.Count > 0;
     public bool IsIdle => !HasPendingOut && !HasPendingIn;
 
     public int BatchCount { get; private set; }
@@ -51,7 +51,7 @@ public class ElinDeltaManager
     {
         _outBufferUnrefreshed.Add(delta);
     }
-    
+
     public void AddRemoteImmediate(ElinDelta delta)
     {
         _outBuffer.Add(delta);
@@ -156,11 +156,10 @@ public class ElinDeltaManager
 
     public void RefreshBuffer()
     {
-        CardGenDelta.Refresh(_outBufferUnrefreshed);
-        QuestCreateDelta.Refresh(_outBufferUnrefreshed);
-
-        _outBuffer.AddRange(_outBufferUnrefreshed);
+        _outBuffer.AddRange(_outBufferUnrefreshed.Where(delta => delta.OnRefresh()));
         _outBufferUnrefreshed.Clear();
+        CardGenDelta.ClearRecordedUids();
+        QuestCreateDelta.ClearRecordedUids();
     }
 
     public void ClearOut()
