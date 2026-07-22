@@ -66,11 +66,13 @@ public partial class SteamNetManager
 
             // only connect if we have same build version
             SteamNetworkingSockets.CloseConnection(connection, 0, "emp_version_mismatch", false);
+            return;
         }
 
         if (!ConnectionKeys.TryGetValue(user, out var key)) {
             // only connect if host allows it in the lobby
             SteamNetworkingSockets.CloseConnection(connection, 0, "emp_not_allowed", false);
+            return;
         }
 
         EmpLog.Debug("Accepting connection request from {RemoteIdentity}",

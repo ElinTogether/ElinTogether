@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using ElinTogether.Common;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
@@ -11,18 +10,35 @@ namespace ElinTogether.Net;
 
 internal partial class ElinNetClient : ElinNetBase
 {
-    private DateTime _lastConnection;
+    private DateTime _lastTimeout = DateTime.Now;
 
     public override bool IsHost => false;
     public ISteamNetPeer Host => Socket.FirstPeer;
+    public bool IsJoiningLobby { get; private set; }
 
     protected override void Update()
     {
         base.Update();
 
         if (IsConnected) {
-            _lastConnection = DateTime.Now;
+            _lastTimeout = DateTime.Now;
+            return;
         }
+
+        if (IsJoiningLobby && Session.Lobby.Current.HasServer) {
+            if (long.TryParse(Session.Lobby.Current[$"connection_key_{UserData.Me}"], out var key) && key != 0L) {
+                IsJoiningLobby = false;
+                ConnectSteamUser(Session.Lobby.Current.GameServer.id);
+            }
+        }
+
+#if !DEBUG
+        var elapsed = DateTime.Now - _lastTimeout;
+        if (elapsed.TotalSeconds > EmpConfig.Policy.Timeout.Value) {
+            EmpPop.Information("emp_ui_timeout".lang());
+            Session.ResetSession();
+        }
+#endif
     }
 
     public void ConnectLocalPort(ushort port = EmpConstants.LocalPort)

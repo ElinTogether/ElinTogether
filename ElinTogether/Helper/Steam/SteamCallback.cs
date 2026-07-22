@@ -11,14 +11,11 @@ internal class SteamCallback
 }
 
 // ReSharper disable once StaticMemberInGenericType
-internal class SteamCallback<T> : IDisposable where T : struct
+internal class SteamCallback<T> where T : struct
 {
-    private static Callback<T>? _callback;
-    private static bool _shutdown;
-
     static SteamCallback()
     {
-        _callback = Callback<T>.Create(SafeCallback);
+        Callback<T>.Create(SafeCallback);
 
         return;
 
@@ -34,20 +31,11 @@ internal class SteamCallback<T> : IDisposable where T : struct
         }
     }
 
-    public void Dispose()
-    {
-        Shutdown();
-    }
-
     private static event Action<T>? OnEvent;
 
     internal static void Add(Action<T> handler)
     {
         lock (SteamCallback.EventLock) {
-            if (_shutdown) {
-                return;
-            }
-
             OnEvent -= handler;
             OnEvent += handler;
         }
@@ -64,21 +52,6 @@ internal class SteamCallback<T> : IDisposable where T : struct
     {
         lock (SteamCallback.EventLock) {
             OnEvent = null;
-        }
-    }
-
-    internal static void Shutdown()
-    {
-        lock (SteamCallback.EventLock) {
-            if (_shutdown) {
-                return;
-            }
-
-            _shutdown = true;
-            OnEvent = null;
-
-            _callback?.Dispose();
-            _callback = null;
         }
     }
 }

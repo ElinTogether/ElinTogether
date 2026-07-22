@@ -1,7 +1,6 @@
 using System.Reflection;
 using BepInEx;
 using ElinTogether.Helper;
-using ElinTogether.Helper.Steam;
 using ElinTogether.Helper.String;
 using ElinTogether.Net;
 using ElinTogether.Patches;
@@ -15,7 +14,7 @@ internal static class ModInfo
 {
     internal const string Guid = "dk.elinplugins.elintogether";
     internal const string Name = "Elin Together";
-    internal const string Version = "0.21.0";
+    internal const string Version = "0.22.0";
 
     internal static string BuildVersion => field ??= EmpMod.Assembly.GetName().Version.ToString();
 }
@@ -63,8 +62,6 @@ internal sealed class EmpMod : BaseUnityPlugin
     {
         NetSession.Instance.ResetSession();
         NetSession.Instance.Lobby.Shutdown();
-
-        SteamUserName.Shutdown();
 
         StringAllocator.UnpinSharedStringHandles();
     }

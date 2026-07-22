@@ -12,7 +12,6 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 {
     private readonly IntPtr[] _batchedMessages = new IntPtr[EmpConstants.MaxBatchedMessages];
     private readonly SteamNetPeerBroadcast _broadcast = new(serializer ?? new SteamNetSerializer());
-    private readonly Dictionary<ulong, int> _peerIdHistory = [];
     private readonly List<SteamNetPeer> _peers = [];
     private readonly ISteamNetSerializer _serializer = serializer ?? new SteamNetSerializer();
 
@@ -116,8 +115,6 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             Disconnect(peer, EmpDisconnectInfo.HostShutdown);
         }
 
-        _peerIdHistory.Clear();
-
         DiscardListenSocket();
     }
 
@@ -136,10 +133,6 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
         EmpLog.Verbose("Closing connection {@Peer}",
             peer);
-
-        if (IsHost && peer.Id != 0) {
-            _peerIdHistory[peer.Uid] = peer.Id;
-        }
 
         // reciprocal disconnect
         _listener?.OnPeerDisconnected(peer, reason);
@@ -163,23 +156,23 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             return duplicate;
         }
 
-        SteamNetworkingSockets.SetConnectionPollGroup(connection, _pollGroup);
-
-        SteamNetworkingSockets.GetConnectionInfo(connection, out var info);
-        var uid = info.m_identityRemote.GetSteamID64();
-        var preferredId = _peerIdHistory.TryGetValue(uid, out var oldId) ? (int?)oldId : null;
-
-        var peer = new SteamNetPeer(connection, _serializer, preferredId);
-
-        if (preferredId is not null) {
-            EmpLog.Debug("Peer {Uid} reconnected, reclaimed index {Index}",
-                uid, peer.Id);
+        var peer = new SteamNetPeer(connection, _serializer);
+        if (!peer.IsConnected) {
+            SteamNetworkingSockets.CloseConnection(peer.Connection, 0, EmpDisconnectInfo.RemoteClosed, true);
+            return FakePeer;
         }
+
+        peer.User.SetPlayedWith();
+
+        SteamNetworkingSockets.SetConnectionPollGroup(connection, _pollGroup);
 
         _peers.Add(peer);
         _broadcast.AddTarget(peer);
 
         _listener?.OnPeerConnected(peer);
+
+        EmpLog.Debug("Player {PlayerName} {RemoteIdentity} connected, claiming index {Index}",
+            peer.User.Name, peer.User, peer.Id);
 
         return peer;
     }

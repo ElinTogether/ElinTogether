@@ -116,5 +116,19 @@ internal partial class ElinNetClient
         Socket.Disconnect(Host, EmpDisconnectInfo.HostReconnectRequest);
         CoroutineHelper.Deferred(() => Session.Lobby.ConnectLobby(lobby));
     }
+
+    public void TryJoinCurrentLobbyGame()
+    {
+        var lobby = Session.Lobby.Current;
+        if (IsConnected) {
+            OnSessionReconnectRequest(new() { LobbyId = lobby });
+            return;
+        }
+
+        EmpLog.Information("Joining game on steam lobby {LobbyId}",
+            lobby);
+
+        _lastTimeout = DateTime.Now;
+        IsJoiningLobby = true;
     }
 }

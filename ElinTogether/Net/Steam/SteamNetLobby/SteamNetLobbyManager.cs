@@ -5,6 +5,7 @@ using ElinTogether.Helper;
 using ElinTogether.Helper.Steam;
 using ElinTogether.LangMod;
 using HeathenEngineering.SteamworksIntegration;
+using HeathenEngineering.SteamworksIntegration.API;
 using Steamworks;
 using UnityEngine;
 
@@ -114,6 +115,10 @@ public class SteamNetLobbyManager : EClass
 
         ELayerCleanup.Cleanup<LayerHelp>();
 
+        if (NetSession.Instance.Connection is not ElinNetClient) {
+            NetSession.Instance.InitializeComponent<ElinNetClient>();
+        }
+
         SteamMatchmaking.JoinLobby(lobby);
     }
 
@@ -211,21 +216,23 @@ public class SteamNetLobbyManager : EClass
         Current = enter.Lobby;
         NetSession.Instance.SessionId = enter.Lobby;
 
-        // assign game version
-        var me = Current.Me;
-        me.GameVersion = core.version.GetText();
-
         // assign friend grouping
         var sessionKey = NetSession.Instance.SessionId.ToString();
         SteamFriends.SetRichPresence("steam_player_group", sessionKey);
         SteamFriends.SetRichPresence("steam_player_group_size", Current.MemberCount.ToString());
 
-        if (Current.IsOwner) {
+        var me = Current.Me;
+        if (me.IsOwner) {
             // assign steam rich presence join key
             //SteamFriends.SetRichPresence("connect", sessionKey);
+            me.IsReady = true;
         } else {
-            if (me.GameVersion != Current.GameVersion) {
-                LeaveLobby();
+            foreach (var member in Current.Members) {
+                Friends.Client.RequestUserInformation(member.user, true);
+            }
+
+            if (Current.GameVersion != core.version.GetText()) {
+                NetSession.Instance.ResetSession();
 
                 EmpPop.Debug("emp_connection_rejected".Loc(
                     Current.GameVersion.TagColor(Color.red),
@@ -235,7 +242,10 @@ public class SteamNetLobbyManager : EClass
             }
 
             if (!Current.HasServer) {
-                LeaveLobby();
+                NetSession.Instance.ResetSession();
+
+                EmpPop.Debug("emp_connection_no_server".lang());
+
                 return;
             }
 
@@ -243,6 +253,8 @@ public class SteamNetLobbyManager : EClass
                 Current[EmpLobbyData.EmpVersion]);
 
             ELayerCleanup.Cleanup<LayerHelp>();
+
+            (NetSession.Instance.Connection as ElinNetClient)?.TryJoinCurrentLobbyGame();
         }
     }
 
@@ -251,14 +263,16 @@ public class SteamNetLobbyManager : EClass
         UserData user = update.m_ulSteamIDUserChanged;
         var state = (SteamNetLobbyMemberState)update.m_rgfChatMemberStateChange;
 
-        SteamUserName.PinUserName(update.m_ulSteamIDUserChanged, name => EmpPop.Debug(
-            "emp_lobby_state_changed".lang(), new { Name = name, State = state }));
+        Friends.Client.RequestUserInformation(user, true);
 
-        if (Current.IsOwner) {
+        EmpPop.Debug("emp_lobby_state_changed".lang(), new { user.Name, State = state });
+
+        var me = Current.Me;
+        if (me.IsOwner) {
             if (state == SteamNetLobbyMemberState.Entered) {
                 var friend = SteamFriends.GetFriendRelationship(user);
                 if (friend == EFriendRelationship.k_EFriendRelationshipFriend || _invited.Contains(user)) {
-                    Current[$"connection_key_{(ulong)user}"] =
+                    Current[$"connection_key_{user}"] =
                         SteamNetManager.ConnectionKeys[user] =
                             PlayerUidMaker.MakeConnectionKey(user);
                     EmpLog.Information("Connection ready for {RemoteIdentity}",
@@ -267,13 +281,14 @@ public class SteamNetLobbyManager : EClass
                     Current.KickMember(user);
                 }
             } else {
+                if (!me.IsReady) {
+                    // host migrated to us
+                    NetSession.Instance.ResetSession();
+                    return;
+                }
+
                 Current.RemoveFromKickList(user);
             }
-        }
-
-        if (user == Current.Owner.user && state == SteamNetLobbyMemberState.Left) {
-            NetSession.Instance.RemoveComponent();
-            LeaveLobby();
         }
     }
 
@@ -286,18 +301,7 @@ public class SteamNetLobbyManager : EClass
         }
 
         if (data.lobby.KickListContains(UserData.Me)) {
-            LeaveLobby();
-        }
-
-        if (long.TryParse(Current[$"connection_key_{(ulong)UserData.Me}"], out var key) && key != 0L) {
-            if (data.lobby.HasServer) {
-                // connect as clients
-                if (NetSession.Instance.Connection is not ElinNetClient) {
-                    NetSession.Instance
-                        .InitializeComponent<ElinNetClient>()
-                        .ConnectSteamUser(data.lobby.GameServer.id);
-                }
-            }
+            NetSession.Instance.ResetSession();
         }
     }
 

@@ -1,10 +1,8 @@
 using System.Text;
 using ElinTogether.Helper;
-using ElinTogether.Helper.Steam;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using ReflexCLI.UI;
-using Steamworks;
 using UnityEngine;
 
 namespace ElinTogether.Net;
@@ -53,9 +51,6 @@ public abstract partial class ElinNetBase : EMono
     {
         Stop();
         Socket.Dispose();
-
-        SteamCallback<SteamNetConnectionStatusChangedCallback_t>.Shutdown();
-        SteamUserName.Shutdown();
 
 #if !DEBUG
         EmpMod.SharedHarmony.UnpatchSelf();

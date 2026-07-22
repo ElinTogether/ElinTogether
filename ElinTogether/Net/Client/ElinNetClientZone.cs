@@ -115,6 +115,9 @@ internal partial class ElinNetClient
         }
 
         // reassign zone pos
-        this.StartDeferredCoroutine(() => pc.Stub_Move(response.Pos, Card.MoveType.Force));
+        this.StartDeferredCoroutine(() => {
+            pc.Stub_Move(response.Pos, Card.MoveType.Force);
+            pc.SetDir(pc.dir);
+        });
     }
 }
