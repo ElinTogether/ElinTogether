@@ -21,17 +21,20 @@ public class ThingRequest : ElinDelta
     [Key(2)]
     public required int Num { get; init; }
 
+    public static new bool IsApplying;
+
     protected override void OnApply(ElinNetBase net)
     {
         var thing = Thing?.Find() as Thing;
         if (net.IsClient && _callbackList.TryGetValue(Id, out var value)) {
+            IsApplying = true;
             var (onSuccess, onFail) = value;
             if (thing is not null) {
                 onSuccess(thing);
             } else {
                 onFail?.Invoke();
             }
-
+            IsApplying = false;
             return;
         }
 
