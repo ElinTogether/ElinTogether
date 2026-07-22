@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -14,16 +14,7 @@ public class ElementChangeDelta : ElinDelta
     public required int Element { get; init; }
 
     [Key(2)]
-    public required List<int> Value { get; init; }
-
-    public static ElementChangeDelta Create(Card owner, Element element)
-    {
-        return new() {
-            Owner = owner,
-            Element = element.id,
-            Value = [element.vBase, element.vExp, element.vPotential, element.vTempPotential],
-        };
-    }
+    public required ImmutableArray<int> Value { get; init; }
 
     protected override void OnApply(ElinNetBase net)
     {
@@ -47,5 +38,20 @@ public class ElementChangeDelta : ElinDelta
         if (ele is { vBase: 0, vExp: 0, vPotential: 0, vTempPotential: 0 }) {
             chara.elements.Remove(Element);
         }
+    }
+
+    protected override bool OnRefresh()
+    {
+
+        return true;
+    }
+
+    public static ElementChangeDelta Create(Card owner, Element element)
+    {
+        return new() {
+            Owner = owner,
+            Element = element.id,
+            Value = [element.vBase, element.vExp, element.vPotential, element.vTempPotential],
+        };
     }
 }

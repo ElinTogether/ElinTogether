@@ -48,7 +48,7 @@ public class CardGenDelta : ElinDelta
         };
     }
 
-    internal override bool OnRefresh()
+    protected override bool OnRefresh()
     {
         var card = Card.Find();
         if (card is null || card.isDestroyed) {

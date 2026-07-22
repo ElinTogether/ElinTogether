@@ -37,10 +37,6 @@ public class PingPointDelta : ElinDelta
 
     public void Play()
     {
-        if (!core.IsGameStarted) {
-            return;
-        }
-
         var color = PeerColorizer.GetColor(SenderIndex);
         var effect = Effect.Get("rod");
         effect.sr.color = color;

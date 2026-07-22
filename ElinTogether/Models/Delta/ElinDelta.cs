@@ -63,12 +63,20 @@ namespace ElinTogether.Models;
 [Union(1000, typeof(ElementChangeDelta))]
 public abstract class ElinDelta : EClass
 {
-    [IgnoreMember]
     internal virtual OverrideOrder Order { get; } = OverrideOrder.Stack;
+
+    internal virtual bool RequiresGameStarted { get; } = true;
 
     public static bool IsApplying { get; private set; }
 
-    protected abstract void OnApply(ElinNetBase net);
+    protected virtual void OnApply(ElinNetBase net)
+    {
+    }
+
+    protected virtual bool OnRefresh()
+    {
+        return true;
+    }
 
     public void Apply(ElinNetBase net)
     {
@@ -77,9 +85,9 @@ public abstract class ElinDelta : EClass
         IsApplying = false;
     }
 
-    internal virtual bool OnRefresh()
+    public bool Refresh()
     {
-        return true;
+        return OnRefresh();
     }
 
     internal enum OverrideOrder

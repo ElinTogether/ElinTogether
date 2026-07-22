@@ -16,6 +16,8 @@ public class CharaMoveDelta : ElinDelta
     [Key(2)]
     public Card.MoveType MoveType { get; init; }
 
+    internal override bool RequiresGameStarted => false;
+
     public static implicit operator CharaMoveDelta(Chara chara)
     {
         return new() {

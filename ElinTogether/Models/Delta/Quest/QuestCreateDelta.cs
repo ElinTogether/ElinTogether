@@ -39,19 +39,7 @@ public class QuestCreateDelta : ElinDelta
         }
     }
 
-    public static QuestCreateDelta Create(Quest quest)
-    {
-        _createdInCurrentFrame.Add(quest.uid);
-        return new() {
-            Uid = quest.uid,
-            Owner = quest.person.chara,
-            Data = null!,
-            // unknown at the moment
-            IsGlobal = false,
-        };
-    }
-
-    internal override bool OnRefresh()
+    protected override bool OnRefresh()
     {
         var quest = game.quests.globalList.Find(q => q.uid == Uid);
         if (quest is not null) {
@@ -65,6 +53,18 @@ public class QuestCreateDelta : ElinDelta
 
         Data = LZ4Bytes.Create(quest);
         return true;
+    }
+
+    public static QuestCreateDelta Create(Quest quest)
+    {
+        _createdInCurrentFrame.Add(quest.uid);
+        return new() {
+            Uid = quest.uid,
+            Owner = quest.person.chara,
+            Data = null!,
+            // unknown at the moment
+            IsGlobal = false,
+        };
     }
 
     internal static bool Contains(int uid)

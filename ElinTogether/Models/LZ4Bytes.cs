@@ -11,6 +11,7 @@ namespace ElinTogether.Models;
 public class LZ4Bytes
 {
     private static readonly JsonSerializer _serializer = JsonSerializer.Create(GameIOContext.Settings);
+    public static LZ4Bytes Empty => field ??= new() { Bytes = [] };
 
     [Key(0)]
     public required byte[] Bytes { get; init; }

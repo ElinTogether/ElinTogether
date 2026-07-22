@@ -81,7 +81,7 @@ public class ElinDeltaManager
 
     public void ProcessLocalBatch(ElinNetBase net)
     {
-        var batch = ApplyOverride(FlushInBuffer());
+        var batch = FlushInBuffer();
 #if DEBUG
         var clientFiltered = batch
             .Where(d => d is not (DynamicDelta or GameDelta))
@@ -90,13 +90,16 @@ public class ElinDeltaManager
             _ = 0xb;
         }
 #endif
+        var gameStarted = EClass.core.IsGameStarted;
         foreach (var delta in batch) {
             try {
                 if (delta is null) {
                     continue;
                 }
 
-                delta.Apply(net);
+                if (gameStarted || !delta.RequiresGameStarted) {
+                    delta.Apply(net);
+                }
             } catch (Exception ex) {
                 EmpLog.Debug(ex, "Exception at processing delta {DeltaType}\n{@Delta}",
                     delta.GetType().Name, delta);
@@ -121,7 +124,7 @@ public class ElinDeltaManager
         _outBuffer.AddRange(_outBufferDeferred);
         _outBufferDeferred.Clear();
 
-        return batch;
+        return ApplyOverride(batch);
     }
 
     public List<ElinDelta> FlushInBuffer()
@@ -136,11 +139,11 @@ public class ElinDeltaManager
 
     public List<ElinDelta> ApplyOverride(List<ElinDelta> batch)
     {
-        return batch.Select((delta, index) => new { delta, index })
+        return batch
+            .Select((delta, index) => new { delta, index })
             .GroupBy(x => x.delta.GetType())
             .SelectMany(g => {
-                var order = g.First().delta.Order;
-                return order switch {
+                return g.First().delta.Order switch {
                     ElinDelta.OverrideOrder.Stack => g,
                     ElinDelta.OverrideOrder.First => g.Take(1),
                     ElinDelta.OverrideOrder.Last => g.TakeLast(1),
@@ -154,7 +157,7 @@ public class ElinDeltaManager
 
     public void RefreshBuffer()
     {
-        _outBuffer.AddRange(_outBufferUnrefreshed.Where(delta => delta.OnRefresh()));
+        _outBuffer.AddRange(_outBufferUnrefreshed.Where(delta => delta.Refresh()));
         _outBufferUnrefreshed.Clear();
         CardGenDelta.ClearRecordedUids();
         QuestCreateDelta.ClearRecordedUids();

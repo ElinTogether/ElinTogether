@@ -26,10 +26,6 @@ public class ActThrowDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (!core.IsGameStarted) {
-            return;
-        }
-
         var t = ((Thing)Thing)!.Split(SplitNum);
         ActThrow.Throw(Owner, Point, Target, t, Method);
 

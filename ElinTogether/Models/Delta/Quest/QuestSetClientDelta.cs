@@ -40,7 +40,7 @@ public class QuestSetClientDelta : ElinDelta
         }
     }
 
-    internal override bool OnRefresh()
+    protected override bool OnRefresh()
     {
         return !QuestCreateDelta.Contains(Uid);
     }
