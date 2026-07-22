@@ -21,7 +21,7 @@ internal partial class ElinNetHost
     public int SharedSpeed => (int)States.Values.Average(s => s.Speed);
 
     [ElinGameIOProperty("remote_chara")]
-    private static Dictionary<UserData, int> SavedRemoteCharas
+    private static Dictionary<ulong, int> SavedRemoteCharas
     {
         get => field ??= [];
         set;
