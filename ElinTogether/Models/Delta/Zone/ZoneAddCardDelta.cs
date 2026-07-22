@@ -28,8 +28,12 @@ public class ZoneAddCardDelta : ElinDelta
             return;
         }
 
-        var card = Card.Find();
-        if (card is null) {
+        if (Card.Find() is not { } card) {
+            return;
+        }
+
+        if (card.isDestroyed) {
+            EmpLog.Warning("Attempting to add destroyed item to the zone");
             return;
         }
 
