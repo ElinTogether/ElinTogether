@@ -69,7 +69,7 @@ internal class TabLobbyBrowser : TabEmpBase
     {
         var isClient = NetSession.Instance.Connection is ElinNetClient;
 
-        NetSession.Instance.RemoveComponent();
+        NetSession.Instance.ResetSession();
         LayerElinTogether.Instance?.Reopen();
 
         if (isClient) {

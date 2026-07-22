@@ -61,7 +61,7 @@ internal sealed class EmpMod : BaseUnityPlugin
 
     private void OnDestroy()
     {
-        NetSession.Instance.RemoveComponent();
+        NetSession.Instance.ResetSession();
         NetSession.Instance.Lobby.Shutdown();
 
         SteamUserName.Shutdown();

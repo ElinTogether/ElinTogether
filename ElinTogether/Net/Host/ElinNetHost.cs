@@ -22,7 +22,7 @@ internal partial class ElinNetHost : ElinNetBase
         if (!core.IsGameStarted || player?.chara?.homeBranch?.owner is null) {
             EmpLog.Warning("Cannot start server: game not started or no land claimed");
             EmpPop.Debug("emp_ui_unclaimed_zone".lang());
-            Session.RemoveComponent();
+            Session.ResetSession();
             return;
         }
 
@@ -35,7 +35,7 @@ internal partial class ElinNetHost : ElinNetBase
                 Socket.StartServerSdr();
             }
         } catch {
-            Session.RemoveComponent();
+            Session.ResetSession();
             throw;
         }
 

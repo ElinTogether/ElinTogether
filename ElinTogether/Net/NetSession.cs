@@ -51,6 +51,7 @@ public class NetSession : EClass
             if (!Connection.IsHost && core.IsGameStarted) {
                 ui.RemoveLayers();
                 game.Kill();
+                scene.Init(Scene.Mode.Title);
             }
 
             Object.Destroy(Connection);
@@ -60,6 +61,14 @@ public class NetSession : EClass
         }
 
         Connection = null;
+
+        EmpLog.Information("Connection component removed");
+    }
+
+    public void ResetSession()
+    {
+        RemoveComponent();
+
         Tick = 0;
         Self = null;
         CurrentPlayers.Clear();
@@ -69,7 +78,7 @@ public class NetSession : EClass
 
         SwitchSyncMode(Mode.None);
 
-        EmpLog.Information("Connection component removed, session reset to None");
+        EmpLog.Information("Session reset to None");
     }
 
     public T InitializeComponent<T>() where T : ElinNetBase

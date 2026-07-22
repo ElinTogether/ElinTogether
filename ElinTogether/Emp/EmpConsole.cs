@@ -18,7 +18,7 @@ internal class EmpConsole
     [ConsoleCommand("disconnect")]
     internal static void Disconnect()
     {
-        NetSession.Instance.RemoveComponent();
+        NetSession.Instance.ResetSession();
     }
 
     [ConsoleCommand("kick")]

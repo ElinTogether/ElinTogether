@@ -35,14 +35,14 @@ internal class GameSaveLoad
     [ElinPreLoad]
     internal static void TerminateConnectionOnLoad(GameIOContext context)
     {
-        NetSession.Instance.RemoveComponent();
+        NetSession.Instance.ResetSession();
     }
 
     [ElinPostSceneInit]
     internal static void TerminateConnectionOnLoad(Scene.Mode mode)
     {
         if (mode == Scene.Mode.Title) {
-            NetSession.Instance.RemoveComponent();
+            NetSession.Instance.ResetSession();
         }
     }
 }
