@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "name": "Attach to Elin",
+            "type": "vstuc",
+            "request": "attach",
+            "endPoint": "127.0.0.1:55555",
+        }
+    ]
+}
