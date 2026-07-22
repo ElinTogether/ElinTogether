@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ElinTogether.API.SourceValidation;
 using ElinTogether.Net;
 using ElinTogether.Patches;
@@ -8,6 +9,10 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class CharaTaskCancelDelta : ElinDelta
 {
+    public const int ForceCancelCountRequired = 2;
+
+    public static readonly Dictionary<int, int> LastCancelDelta = [];
+
     [Key(0)]
     public required RemoteCard Owner { get; init; }
 
@@ -26,14 +31,25 @@ public class CharaTaskCancelDelta : ElinDelta
             ai = ai.parent;
         }
 
+        if (!LastCancelDelta.TryAdd(Owner.Uid, 1)) {
+            LastCancelDelta[Owner.Uid]++;
+        }
+
         if (ai is not { status: AIAct.Status.Running }) {
-            return;
+            if (LastCancelDelta.GetValueOrDefault(Owner.Uid) >= ForceCancelCountRequired) {
+                EmpLog.Warning("Force cancelling possibly stuck act {ActId}, {ActType} on chara {Uid}",
+                    ActId, type.Name, Owner.Uid);
+            } else {
+                return;
+            }
         }
 
         // relay to clients
         if (net.IsHost) {
             net.Delta.AddRemote(this);
         }
+
+        LastCancelDelta.Remove(Owner.Uid);
 
         ai.Stub_Cancel();
     }

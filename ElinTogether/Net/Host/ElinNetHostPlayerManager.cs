@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
-using HeathenEngineering.SteamworksIntegration;
 
 namespace ElinTogether.Net;
 

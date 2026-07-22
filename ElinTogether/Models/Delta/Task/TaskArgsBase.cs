@@ -41,6 +41,7 @@ namespace ElinTogether.Models;
 [Union(219, typeof(AISlaughterArgs))]
 [Union(220, typeof(AIStealArgs))]
 [Union(221, typeof(AIFuckArgs))]
+[Union(222, typeof(AIUseCrafterArgs))]
 public abstract class TaskArgsBase
 {
     public abstract AIAct CreateSubAct();

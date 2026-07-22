@@ -21,25 +21,25 @@ internal static class CharaTaskProgressEvents
     [HarmonyPrefix]
     internal static void OnProgressBegin(AIProgress __instance)
     {
+        if (NetSession.Instance.Connection is not { } connection) {
+            return;
+        }
+
         if (__instance.owner is not { } owner) {
             return;
         }
 
-        switch (NetSession.Instance.Connection) {
-            case ElinNetHost:
-                break;
-            case ElinNetClient:
+        if (__instance is not DelegateProgress) {
+            if (connection.IsClient) {
                 // we can only complete remote progress with delta
                 __instance.progress = -int.MaxValue;
-                break;
-            default:
-                return;
-        }
+            }
 
-        if (owner.ai is GoalRemote) {
-            // for host, run it only when remote players run it
-            __instance.progress = -int.MaxValue;
-            return;
+            if (owner.ai is GoalRemote) {
+                // for host, run it only when remote players run it
+                __instance.progress = -int.MaxValue;
+                return;
+            }
         }
 
         NetSession.Instance.Connection.Delta.AddRemote(new CharaProgressBeginDelta {

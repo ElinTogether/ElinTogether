@@ -21,12 +21,9 @@ public class ActThrowDelta : ElinDelta
     [Key(4)]
     public required ThrowMethod Method { get; init; }
 
-    [Key(5)]
-    public required int SplitNum { get; init; }
-
     protected override void OnApply(ElinNetBase net)
     {
-        var t = ((Thing)Thing)!.Split(SplitNum);
+        var t = ((Thing)Thing)!.Split(Thing.Num);
         ActThrow.Throw(Owner, Point, Target, t, Method);
 
         if (net.IsHost) {
@@ -36,7 +33,6 @@ public class ActThrowDelta : ElinDelta
                 Target = Target,
                 Thing = t,
                 Method = Method,
-                SplitNum = SplitNum,
             });
         }
     }

@@ -19,19 +19,12 @@ internal class ActThrowEvent
 
         // perform throw on host via ActThrowDelta
         if (connection.IsHost || c.IsPC) {
-            // split
-            var thing = t;
-            if (t.uid < 0 && CardCache.Find(-t.uid) is Thing source) {
-                thing = source;
-            }
-
             __state = new() {
                 Owner = c,
                 Point = p,
                 Target = target,
-                Thing = thing,
+                Thing = t,
                 Method = method,
-                SplitNum = t.Num,
             };
         }
 

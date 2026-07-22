@@ -30,6 +30,9 @@ public class RemoteCard : IEquatable<RemoteCard>
     [Key(3)]
     public LZ4Bytes? Data { get; set; }
 
+    [Key(4)]
+    public int Num { get; set; }
+
     public bool Equals(RemoteCard? other)
     {
         if (other is null) {
@@ -50,6 +53,11 @@ public class RemoteCard : IEquatable<RemoteCard>
             return null;
         }
 
+        var num = card.Num;
+        if (card.uid < 0 && CardCache.Find(-card.uid) is Thing source) {
+            card = source;
+        }
+
         if (NetSession.Instance.IsHost && addToCache) {
             CardCache.Add(card);
         }
@@ -60,6 +68,7 @@ public class RemoteCard : IEquatable<RemoteCard>
             // do not compress parent
             Parent = card.parentCard,
             Data = withData ? LZ4Bytes.Create(card) : null,
+            Num = num,
         };
     }
 
