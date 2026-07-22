@@ -75,7 +75,8 @@ public class CharaStateSnapshot : EClass
             return;
         }
 
-        if (chara.currentZone?.uid != CurrentZoneUid) {
+        if (chara.currentZone?.uid != CurrentZoneUid ||
+            (chara.currentZone?.map is { } map && !map.charas.Contains(chara))) {
             // chara hasn't been brought to the same map yet
             if (CurrentZoneUid == NetSession.Instance.CurrentZone?.uid) {
                 NetSession.Instance.CurrentZone.AddCard(chara, Pos);
