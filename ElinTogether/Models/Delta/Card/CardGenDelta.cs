@@ -40,7 +40,7 @@ public class CardGenDelta : ElinDelta
 
     internal static CardGenDelta Create(Card card)
     {
-        var remoteCard = RemoteCard.Create(card);
+        var remoteCard = RemoteCard.Create(card, addToCache: true);
         _createdInCurrentFrame.Add(remoteCard.Uid);
 
         return new CardGenDelta {
@@ -59,7 +59,7 @@ public class CardGenDelta : ElinDelta
             if (_createdInCurrentFrame.Contains(parent.uid)) {
                 return false;
             }
-        } else if (card.things.Count == 0 && !card.IsKeptAlive) {
+        } else if (card.parent is null && card.things.Count == 0 && !card.IsKeptAlive) {
             return false;
         }
 

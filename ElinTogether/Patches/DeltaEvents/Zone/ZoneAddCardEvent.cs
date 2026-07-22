@@ -21,7 +21,7 @@ internal static class ZoneAddCardEvent
         }
 
         // only host can propagate add card event to remotes
-        var card = RemoteCard.Create(t, true);
+        var card = RemoteCard.Create(t);
         connection.Delta.AddRemote(new ZoneAddCardDelta {
             Card = card,
             ZoneUid = __instance.uid,

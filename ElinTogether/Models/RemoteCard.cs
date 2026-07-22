@@ -44,13 +44,13 @@ public class RemoteCard : IEquatable<RemoteCard>
     }
 
     [return: NotNullIfNotNull("card")]
-    public static RemoteCard? Create(Card? card, bool withData = false)
+    public static RemoteCard? Create(Card? card, bool addToCache = false, bool withData = false)
     {
         if (card is null) {
             return null;
         }
 
-        if (NetSession.Instance.IsHost && withData) {
+        if (NetSession.Instance.IsHost && addToCache) {
             CardCache.Add(card);
         }
 
