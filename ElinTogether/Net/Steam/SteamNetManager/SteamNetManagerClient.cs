@@ -1,4 +1,5 @@
 using ElinTogether.Common;
+using HeathenEngineering.SteamworksIntegration;
 using Steamworks;
 
 namespace ElinTogether.Net.Steam;
@@ -8,10 +9,10 @@ public partial class SteamNetManager
     /// <summary>
     ///     Connect by steam ID using valve SDR
     /// </summary>
-    public void Connect(CSteamID steamID)
+    public void Connect(UserData steamID)
     {
         EmpLog.Debug("Connecting by steam id {RemoteIdentity}",
-            (ulong)steamID);
+            steamID);
 
         var identity = new SteamNetworkingIdentity();
         identity.SetSteamID(steamID);

@@ -75,7 +75,7 @@ internal class TabSessionInfo : TabEmpBase
         // info
         var infoGroup = bannerGroup.Vertical();
         infoGroup.LayoutElement().preferredWidth = 1f;
-        infoGroup.TextFlavor(player.Name.TagColor(PeerColorizer.GetColorInt(player.Index)));
+        infoGroup.TextFlavor(player.User.Name.TagColor(PeerColorizer.GetColorInt(player.Index)));
         infoGroup.TextMedium(chara.Name);
         infoGroup.Text(BuildPingStat(player));
 

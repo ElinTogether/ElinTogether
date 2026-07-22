@@ -29,6 +29,6 @@ public class SessionPlayersSnapshot
         // resolve self state
         session.Self =
             session.CurrentPlayers.Find(n => session.Player is { } player && n.CharaUid == player.uid) ??
-            session.CurrentPlayers.Find(n => session.LocalPeerUid is not null && n.PeerUid == (ulong)session.LocalPeerUid);
+            session.CurrentPlayers.Find(n => n.User.IsMe);
     }
 }

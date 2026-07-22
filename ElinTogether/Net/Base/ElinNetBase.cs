@@ -79,8 +79,6 @@ public abstract partial class ElinNetBase : EMono
 
         Socket.Initialize(Router);
 
-        Session.LocalPeerUid = (ulong)SteamUser.GetSteamID();
-
         RegisterPackets();
 
         CreateValidation();
@@ -116,7 +114,7 @@ public abstract partial class ElinNetBase : EMono
         for (var i = 0; i < peers.Count; ++i) {
             var peer = peers[i];
 
-            sb.AppendLine(peer.Colorize(peer.Name));
+            sb.AppendLine(peer.Colorize(peer.User.Name));
             sb.AppendLine(peer.Stat.ToString());
         }
 

@@ -1,6 +1,6 @@
+using System;
 using ElinTogether.Common;
 using ElinTogether.Models;
-using Steamworks;
 using UnityEngine.Events;
 
 namespace ElinTogether.Net;
@@ -83,7 +83,7 @@ internal partial class ElinNetClient
         EmpLog.Information("Connecting to steam lobby {LobbyId}",
             request.LobbyId);
 
-        if (Session.Lobby.Current != (CSteamID)request.LobbyId) {
+        if (Session.Lobby.Current != request.LobbyId) {
             Session.Lobby.ConnectLobby(request.LobbyId);
         }
     }
@@ -103,16 +103,18 @@ internal partial class ElinNetClient
 
     public void ReconnectSelf()
     {
-        if (!Session.Lobby.Current.IsValid) {
+        var lobby = Session.Lobby.Current;
+        if (!lobby.IsValid) {
             EmpLog.Warning("Cannot reconnect: not in a lobby");
             return;
         }
 
         EmpLog.Information("Manual reconnect to steam lobby {LobbyId}",
-            Session.Lobby.Current);
+            lobby);
 
         // Disconnect triggers OnPeerDisconnected → RemoveComponent → LeaveLobby
         Socket.Disconnect(Host, EmpDisconnectInfo.HostReconnectRequest);
-        CoroutineHelper.Deferred(() => Session.Lobby.ConnectLobby(Session.Lobby.Current));
+        CoroutineHelper.Deferred(() => Session.Lobby.ConnectLobby(lobby));
+    }
     }
 }

@@ -1,3 +1,4 @@
+using HeathenEngineering.SteamworksIntegration;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -9,5 +10,5 @@ namespace ElinTogether.Models;
 public class SteamLobbyRequest
 {
     [Key(0)]
-    public ulong LobbyId { get; init; }
+    public LobbyData LobbyId { get; init; }
 }

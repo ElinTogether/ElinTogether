@@ -1,4 +1,5 @@
 using ElinTogether.Net;
+using HeathenEngineering.SteamworksIntegration;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -11,5 +12,5 @@ public class SessionReconnectRequest
     };
 
     [Key(0)]
-    public required ulong LobbyId { get; init; }
+    public required LobbyData LobbyId { get; init; }
 }

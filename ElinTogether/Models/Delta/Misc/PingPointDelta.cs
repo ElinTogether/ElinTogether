@@ -47,7 +47,7 @@ public class PingPointDelta : ElinDelta
         effect.Play(Pos);
 
         var sender = NetSession.Instance.CurrentPlayers.Find(p => p.Index == SenderIndex);
-        var name = sender?.Name ?? "emp_ui_unknown_player".Loc(SenderIndex);
+        var name = sender?.User.Name ?? "emp_ui_unknown_player".Loc(SenderIndex);
         WidgetPopText.Say("emp_ui_ping".Loc(name.TagColor(color)), sprite: UIHelper.FindSprite("emo2_hint"));
     }
 

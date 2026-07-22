@@ -4,7 +4,7 @@ using System.Linq;
 using ElinTogether.Common;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
-using Steamworks;
+using HeathenEngineering.SteamworksIntegration;
 
 namespace ElinTogether.Net;
 
@@ -44,8 +44,7 @@ internal partial class ElinNetHost : ElinNetBase
         // host also registers self state
         var selfState = States[0] = new() {
             Index = 0,
-            PeerUid = (ulong)SteamUser.GetSteamID(),
-            Name = SteamFriends.GetPersonaName(),
+            User = UserData.Me,
             CharaUid = player.uidChara,
         };
 
@@ -113,7 +112,7 @@ internal partial class ElinNetHost : ElinNetBase
     protected override void OnPeerConnected(ISteamNetPeer peer)
     {
         var sw = Stopwatch.StartNew();
-        while (peer.Name is null && sw.ElapsedMilliseconds <= 500) {
+        while (peer.User.Name is null && sw.ElapsedMilliseconds <= 500) {
             // do a spin wait to pin the username
         }
 
@@ -142,14 +141,14 @@ internal partial class ElinNetHost : ElinNetBase
                 RemoveRemoteChara(remoteChara);
                 EmpLog.Information("Player {Name} remote chara {Uid} removed from map. " +
                                    "Saved chara retained for future new connections.",
-                    state.Name, remoteChara.uid);
+                    state.User.Name, remoteChara.uid);
             }
 
             Session.CurrentPlayers.Remove(state);
         }
 
         EmpLog.Debug("Player {Name} disconnected. {Remaining} players remaining",
-            state?.Name ?? "unknown", States.Count);
+            state?.User.Name ?? "unknown", States.Count);
 
         Broadcast(SessionPlayersSnapshot.Create());
 

@@ -61,7 +61,7 @@ internal static partial class EmpLogger
             return lc
                 .Destructure.ByTransforming<SteamNetPeer>(p => new {
                     Id = p.Colorize(p.Id),
-                    Name = p.Colorize(p.Name),
+                    Name = p.Colorize(p.User.Name),
                 })
                 .Destructure.ByTransforming<SteamNetPeerStat>(ps => new {
                     Sent = ps.BytesSent.ToAllocateString(),
@@ -78,8 +78,8 @@ internal static partial class EmpLogger
                 })
                 .Destructure.ByTransforming<NetPeerState>(ps => new {
                     ps.Index,
-                    Uid = ps.PeerUid,
-                    ps.Name,
+                    Uid = ps.User,
+                    ps.User.Name,
                 })
                 .Destructure.ByTransforming<NetSession>(s => new {
                     Type = s.IsHost ? "Host" : "Client",

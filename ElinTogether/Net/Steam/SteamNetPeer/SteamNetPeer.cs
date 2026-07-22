@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
-using ElinTogether.Helper.Steam;
+using HeathenEngineering.SteamworksIntegration;
+using HeathenEngineering.SteamworksIntegration.API;
 using Steamworks;
 using UnityEngine;
 
@@ -17,6 +19,7 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     private static readonly Func<IntPtr, IntPtr, IntPtr> _reallocator = Marshal.ReAllocHGlobal;
 
     private static int _nextId = -1;
+    private static readonly Dictionary<UserData, int> _peerIdHistory = [];
 
     // ReSharper disable once ChangeFieldTypeToSystemThreadingLock
     protected readonly object ArenaLock = new();
@@ -29,25 +32,25 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     protected IntPtr Arena;
     protected int ArenaSize;
 
-    public SteamNetPeer(HSteamNetConnection connection, ISteamNetSerializer serializer, int? preferredId = null)
+    public SteamNetPeer(HSteamNetConnection connection, ISteamNetSerializer serializer)
     {
         Connection = connection;
 
         SteamNetworkingSockets.GetConnectionInfo(connection, out var info);
         RemoteIdentity = info.m_identityRemote;
 
-        Uid = RemoteIdentity.GetSteamID64();
-        SteamUserName.PinUserName(RemoteIdentity.GetSteamID64(), name => Name = name);
+        User = RemoteIdentity.GetSteamID64();
+        Friends.Client.RequestUserInformation(User, true);
 
-        if (preferredId is { } id) {
-            Id = id;
+        if (_peerIdHistory.TryGetValue(User, out var preferredId)) {
             int current;
-            while ((current = Volatile.Read(ref _nextId)) < id) {
-                Interlocked.CompareExchange(ref _nextId, id, current);
+            while ((current = Volatile.Read(ref _nextId)) < preferredId) {
+                Interlocked.CompareExchange(ref _nextId, preferredId, current);
             }
         } else {
-            Id = Interlocked.Increment(ref _nextId);
+            preferredId = Interlocked.Increment(ref _nextId);
         }
+        Id = _peerIdHistory[User] = preferredId;
 
         Serializer = serializer;
         ArenaSize = MemoryArenaInitialSize;
@@ -60,17 +63,15 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
             : ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_None;
 
     public virtual int Id { get; }
-    public ulong Uid { get; }
-    public virtual string? Name { get; private set; }
-
-
-    public SteamNetPeerStat Stat => field ??= new();
+    public UserData User { get; }
 
     public virtual bool IsConnected =>
         ConnectionState is
             ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting or
             ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_FindingRoute or
             ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected;
+
+    public SteamNetPeerStat Stat => field ??= new();
 
     public virtual bool Send<T>(T message, SteamNetSendFlag sendFlags = SteamNetSendFlag.Reliable)
     {

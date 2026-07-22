@@ -1,3 +1,4 @@
+using HeathenEngineering.SteamworksIntegration;
 using MessagePack;
 
 namespace ElinTogether.Net;
@@ -9,33 +10,30 @@ public class NetPeerState
     public required int Index { get; init; }
 
     [Key(1)]
-    public required ulong PeerUid { get; init; }
+    public required UserData User { get; init; }
 
     [Key(2)]
-    public required string Name { get; init; }
-
-    [Key(3)]
     public required int CharaUid { get; init; }
 
-    [Key(4)]
+    [Key(3)]
     public int Speed { get; set; }
 
-    [Key(5)]
+    [Key(4)]
     public int LastAct { get; set; }
 
-    [Key(6)]
+    [Key(5)]
     public int LastReceivedTick { get; set; } = -1;
 
-    [Key(7)]
+    [Key(6)]
     public int LastPingMs { get; set; }
 
-    [Key(8)]
+    [Key(7)]
     public float AvgPingMs { get; set; }
 
-    [Key(9)]
+    [Key(8)]
     public float ConnectionQualityLocal { get; set; }
 
-    [Key(10)]
+    [Key(9)]
     public float ConnectionQualityRemote { get; set; }
 
     public Chara? FindChara()

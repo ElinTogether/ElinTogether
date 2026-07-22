@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
+using HeathenEngineering.SteamworksIntegration;
 
 namespace ElinTogether.Net;
 
@@ -20,10 +21,26 @@ internal partial class ElinNetHost
     public int SharedSpeed => (int)States.Values.Average(s => s.Speed);
 
     [ElinGameIOProperty("remote_chara")]
-    private static Dictionary<ulong, int> SavedRemoteCharas
+    private static Dictionary<UserData, int> SavedRemoteCharas
     {
         get => field ??= [];
         set;
+    }
+
+    public static void RemoveRemoteChara(Chara remoteChara, bool broadcast = true)
+    {
+        if (!core.IsGameStarted) {
+            return;
+        }
+
+        pc.party.RemoveMember(remoteChara);
+        _zone.RemoveCard(remoteChara);
+
+        if (broadcast && NetSession.Instance.Connection is ElinNetHost host) {
+            host.Delta.AddRemote(new CharaRemoveFromGameDelta {
+                Owner = remoteChara,
+            });
+        }
     }
 
     /// <summary>
@@ -34,7 +51,7 @@ internal partial class ElinNetHost
         EmpLog.Information("Preparing player {@Peer} for joining",
             peer);
 
-        if (!SavedRemoteCharas.TryGetValue(peer.Uid, out var charaUid) ||
+        if (!SavedRemoteCharas.TryGetValue(peer.User, out var charaUid) ||
             game.cards.globalCharas.Find(charaUid) is not { } chara) {
             EmpLog.Debug("Remote character does not exist, request for new character generation");
             peer.Send(new SessionNewPlayerRequest());
@@ -59,8 +76,7 @@ internal partial class ElinNetHost
 
         var state = States[peer.Id] = new() {
             Index = peer.Id,
-            PeerUid = peer.Uid,
-            Name = peer.Name!,
+            User = peer.User,
             CharaUid = chara.uid,
         };
 
@@ -85,21 +101,9 @@ internal partial class ElinNetHost
         chara.mapInt.Remove(CINT.IsPC);
         game.cards.AssignUID(chara);
 
-        SavedRemoteCharas[peer.Uid] = chara.uid;
+        SavedRemoteCharas[peer.User] = chara.uid;
 
         SendSaveProbe(chara, peer);
-    }
-
-    public static void RemoveRemoteChara(Chara remoteChara, bool broadcast = true)
-    {
-        pc.party.RemoveMember(remoteChara);
-        _zone.RemoveCard(remoteChara);
-
-        if (broadcast && Session.Connection is ElinNetHost host) {
-            host.Delta.AddRemote(new CharaRemoveFromGameDelta {
-                Owner = remoteChara,
-            });
-        }
     }
 
     /// <summary>

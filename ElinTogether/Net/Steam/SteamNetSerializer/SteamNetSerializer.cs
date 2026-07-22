@@ -1,6 +1,8 @@
 using System;
 using ElinTogether.Helper;
+using ElinTogether.Helper.Steam;
 using MessagePack;
+using MessagePack.Resolvers;
 
 namespace ElinTogether.Net.Steam;
 
@@ -8,10 +10,16 @@ internal class SteamNetSerializer : ISteamNetSerializer
 {
     private const int HeaderSize = sizeof(uint);
 
+    private static readonly MessagePackSerializerOptions _options =
+        MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                SteamDataResolver.Default,
+                StandardResolver.Instance));
+
     public byte[] Serialize<T>(T obj)
     {
         var typeHash = SteamNetTypeRegistry.GetHash<T>();
-        var payload = MessagePackSerializer.Serialize(obj);
+        var payload = MessagePackSerializer.Serialize(obj, _options);
 
         var bytes = new byte[HeaderSize + payload.Length];
 
@@ -23,7 +31,7 @@ internal class SteamNetSerializer : ISteamNetSerializer
 
     public object Deserialize(byte[] data, Type type)
     {
-        return MessagePackSerializer.Deserialize(type, data)!;
+        return MessagePackSerializer.Deserialize(type, data, _options)!;
     }
 
     public static (uint typeHash, byte[] payload) ExtractTypeAndPayload(byte[] data)

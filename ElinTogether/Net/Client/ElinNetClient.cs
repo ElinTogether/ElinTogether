@@ -76,18 +76,13 @@ internal partial class ElinNetClient : ElinNetBase
     /// </summary>
     protected override void OnPeerConnected(ISteamNetPeer host)
     {
+        if (!host.IsConnected) {
+            EmpPop.Information("emp_error_connection".lang());
+            Session.ResetSession();
+            return;
+        }
+
         EmpPop.Information("emp_connecting_host".lang(), Host);
-
-        // CLIENT-ONLY
-        var sw = Stopwatch.StartNew();
-        while (host.Name is null && sw.ElapsedMilliseconds <= 500) {
-            // do a spin wait here to pin the username
-            // ignore if steam can't respond in 500ms
-        }
-
-        if (host.Name is null) {
-            EmpLog.Warning("Host {Uid} name resolution timed out", host.Uid);
-        }
 
         this.StartDeferredCoroutine(StartWorldStateUpdate, () => core.IsGameStarted);
 

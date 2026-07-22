@@ -12,7 +12,6 @@ internal sealed class SteamNetPeerBroadcast(ISteamNetSerializer serializer)
     private readonly List<SteamNetPeer> _targets = [];
 
     public override int Id => -1;
-    public override string Name => "emp-broadcast";
     public override bool IsConnected => _targets.Any(p => p.IsConnected);
 
     public void AddTarget(SteamNetPeer peer)

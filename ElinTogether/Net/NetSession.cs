@@ -32,13 +32,14 @@ public class NetSession : EClass
     public int SharedSpeed { get; internal set; }
     public Zone? CurrentZone { get; internal set; }
     public int Tick { get; internal set; }
+
+    // currently, this is Steam LobbyData
     public ulong SessionId { get; internal set; }
     public NetSessionRules Rules { get; internal set; } = NetSessionRules.Default;
 
     public List<NetPeerState> CurrentPlayers => field ??= [];
     public SteamNetLobbyManager Lobby => field ??= new();
     public NetPeerState? Self { get; internal set; }
-    public ulong? LocalPeerUid { get; internal set; }
 
     public bool HasActiveConnection => Connection != null && Connection.IsConnected;
     public bool IsHost => Connection?.IsHost is not false;

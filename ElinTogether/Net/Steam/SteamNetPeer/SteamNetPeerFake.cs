@@ -1,13 +1,13 @@
+using HeathenEngineering.SteamworksIntegration;
+using Steamworks;
+
 namespace ElinTogether.Net.Steam;
 
 internal class SteamNetPeerFake : ISteamNetPeer
 {
     public int Id => -1;
-    public ulong Uid => unchecked((ulong)-1);
-    public string Name => "emp-no-connection";
+    public UserData User => CSteamID.Nil;
     public bool IsConnected => true;
-
-
     public SteamNetPeerStat Stat => field ??= new();
 
     public bool Send(byte[] bytes, SteamNetSendFlag sendFlags = SteamNetSendFlag.Reliable)
