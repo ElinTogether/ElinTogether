@@ -12,6 +12,8 @@ public class ThingRequest : ElinDelta
 
     private static int _nextId;
 
+    public static new bool IsApplying;
+
     [Key(0)]
     public required int Id { get; init; }
 
@@ -20,8 +22,6 @@ public class ThingRequest : ElinDelta
 
     [Key(2)]
     public required int Num { get; init; }
-
-    public static new bool IsApplying;
 
     protected override void OnApply(ElinNetBase net)
     {

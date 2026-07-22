@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Models;
-using HarmonyLib;
 
 namespace ElinTogether.Net;
 
@@ -26,12 +24,12 @@ public class ElinDeltaManager
     /// </summary>
     private readonly List<ElinDelta> _outBuffer = [];
 
-    private readonly List<ElinDelta> _outBufferUnrefreshed = [];
-
     /// <summary>
     ///     Remote deferred
     /// </summary>
     private readonly List<ElinDelta> _outBufferDeferred = [];
+
+    private readonly List<ElinDelta> _outBufferUnrefreshed = [];
 
     // smoothed stat
     private float _averageIn;

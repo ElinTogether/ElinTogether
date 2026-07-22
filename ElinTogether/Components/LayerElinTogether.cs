@@ -42,7 +42,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
     {
         base.OnAfterAddLayer();
 
-        if (!Data.StartingTab.IsEmpty()) {
+        if (!string.IsNullOrEmpty(Data.StartingTab)) {
             _lastOpenedTab = Data.StartingTab;
         }
 

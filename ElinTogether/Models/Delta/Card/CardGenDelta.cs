@@ -10,10 +10,10 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class CardGenDelta : ElinDelta
 {
+    private static readonly HashSet<int> _createdInCurrentFrame = [];
+
     [Key(0)]
     public required RemoteCard Card { get; init; }
-
-    private static readonly HashSet<int> _createdInCurrentFrame = [];
 
     protected override void OnApply(ElinNetBase net)
     {
@@ -40,10 +40,10 @@ public class CardGenDelta : ElinDelta
 
     internal static CardGenDelta Create(Card card)
     {
-        var remoteCard = RemoteCard.Create(card, addToCache: true);
+        var remoteCard = RemoteCard.Create(card, true);
         _createdInCurrentFrame.Add(remoteCard.Uid);
 
-        return new CardGenDelta {
+        return new() {
             Card = remoteCard,
         };
     }

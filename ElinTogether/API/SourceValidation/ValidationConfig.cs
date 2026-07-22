@@ -45,7 +45,7 @@ public static class ValidationConfig
     public static ValidationFlags GetConfiguredFlags(string? config = null)
     {
         var raw = (config ?? EmpConfig.Server.SourceValidationSet.Value)?.Trim().Trim(',');
-        if (raw.IsEmpty() || raw! == "none") {
+        if (string.IsNullOrEmpty(raw) || raw! == "none") {
             return ValidationFlags.None;
         }
 
@@ -80,7 +80,7 @@ public static class ValidationConfig
         var filePaths = new List<string>(DefaultFilePaths);
 
         var raw = EmpConfig.Server.SourceValidationSet.Value?.Trim();
-        if (raw.IsEmpty()) {
+        if (string.IsNullOrEmpty(raw)) {
             return filePaths;
         }
 

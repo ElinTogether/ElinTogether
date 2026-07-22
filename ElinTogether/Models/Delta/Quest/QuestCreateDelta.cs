@@ -7,6 +7,8 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class QuestCreateDelta : ElinDelta
 {
+    private static readonly HashSet<int> _createdInCurrentFrame = [];
+
     [IgnoreMember]
     public Chara? Owner;
 
@@ -18,8 +20,6 @@ public class QuestCreateDelta : ElinDelta
 
     [Key(1)]
     public required bool IsGlobal { get; set; }
-
-    private static readonly HashSet<int> _createdInCurrentFrame = [];
 
     protected override void OnApply(ElinNetBase net)
     {

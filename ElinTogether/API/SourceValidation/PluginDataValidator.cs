@@ -61,7 +61,7 @@ internal class PluginDataValidator : ISourceValidator
 
             try {
                 var asmPath = plugin.GetType().Assembly.Location;
-                if (asmPath.IsEmpty() || !File.Exists(asmPath)) {
+                if (string.IsNullOrEmpty(asmPath) || !File.Exists(asmPath)) {
                     continue;
                 }
 

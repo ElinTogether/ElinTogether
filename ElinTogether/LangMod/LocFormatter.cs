@@ -56,7 +56,7 @@ public static class LocFormatter
         public string Loc(params object?[] args)
         {
             var lang = Lang.isBuiltin
-                ? row.text_L.IsEmpty() && !row.text.IsEmpty() ? row.text : row.text_L
+                ? string.IsNullOrEmpty(row.text_L) && !string.IsNullOrEmpty(row.text) ? row.text : row.text_L
                 : Lang.isJP
                     ? row.text_JP
                     : row.text;

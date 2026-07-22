@@ -12,7 +12,7 @@ public static class StringHelper
     {
         public string Truncate(int length)
         {
-            return input.IsEmpty() || input.RemoveTagColor().Length <= length ? input : $"{input[..length]} ...";
+            return string.IsNullOrEmpty(input) || input.RemoveTagColor().Length <= length ? input : $"{input[..length]} ...";
         }
 
         public string TruncateAllLines(int length)
