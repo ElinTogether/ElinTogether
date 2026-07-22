@@ -25,17 +25,18 @@ internal class CoreSynchronizationContext : SynchronizationContext
     [HarmonyPostfix]
     internal static void OnCoreUpdateEnd()
     {
-        if (NetSession.Instance.Connection is null || !core.IsGameStarted) {
+        if (NetSession.Instance.Connection is not { } connection || !core.IsGameStarted) {
             return;
         }
 
         CardCache.Update();
         NetProfileSynchronizationContext.Update();
         QuestSynchronizationContext.Update();
+        connection.Delta.RefreshBuffer();
         switch (NetSession.Instance.Connection) {
             case ElinNetHost host:
                 if (!EMono.scene.paused) {
-                    host.Delta.AddRemote(new GameDelta {
+                    host.Delta.AddRemoteImmediate(new GameDelta {
                         Delta = Core.gameDelta,
                     });
                 }

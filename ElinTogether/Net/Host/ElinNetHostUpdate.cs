@@ -63,9 +63,6 @@ internal partial class ElinNetHost
             return;
         }
 
-        CardGenDelta.Refresh(deltaList);
-        QuestCreateDelta.Refresh(deltaList);
-
         Broadcast(new WorldStateDeltaList {
             DeltaList = deltaList,
         });

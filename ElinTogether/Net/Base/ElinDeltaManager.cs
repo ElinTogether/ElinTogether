@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Models;
+using HarmonyLib;
 
 namespace ElinTogether.Net;
 
@@ -13,29 +14,31 @@ public class ElinDeltaManager
     /// <summary>
     ///     Coming in
     /// </summary>
-    private readonly ConcurrentQueue<ElinDelta> _inBuffer = [];
+    private readonly List<ElinDelta> _inBuffer = [];
 
     /// <summary>
     ///     Local deferred
     /// </summary>
-    private readonly ConcurrentQueue<ElinDelta> _inBufferDeferred = [];
+    private readonly List<ElinDelta> _inBufferDeferred = [];
 
     /// <summary>
     ///     Sending out
     /// </summary>
-    private readonly ConcurrentQueue<ElinDelta> _outBuffer = [];
+    private readonly List<ElinDelta> _outBuffer = [];
+
+    private readonly List<ElinDelta> _outBufferUnrefreshed = [];
 
     /// <summary>
     ///     Remote deferred
     /// </summary>
-    private readonly ConcurrentQueue<ElinDelta> _outBufferDeferred = [];
+    private readonly List<ElinDelta> _outBufferDeferred = [];
 
     // smoothed stat
     private float _averageIn;
     private float _averageOut;
 
-    public bool HasPendingOut => !_outBuffer.IsEmpty || !_outBufferDeferred.IsEmpty;
-    public bool HasPendingIn => !_inBuffer.IsEmpty || !_inBufferDeferred.IsEmpty;
+    public bool HasPendingOut => _outBuffer.Count > 0 ||  _outBufferDeferred.Count > 0;
+    public bool HasPendingIn =>  _inBuffer.Count > 0 ||  _inBufferDeferred.Count > 0;
     public bool IsIdle => !HasPendingOut && !HasPendingIn;
 
     public int BatchCount { get; private set; }
@@ -46,7 +49,12 @@ public class ElinDeltaManager
     /// </summary>
     public void AddRemote(ElinDelta delta)
     {
-        _outBuffer.Enqueue(delta);
+        _outBufferUnrefreshed.Add(delta);
+    }
+    
+    public void AddRemoteImmediate(ElinDelta delta)
+    {
+        _outBuffer.Add(delta);
     }
 
     /// <summary>
@@ -54,7 +62,7 @@ public class ElinDeltaManager
     /// </summary>
     public void DeferRemote(ElinDelta delta)
     {
-        _outBufferDeferred.Enqueue(delta);
+        _outBufferDeferred.Add(delta);
     }
 
     /// <summary>
@@ -62,7 +70,7 @@ public class ElinDeltaManager
     /// </summary>
     public void AddLocal(ElinDelta delta)
     {
-        _inBuffer.Enqueue(delta);
+        _inBuffer.Add(delta);
     }
 
     /// <summary>
@@ -70,12 +78,12 @@ public class ElinDeltaManager
     /// </summary>
     public void DeferLocal(ElinDelta delta)
     {
-        _inBufferDeferred.Enqueue(delta);
+        _inBufferDeferred.Add(delta);
     }
 
-    public void ProcessLocalBatch(ElinNetBase net, int batchSize = -1)
+    public void ProcessLocalBatch(ElinNetBase net)
     {
-        var batch = ApplyOverride(FlushInBuffer(batchSize));
+        var batch = ApplyOverride(FlushInBuffer());
 #if DEBUG
         var clientFiltered = batch
             .Where(d => d is not (DynamicDelta or GameDelta))
@@ -104,46 +112,26 @@ public class ElinDeltaManager
         BatchCount++;
     }
 
-    public List<ElinDelta> FlushOutBuffer(int batchSize = -1)
+    public List<ElinDelta> FlushOutBuffer()
     {
-        var batch = new List<ElinDelta>();
-        if (_outBuffer.IsEmpty) {
-            return batch;
+        if (_outBufferUnrefreshed.Count > 0) {
+            EmpLog.Warning("Unrefreshed buffer is not emptied");
         }
 
-        var count = 0;
-        var max = batchSize > 0 ? batchSize : _outBuffer.Count;
-
-        while (count < max && _outBuffer.TryDequeue(out var delta)) {
-            batch.Add(delta);
-            count++;
-        }
-
-        while (_outBufferDeferred.TryDequeue(out var deferred)) {
-            _outBuffer.Enqueue(deferred);
-        }
+        var batch = _outBuffer.ToList();
+        _outBuffer.Clear();
+        _outBuffer.AddRange(_outBufferDeferred);
+        _outBufferDeferred.Clear();
 
         return batch;
     }
 
-    public List<ElinDelta> FlushInBuffer(int batchSize = -1)
+    public List<ElinDelta> FlushInBuffer()
     {
-        var batch = new List<ElinDelta>();
-        if (_inBuffer.IsEmpty) {
-            return batch;
-        }
-
-        var count = 0;
-        var max = batchSize > 0 ? batchSize : _inBuffer.Count;
-
-        while (count < max && _inBuffer.TryDequeue(out var delta)) {
-            batch.Add(delta);
-            count++;
-        }
-
-        while (_inBufferDeferred.TryDequeue(out var deferred)) {
-            _inBuffer.Enqueue(deferred);
-        }
+        var batch = _inBuffer.ToList();
+        _inBuffer.Clear();
+        _inBuffer.AddRange(_inBufferDeferred);
+        _inBufferDeferred.Clear();
 
         return batch;
     }
@@ -166,10 +154,20 @@ public class ElinDeltaManager
             .ToList();
     }
 
+    public void RefreshBuffer()
+    {
+        CardGenDelta.Refresh(_outBufferUnrefreshed);
+        QuestCreateDelta.Refresh(_outBufferUnrefreshed);
+
+        _outBuffer.AddRange(_outBufferUnrefreshed);
+        _outBufferUnrefreshed.Clear();
+    }
+
     public void ClearOut()
     {
         _outBuffer.Clear();
         _outBufferDeferred.Clear();
+        _outBufferUnrefreshed.Clear();
     }
 
     public void ClearIn()
