@@ -98,6 +98,7 @@ public class SteamNetLobbyManager : EClass
     {
         Current.Leave();
         Current = CSteamID.Nil;
+        SteamFriends.ClearRichPresence();
     }
 
     /// <summary>
@@ -152,6 +153,17 @@ public class SteamNetLobbyManager : EClass
 #endif
         SteamMatchmaking.AddRequestLobbyListDistanceFilter(ELobbyDistanceFilter.k_ELobbyDistanceFilterWorldwide);
         SteamMatchmaking.RequestLobbyList();
+    }
+
+    /// <summary>
+    ///     Update SteamFriends grouping
+    /// </summary>
+    public void UpdateRichPresence()
+    {
+        // assign friend grouping
+        var sessionKey = NetSession.Instance.SessionId.ToString();
+        SteamFriends.SetRichPresence("steam_player_group", sessionKey);
+        SteamFriends.SetRichPresence("steam_player_group_size", Current.MemberCount.ToString());
     }
 
     /// <summary>
@@ -216,6 +228,8 @@ public class SteamNetLobbyManager : EClass
         Current = enter.Lobby;
         NetSession.Instance.SessionId = enter.Lobby;
 
+        UpdateRichPresence();
+
         // assign friend grouping
         var sessionKey = NetSession.Instance.SessionId.ToString();
         SteamFriends.SetRichPresence("steam_player_group", sessionKey);
@@ -260,6 +274,8 @@ public class SteamNetLobbyManager : EClass
 
     private void OnLobbyChatUpdate(LobbyChatUpdate_t update)
     {
+        UpdateRichPresence();
+
         UserData user = update.m_ulSteamIDUserChanged;
         var state = (SteamNetLobbyMemberState)update.m_rgfChatMemberStateChange;
 
