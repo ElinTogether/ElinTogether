@@ -10,6 +10,9 @@ public class CharaTickDelta : ElinDelta
     [Key(0)]
     public required RemoteCard Owner { get; init; }
 
+    [Key(1)]
+    public required float ActTime { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Owner.Find() is not Chara chara) {
@@ -28,5 +31,8 @@ public class CharaTickDelta : ElinDelta
 
         // do a remote tick
         chara.Stub_Tick();
+
+        // fix act pacing for renderer
+        chara.actTime = ActTime;
     }
 }
