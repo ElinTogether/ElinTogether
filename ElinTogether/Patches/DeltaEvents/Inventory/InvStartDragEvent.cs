@@ -22,6 +22,7 @@ internal static class InvStartDragEvent
                 Thing = thing,
             });
 
+            CardCache.KeepAlive(thing);
             return true;
         }
 
