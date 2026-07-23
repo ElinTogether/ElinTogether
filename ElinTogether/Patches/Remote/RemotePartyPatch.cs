@@ -1,3 +1,5 @@
+using ElinTogether.Helper;
+using ElinTogether.Net;
 using HarmonyLib;
 
 namespace ElinTogether.Patches;
@@ -11,5 +13,12 @@ internal class RemotePartyPatch
     {
         __result = __instance.party is { } party && party.members.Contains(__instance);
         return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Party), nameof(Party.RemoveMember))]
+    internal static bool OnRemoveRemoteParty(Party __instance, Chara c)
+    {
+        return !NetSession.Instance.HasActiveConnection || !c.IsPlayer;
     }
 }
