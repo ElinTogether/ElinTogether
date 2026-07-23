@@ -29,12 +29,15 @@ internal class FovCellLightOffsetPatch
         foreach (var (pos, offset) in __instance.lastPoints) {
             var cell = Fov.map.GetCell(pos);
 
+            cell.pcSync = shared.Contains(pos);
+            if (cell.pcSync) {
+                continue;
+            }
+
             cell.light -= offset;
             cell.lightR -= (ushort)(offset * __instance.r / 2);
             cell.lightG -= (ushort)(offset * __instance.g / 2);
             cell.lightB -= (ushort)(offset * __instance.b / 2);
-
-            cell.pcSync = shared.Contains(pos);
         }
 
         __instance.lastPoints.Clear();
