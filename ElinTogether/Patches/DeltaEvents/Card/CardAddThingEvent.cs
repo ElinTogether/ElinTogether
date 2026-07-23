@@ -15,6 +15,10 @@ internal static class CardAddThingEvent
             return true;
         }
 
+        if (__instance.GetBool("emp_creating")) {
+            return true;
+        }
+
         if (!CardCache.Contains(__instance)) {
             return false;
         }

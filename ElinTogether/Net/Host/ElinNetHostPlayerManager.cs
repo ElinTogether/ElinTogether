@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
+using UnityEngine;
 
 namespace ElinTogether.Net;
 
@@ -97,8 +98,46 @@ internal partial class ElinNetHost
             peer);
 
         var chara = response.Chara.Decompress<Chara>();
-        chara.mapInt.Remove(CINT.IsPC);
+        chara.SetBool(CINT.IsPC, false);
+        chara.SetBool("emp_creating", true);
         game.cards.AssignUID(chara);
+
+        var host = pc;
+        try {
+            player.chara = chara;
+
+            chara.hp = chara.MaxHP;
+            chara.SetFaith(game.religions.list[0]);
+            chara.elements.SetBase(SKILL.strategy, 1);
+            chara.elements.SetBase(ABILITY.AI_Meditate, 1);
+            chara.elements.SetBase(ABILITY.ActQuickCraft, 1);
+            chara.elements.SetBase(ABILITY.AI_SelfHarm, 1);
+            chara.elements.SetBase(ABILITY.ActPray, 1);
+            foreach (var e in chara.elements.dict.Values.ToList()) {
+                if (e.Value == 0) {
+                    chara.elements.Remove(e.id);
+                    continue;
+                }
+                if (e.HasTag("primary")) {
+                    e.vTempPotential = Mathf.Max(30, (e.ValueWithoutLink - 8) * 7);
+                }
+            }
+
+            foreach (var slot in chara.body.slots) {
+                chara.body.Unequip(slot);
+            }
+            chara.things.DestroyAll();
+            chara.elements.CheckSkillActions();
+            chara.hunger.value = 30;
+            chara.CalculateMaxStamina();
+            chara.stamina.Set(chara.stamina.max / 2);
+            chara.Refresh();
+
+            player.CreateEquip();
+        } finally {
+            chara.SetBool("emp_creating", false);
+            player.chara = host;
+        }
 
         SavedRemoteCharas[peer.User] = chara.uid;
 
