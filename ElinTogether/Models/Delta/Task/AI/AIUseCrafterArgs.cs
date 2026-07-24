@@ -22,7 +22,7 @@ public class AIUseCrafterArgs : TaskArgsBase
         return new() {
             Factory = ai.crafter.owner,
             Duration = ai.crafter.GetDuration(ai, ai.crafter.GetCostSp(ai)),
-            Ingredients = ai.ings.Select(t => (RemoteCard)t).ToList(),
+            Ingredients = [..ai.ings.Select(t => (RemoteCard)t)],
         };
     }
 

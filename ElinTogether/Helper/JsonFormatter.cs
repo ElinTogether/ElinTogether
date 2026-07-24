@@ -15,6 +15,19 @@ public static class JsonFormatter
         ContractResolver = new WritablePropertiesOnlyResolver(),
     };
 
+    extension(object context)
+    {
+        public string ToCompactJson()
+        {
+            return JsonConvert.SerializeObject(context, Formatting.None, Settings);
+        }
+
+        public string ToIndentedJson()
+        {
+            return JsonConvert.SerializeObject(context, Formatting.Indented, Settings);
+        }
+    }
+
     public class WritablePropertiesOnlyResolver : DefaultContractResolver
     {
         protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
@@ -27,19 +40,6 @@ public static class JsonFormatter
             }
 
             return property;
-        }
-    }
-
-    extension(object context)
-    {
-        public string ToCompactJson()
-        {
-            return JsonConvert.SerializeObject(context, Formatting.None, Settings);
-        }
-
-        public string ToIndentedJson()
-        {
-            return JsonConvert.SerializeObject(context, Formatting.Indented, Settings);
         }
     }
 }

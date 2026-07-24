@@ -27,10 +27,10 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     public readonly HSteamNetConnection Connection;
     public readonly SteamNetworkingIdentity RemoteIdentity;
     protected readonly ISteamNetSerializer Serializer;
-    private bool _disposed;
 
     protected IntPtr Arena;
     protected int ArenaSize;
+    private bool _disposed;
 
     public SteamNetPeer(HSteamNetConnection connection, ISteamNetSerializer serializer)
     {

@@ -32,7 +32,7 @@ internal static partial class EmpLogger
 #if DEBUG
             .MinimumLevel.Verbose()
 #else
-            .MinimumLevel.Debug()
+            .MinimumLevel.Verbose() // beta testing
 #endif
             .ConfigureDestructures()
             .ConfigureEnrichers()
@@ -127,7 +127,7 @@ internal static partial class EmpLogger
     {
         internal string RedactedIp =>
             _hashCache.GetOrAdd(address,
-                ip => Convert.ToBase64String(ip.ToString().GetSha256Hash().ToArray(), 0, 6)
+                ip => Convert.ToBase64String([..ip.ToString().GetSha256Hash()], 0, 6)
                     .TrimEnd('=')
                     .Replace('+', '-')
                     .Replace('/', '_'));

@@ -16,8 +16,8 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     private readonly ISteamNetSerializer _serializer = serializer ?? new SteamNetSerializer();
 
     private bool _disposed;
-    private ISteamNetListener? _listener;
     private HSteamListenSocket _listenSocket;
+    private ISteamNetListener? _listener;
     private HSteamNetPollGroup _pollGroup;
 
     public bool IsHost { get; private set; }
@@ -42,7 +42,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     /// <summary>
     ///     All connected peers
     /// </summary>
-    public IReadOnlyList<ISteamNetPeer> Peers => _peers.ToList();
+    public IReadOnlyList<ISteamNetPeer> Peers => [.._peers];
 
     /// <summary>
     ///     Any connected peers

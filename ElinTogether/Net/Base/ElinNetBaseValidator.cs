@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using ElinTogether.API.SourceValidation;
 
 namespace ElinTogether.Net;
@@ -47,7 +46,7 @@ public partial class ElinNetBase
             return [];
         }
 
-        return SourceList.Keys.ToList();
+        return [..SourceList.Keys];
     }
 
     protected List<string> GetValidationFilePaths()

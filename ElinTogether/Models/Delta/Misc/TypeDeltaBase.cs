@@ -44,12 +44,14 @@ public class TypeDeltaBase : ElinDelta
                     return [];
                 }
 
-                return GetBaseTypes(type)
-                    .Reverse()
-                    .SelectMany(t => t.GetMembers(TypeFlags))
-                    .Where(m => m is FieldInfo { IsInitOnly: false } ||
-                                (m is PropertyInfo { CanRead: true, CanWrite: true } p && p.GetIndexParameters().Length == 0))
-                    .ToArray();
+                return [
+                    ..GetBaseTypes(type)
+                        .Reverse()
+                        .SelectMany(t => t.GetMembers(TypeFlags))
+                        .Where(m => m is FieldInfo { IsInitOnly: false } ||
+                                    (m is PropertyInfo { CanRead: true, CanWrite: true } p &&
+                                     p.GetIndexParameters().Length == 0)),
+                ];
 
                 static IEnumerable<Type> GetBaseTypes(Type t)
                 {

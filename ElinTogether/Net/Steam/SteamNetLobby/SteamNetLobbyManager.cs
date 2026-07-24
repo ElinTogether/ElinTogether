@@ -15,10 +15,10 @@ public class SteamNetLobbyManager : EClass
 {
     private readonly HashSet<UserData> _blocked = [];
     private readonly HashSet<UserData> _invited = [];
-    private Action<LobbyData[]>? _deferOnComplete;
-    private bool _shutdown;
 
     public LobbyData Current;
+    private Action<LobbyData[]>? _deferOnComplete;
+    private bool _shutdown;
 
     internal SteamNetLobbyManager()
     {
@@ -335,7 +335,7 @@ public class SteamNetLobbyManager : EClass
             lobbies.Add(lobbyId);
         }
 
-        _deferOnComplete?.Invoke(lobbies.ToArray());
+        _deferOnComplete?.Invoke([..lobbies]);
         _deferOnComplete = null;
     }
 

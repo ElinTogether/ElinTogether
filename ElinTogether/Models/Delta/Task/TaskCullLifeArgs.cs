@@ -16,9 +16,10 @@ public class TaskCullLifeArgs : TaskArgsBase
     {
         return new() {
             Dest = task.dest,
-            ListSkip = task.listSkip
-                .Select(c => RemoteCard.Create(c))
-                .ToArray(),
+            ListSkip = [
+                ..task.listSkip
+                    .Select(c => RemoteCard.Create(c)),
+            ],
         };
     }
 
@@ -26,10 +27,11 @@ public class TaskCullLifeArgs : TaskArgsBase
     {
         return new TaskCullLife {
             dest = Dest,
-            listSkip = ListSkip
-                .Select(c => c.Find() as Chara)
-                .OfType<Chara>()
-                .ToHashSet(),
+            listSkip = [
+                ..ListSkip
+                    .Select(c => c.Find() as Chara)
+                    .OfType<Chara>(),
+            ],
         };
     }
 }

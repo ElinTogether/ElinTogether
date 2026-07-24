@@ -71,7 +71,7 @@ internal static class CharaProgressCompleteEvent
         host.Delta.AddRemote(new CharaProgressCompleteDelta {
             Owner = __instance.owner,
             CompletedActId = ActMappingValidator.Default.ActToIdMapping[__instance.parent.GetType()],
-            DeltaList = DeltaList.ToList(),
+            DeltaList = [..DeltaList],
         });
 
         DeltaList.Clear();

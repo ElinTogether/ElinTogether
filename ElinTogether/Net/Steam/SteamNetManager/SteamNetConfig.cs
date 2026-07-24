@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.Helper.String;
 using Steamworks;
@@ -17,7 +16,7 @@ public class SteamNetConfig
 
     public SteamNetworkingConfigValue_t[] Create()
     {
-        return _configs.Values.ToArray();
+        return [.._configs.Values];
     }
 
     public SteamNetConfig Set(ESteamNetworkingConfigValue value, int data)

@@ -24,12 +24,6 @@ internal static class RemoteCardHelper
         }
     }
 
-    internal class RemoteCharaNetProfile
-    {
-        public WeakReference<Thing> RemoteMainHand { get; set; } = new(null!, false);
-        public WeakReference<Thing> RemoteOffHand { get; set; } = new(null!, false);
-    }
-
     extension(Chara chara)
     {
         internal RemoteCharaNetProfile NetProfile => RemoteCardNetProfile.GetOrAdd(chara, chara => new());
@@ -46,5 +40,11 @@ internal static class RemoteCardHelper
         }
 
         internal bool IsPlayer => chara.IsPC || chara.IsRemotePlayer;
+    }
+
+    internal class RemoteCharaNetProfile
+    {
+        public WeakReference<Thing> RemoteMainHand { get; set; } = new(null!, false);
+        public WeakReference<Thing> RemoteOffHand { get; set; } = new(null!, false);
     }
 }

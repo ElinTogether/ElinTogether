@@ -139,20 +139,21 @@ public class ElinDeltaManager
 
     public List<ElinDelta> ApplyOverride(List<ElinDelta> batch)
     {
-        return batch
-            .Select((delta, index) => new { delta, index })
-            .GroupBy(x => x.delta.GetType())
-            .SelectMany(g => {
-                return g.First().delta.Order switch {
-                    ElinDelta.OverrideOrder.Stack => g,
-                    ElinDelta.OverrideOrder.First => g.Take(1),
-                    ElinDelta.OverrideOrder.Last => g.TakeLast(1),
-                    _ => throw new ArgumentOutOfRangeException(),
-                };
-            })
-            .OrderBy(x => x.index)
-            .Select(x => x.delta)
-            .ToList();
+        return [
+            ..batch
+                .Select((delta, index) => new { delta, index })
+                .GroupBy(x => x.delta.GetType())
+                .SelectMany(g => {
+                    return g.First().delta.Order switch {
+                        ElinDelta.OverrideOrder.Stack => g,
+                        ElinDelta.OverrideOrder.First => g.Take(1),
+                        ElinDelta.OverrideOrder.Last => g.TakeLast(1),
+                        _ => throw new ArgumentOutOfRangeException(),
+                    };
+                })
+                .OrderBy(x => x.index)
+                .Select(x => x.delta),
+        ];
     }
 
     public void RefreshBuffer()
