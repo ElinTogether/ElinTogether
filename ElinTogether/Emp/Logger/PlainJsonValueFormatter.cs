@@ -1,5 +1,5 @@
 using System.IO;
-using ElinTogether.Helper.String;
+using EModding.Helper;
 using Serilog.Formatting.Json;
 
 namespace ElinTogether;

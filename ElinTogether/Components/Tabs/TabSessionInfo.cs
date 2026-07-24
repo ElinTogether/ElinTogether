@@ -1,6 +1,5 @@
 using ElinTogether.Common;
 using ElinTogether.Helper;
-using ElinTogether.Helper.String;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
 using UnityEngine;
@@ -75,7 +74,7 @@ internal class TabSessionInfo : TabEmpBase
         // info
         var infoGroup = bannerGroup.Vertical();
         infoGroup.LayoutElement().preferredWidth = 1f;
-        infoGroup.TextFlavor(player.User.Name.TagColor(PeerColorizer.GetColorInt(player.Index)));
+        infoGroup.TextFlavor(player.User.Name.TagColor(PeerColorizer.GetColor(player.Index)));
         infoGroup.TextMedium(chara.Name);
         infoGroup.Text(BuildPingStat(player));
 

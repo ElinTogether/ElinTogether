@@ -1,6 +1,6 @@
 using System.Linq;
 using System.Runtime.CompilerServices;
-using ElinTogether.Helper.String;
+using EModding.Helper;
 using Serilog.Core;
 using Serilog.Events;
 using UnityEngine;
