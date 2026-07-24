@@ -26,7 +26,7 @@ public sealed class SteamNetPeerStat
 
     public string ToStringSimplified()
     {
-        return $"Ping={AvgPingMs:F1}ms\tOut={AvgBpsOut / 1024f:F1} KB/s\tIn={AvgBpsIn / 1024f:F1} KB/s";
+        return $"Ping={AvgPingMs:F1}ms Out={AvgBpsOut / 1024f:F1} KB/s In={AvgBpsIn / 1024f:F1} KB/s";
     }
 
     public override string ToString()

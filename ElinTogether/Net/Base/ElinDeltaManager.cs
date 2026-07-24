@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using ElinTogether.Models;
 
 namespace ElinTogether.Net;
@@ -8,6 +9,7 @@ namespace ElinTogether.Net;
 public class ElinDeltaManager
 {
     private const float Smoothing = 0.5f;
+    private const int MaxSnapshots = 200;
 
     /// <summary>
     ///     Coming in
@@ -31,16 +33,18 @@ public class ElinDeltaManager
 
     private readonly List<ElinDelta> _outBufferUnrefreshed = [];
 
-    // smoothed stat
-    private float _averageIn;
-    private float _averageOut;
+    private readonly List<BatchSnapshot> _snapshots = [];
 
     public bool HasPendingOut => _outBuffer.Count > 0 || _outBufferDeferred.Count > 0;
     public bool HasPendingIn => _inBuffer.Count > 0 || _inBufferDeferred.Count > 0;
     public bool IsIdle => !HasPendingOut && !HasPendingIn;
 
     public int BatchCount { get; private set; }
-    public bool EnableDebugging { get; set; }
+    public float AverageOut { get; private set; }
+    public float AverageIn { get; private set; }
+
+    public IReadOnlyList<BatchSnapshot> Snapshots => _snapshots;
+    public bool IsCapturing { get; private set; }
 
     /// <summary>
     ///     Sending out
@@ -50,6 +54,9 @@ public class ElinDeltaManager
         _outBufferUnrefreshed.Add(delta);
     }
 
+    /// <summary>
+    ///     Sending out, insert into buffer
+    /// </summary>
     public void AddRemoteImmediate(ElinDelta delta)
     {
         _outBuffer.Add(delta);
@@ -84,12 +91,15 @@ public class ElinDeltaManager
         var batch = FlushInBuffer();
 #if DEBUG
         var clientFiltered = batch
-            .Where(d => d is not (DynamicDelta or GameDelta))
+            .Where(d => d is not (DynamicDelta or GameDelta or CharaTickDelta or CharaTickConditionDelta))
             .ToList();
         if (clientFiltered.Count > 0) {
-            _ = 0xb;
+            CaptureBatch(clientFiltered);
         }
+#else
+        CaptureBatch(batch);
 #endif
+
         var gameStarted = EClass.core.IsGameStarted;
         foreach (var delta in batch) {
             try {
@@ -101,15 +111,18 @@ public class ElinDeltaManager
                     delta.Apply(net);
                 }
             } catch (Exception ex) {
+                var deltaType = delta.GetType().Name;
+                var desyncInfo = ex.ToString();
+                if (IsCapturing) {
+                    GetLatestSnapshot()?.Desyncs.Add(new(BatchCount, desyncInfo, deltaType));
+                }
+                net.ReportDesync(desyncInfo);
                 EmpLog.Debug(ex, "Exception at processing delta {DeltaType}\n{@Delta}",
-                    delta.GetType().Name, delta);
+                    deltaType, delta);
                 // noexcept
             }
         }
-        if (EnableDebugging) {
-            EmpLog.Debug("[Delta] ProcessLocalBatch #{Batch}: applied {TotalDeltaCount} deltas\n{DeltaList}",
-                BatchCount, batch.Count, string.Join('\n', batch.Select(c => c.GetType().Name)));
-        }
+
         BatchCount++;
     }
 
@@ -179,8 +192,8 @@ public class ElinDeltaManager
 
     public void UpdateAverages()
     {
-        _averageOut = _averageOut * (1f - Smoothing) + _outBuffer.Count * Smoothing;
-        _averageIn = _averageIn * (1f - Smoothing) + _inBuffer.Count * Smoothing;
+        AverageOut = AverageOut * (1f - Smoothing) + _outBuffer.Count * Smoothing;
+        AverageIn = AverageIn * (1f - Smoothing) + _inBuffer.Count * Smoothing;
     }
 
     public (int outBuffer, int outDeferred, int inBuffer, int inDeferred) GetCounts()
@@ -191,6 +204,82 @@ public class ElinDeltaManager
     public override string ToString()
     {
         UpdateAverages();
-        return $"Delta Out={_averageOut:F1}\tDelta In={_averageIn:F1}";
+        return $"Delta [Out={AverageOut:F1}, In={AverageIn:F1}]";
     }
+
+    public void StartCapture()
+    {
+        IsCapturing = true;
+        EmpLog.Debug("[Delta] Snapshot capture started");
+    }
+
+    public void StopCapture()
+    {
+        IsCapturing = false;
+        EmpLog.Debug("[Delta] Snapshot capture stopped ({Count} snapshots recorded)",
+            _snapshots.Count);
+    }
+
+    public void ClearSnapshots()
+    {
+        _snapshots.Clear();
+        EmpLog.Debug("[Delta] Snapshots cleared");
+    }
+
+    public string GetSnapshotSummary(int count = 10)
+    {
+        if (_snapshots.Count == 0) {
+            return "No snapshots captured.\n";
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"-- Snapshots ({_snapshots.Count}) --");
+
+        foreach (var snap in _snapshots.TakeLast(count)) {
+            var typeList = string.Join(", ", snap.DeltaTypes);
+            sb.AppendLine($"#{snap.Batch,-6} {snap.DeltaTypes.Count,3} {snap.Timestamp:HH:mm:ss.fff} [{typeList}]");
+        }
+
+        return sb.ToString();
+    }
+
+    public BatchSnapshot? GetLatestSnapshot()
+    {
+        return _snapshots is [.., var last] ? last : null;
+    }
+
+    private void CaptureBatch(List<ElinDelta> batch)
+    {
+        if (!IsCapturing) {
+            return;
+        }
+
+        if (_snapshots.Count >= MaxSnapshots) {
+            _snapshots.RemoveAt(0);
+        }
+
+        _snapshots.Add(new(
+            BatchCount,
+            DateTime.Now,
+            [..batch.Select(d => d.GetType().Name.Replace("Delta", ""))],
+            _outBuffer.Count,
+            _inBuffer.Count,
+            []
+        ));
+    }
+
+    public record BatchSnapshot(
+        int Batch,
+        DateTime Timestamp,
+        List<string> DeltaTypes,
+        int OutBufferCount,
+        int InBufferCount,
+        List<DesyncSnapshot> Desyncs
+    );
+
+    public record DesyncSnapshot(
+        int Batch,
+        string Info,
+        string DeltaType
+    );
 }

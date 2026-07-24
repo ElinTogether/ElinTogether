@@ -1,5 +1,3 @@
-using System.Text;
-using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using ReflexCLI.UI;
@@ -15,7 +13,6 @@ public abstract partial class ElinNetBase : EMono
     protected readonly TickScheduler Scheduler = new();
     protected readonly SteamNetManager Socket = new();
     private bool _initialized;
-    protected EGui? DebugProgress;
 
     public abstract bool IsHost { get; }
 
@@ -88,7 +85,7 @@ public abstract partial class ElinNetBase : EMono
         }
 
         Socket.Stop();
-        DebugProgress?.Kill();
+        StopDebugGui();
     }
 
     internal void DisconnectPeer(int peerIndex, string reason)
@@ -99,22 +96,5 @@ public abstract partial class ElinNetBase : EMono
                 return;
             }
         }
-    }
-
-    protected string BuildDebugInfo()
-    {
-        var sb = new StringBuilder();
-
-        var peers = Socket.Peers;
-        for (var i = 0; i < peers.Count; ++i) {
-            var peer = peers[i];
-
-            sb.AppendLine(peer.Colorize(peer.User.Name));
-            sb.AppendLine(peer.Stat.ToString());
-        }
-
-        sb.Append(Delta);
-
-        return sb.ToString();
     }
 }

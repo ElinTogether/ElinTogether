@@ -127,7 +127,9 @@ internal partial class ElinNetHost : ElinNetBase
         });
 
 #if DEBUG
-        DebugProgress ??= EGui.CreatePopup(() => new(BuildDebugInfo()), _ => false, 1f);
+        if (!IsDebugGuiActive) {
+            StartDebugGui();
+        }
 #endif
     }
 
@@ -155,7 +157,7 @@ internal partial class ElinNetHost : ElinNetBase
         // keep ticking but no update
         if (States.Count == 0) {
             PauseWorldStateUpdate();
-            DebugProgress?.Kill();
+            StopDebugGui();
         }
     }
 

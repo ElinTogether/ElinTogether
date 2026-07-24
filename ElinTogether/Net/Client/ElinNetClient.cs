@@ -103,7 +103,9 @@ internal partial class ElinNetClient : ElinNetBase
         this.StartDeferredCoroutine(StartWorldStateUpdate, () => core.IsGameStarted);
 
 #if DEBUG
-        DebugProgress ??= EGui.CreatePopup(() => new(BuildDebugInfo()), _ => false, 1f);
+        if (!IsDebugGuiActive) {
+            StartDebugGui();
+        }
 #endif
     }
 
