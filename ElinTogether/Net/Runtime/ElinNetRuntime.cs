@@ -82,11 +82,7 @@ public partial class ElinNetBase
         sb.Append($"Delta B=#{Delta.BatchCount} Out={Delta.AverageOut:F1} In={Delta.AverageIn:F1}");
 
         if (Desyncs > 0) {
-            sb.Append($"Desync=<color=red>{Desyncs}</color>");
-        }
-
-        if (Delta.IsCapturing) {
-            sb.Append($"Capturing last {Delta.Snapshots.Count} batches");
+            sb.Append($"\nDesync=<color=red>{Desyncs}</color>");
         }
 
         return sb.ToString();
