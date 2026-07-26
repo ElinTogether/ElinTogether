@@ -33,6 +33,7 @@ namespace ElinTogether.Models;
 [Union(214, typeof(CharaHitFishDelta))]
 [Union(215, typeof(CharaGiveGiftDelta))]
 [Union(216, typeof(CharaSwitchHeldDelta))]
+[Union(217, typeof(CharaRemoveFromGameDelta))]
 // Thing
 [Union(300, typeof(ThingDelta))]
 [Union(301, typeof(ThingRequest))]
