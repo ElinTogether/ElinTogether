@@ -43,6 +43,8 @@ public class CardDamageHpDelta : ElinDelta
             return;
         }
 
-        card.Stub_DamageHP(Dmg, Ele, EleP, AttackSource, Origin, ShowEffect, Weapon, OriginalTarget, ResistPenetrationLevel);
+        using (Simulate(net.IsHost)) {
+            card.Stub_DamageHP(Dmg, Ele, EleP, AttackSource, Origin, ShowEffect, Weapon, OriginalTarget, ResistPenetrationLevel);
+        }
     }
 }

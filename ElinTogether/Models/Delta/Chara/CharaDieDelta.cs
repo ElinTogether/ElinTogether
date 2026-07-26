@@ -1,4 +1,5 @@
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -33,6 +34,6 @@ public class CharaDieDelta : ElinDelta
         }
 
         var element = ElementId is null ? null : Element.Create(ElementId.Value);
-        chara.Die(element, Origin, AttackSource, OriginalTarget);
+        chara.Stub_Die(element, Origin, AttackSource, OriginalTarget);
     }
 }
