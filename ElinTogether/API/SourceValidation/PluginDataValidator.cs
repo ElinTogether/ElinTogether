@@ -65,7 +65,8 @@ internal class PluginDataValidator : ISourceValidator
                     continue;
                 }
 
-                result[modId] = asmPath.GetSha256Code();
+                using var fs = File.Open(asmPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                result[modId] = fs.GetSha256Code();
             } catch (Exception ex) {
                 EmpLog.Warning("Failed to hash plugin {ModId}: {Error}", modId, ex.Message);
                 result[modId] = $"error:{ex.Message}";

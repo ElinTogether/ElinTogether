@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ElinTogether.Models;
 
@@ -48,7 +49,8 @@ public class FileDataValidator(IEnumerable<string> filePaths) : ISourceValidator
             }
 
             try {
-                result[path] = fullPath.FullName.GetSha256Code();
+                using var fs = File.Open(fullPath.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                result[path] = fs.GetSha256Code();
             } catch (Exception ex) {
                 EmpLog.Warning("Failed to hash file {FilePath}: {Error}", path, ex.Message);
                 result[path] = $"error:{ex.Message}";
