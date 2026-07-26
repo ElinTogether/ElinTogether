@@ -25,7 +25,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
   pull-requests: write
   actions: read
 
@@ -33,6 +32,10 @@ jobs:
   build-and-upload:
     name: Build
     runs-on: windows-latest
+
+    outputs:
+      file_version: ${{ steps.build.outputs.file_version }}
+      file_version_short: ${{ steps.build.outputs.file_version_short }}
 
     strategy:
       fail-fast: false
@@ -100,9 +103,11 @@ jobs:
           $fileVersionShort = $fileVersion.Split('.')[0..2] -join '.'
           $debugSuffix = if ('${{ matrix.configuration }}' -eq 'Debug') { 'debug' } else { 'release' }
 
+          $artifactName = "${{ inputs.artifact_name_prefix }}-ci-builds-$fileVersionShort-${{ matrix.version }}-${{ steps.deps.outputs.tag }}-$debugSuffix"
+
           echo "file_version=$fileVersion" >> $env:GITHUB_OUTPUT
           echo "file_version_short=$fileVersionShort" >> $env:GITHUB_OUTPUT
-          echo "file_name=${{ inputs.artifact_name_prefix }}-ci-builds-$fileVersion-${{ steps.deps.outputs.tag }}-$debugSuffix" >> $env:GITHUB_OUTPUT
+          echo "file_name=$artifactName" >> $env:GITHUB_OUTPUT
           echo "out_dir=$outDir" >> $env:GITHUB_OUTPUT
           echo "debug_suffix=$debugSuffix" >> $env:GITHUB_OUTPUT
 
@@ -112,49 +117,71 @@ jobs:
           name: ${{ steps.build.outputs.file_name }}
           path: ${{ steps.build.outputs.out_dir }}
 
-      - name: Prepare Release
-        if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
-        id: artifact
+  release:
+    name: Release
+    needs: build-and-upload
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: ${{ github.workspace }}/dist
+
+      - name: Pack Artifacts & Changelog
+        id: pack
         shell: pwsh
         run: |
-          $source = "${{ steps.build.outputs.out_dir }}"
-          $debugSuffix = "${{ steps.build.outputs.debug_suffix }}"
-          $destination = "${{ steps.build.outputs.out_dir }}\${{ inputs.artifact_name_prefix }}-ci-builds-${{ steps.deps.outputs.tag }}-$debugSuffix.zip"
+          $tag = "${{ inputs.tag_prefix }}-${{ needs.build-and-upload.outputs.file_version_short }}"
+          $outDir = "${{ github.workspace }}/release"
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
-          Compress-Archive -Path "$source\*" -DestinationPath $destination -Force
-          $path = $destination -Replace '\\', '/'
+          Get-ChildItem -Path "${{ github.workspace }}/dist" -Directory | ForEach-Object {
+            Compress-Archive -Path "$($_.FullName)/*" -DestinationPath "$outDir/$($_.Name).zip" -Force
+          }
 
-          $tag = "${{ inputs.tag_prefix }}-${{ steps.build.outputs.file_version_short }}"
+          $verParts = "${{ needs.build-and-upload.outputs.file_version_short }}".Split('.')
+          $series = "$($verParts[0]).$($verParts[1])"
 
-          gh api repos/${{ github.repository }}/git/refs/tags/$tag -q "if .object then true else false" 2>$null
-          if ($LASTEXITCODE -eq 0) { gh api -X DELETE repos/${{ github.repository }}/git/refs/tags/$tag }
-          if (git tag -l $tag) { git tag -d $tag }
+          $lastTag = @(git tag --list "${{ inputs.tag_prefix }}-*" --sort=-v:refname |
+            ? { $_ -ne $tag })[0]
 
-          $lastTag = git describe --tags --abbrev=0 --match="${{ inputs.tag_prefix }}-*"
-          $lastTagSha = git rev-parse $lastTag
-          $commits = @(git log "$($lastTag)..HEAD" --date=format:"%y-%m-%d %H:%M" --pretty=format:"- %cd %h %s @%an" |
-            ? { $_ -notmatch "cleanup|Merge branch" })
+          if ($lastTag -and $lastTag -notlike "${{ inputs.tag_prefix }}-$series.*") {
+            $prevSeries = ($lastTag -replace "^${{ inputs.tag_prefix }}-") -replace '\.\d+$'
+            $seriesFirst = @(git tag --list "${{ inputs.tag_prefix }}-$prevSeries.*" --sort=v:refname)[0]
+            if ($seriesFirst) { $lastTag = $seriesFirst }
+          }
 
-          $changelog = @(
-            "Last Tag ($lastTag): $lastTagSha"
-            ""
-          )
-          $changelog += $commits
+          $changelog = if ($lastTag) {
+            $lastTagSha = git rev-parse $lastTag
+            @("Last Tag ($lastTag): $lastTagSha", "") + @(
+              git log "$($lastTag)..HEAD" --date=format:"%y-%m-%d %H:%M" --pretty=format:"- %cd %h %s @%an" |
+                ? { $_ -notmatch "cleanup|Merge branch" })
+          } else {
+            @("Initial release", "")
+          }
 
-          $changelog | Set-Content -Path "${{ github.workspace }}\CHANGELOG.txt" -Encoding utf8
-          echo "artifact_path=$path" >> $env:GITHUB_OUTPUT
+          $changelog | Set-Content -Path "${{ github.workspace }}/CHANGELOG.txt" -Encoding utf8
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Create or Update Release
-        if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ inputs.tag_prefix }}-${{ steps.build.outputs.file_version_short }}
-          name: ${{ inputs.release_name_prefix }} ${{ steps.build.outputs.file_version }}
+          tag_name: ${{ steps.pack.outputs.tag }}
+          name: ${{ inputs.release_name_prefix }} ${{ needs.build-and-upload.outputs.file_version }}
           draft: false
           prerelease: ${{ inputs.prerelease }}
           generate_release_notes: false
-          body_path: ${{ github.workspace }}\CHANGELOG.txt
-          files: ${{ steps.artifact.outputs.artifact_path }}
+          body_path: ${{ github.workspace }}/CHANGELOG.txt
+          files: ${{ github.workspace }}/release/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
