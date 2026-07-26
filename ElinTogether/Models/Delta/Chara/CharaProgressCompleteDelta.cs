@@ -41,21 +41,26 @@ public class CharaProgressCompleteDelta : ElinDelta
             EmpLogger.Debug("CharaProgressCompleteDelta: child not running");
         }
 
-        Current = this;
-
-        ai.child.OnProgressComplete();
-        ai.child.Success();
-
-        ai.Tick();
-        if (ai.status != AIAct.Status.Running) {
-            chara.SetNoGoal();
+        if (ai.child is null) {
+            return;
         }
 
-        CharaPickThingDelta.CanApplyOnPC = true;
-        DeltaList.ForEach(action => action.Apply(net));
-        CharaPickThingDelta.CanApplyOnPC = false;
+        Current = this;
+        try {
+            ai.child.OnProgressComplete();
+            ai.child.Success();
 
-        Current = null;
+            ai.Tick();
+            if (ai.status != AIAct.Status.Running) {
+                chara.SetNoGoal();
+            }
+
+            CharaPickThingDelta.CanApplyOnPC = true;
+            DeltaList.ForEach(action => action.Apply(net));
+        } finally {
+            CharaPickThingDelta.CanApplyOnPC = false;
+            Current = null;
+        }
 
         if (chara.IsPC) {
             return;
@@ -70,17 +75,5 @@ public class CharaProgressCompleteDelta : ElinDelta
         }
 
         remote.InsertAction(null);
-    }
-
-    public Thing? TryGetProduct()
-    {
-        for (var i = 0; i < DeltaList.Count; i++) {
-            if (DeltaList[i] is ThingDelta { Valid: true } delta) {
-                delta.Valid = false;
-                return delta.Thing?.Find() as Thing;
-            }
-        }
-
-        return null;
     }
 }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ElinTogether.API.SourceValidation;
+using ElinTogether.Elements;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -53,16 +54,15 @@ internal static class CharaProgressCompleteEvent
         Action = null;
         IsHappening = false;
 
-        if (__instance.owner is null) {
+        var captured = DeltaList;
+        DeltaList = [];
+
+        if (__instance.owner is null || __instance is TaskBuild) {
             return;
         }
 
         // only host can complete progress
-        if (NetSession.Instance.Connection is not ElinNetHost host) {
-            return;
-        }
-
-        if (__instance is TaskBuild) {
+        if (NetSession.Instance.Connection is not ElinNetHost host || __instance is DelegateProgress) {
             return;
         }
 
@@ -71,10 +71,8 @@ internal static class CharaProgressCompleteEvent
         host.Delta.AddRemote(new CharaProgressCompleteDelta {
             Owner = __instance.owner,
             CompletedActId = ActMappingValidator.Default.ActToIdMapping[__instance.parent.GetType()],
-            DeltaList = [..DeltaList],
+            DeltaList = captured,
         });
-
-        DeltaList.Clear();
     }
 
     internal static void SendCharaBuildDelta(TaskBuild taskBuild)
