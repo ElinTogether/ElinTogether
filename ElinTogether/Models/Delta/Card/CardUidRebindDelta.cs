@@ -7,16 +7,6 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class CardUidRebindDelta : ElinDelta
 {
-    [MessagePackObject]
-    public class UidBind
-    {
-        [Key(0)]
-        public required int Pending { get; init; }
-
-        [Key(1)]
-        public required int Real { get; init; }
-    }
-
     [Key(0)]
     public required List<UidBind> Rebinds { get; init; }
 
@@ -32,5 +22,15 @@ public class CardUidRebindDelta : ElinDelta
                 CardCache.Rebind(card, rebind.Real);
             }
         }
+    }
+
+    [MessagePackObject]
+    public class UidBind
+    {
+        [Key(0)]
+        public required int Pending { get; init; }
+
+        [Key(1)]
+        public required int Real { get; init; }
     }
 }
