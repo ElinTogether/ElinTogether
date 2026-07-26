@@ -73,6 +73,7 @@ internal partial class ElinNetClient
         // suppress client-side map regeneration
         remoteZone.isGenerated = true;
         remoteZone.dateExpire = int.MaxValue;
+        remoteZone.dateRegenerate = int.MaxValue;
 
         if (remoteZone is Region eloMap) {
             // suppress client-side overworld poi generation
@@ -111,7 +112,17 @@ internal partial class ElinNetClient
             scene.Init(Scene.Mode.Zone);
         } else if (player.zone != currentZone) {
             // do normal zone transition
+            if (currentZone.IsLoaded) {
+                currentZone.UnloadMap();
+            }
+
             pc.MoveZone(currentZone);
+        } else {
+            EmpLog.Debug("Reloading active zone from received snapshot");
+
+            currentZone.Deactivate();
+            currentZone.UnloadMap();
+            scene.Init(Scene.Mode.Zone);
         }
 
         // reassign zone pos
