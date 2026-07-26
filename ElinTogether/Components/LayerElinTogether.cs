@@ -22,6 +22,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
     {
         Instance = this;
 
+        Resources.Load<UIButton>("UI/Element/Button/ButtonNote");
+
         if (_resetHyp) {
             Lang.setting.hyphenation = false;
         }
