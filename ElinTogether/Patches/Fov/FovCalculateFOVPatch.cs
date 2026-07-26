@@ -19,6 +19,8 @@ internal class FovCalculateFOVPatch
         chara.fov ??= chara.CreateFov();
         chara.fov.isPC = true;
 
+        FovCellLightOffsetPatch.PlayerFovs.Add(chara.fov);
+
         __state = true;
     }
 
@@ -26,7 +28,7 @@ internal class FovCalculateFOVPatch
     internal static void OnCardCalculateFOVPost(Card __instance, bool __state)
     {
         if (__state) {
-            __instance.fov?.isPC = false;
+            __instance.fov?.isPC = __instance.IsPC;
         }
     }
 }

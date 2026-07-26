@@ -15,6 +15,7 @@ internal static class ZoneActivateEvent
     {
         IsHappening = true;
         ActionModeCombat.EnemyVisibility.Clear();
+        FovCellLightOffsetPatch.PlayerFovs.Clear();
     }
 
     [HarmonyPostfix]
