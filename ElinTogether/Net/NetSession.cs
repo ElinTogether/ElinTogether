@@ -26,6 +26,8 @@ public class NetSession : EClass
 
     public static NetSession Instance => field ??= new();
 
+    private bool _resetting;
+
     public Mode SyncMode { get; private set; } = Mode.None;
     public ElinNetBase? Connection { get; private set; }
     public Chara? Player { get; internal set; }
@@ -50,6 +52,7 @@ public class NetSession : EClass
     {
         if (Connection != null) {
             if (!Connection.IsHost && core.IsGameStarted) {
+                ui.hud?.SetDragImage(null);
                 ui.RemoveLayers();
                 game.Kill();
                 scene.Init(Scene.Mode.Title);
@@ -68,18 +71,29 @@ public class NetSession : EClass
 
     public void ResetSession()
     {
-        RemoveComponent();
+        // scene.Init(Title) inside RemoveComponent re-enters here
+        // through the [ElinPostSceneInit] hook
+        if (_resetting) {
+            return;
+        }
 
-        Tick = 0;
-        Self = null;
-        CurrentPlayers.Clear();
-        Lobby.LeaveLobby();
+        _resetting = true;
+        try {
+            RemoveComponent();
 
-        ResourceFetch.InvalidateTemp();
+            Tick = 0;
+            Self = null;
+            CurrentPlayers.Clear();
+            Lobby.LeaveLobby();
 
-        SwitchSyncMode(Mode.None);
+            ResourceFetch.InvalidateTemp();
 
-        EmpLog.Information("Session reset to None");
+            SwitchSyncMode(Mode.None);
+
+            EmpLog.Information("Session reset to None");
+        } finally {
+            _resetting = false;
+        }
     }
 
     public T InitializeComponent<T>() where T : ElinNetBase

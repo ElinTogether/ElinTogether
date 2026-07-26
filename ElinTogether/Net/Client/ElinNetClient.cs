@@ -125,13 +125,9 @@ internal partial class ElinNetClient : ElinNetBase
         EmpLog.Warning("Disconnected from host: {Reason}",
             disconnectInfo);
 
-        if (core.IsGameStarted) {
-            scene.Init(Scene.Mode.Title);
-        }
+        Session.ResetSession();
 
         EmpPop.Information("emp_disconnected_host".Loc(disconnectInfo));
-
-        Session.ResetSession();
     }
 
 #endregion
