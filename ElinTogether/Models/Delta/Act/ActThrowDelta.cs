@@ -27,6 +27,11 @@ public class ActThrowDelta : ElinDelta
             return;
         }
 
+        if (Thing.Find() is not Thing { isDestroyed: false } thing) {
+            TaskCache.CancelClientAct(net, this, Thing);
+            return;
+        }
+
         var t = thing.Split(Thing.Num);
         ActThrow.Throw(owner, Point, Target, t, Method);
 

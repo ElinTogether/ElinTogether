@@ -17,6 +17,7 @@ public class CardModNumDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         if (Card.Find() is not { isDestroyed: false } card) {
+            TaskCache.CancelClientAct(net, this, Card);
             return;
         }
 

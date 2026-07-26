@@ -69,6 +69,7 @@ public abstract class ElinDelta : EClass
     internal virtual bool RequiresGameStarted { get; } = true;
 
     public static bool IsApplying { get; private set; }
+    internal int OriginPeer { get; set; }
 
     protected virtual void OnApply(ElinNetBase net)
     {

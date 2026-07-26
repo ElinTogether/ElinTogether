@@ -38,7 +38,8 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
-        if (Thing.Find() is not Thing thing) {
+        if (Thing.Find() is not Thing { isDestroyed: false } thing) {
+            TaskCache.CancelClientAct(net, this, Thing);
             return;
         }
 

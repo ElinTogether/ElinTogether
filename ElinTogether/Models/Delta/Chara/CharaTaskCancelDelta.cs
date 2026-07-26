@@ -36,6 +36,11 @@ public class CharaTaskCancelDelta : ElinDelta
         }
 
         if (ai is not { status: AIAct.Status.Running }) {
+            if (ai is null) {
+                LastCancelDelta.Remove(Owner.Uid);
+                return;
+            }
+
             if (LastCancelDelta.GetValueOrDefault(Owner.Uid) >= ForceCancelCountRequired) {
                 EmpLog.Warning("Force cancelling possibly stuck act {ActId}, {ActType} on chara {Uid}",
                     ActId, type.Name, Owner.Uid);

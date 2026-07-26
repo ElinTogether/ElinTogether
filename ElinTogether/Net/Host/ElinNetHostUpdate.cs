@@ -103,6 +103,7 @@ internal partial class ElinNetHost
     private void OnWorldStateDeltaResponse(WorldStateDeltaList response, ISteamNetPeer peer)
     {
         foreach (var delta in response.DeltaList) {
+            delta.OriginPeer = peer.Id;
             Delta.AddLocal(delta);
         }
     }

@@ -29,11 +29,13 @@ public class ZoneAddCardDelta : ElinDelta
         }
 
         if (Card.Find() is not { } card) {
+            TaskCache.CancelClientAct(net, this, Card);
             return;
         }
 
         if (card.isDestroyed) {
             EmpLog.Warning("Attempting to add destroyed item to the zone");
+            TaskCache.CancelClientAct(net, this, Card);
             return;
         }
 
