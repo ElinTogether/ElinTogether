@@ -36,7 +36,7 @@ internal static class CharaActPerformEvent
         }
 
         // perform throw via ActThrowEvent
-        if (__instance is ActThrow) {
+        if (__instance is ActThrow and not ActRanged) {
             return;
         }
 
