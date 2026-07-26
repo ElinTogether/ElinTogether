@@ -1,6 +1,7 @@
 using ElinTogether.Helper;
 using ElinTogether.Net;
 using HarmonyLib;
+using UnityEngine;
 
 namespace ElinTogether.Patches;
 
@@ -20,5 +21,12 @@ internal class RemotePartyPatch
     internal static bool OnRemoveRemoteParty(Party __instance, Chara c)
     {
         return !NetSession.Instance.HasActiveConnection || !c.IsPlayer;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Player), nameof(Player.MaxAlly), MethodType.Getter)]
+    internal static void OnGetRemoteMaxAlly(Player __instance, ref int __result)
+    {
+        __result = Mathf.Max(__result, NetSession.Instance.CurrentPlayers.Count);
     }
 }
