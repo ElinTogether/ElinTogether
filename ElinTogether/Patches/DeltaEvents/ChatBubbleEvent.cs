@@ -18,7 +18,10 @@ internal class ChatBubbleEvent
             return true;
         }
 
-        var chara = __instance.owner.Chara;
+        if (__instance.owner is not Chara chara) {
+            return true;
+        }
+
         if ((connection.IsHost && !chara.IsRemotePlayer) || chara.IsPC) {
             connection.Delta.AddRemote(new CardRendererTalkDelta {
                 Card = chara,
