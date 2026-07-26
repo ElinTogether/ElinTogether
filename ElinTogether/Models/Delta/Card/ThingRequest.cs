@@ -26,20 +26,26 @@ public class ThingRequest : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         var thing = Thing?.Find() as Thing;
-        if (net.IsClient && _callbackList.TryGetValue(Id, out var value)) {
-            IsApplying = true;
-            var (onSuccess, onFail) = value;
-            if (thing is not null) {
-                onSuccess(thing);
-            } else {
-                onFail?.Invoke();
+        if (net.IsClient) {
+            if (_callbackList.Remove(Id, out var value)) {
+                IsApplying = true;
+                try {
+                    var (onSuccess, onFail) = value;
+                    if (thing is not null) {
+                        onSuccess(thing);
+                    } else {
+                        onFail?.Invoke();
+                    }
+                } finally {
+                    IsApplying = false;
+                }
             }
-            IsApplying = false;
+
             return;
         }
 
         if (thing is null || thing.parent is null) {
-            Fail();
+            Respond(net, null);
             return;
         }
 
@@ -48,25 +54,21 @@ public class ThingRequest : ElinDelta
         CardCache.KeepAlive(result);
 
         Thing = result;
-        Success(result);
+        Respond(net, result);
     }
 
-    public void Success(Thing thing)
+    private void Respond(ElinNetBase net, Thing? thing)
     {
-        NetSession.Instance.Connection?.Delta.AddRemote(new ThingRequest {
+        var response = new ThingRequest {
             Id = Id,
-            Thing = thing,
+            Thing = thing is null ? null : RemoteCard.Create(thing, withData: true),
             Num = Num,
-        });
-    }
+        };
 
-    public void Fail()
-    {
-        NetSession.Instance.Connection?.Delta.AddRemote(new ThingRequest {
-            Id = Id,
-            Thing = null,
-            Num = Num,
-        });
+        if (!net.SendDeltaTo(OriginPeer, response)) {
+            EmpLog.Warning("ThingRequest {RequestId} response dropped, peer {PeerIndex} is gone",
+                Id, OriginPeer);
+        }
     }
 
     public static ThingRequest Create(Thing thing, int num)
@@ -89,5 +91,11 @@ public class ThingRequest : ElinDelta
     public void Then(Action<Thing> onSuccess, Action? onFail = null)
     {
         _callbackList[Id] = (onSuccess, onFail);
+    }
+
+    internal static void Clear()
+    {
+        _callbackList.Clear();
+        _nextId = 0;
     }
 }

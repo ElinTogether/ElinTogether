@@ -17,6 +17,12 @@ public class CardGenDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
+        if (net.IsHost) {
+            EmpLog.Warning("Refusing CardGenDelta from peer {PeerIndex}, uid {Uid}",
+                OriginPeer, Card.Uid);
+            return;
+        }
+
         if (Card.Data is null || CardCache.Find(Card.Uid) is not null) {
             return;
         }
@@ -28,12 +34,7 @@ public class CardGenDelta : ElinDelta
         }
 
         var card = Card.Data.Decompress<Card>();
-
-        if (net.IsHost && PendingUid.IsPending(Card.Uid)) {
-            Rebind(net, card);
-        } else {
-            card.uid = Card.Uid;
-        }
+        card.uid = Card.Uid;
 
         IEnumerable<Card> subtree = card.things.Flatten();
         game.cards.uidNext = subtree
@@ -44,36 +45,6 @@ public class CardGenDelta : ElinDelta
         CardCache.Add(card);
         CardCache.CacheContainer(card.things);
         CardCache.KeepAlive(card);
-    }
-
-    private void Rebind(ElinNetBase net, Card card)
-    {
-        IEnumerable<Card> thingies = card.things.Flatten();
-        var rebinds = new List<CardUidRebindDelta.UidBind>();
-
-        foreach (var node in thingies.Prepend(card)) {
-            if (!PendingUid.IsPending(node.uid)) {
-                continue;
-            }
-
-            var pending = node.uid;
-            game.cards.AssignUID(node);
-
-            PendingRebind.Bind(pending, node.uid);
-            _createdInCurrentFrame.Add(node.uid);
-            rebinds.Add(new() {
-                Pending = pending,
-                Real = node.uid,
-            });
-        }
-
-        Card.Uid = card.uid;
-
-        net.Delta.AddRemote(new CardUidRebindDelta {
-            Rebinds = rebinds,
-        });
-
-        net.Delta.AddRemote(this);
     }
 
     internal static CardGenDelta Create(Card card)

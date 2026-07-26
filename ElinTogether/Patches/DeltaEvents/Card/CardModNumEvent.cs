@@ -29,6 +29,10 @@ internal static class CardModNumEvent
             return;
         }
 
+        if (connection.IsClient && PendingUid.IsPending(__instance.uid)) {
+            return;
+        }
+
         var delta = new CardModNumDelta {
             Card = __instance,
             Num = __instance.Num,

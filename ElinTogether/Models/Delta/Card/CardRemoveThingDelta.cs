@@ -11,12 +11,12 @@ public class CardRemoveThingDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (Thing.Find() is not Thing thing) {
+        if (net.IsHost) {
             return;
         }
 
-        if (net.IsHost) {
-            net.Delta.AddRemote(this);
+        if (Thing.Find() is not Thing thing) {
+            return;
         }
 
         thing.parent?.RemoveCard(thing);

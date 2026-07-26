@@ -15,7 +15,7 @@ internal static class CharaGiveGiftEvent
             return;
         }
 
-        if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
+        if (NetSession.Instance.IsClient && (!__instance.IsPC || !CardCache.Contains(t))) {
             return;
         }
 

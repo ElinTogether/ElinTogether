@@ -88,8 +88,10 @@ public static class CardCache
         }
 
         foreach (var card in map.Cards) {
-            Add(card);
-            CacheContainer(card.things);
+            Set(card);
+            foreach (var thing in card.things.Flatten()) {
+                Set(thing);
+            }
         }
     }
 
@@ -120,6 +122,7 @@ public static class CardCache
         PendingContext.Reset();
         PendingRebind.Clear();
         PendingSplit.Clear();
+        ThingRequest.Clear();
     }
 
     [ElinPreLoad]

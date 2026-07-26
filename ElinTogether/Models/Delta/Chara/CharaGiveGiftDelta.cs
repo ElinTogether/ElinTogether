@@ -22,6 +22,10 @@ public class CharaGiveGiftDelta : ElinDelta
             return;
         }
 
+        if (net.IsClient && from.IsPC) {
+            return;
+        }
+
         if (net.IsHost) {
             net.Delta.AddRemote(this);
         }

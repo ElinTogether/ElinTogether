@@ -33,15 +33,13 @@ internal static class CardGenEvent
             // pending uid
             __result.uid = PendingUid.GetNext();
 
-            if (CharaProgressCompleteDelta.Current is not null) {
-                CardCache.DelayDestroy(__result);
-                return;
-            }
-
-            if (PendingContext.IsActive) {
+            if (PendingContext.IsActive && CharaProgressCompleteDelta.Current is null) {
                 CardCache.Add(__result);
                 return;
             }
+
+            CardCache.DelayDestroy(__result);
+            return;
         }
 
         connection.Delta.AddRemote(CardGenDelta.Create(__result));

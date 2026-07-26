@@ -36,6 +36,10 @@ internal static class CharaPickThingEvent
             return !CharaProgressCompleteEvent.Chara.IsRemotePlayer;
         }
 
+        if (connection.IsClient && PendingUid.IsPending(t.uid)) {
+            return true;
+        }
+
         // we are host, propagate to everyone
         // we are client, only propagate ourselves
         if (connection.IsHost || __instance.IsPC) {

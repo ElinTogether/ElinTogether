@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -39,6 +40,11 @@ public class CharaPickThingDelta : ElinDelta
         }
 
         if (Thing.Find() is not Thing { isDestroyed: false } thing) {
+            TaskCache.CancelClientAct(net, this, Thing);
+            return;
+        }
+
+        if (net.IsHost && thing.GetRootCard() is Chara holder && holder != chara && holder.IsPlayer) {
             TaskCache.CancelClientAct(net, this, Thing);
             return;
         }

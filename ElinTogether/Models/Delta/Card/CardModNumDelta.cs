@@ -26,7 +26,10 @@ public class CardModNumDelta : ElinDelta
         }
 
         IsApplying = true;
-        card.SetNum(Num);
-        IsApplying = false;
+        try {
+            card.SetNum(Num);
+        } finally {
+            IsApplying = false;
+        }
     }
 }
