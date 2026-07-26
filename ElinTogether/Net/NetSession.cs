@@ -60,7 +60,7 @@ public class NetSession : EClass
 
             Object.Destroy(Connection);
 
-            EmpLog.Debug("Removed connection component of {NetType}",
+            EmpLog.Debug("Removed connection component of {ConnectionType}",
                 Connection.GetType().Name);
         }
 
@@ -102,7 +102,7 @@ public class NetSession : EClass
 
         Connection = EmpMod.Instance.gameObject.AddComponent<T>();
 
-        EmpLog.Debug("Initialized new connection component of {NetType}",
+        EmpLog.Debug("Initialized new connection component of {ConnectionType}",
             typeof(T).Name);
 
         return (Connection as T)!;

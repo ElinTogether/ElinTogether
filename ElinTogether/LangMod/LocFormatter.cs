@@ -45,7 +45,7 @@ public static class LocFormatter
                 return string.Format(lang, args);
             } catch (Exception ex) {
                 var fmt = string.Join(", ", [id, ..args]);
-                EmpLog.Warning($"log fmt failure / {fmt}");
+                EmpLog.Warning("Loc format failure / {LocFormat}", fmt);
                 return DebugThrow.Return(ex, fmt);
             }
         }
@@ -68,7 +68,7 @@ public static class LocFormatter
                 return string.Format(lang, args);
             } catch (Exception ex) {
                 var fmt = string.Join(", ", [row.id, ..args]);
-                EmpLog.Warning($"log fmt failure / {fmt}");
+                EmpLog.Warning("Loc format failure / {LocFormat}", fmt);
                 return DebugThrow.Return(ex, fmt);
             }
         }

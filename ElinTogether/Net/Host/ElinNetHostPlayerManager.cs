@@ -150,7 +150,7 @@ internal partial class ElinNetHost
     public void RequestClientReconnect(int peerIndex)
     {
         if (!States.ContainsKey(peerIndex)) {
-            EmpLog.Warning("Cannot request reconnect: peer {Index} not found",
+            EmpLog.Warning("Cannot request reconnect: peer {PeerIndex} not found",
                 peerIndex);
             return;
         }
@@ -164,7 +164,7 @@ internal partial class ElinNetHost
             }
         }
 
-        EmpLog.Warning("Cannot request reconnect: peer {Index} not connected",
+        EmpLog.Warning("Cannot request reconnect: peer {PeerIndex} not connected",
             peerIndex);
     }
 

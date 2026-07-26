@@ -68,7 +68,7 @@ internal partial class ElinNetHost
             mismatchCount += mismatches.Count;
             foreach (var (actName, m) in mismatches) {
                 actMismatches.Add(m);
-                EmpLog.Debug("Peer {@Peer} has act mismatch: {ActName} [{MismatchType}]",
+                EmpLog.Debug("Peer {@Peer} has act mismatch: {ActType} [{MismatchType}]",
                     peer, actName, m.MismatchType);
             }
         }
@@ -93,7 +93,7 @@ internal partial class ElinNetHost
                 mismatchCount += mismatches.Count;
                 foreach (var (modId, m) in mismatches) {
                     pluginMismatches.Add(m);
-                    EmpLog.Verbose("Peer {@peer} has plugin mismatch: {PluginName} [{MismatchType}]",
+                    EmpLog.Verbose("Peer {@Peer} has plugin mismatch: {ModId} [{MismatchType}]",
                         peer, modId, m.MismatchType);
                 }
             }
@@ -107,7 +107,7 @@ internal partial class ElinNetHost
                 mismatchCount += mismatches.Count;
                 foreach (var (path, m) in mismatches) {
                     fileMismatches.Add(m);
-                    EmpLog.Verbose("Peer {@peer} has file mismatch: {PluginName}[{MismatchType}]",
+                    EmpLog.Verbose("Peer {@Peer} has file mismatch: {FilePath} [{MismatchType}]",
                         peer, path, m.MismatchType);
                 }
             }

@@ -45,7 +45,7 @@ internal static class CharaActPerformEvent
         if (connection.IsHost || Act.CC.IsPC) {
             var delta = CharaActPerformDelta.Create(__instance);
             connection.Delta.AddRemote(delta);
-            EmpLog.Debug("Act {ActId}, {Owner}, {Pos}, {Target}",
+            EmpLog.Debug("Act {ActId} by chara {OwnerUid} at {@Pos}, target {TargetUid}",
                 delta.ActId, delta.Owner.Uid, delta.Pos, delta.TargetCard?.Uid);
         }
     }

@@ -143,7 +143,7 @@ internal partial class ElinNetHost : ElinNetBase
             // Fully remove remote chara from the map (saved chara remains via ElinGameIOProperty)
             if (ActiveRemoteCharas.Remove(peer.Id, out var remoteChara)) {
                 RemoveRemoteChara(remoteChara);
-                EmpLog.Information("Player {Name} remote chara {Uid} removed from map. " +
+                EmpLog.Information("Player {PlayerName} remote chara {Uid} removed from map. " +
                                    "Saved chara retained for future new connections.",
                     state.User.Name, remoteChara.uid);
             }
@@ -151,7 +151,7 @@ internal partial class ElinNetHost : ElinNetBase
             Session.CurrentPlayers.Remove(state);
         }
 
-        EmpLog.Debug("Player {Name} disconnected. {Remaining} players remaining",
+        EmpLog.Debug("Player {PlayerName} disconnected. {Remaining} players remaining",
             state?.User.Name ?? "unknown", States.Count);
 
         Broadcast(SessionPlayersSnapshot.Create());

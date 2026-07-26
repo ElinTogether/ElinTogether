@@ -89,7 +89,7 @@ internal partial class ElinNetHost
         var pos = pc.pos.GetNearestPoint(allowChara: false, allowInstalled: false);
         _zone.AddCard(chara, pos);
 
-        EmpLog.Debug("Assigned zone sync position to player {@Peer} at {@Position}",
+        EmpLog.Debug("Assigned zone sync position to player {@Peer} at {@Pos}",
             peer, pos);
 
         // after that, their characters will always be party members

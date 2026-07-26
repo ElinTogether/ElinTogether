@@ -85,7 +85,7 @@ public class ElinDeltaManager
     public void DeferLocal(ElinDelta delta)
     {
         if (++delta.DeferCount > MaxDeferCount) {
-            EmpLog.Warning("Dropping delta {DeltaType} after {Count} failed defer\n{@Delta}",
+            EmpLog.Warning("Dropping delta {DeltaType} after {DeferCount} failed defer\n{@Delta}",
                 delta.GetType().Name, delta.DeferCount, delta);
             return;
         }
@@ -223,7 +223,7 @@ public class ElinDeltaManager
     public void StopCapture()
     {
         IsCapturing = false;
-        EmpLog.Debug("[Delta] Snapshot capture stopped ({Count} snapshots recorded)",
+        EmpLog.Debug("[Delta] Snapshot capture stopped ({SnapshotCount} snapshots recorded)",
             _snapshots.Count);
     }
 

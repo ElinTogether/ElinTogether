@@ -44,7 +44,7 @@ internal partial class ElinNetClient
     /// </summary>
     private void OnSourceValidationRequest(SourceValidationRequest request)
     {
-        EmpLog.Debug("Received source validation request: {Count} sources, {FileCount} files, flags={Flags}",
+        EmpLog.Debug("Received source validation request: {SourceCount} sources, {FileCount} files, flags={Flags}",
             request.SourceNames.Count, request.FilePaths.Count, (ValidationFlags)request.ValidationFlags);
 
         Host.Send(SourceValidationResponse.Create(request.SourceNames, request.FilePaths));

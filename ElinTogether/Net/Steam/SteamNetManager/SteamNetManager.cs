@@ -171,7 +171,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
         _listener?.OnPeerConnected(peer);
 
-        EmpLog.Debug("Player {PlayerName} {RemoteIdentity} connected, claiming index {Index}",
+        EmpLog.Debug("Player {PlayerName} {RemoteIdentity} connected, claiming index {PeerIndex}",
             peer.User.Name, peer.User, peer.Id);
 
         return peer;

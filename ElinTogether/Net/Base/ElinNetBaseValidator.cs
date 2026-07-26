@@ -20,21 +20,21 @@ public partial class ElinNetBase
         PluginHashList = PluginDataValidator.Default.GetValidation();
         ActMappingValidator.Default.BuildActMapping();
 
-        EmpLog.Debug("Created source validation rules: flags={Flags}, {Count} sources, {PluginCount} plugins, {FileCount} files",
+        EmpLog.Debug("Created source validation rules: flags={Flags}, {SourceCount} sources, {PluginCount} plugins, {FileCount} files",
             ValidFlags, SourceList.Count, PluginHashList.Count, ValidationFilePaths.Count);
 
         if (ValidFlags.HasFlag(ValidationFlags.Sources)) {
             foreach (var (sourceName, sha) in SourceList) {
                 var oldSha = oldList.GetValueOrDefault(sourceName);
                 var newSha = (oldSha == sha && oldSha is not null) ? "unchanged" : sha;
-                EmpLog.Debug("{SourceData,-16}[{OldSourceDataSha}] -> [{NewSourceDataSha}]",
+                EmpLog.Debug("{SourceName,-16}[{OldSourceSha}] -> [{NewSourceSha}]",
                     sourceName, oldSha, newSha);
             }
         }
 
         if (ValidFlags.HasFlag(ValidationFlags.Plugins)) {
             foreach (var (modId, hash) in PluginHashList) {
-                EmpLog.Debug("Plugin {ModId,-40}[{ModPluginSha}]",
+                EmpLog.Debug("Plugin {ModId,-40}[{PluginSha}]",
                     modId, hash);
             }
         }

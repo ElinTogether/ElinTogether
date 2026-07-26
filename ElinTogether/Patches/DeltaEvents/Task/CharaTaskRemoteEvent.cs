@@ -34,7 +34,7 @@ internal static class CharaTaskRemoteEvent
 
         if (connection.IsHost && __instance.IsPC && TaskCache.GetRequiredPos(g) is { } tile &&
             TaskCache.IsPosTaken(tile, __instance)) {
-            EmpLog.Debug("Task {Act} on {Tile} cancelled for local player, pos taken",
+            EmpLog.Debug("Task {ActType} on {@Pos} cancelled for local player, pos taken",
                 g.GetType().Name, tile);
             return false;
         }

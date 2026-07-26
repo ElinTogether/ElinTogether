@@ -99,7 +99,8 @@ internal partial class ElinNetClient
         var currentZone = Session.CurrentZone;
 
         if (currentZone?.uid != response.ZoneUid) {
-            EmpLog.Debug("Ignoring stale ZoneActivateResponse (expected {ExpectedName}/{ExpectedUid}, got {GotName}/{GotUid})",
+            EmpLog.Debug("Ignoring stale ZoneActivateResponse (expected {ExpectedZoneFullName}/{ExpectedZoneUid}, " +
+                         "got {GotZoneFullName}/{GotZoneUid})",
                 currentZone?.ZoneFullName, currentZone?.uid, response.ZoneFullName, response.ZoneUid);
             return;
         }

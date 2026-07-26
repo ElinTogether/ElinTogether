@@ -33,7 +33,7 @@ internal class EmpConsole
         }
 
         NetSession.Instance.Connection.DisconnectPeer(playerIndex, EmpDisconnectInfo.HostKick);
-        EmpLog.Information("Kicked player at index {Index}", playerIndex);
+        EmpLog.Information("Kicked player at index {PeerIndex}", playerIndex);
         return $"Kicked player {playerIndex}";
     }
 
@@ -49,7 +49,7 @@ internal class EmpConsole
         }
 
         host.RequestClientReconnect(playerIndex);
-        EmpLog.Information("Requested reconnect for player at index {Index}", playerIndex);
+        EmpLog.Information("Requested reconnect for player at index {PeerIndex}", playerIndex);
         return $"Requested reconnect for player {playerIndex}";
     }
 

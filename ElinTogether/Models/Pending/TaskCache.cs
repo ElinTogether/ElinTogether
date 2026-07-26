@@ -29,7 +29,7 @@ internal static class TaskCache
             return;
         }
 
-        EmpLog.Warning("Refusing stale {Delta} from peer {Peer}, uid {Uid} is gone here",
+        EmpLog.Warning("Refusing stale {DeltaType} from peer {PeerIndex}, uid {Uid} is gone here",
             delta.GetType().Name, delta.OriginPeer, target.Uid);
 
         // host cannot continue client act here
