@@ -61,7 +61,8 @@ internal class ActionModeCombat
             return;
         }
 
-        var hasAnyoneToDecide = EClass.pc.party.members.Any(c => c.IsRemotePlayer && c.ai is GoalRemote { child: null });
+        var hasAnyoneToDecide = EClass.pc.party.members.Any(c => c.IsRemotePlayer && c.ai is GoalRemote { child: null }) ||
+                                players.Any(p => p.CharaUid != EClass.pc.uid && p.FindChara() is null);
         if (hasAnyoneToDecide) {
             if (Paused && !WaitForSelf) {
                 return;

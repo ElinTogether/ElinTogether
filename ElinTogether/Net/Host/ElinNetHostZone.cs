@@ -84,6 +84,8 @@ internal partial class ElinNetHost
         }
 
         // we only move their characters to zone when they are ready
+        Delta.AddRemote(CardGenDelta.Create(chara));
+
         var pos = pc.pos.GetNearestPoint(allowChara: false, allowInstalled: false);
         _zone.AddCard(chara, pos);
 

@@ -75,6 +75,8 @@ public abstract class ElinDelta : EClass
 
     internal int OriginPeer { get; set; }
 
+    internal int DeferCount { get; set; }
+
     protected virtual void OnApply(ElinNetBase net)
     {
     }

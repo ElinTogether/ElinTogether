@@ -21,6 +21,12 @@ public class CardGenDelta : ElinDelta
             return;
         }
 
+        if (Card.Type == RemoteCard.CardType.Chara &&
+            game.cards.globalCharas.GetValueOrDefault(Card.Uid) is { } existing) {
+            CardCache.Add(existing);
+            return;
+        }
+
         var card = Card.Data.Decompress<Card>();
 
         if (net.IsHost && PendingUid.IsPending(Card.Uid)) {

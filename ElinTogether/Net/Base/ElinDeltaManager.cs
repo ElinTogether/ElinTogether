@@ -10,6 +10,7 @@ public class ElinDeltaManager
 {
     private const float Smoothing = 0.5f;
     private const int MaxSnapshots = 200;
+    private const int MaxDeferCount = 7200;
 
     /// <summary>
     ///     Coming in
@@ -83,6 +84,12 @@ public class ElinDeltaManager
     /// </summary>
     public void DeferLocal(ElinDelta delta)
     {
+        if (++delta.DeferCount > MaxDeferCount) {
+            EmpLog.Warning("Dropping delta {DeltaType} after {Count} failed defer\n{@Delta}",
+                delta.GetType().Name, delta.DeferCount, delta);
+            return;
+        }
+
         _inBufferDeferred.Add(delta);
     }
 
