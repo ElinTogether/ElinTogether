@@ -38,6 +38,8 @@ public class CharaTaskDelta : ElinDelta
         }
 
         // now assign new task or reset
-        remote.InsertAction(TaskArgs?.CreateSubAct());
+        using (Simulate(net.IsHost && RemoteCraft.IsHostRun(act))) {
+            remote.InsertAction(act);
+        }
     }
 }

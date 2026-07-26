@@ -43,12 +43,14 @@ public class CharaProgressBeginDelta : ElinDelta
 
         // advance to create progress
         chara.Stub_Move(Pos, Card.MoveType.Force);
-        while (ai.child is not AIProgress { status: AIAct.Status.Running }) {
-            ai.Tick();
+        using (Simulate(net.IsHost && RemoteCraft.IsHostRun(ai))) {
+            while (ai.child is not AIProgress { status: AIAct.Status.Running }) {
+                ai.Tick();
+            }
         }
 
         var child = ai.child as AIProgress;
-        child!.progress = 1;
+        child!.progress = net.IsHost ? 1 : HeldProgress.Held;
 
         // we don't want random max progress
         if (child is Progress_Custom p) {

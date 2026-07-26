@@ -1,3 +1,4 @@
+using System;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -64,11 +65,14 @@ namespace ElinTogether.Models;
 [Union(1000, typeof(ElementChangeDelta))]
 public abstract class ElinDelta : EClass
 {
+    private static int _applyDepth;
+
     internal virtual OverrideOrder Order { get; } = OverrideOrder.Stack;
 
     internal virtual bool RequiresGameStarted { get; } = true;
 
-    public static bool IsApplying { get; private set; }
+    public static bool IsApplying => _applyDepth > 0;
+
     internal int OriginPeer { get; set; }
 
     protected virtual void OnApply(ElinNetBase net)
@@ -82,9 +86,28 @@ public abstract class ElinDelta : EClass
 
     public void Apply(ElinNetBase net)
     {
-        IsApplying = true;
-        OnApply(net);
-        IsApplying = false;
+        _applyDepth++;
+        try {
+            OnApply(net);
+        } finally {
+            _applyDepth--;
+        }
+    }
+
+    internal static ScopeExit Simulate(bool active = true)
+    {
+        var depth = _applyDepth;
+        if (active) {
+            _applyDepth = 0;
+        }
+
+        return new() {
+            OnExit = () => {
+                if (active) {
+                    _applyDepth = depth;
+                }
+            },
+        };
     }
 
     public bool Refresh()

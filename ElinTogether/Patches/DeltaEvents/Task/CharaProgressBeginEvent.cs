@@ -29,24 +29,29 @@ internal static class CharaTaskProgressEvents
             return;
         }
 
+        if (__instance.parent?.GetType() is not { } actType ||
+            !ActMappingValidator.Default.ActToIdMapping.TryGetValue(actType, out var actId)) {
+            return;
+        }
+
         if (__instance is not DelegateProgress) {
             if (connection.IsClient) {
                 // we can only complete remote progress with delta
-                __instance.progress = -int.MaxValue;
+                __instance.progress = HeldProgress.Held;
             }
 
+            // for host, run it only when remote players run it
             if (owner.ai is GoalRemote) {
-                // for host, run it only when remote players run it
-                __instance.progress = -int.MaxValue;
+                __instance.progress = HeldProgress.Held;
                 return;
             }
         }
 
-        NetSession.Instance.Connection.Delta.AddRemote(new CharaProgressBeginDelta {
+        connection.Delta.AddRemote(new CharaProgressBeginDelta {
             Owner = owner,
             Pos = owner.pos,
             MaxProgress = __instance.MaxProgress,
-            ActId = ActMappingValidator.Default.ActToIdMapping[__instance.parent.GetType()],
+            ActId = actId,
         });
     }
 }

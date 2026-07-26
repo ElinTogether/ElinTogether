@@ -32,6 +32,13 @@ internal static class CharaTaskRemoteEvent
             return false;
         }
 
+        if (connection.IsHost && __instance.IsPC && TaskCache.GetRequiredPos(g) is { } tile &&
+            TaskCache.IsPosTaken(tile, __instance)) {
+            EmpLog.Debug("Task {Act} on {Tile} cancelled for local player, pos taken",
+                g.GetType().Name, tile);
+            return false;
+        }
+
         // a switch case is inevitable for the mapping layer
         TaskArgsBase args = g switch {
             // no goal/reset
@@ -153,6 +160,11 @@ internal static class CharaTaskRemoteEvent
             Owner = __instance,
             TaskArgs = args,
         });
+
+        if (connection.IsClient && __instance.IsPC && args is AIUseCrafterArgs crafterArgs &&
+            g is AI_UseCrafter craft) {
+            RemoteCraft.Attach(craft, crafterArgs);
+        }
 
         return true;
     }

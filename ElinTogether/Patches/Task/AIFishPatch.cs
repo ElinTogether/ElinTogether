@@ -83,25 +83,16 @@ internal static class AIFishPatch
     [HarmonyPatch(typeof(AI_Fish), nameof(AI_Fish.Makefish))]
     internal static bool OnMakefish(ref Thing? __result)
     {
-        if (CharaProgressCompleteDelta.Current is not { } delta) {
-            return true;
-        }
-
-        __result = delta.TryGetProduct();
-        return false;
+        return !TaskProduct.TryClaim(nameof(AI_Fish.Makefish), out __result);
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AI_Fish), nameof(AI_Fish.Makefish))]
     internal static void OnMakefishEnd(Chara c, Thing? __result)
     {
-        if (!CharaProgressCompleteEvent.IsHappening || NetSession.Instance.IsClient) {
+        if (!TaskProduct.Publish(nameof(AI_Fish.Makefish), __result)) {
             return;
         }
-
-        CharaProgressCompleteEvent.DeltaList.Add(new ThingDelta {
-            Thing = __result,
-        });
 
         if (c.IsRemotePlayer) {
             var bait = c.things.Find(t => t.trait is TraitBait tb && tb.EQ == t);
@@ -113,15 +104,11 @@ internal static class AIFishPatch
     [HarmonyPatch(typeof(AI_Fish.ProgressFish), nameof(AI_Fish.ProgressFish.OnProgressComplete))]
     internal static void OnProgressComplete(AI_Fish.ProgressFish __instance)
     {
-        if (CharaProgressCompleteDelta.Current is not { } delta) {
+        if (!TaskProduct.IsReplaying) {
             return;
         }
 
-        if (delta.DeltaList.Find(d => d is ThingDelta) is null) {
-            __instance.hit = 0;
-        } else {
-            __instance.hit = 100;
-        }
+        __instance.hit = TaskProduct.WasProduced(nameof(AI_Fish.Makefish)) ? 100 : 0;
     }
 
     [HarmonyPrefix]
@@ -165,7 +152,7 @@ internal static class AIFishPatch
             }
         }
 
-        var progress = NetSession.Instance.IsHost ? thiz.progress : thiz.progress + int.MaxValue - 1;
+        var progress = thiz.progress < 0 ? thiz.progress + int.MaxValue - 1 : thiz.progress;
         if (progress == 2 || (progress >= 8 && progress % 6 == 0 && EClass.rnd(3) == 0)) {
             thiz.owner.renderer.PlayAnime(AnimeID.Shiver);
             thiz.Ripple();

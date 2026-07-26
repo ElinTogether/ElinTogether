@@ -7,10 +7,13 @@ namespace ElinTogether.Models;
 public class ThingDelta : ElinDelta
 {
     [IgnoreMember]
-    public bool Valid = true;
+    public bool Valid;
 
     [Key(0)]
     public required RemoteCard? Thing { get; init; }
+
+    [Key(1)]
+    public required string Slot { get; init; }
 
     protected override void OnApply(ElinNetBase net) { }
 }
