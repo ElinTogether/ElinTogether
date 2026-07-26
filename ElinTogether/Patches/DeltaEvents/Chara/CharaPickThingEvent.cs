@@ -9,7 +9,7 @@ namespace ElinTogether.Patches;
 internal static class CharaPickThingEvent
 {
     [HarmonyPrefix]
-    internal static bool OnCharaPickThingy(Chara __instance, Thing t)
+    internal static bool OnCharaPickThingy(Chara __instance, Thing t, ref Thing __result)
     {
         var session = NetSession.Instance;
         if (session.Connection is not { } connection) {
@@ -17,6 +17,8 @@ internal static class CharaPickThingEvent
         }
 
         if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
+            // pick self without returning null
+            __result = t;
             return false;
         }
 
@@ -30,6 +32,7 @@ internal static class CharaPickThingEvent
 
             CardCache.KeepAlive(t);
 
+            __result = t;
             return !CharaProgressCompleteEvent.Chara.IsRemotePlayer;
         }
 
