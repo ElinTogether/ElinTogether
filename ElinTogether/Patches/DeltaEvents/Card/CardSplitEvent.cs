@@ -1,22 +1,33 @@
+using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
 
 namespace ElinTogether.Patches;
 
-[HarmonyPatch]
-internal class CardSplitEvent
+[HarmonyPatch(typeof(Card), nameof(Card.Split))]
+internal static class CardSplitEvent
 {
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(Card), nameof(Card.Split))]
-    internal static void OnClientSplit(Card __instance, Thing __result)
+    [HarmonyPrefix]
+    internal static void OnSplit(Card __instance, ref bool __state)
     {
-        if (__instance == __result) {
+        __state = __instance.IsResolved;
+
+        if (__state) {
+            PendingContext.Enter();
+        }
+    }
+
+    [HarmonyFinalizer]
+    internal static void OnSplitEnd(Card __instance, Thing? __result, bool __state)
+    {
+        if (!__state) {
             return;
         }
 
-        // we use negative uid to mark the parent stack
-        if (NetSession.Instance.IsClient) {
-            __result.uid = -__instance.uid;
+        PendingContext.Exit();
+
+        if (__result is not null && __result != __instance) {
+            PendingSplit.Record(__result, __instance);
         }
     }
 }

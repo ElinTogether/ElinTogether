@@ -137,6 +137,8 @@ internal partial class ElinNetHost : ElinNetBase
     {
         EmpPop.Information("emp_player_disconnected".lang(), peer, disconnectInfo);
 
+        PendingRebind.ReleasePeer(peer.Id);
+
         if (States.Remove(peer.Id, out var state)) {
             // Fully remove remote chara from the map (saved chara remains via ElinGameIOProperty)
             if (ActiveRemoteCharas.Remove(peer.Id, out var remoteChara)) {

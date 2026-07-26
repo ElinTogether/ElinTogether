@@ -19,7 +19,7 @@ public class RemoteCard : IEquatable<RemoteCard>
     }
 
     [Key(0)]
-    public required int Uid { get; init; }
+    public required int Uid { get; set; }
 
     [Key(1)]
     public required CardType Type { get; init; }
@@ -53,12 +53,7 @@ public class RemoteCard : IEquatable<RemoteCard>
             return null;
         }
 
-        var num = card.Num;
-        if (card.uid < 0 && CardCache.Find(-card.uid) is Thing source) {
-            card = source;
-        }
-
-        if (NetSession.Instance.IsHost && addToCache) {
+        if (addToCache) {
             CardCache.Add(card);
         }
 
@@ -68,7 +63,7 @@ public class RemoteCard : IEquatable<RemoteCard>
             // do not compress parent
             Parent = card.parentCard,
             Data = withData ? LZ4Bytes.Create(card) : null,
-            Num = num,
+            Num = card.Num,
         };
     }
 
@@ -95,6 +90,10 @@ public class RemoteCard : IEquatable<RemoteCard>
 
     public Card? Find()
     {
+        if (PendingUid.IsPending(Uid) && PendingRebind.Resolve(Uid) is var adopted and > 0) {
+            Uid = adopted;
+        }
+
         var card = CardCache.Find(Uid);
         if (card is not null) {
             return card;
@@ -119,7 +118,9 @@ public class RemoteCard : IEquatable<RemoteCard>
         }
 
         if (card is not null) {
+            card.uid = Uid;
             CardCache.Set(card);
+            CardCache.KeepAlive(card);
         }
 
         return card;

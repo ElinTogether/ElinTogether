@@ -19,6 +19,7 @@ internal class OnBarterEvent
         var owner = __instance.owner;
         if (connection.IsClient && owner.things.Find("chest_merchant") is null) {
             // create a temp chest
+            using var _ = PendingContext.Begin();
             var chest = ThingGen.Create("chest_merchant");
             chest.parent = owner;
             owner.things.Add(chest);

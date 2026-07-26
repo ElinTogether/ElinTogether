@@ -10,8 +10,7 @@ internal static class CardModNumEvent
     [HarmonyPrefix]
     internal static bool OnCardModNum(Card __instance, ref int a)
     {
-        // return true if !CardCache.Contains(__instance) -> allow to mod the num of temp items
-        if (NetSession.Instance.IsHost || CardModNumDelta.IsApplying || !CardCache.Contains(__instance)) {
+        if (CardModNumDelta.IsApplying || !__instance.IsResolved) {
             return true;
         }
 

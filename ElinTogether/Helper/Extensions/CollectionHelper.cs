@@ -10,10 +10,7 @@ internal static class CollectionHelper
         internal IEnumerable<Thing> Flatten()
         {
             foreach (var t1 in things) {
-                if (t1.things.Count == 0) {
-                    yield return t1;
-                    continue;
-                }
+                yield return t1;
 
                 foreach (var t2 in t1.things.Flatten()) {
                     yield return t2;

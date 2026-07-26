@@ -28,7 +28,7 @@ public class OnBarterDelta : ElinDelta
         }
 
         var invOwnerShop = inv.owner;
-        if (!CardCache.Contains(invOwnerShop.Container)) {
+        if (!invOwnerShop.Container.IsHostOwned) {
             // remove the temporary merchant chest
             shopOwner.things.Remove(invOwnerShop.Container.Thing);
             // replace it with the real merchant chest

@@ -14,8 +14,12 @@ internal static class CardTryStackEvent
             return true;
         }
 
-        if (!CardCache.Contains(to) != !CardCache.Contains(__instance)) {
+        if (to.IsHostOwned != __instance.IsHostOwned) {
             return false;
+        }
+
+        if (!to.IsHostOwned) {
+            return true;
         }
 
         if (!__instance.CanStackTo(to)) {

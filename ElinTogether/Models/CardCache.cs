@@ -14,10 +14,6 @@ public static class CardCache
 
     private static readonly List<Card> _invalidCards = [];
 
-    private static bool IsHost { get; set; }
-
-    private static bool IsClient => !IsHost;
-
     internal static void Add(Card card)
     {
         var stored = Find(card.uid);
@@ -59,9 +55,15 @@ public static class CardCache
         }
 
         _cards[card.uid] = new(card);
-        if (IsClient && card.parent is null) {
-            KeepAlive(card);
-        }
+    }
+
+    internal static void Rebind(Card card, int uid)
+    {
+        _cards.Remove(card.uid);
+        card.uid = uid;
+        _cards[uid] = new(card);
+
+        EClass.game.cards.uidNext = Math.Max(EClass.game.cards.uidNext, uid + 1);
     }
 
     internal static bool Contains(Card? card)
@@ -100,7 +102,9 @@ public static class CardCache
 
     internal static void KeepAlive(Card card)
     {
-        _keepalive.Add(card);
+        if (card.parent is null && !_keepalive.Contains(card)) {
+            _keepalive.Add(card);
+        }
     }
 
     internal static void DelayDestroy(Card card)
@@ -112,6 +116,10 @@ public static class CardCache
     {
         _cards.Clear();
         _keepalive.Clear();
+        _invalidCards.Clear();
+        PendingContext.Reset();
+        PendingRebind.Clear();
+        PendingSplit.Clear();
     }
 
     [ElinPreLoad]
@@ -130,8 +138,6 @@ public static class CardCache
 
     public static void Update()
     {
-        IsHost = NetSession.Instance.IsHost;
-
         _keepalive.RemoveAll(card => card.parent is not null);
         _invalidCards.ForEach(card => card.Destroy());
         _invalidCards.Clear();
@@ -143,8 +149,10 @@ public static class CardCache
         }
     }
 
-    extension(Card card)
+    extension(Card? card)
     {
         internal bool IsKeptAlive => _keepalive.Contains(card);
+        internal bool IsHostOwned => card is not null && !PendingUid.IsPending(card.uid) && Find(card.uid) == card;
+        internal bool IsResolved => NetSession.Instance.IsClient && card.IsHostOwned;
     }
 }

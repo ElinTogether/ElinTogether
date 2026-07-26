@@ -29,10 +29,19 @@ internal static class CardGenEvent
             return;
         }
 
-        // we use 0 uid to avoid conflicting with host
         if (connection.IsClient) {
-            __result.uid = 0;
-            return;
+            // pending uid
+            __result.uid = PendingUid.GetNext();
+
+            if (CharaProgressCompleteDelta.Current is not null) {
+                CardCache.DelayDestroy(__result);
+                return;
+            }
+
+            if (PendingContext.IsActive) {
+                CardCache.Add(__result);
+                return;
+            }
         }
 
         connection.Delta.AddRemote(CardGenDelta.Create(__result));

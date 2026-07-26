@@ -23,7 +23,7 @@ internal class ActThrowEvent
                 Owner = c,
                 Point = p,
                 Target = target,
-                Thing = t,
+                Thing = PendingSplit.Split(t),
                 Method = method,
             };
         }

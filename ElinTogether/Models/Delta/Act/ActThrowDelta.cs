@@ -23,8 +23,12 @@ public class ActThrowDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        var t = ((Thing)Thing)!.Split(Thing.Num);
-        ActThrow.Throw(Owner, Point, Target, t, Method);
+        if (Owner.Find() is not { } owner) {
+            return;
+        }
+
+        var t = thing.Split(Thing.Num);
+        ActThrow.Throw(owner, Point, Target, t, Method);
 
         if (net.IsHost) {
             net.Delta.AddRemote(new ActThrowDelta {
