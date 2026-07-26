@@ -46,7 +46,7 @@ internal static class TaskCache
 
     internal static void RequestCancel(ElinNetBase net, RemoteCard owner, AIAct act)
     {
-        var actType = act is DelegateProgress { parent: { } parent } ? parent.GetType() : act.GetType();
+        var actType = act is DelegateProgress delegated ? delegated.ActType : act.GetType();
 
         if (!ActMappingValidator.Default.ActToIdMapping.TryGetValue(actType, out var actId)) {
             return;

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ElinTogether.API.SourceValidation;
 using ElinTogether.Net;
 using ElinTogether.Patches;
@@ -42,7 +43,7 @@ public class CharaStateSnapshot : EClass
             CurrentZoneUid = pc.currentZone.uid,
             Hp = pc.hp,
             State = new() {
-                LastAct = ActMappingValidator.Default.ActToIdMapping[pc.ai.GetType()],
+                LastAct = ActMappingValidator.Default.ActToIdMapping.GetValueOrDefault(pc.ai.GetType(), 0),
                 LastReceivedTick = NetSession.Instance.Tick,
                 Speed = pc.Stub_get_Speed(),
             },
@@ -79,7 +80,15 @@ public class CharaStateSnapshot : EClass
             (chara.currentZone?.map is { } map && !map.charas.Contains(chara))) {
             // chara hasn't been brought to the same map yet
             if (CurrentZoneUid == NetSession.Instance.CurrentZone?.uid) {
-                NetSession.Instance.CurrentZone.AddCard(chara, Pos);
+                var zone = NetSession.Instance.CurrentZone;
+                if (zone.map?.charas.Find(c => c.uid == chara.uid) is { } inMap) {
+                    if (inMap != chara) {
+                        CardCache.Set(inMap);
+                    }
+                } else {
+                    chara.pos.Set(Pos.X, Pos.Z);
+                    zone.AddCard(chara, Pos);
+                }
             }
 
             return;

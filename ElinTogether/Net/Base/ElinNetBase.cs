@@ -97,4 +97,17 @@ public abstract partial class ElinNetBase : EMono
             }
         }
     }
+
+    internal bool SendDeltaTo(int peerIndex, ElinDelta delta)
+    {
+        foreach (var peer in Socket.Peers) {
+            if (peer.Id == peerIndex) {
+                return peer.Send(new WorldStateDeltaList {
+                    DeltaList = [delta],
+                });
+            }
+        }
+
+        return false;
+    }
 }

@@ -33,6 +33,8 @@ internal partial class ElinNetHost
             return;
         }
 
+        remoteChara.SetNoGoal();
+
         pc.party.RemoveMember(remoteChara);
         _zone.RemoveCard(remoteChara);
 

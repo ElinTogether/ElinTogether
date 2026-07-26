@@ -22,6 +22,10 @@ public class CharaProgressCompleteDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
+        if (net.IsHost) {
+            return;
+        }
+
         if (Owner.Find() is not Chara chara) {
             return;
         }
@@ -29,7 +33,7 @@ public class CharaProgressCompleteDelta : ElinDelta
         // complete remote tasks because we assigned them max value to prevent randomness
         var type = ActMappingValidator.Default.IdToActMapping[CompletedActId];
         var ai = chara.ai.Current;
-        while (ai is not null && ai.GetType() != type) {
+        while (ai is not null && ai.GetType() != type && !DelegateProgress.Represents(ai, type)) {
             ai = ai.parent;
         }
 
@@ -37,22 +41,22 @@ public class CharaProgressCompleteDelta : ElinDelta
             return;
         }
 
-        if (!ai.IsChildRunning) {
+        var progress = ai as DelegateProgress ?? ai.child;
+        if (progress is null) {
             EmpLogger.Debug("CharaProgressCompleteDelta: child not running");
-        }
-
-        if (ai.child is null) {
             return;
         }
 
         Current = this;
         try {
-            ai.child.OnProgressComplete();
-            ai.child.Success();
+            progress.OnProgressComplete();
+            progress.Success();
 
-            ai.Tick();
-            if (ai.status != AIAct.Status.Running) {
-                chara.SetNoGoal();
+            if (ai != progress) {
+                ai.Tick();
+                if (ai.status != AIAct.Status.Running) {
+                    chara.SetNoGoal();
+                }
             }
 
             CharaPickThingDelta.CanApplyOnPC = true;
@@ -64,10 +68,6 @@ public class CharaProgressCompleteDelta : ElinDelta
 
         if (chara.IsPC) {
             return;
-        }
-
-        if (net.IsHost) {
-            net.Delta.AddRemote(this);
         }
 
         if (chara.ai is not GoalRemote remote) {

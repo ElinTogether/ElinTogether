@@ -30,9 +30,14 @@ internal static class CharaTaskCancelEvent
                 return true;
         }
 
+        if (current.parent?.GetType() is not { } actType ||
+            !ActMappingValidator.Default.ActToIdMapping.TryGetValue(actType, out var actId)) {
+            return true;
+        }
+
         net.Delta.AddRemote(new CharaTaskCancelDelta {
             Owner = owner,
-            ActId = ActMappingValidator.Default.ActToIdMapping[current.parent.GetType()],
+            ActId = actId,
         });
 
         return !prevent;

@@ -34,7 +34,21 @@ internal static class AIUseCrafterPatch
 
         while (true) {
             // use held for clients
-            var progress = new HeldProgress().SetDuration(args.Duration, 5);
+            var cost = crafter.GetCostSp(act);
+            var progress = new HeldProgress {
+                onProgressComplete = () => {
+                    var e = act.owner.elements.GetOrCreateElement(crafter.IDReqEle(act.recipe?.source));
+                    for (var i = 0; i < act.num; i++) {
+                        act.owner.RemoveCondition<ConInvulnerable>();
+                        EClass.player.invlunerable = false;
+                        act.owner.elements.ModExp(e.id, cost * 12f * (100f + args.Duration * 2f) / 100f);
+                        act.owner.stamina.Mod(-cost);
+                        if (act.owner.isDead) {
+                            break;
+                        }
+                    }
+                },
+            }.SetDuration(args.Duration, 5);
             yield return act.Do(progress);
 
             if (progress.status == AIAct.Status.Fail || crafter.CloseOnComplete) {

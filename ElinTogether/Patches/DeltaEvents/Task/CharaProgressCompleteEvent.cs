@@ -66,11 +66,16 @@ internal static class CharaProgressCompleteEvent
             return;
         }
 
+        if (__instance.parent?.GetType() is not { } actType ||
+            !ActMappingValidator.Default.ActToIdMapping.TryGetValue(actType, out var actId)) {
+            return;
+        }
+
         // due to randomness in max progress
         // remote needs to be notified that a remote task is completed before starting anew
         host.Delta.AddRemote(new CharaProgressCompleteDelta {
             Owner = __instance.owner,
-            CompletedActId = ActMappingValidator.Default.ActToIdMapping[__instance.parent.GetType()],
+            CompletedActId = actId,
             DeltaList = captured,
         });
     }

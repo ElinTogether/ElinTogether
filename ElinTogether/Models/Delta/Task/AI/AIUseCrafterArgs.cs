@@ -55,7 +55,7 @@ public class AIUseCrafterArgs : TaskArgsBase
     public override AIAct CreateSubAct()
     {
         if (!NetSession.Instance.IsHost) {
-            return DelegateProgress.Create(new AI_UseCrafter()).SetDuration(Duration, 5);
+            return DelegateProgress.Create(typeof(AI_UseCrafter)).SetDuration(Duration, 5);
         }
 
         var crafter = Factory.Find() switch {

@@ -31,9 +31,12 @@ public class CharaProgressBeginDelta : ElinDelta
             return;
         }
 
-        var type = ActMappingValidator.Default.IdToActMapping[ActId];
+        if (!ActMappingValidator.Default.IdToActMapping.TryGetValue(ActId, out var type)) {
+            return;
+        }
+
         var ai = remote.Current;
-        while (ai is not null && ai.GetType() != type) {
+        while (ai is not null && ai.GetType() != type && !DelegateProgress.Represents(ai, type)) {
             ai = ai.parent;
         }
 
@@ -43,14 +46,28 @@ public class CharaProgressBeginDelta : ElinDelta
 
         // advance to create progress
         chara.Stub_Move(Pos, Card.MoveType.Force);
-        using (Simulate(net.IsHost && RemoteCraft.IsHostRun(ai))) {
-            while (ai.child is not AIProgress { status: AIAct.Status.Running }) {
-                ai.Tick();
+
+        if (ai is not DelegateProgress) {
+            using (Simulate(net.IsHost && RemoteCraft.IsHostRun(ai))) {
+                var guard = 0;
+                while (ai.child is not AIProgress { status: AIAct.Status.Running }) {
+                    ai.Tick();
+                    if (ai.status != AIAct.Status.Running || ++guard > 64) {
+                        break;
+                    }
+                }
             }
         }
 
-        var child = ai.child as AIProgress;
-        child!.progress = net.IsHost ? 1 : HeldProgress.Held;
+        if ((ai is DelegateProgress ? ai : ai.child) is not AIProgress { status: AIAct.Status.Running } child) {
+            if (net.IsHost) {
+                TaskCache.RequestCancel(net, chara, ai);
+            }
+
+            return;
+        }
+
+        child.progress = net.IsHost ? 1 : HeldProgress.Held;
 
         // we don't want random max progress
         if (child is Progress_Custom p) {

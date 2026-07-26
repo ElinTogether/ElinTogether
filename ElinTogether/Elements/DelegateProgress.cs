@@ -1,14 +1,21 @@
+using System;
+
 namespace ElinTogether.Elements;
 
 internal class DelegateProgress : Progress_Custom
 {
-    internal static DelegateProgress Create(AIAct typeAct)
+    internal required Type ActType { get; init; }
+
+    internal static DelegateProgress Create(Type actType)
     {
-        var d = new DelegateProgress {
-            parent = typeAct,
+        return new() {
+            ActType = actType,
             status = Status.Running,
         };
-        typeAct.child = d;
-        return d;
+    }
+
+    internal static bool Represents(AIAct? act, Type actType)
+    {
+        return act is DelegateProgress d && d.ActType == actType;
     }
 }

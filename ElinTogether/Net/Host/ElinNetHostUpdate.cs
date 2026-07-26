@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using ElinTogether.API.SourceValidation;
+using ElinTogether.Elements;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using ElinTogether.Patches;
@@ -7,6 +10,7 @@ namespace ElinTogether.Net;
 
 internal partial class ElinNetHost
 {
+    private readonly Dictionary<int, int> _idleReports = [];
     private WorldStateSnapshot? _lastTick;
     private bool _pauseUpdate;
 
@@ -138,6 +142,27 @@ internal partial class ElinNetHost
 
         var chara = ActiveRemoteCharas[peer.Id];
         response.ApplyReconciliation(chara);
+
+        HaltAbandonedAct(state, chara);
+    }
+
+    private void HaltAbandonedAct(NetPeerState state, Chara chara)
+    {
+        if (chara.ai is GoalRemote { child: { } stuck } &&
+            ActMappingValidator.Default.IdToActMapping.TryGetValue(state.LastAct, out var reported) &&
+            typeof(NoGoal).IsAssignableFrom(reported)) {
+            if ((_idleReports[state.Index] = _idleReports.GetValueOrDefault(state.Index) + 1) < 3) {
+                return;
+            }
+
+            EmpLog.Debug("Halting abandoned act {ActType} of remote chara {Uid}, client reports idle",
+                stuck.GetType().Name, chara.uid);
+
+            TaskCache.RequestCancel(this, chara, stuck);
+            chara.SetNoGoal();
+        }
+
+        _idleReports[state.Index] = 0;
     }
 
     private void UpdateRemotePlayerStates()
