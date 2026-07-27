@@ -37,15 +37,24 @@ public class CharaProgressCompleteDelta : ElinDelta
             ai = ai.parent;
         }
 
+        // prevent dangling item
         if (ai is null) {
+            EmpLog.Debug("CharaProgressCompleteDelta: child not running, {ActType} of chara {Uid} replaying {ReplayCount}",
+                type.Name, Owner.Uid, DeltaList.Count);
+            ReplayDeltaList(net);
             return;
         }
 
         var progress = ai as DelegateProgress ?? ai.child;
         if (progress is null) {
-            EmpLogger.Debug("CharaProgressCompleteDelta: child not running");
+            EmpLog.Debug("CharaProgressCompleteDelta: child not running, {ActType} of chara {Uid} replaying {ReplayCount}",
+                type.Name, Owner.Uid, DeltaList.Count);
+            ReplayDeltaList(net);
             return;
         }
+
+        EmpLog.Debug("Replaying progress complete {ActType} of chara {Uid}, {ReplayCount} deltas",
+            type.Name, Owner.Uid, DeltaList.Count);
 
         Current = this;
         try {
@@ -75,5 +84,17 @@ public class CharaProgressCompleteDelta : ElinDelta
         }
 
         remote.InsertAction(null);
+    }
+
+    private void ReplayDeltaList(ElinNetBase net)
+    {
+        Current = this;
+        try {
+            CharaPickThingDelta.CanApplyOnPC = true;
+            DeltaList.ForEach(action => action.Apply(net));
+        } finally {
+            CharaPickThingDelta.CanApplyOnPC = false;
+            Current = null;
+        }
     }
 }

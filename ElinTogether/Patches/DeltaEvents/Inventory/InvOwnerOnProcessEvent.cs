@@ -24,6 +24,11 @@ internal static class InvOwnerOnProcessEvent
             return;
         }
 
+        // crafter
+        if (__instance is InvOwnerCraft) {
+            return;
+        }
+
         if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
             return;
         }

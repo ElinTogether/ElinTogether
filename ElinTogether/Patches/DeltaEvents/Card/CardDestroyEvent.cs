@@ -23,6 +23,11 @@ internal static class CardDestroyEvent
             return;
         }
 
+        // client replay delta list
+        if (connection.IsClient && CharaPickThingDelta.CanApplyOnPC) {
+            return;
+        }
+
         connection.Delta.AddRemote(new CardModNumDelta {
             Card = __instance,
             Num = 0,

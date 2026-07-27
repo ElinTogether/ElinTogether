@@ -34,5 +34,15 @@ public class CardModNumDelta : ElinDelta
         } finally {
             IsApplying = false;
         }
+
+        // set num
+        if (card is Thing { isDestroyed: false } thing) {
+            LayerInventory.SetDirty(thing);
+        }
+
+        // crafter ui
+        if (LayerDragGrid.Instance != null) {
+            LayerDragGrid.Instance.Redraw();
+        }
     }
 }

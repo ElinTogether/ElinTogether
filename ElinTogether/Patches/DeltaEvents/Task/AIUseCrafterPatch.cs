@@ -31,8 +31,14 @@ internal static class AIUseCrafterPatch
     private static IEnumerable<AIAct.Status> RunClient(AI_UseCrafter act, AIUseCrafterArgs args)
     {
         var crafter = act.crafter;
+        var round = 0;
+
+        act.owner.LookAt(crafter.owner.pos);
 
         while (true) {
+            round++;
+            EmpLog.Debug("Client craft round {CraftRound} of chara {OwnerUid}, waiting for host completion",
+                round, act.owner.uid);
             // use held for clients
             var cost = crafter.GetCostSp(act);
             var progress = new HeldProgress {
@@ -75,7 +81,8 @@ internal static class AIUseCrafterPatch
     [HarmonyPatch(typeof(AI_UseCrafter), nameof(AI_UseCrafter.OnEnd))]
     internal static bool OnEnd(AI_UseCrafter __instance)
     {
-        if (!RemoteCraft.TryGet(__instance, out _) || NetSession.Instance.IsClient) {
+        if (!RemoteCraft.TryGet(__instance, out var args) || NetSession.Instance.IsClient) {
+            __instance.ings ??= [];
             return true;
         }
 
@@ -84,10 +91,21 @@ internal static class AIUseCrafterPatch
         // is applying
         using var simulate = ElinDelta.Simulate();
 
-        foreach (var ing in __instance.ings) {
-            if (ing is not null && ing.ExistsOnMap && __instance.owner is { } owner) {
-                ing.isHidden = false;
-                owner.Pick(ing);
+        var ings = __instance.ings ?? [];
+        for (var i = 0; i < ings.Count; i++) {
+            var ing = ings[i];
+            if (ing is null || ing.isDestroyed || !ing.ExistsOnMap || __instance.owner is not { } owner) {
+                continue;
+            }
+
+            ing.isHidden = false;
+            if ((i < args.Targets.Count ? args.Targets[i].Find() : null) is Thing { isDestroyed: false } origin) {
+                EmpLog.Debug("Remote craft returning ing {Uid} num {CardNum} to origin {TargetUid}",
+                    ing.uid, ing.Num, origin.uid);
+                origin.ModNum(ing.Num);
+                ing.Destroy();
+            } else {
+                owner.AddThing(ing);
             }
         }
 
@@ -107,7 +125,7 @@ internal static class AIUseCrafterPatch
     [HarmonyPatch(typeof(Card), nameof(Card.AddCard))]
     internal static bool OnAddProduct(Card __instance, Card c, ref Card __result)
     {
-        if (RemoteCraft.ProductReceiver is not { } receiver || __instance != EClass.pc) {
+        if (RemoteCraft.ProductReceiver is not { } receiver || !__instance.IsPC) {
             return true;
         }
 
@@ -130,13 +148,29 @@ internal static class AIUseCrafterPatch
         return false;
     }
 
+    private static void NotifyClientCancel(AI_UseCrafter act)
+    {
+        if (NetSession.Instance.Connection is not ElinNetHost host || act.owner is not { } owner) {
+            return;
+        }
+
+        EmpLog.Debug("Remote craft aborted on host, cancelling act {ActType} of chara {Uid}",
+            nameof(AI_UseCrafter), owner.uid);
+        TaskCache.RequestCancel(host, owner, act);
+    }
+
     private static IEnumerable<AIAct.Status> RunRemote(AI_UseCrafter act, AIUseCrafterArgs args)
     {
         var crafter = act.crafter;
+        var round = 0;
+
+        act.owner.LookAt(crafter.owner.pos);
 
         while (true) {
+            round++;
             // layer
             if (crafter.owner.isDestroyed) {
+                NotifyClientCancel(act);
                 yield return act.Success();
             }
 
@@ -147,40 +181,60 @@ internal static class AIUseCrafterPatch
             List<Thing> targets = [..args.Targets.Select(remote => (remote.Find() as Thing)!)];
             var blessed = BlessedState.Normal;
 
+            using (ElinDelta.Simulate()) {
+                foreach (var t in targets) {
+                    if (t is { isDestroyed: false } && t.GetRootCard() != act.owner
+                                                    && t.GetRootCard() == t && t.parent is not Card) {
+                        EmpLog.Warning("Craft target {Uid} not held by initiator {OwnerUid}, reclaiming",
+                            t.uid, act.owner.uid);
+                        act.owner.AddThing(t);
+                    }
+                }
+            }
+
             for (var i = 0; i < targets.Count; i++) {
                 if (!IsIngValid(targets[i], i)) {
+                    NotifyClientCancel(act);
                     yield return act.Success();
                 }
             }
 
             if (!crafter.IsFuelEnough(act.num, targets)) {
                 Msg.Say("notEnoughFuel");
+                NotifyClientCancel(act);
                 yield return act.Success();
             }
 
             act.ings = [];
-            for (var i = 0; i < targets.Count; i++) {
-                var ing = targets[i].Split(i < args.Required.Count ? args.Required[i] : 1);
-                act.ings.Add(ing);
+            // InsertAction, OnProgressComplete
+            using (ElinDelta.Simulate()) {
+                for (var i = 0; i < targets.Count; i++) {
+                    var ing = targets[i].Split(i < args.Required.Count ? args.Required[i] : 1);
+                    act.ings.Add(ing);
+                    EmpLog.Debug(
+                        "Remote craft round {CraftRound} split ing {Uid} num {CardNum}, origin {TargetUid} num left {TargetNum}",
+                        round, ing.uid, ing.Num, targets[i].uid, targets[i].isDestroyed ? 0 : targets[i].Num);
 
-                switch (ing.blessedState) {
-                    case <= BlessedState.Cursed when blessed > ing.blessedState:
-                    case > BlessedState.Normal when blessed == BlessedState.Normal:
-                        blessed = ing.blessedState;
-                        break;
-                }
+                    switch (ing.blessedState) {
+                        case <= BlessedState.Cursed when blessed > ing.blessedState:
+                        case > BlessedState.Normal when blessed == BlessedState.Normal:
+                            blessed = ing.blessedState;
+                            break;
+                    }
 
-                if (crafter.IsConsumeIng) {
-                    var c = EClass._zone.AddCard(ing, crafter.owner.ExistsOnMap ? crafter.owner.pos : act.owner.pos);
-                    c.altitude = crafter.owner.ExistsOnMap ? 0 : 1;
-                    if (crafter.animeType == TraitCrafter.AnimeType.Microwave) {
-                        c.isHidden = true;
+                    if (crafter.IsConsumeIng) {
+                        var c = EClass._zone.AddCard(ing, crafter.owner.ExistsOnMap ? crafter.owner.pos : act.owner.pos);
+                        c.altitude = crafter.owner.ExistsOnMap ? 0 : 1;
+                        if (crafter.animeType == TraitCrafter.AnimeType.Microwave) {
+                            c.isHidden = true;
+                        }
                     }
                 }
             }
 
             var requireOn = crafter.IsRequireFuel || crafter.ToggleType != ToggleType.None;
             if (requireOn && !crafter.owner.isOn) {
+                using var toggleSimulate = ElinDelta.Simulate();
                 crafter.Toggle(true);
             }
 
@@ -296,6 +350,10 @@ internal static class AIUseCrafterPatch
                             break;
                         }
                     }
+
+                    EmpLog.Debug("Remote craft round {CraftRound} complete for chara {OwnerUid}, ings {@CraftIngs}",
+                        round, act.owner.uid,
+                        act.ings.Select(ing => new { Uid = ing.uid, Destroyed = ing.isDestroyed }));
 
                     Rand.SetSeed();
 

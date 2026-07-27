@@ -26,6 +26,11 @@ internal static class CardTryStackEvent
             return false;
         }
 
+        // eplay delta list
+        if (CharaPickThingDelta.CanApplyOnPC) {
+            return true;
+        }
+
         __result = true;
         client.Delta.AddRemote(new CardTryStackToDelta {
             Card = __instance,
