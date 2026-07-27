@@ -13,7 +13,10 @@ internal class PauseGame
     [HarmonyPatch(typeof(AM_Adv), nameof(AM_Adv.ShouldPauseGame), MethodType.Getter)]
     internal static void OnGetShouldPauseGame(ref bool __result)
     {
-        __result |= ActionModeCombat.Paused;
+        if (ActionModeCombat.Paused) {
+            __result = true;
+            return;
+        }
 
         if (!__result) {
             return;

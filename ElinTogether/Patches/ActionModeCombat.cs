@@ -1,24 +1,47 @@
 using System.Collections.Generic;
 using System.Linq;
-using ElinTogether.Elements;
-using ElinTogether.Helper;
+using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
+using UnityEngine;
 
 namespace ElinTogether.Patches;
 
 [HarmonyPatch]
-internal class ActionModeCombat
+public class ActionModeCombat
 {
+    public enum CombatPhase
+    {
+        Inactive,
+        Deciding,
+        Executing,
+    }
+
+    // failsafe
+    private const float ExecutingTimeout = 30f;
+    private const float VisibilityRefreshInterval = 0.5f;
+
+    private static readonly HashSet<int> _decided = [];
+    private static readonly HashSet<int> _done = [];
+    private static float _executingTimer;
+    private static float _visibilityTimer;
+    private static int _lastPlayerCount;
+
     internal static Dictionary<int, bool> EnemyVisibility { get; } = [];
-    internal static bool Paused { get; private set; }
+    internal static CombatPhase Phase { get; private set; }
+    internal static bool Activated => Phase != CombatPhase.Inactive;
+    internal static bool Paused => Phase == CombatPhase.Deciding;
     internal static bool WaitForSelf { get; private set; }
-    internal static bool Activated { get; private set; }
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Game), nameof(Game.OnUpdate))]
     internal static void CheckIfPauseNeeded()
     {
+        if (NetSession.Instance.Connection is not { } connection) {
+            ChangePhaseLocal(CombatPhase.Inactive);
+            return;
+        }
+
         var players = NetSession.Instance.CurrentPlayers.ToList();
         var keysToRemove = EnemyVisibility
             .Where(kv => players.All(p => p.CharaUid != kv.Key))
@@ -29,54 +52,172 @@ internal class ActionModeCombat
             EnemyVisibility.Remove(key);
         }
 
-        if (!NetSession.Instance.Rules.UseTurnBasedCombat ||
-            EnemyVisibility.Values.All(v => !v) ||
-            NetSession.Instance.Connection is null ||
-            players.Count < 2) {
-            if (Activated) {
-                Msg.SayGod("emp_ui_combat_exit".lang());
-            }
-            Activated = false;
-            Paused = false;
-            WaitForSelf = false;
+        RefreshSelfVisibility(connection);
+
+        if (connection.IsHost) {
+            HostPhaseUpdate(connection, players);
+        }
+
+        UpdateDecideMessage();
+    }
+
+    private static void RefreshSelfVisibility(ElinNetBase net)
+    {
+        _visibilityTimer += Time.deltaTime;
+        if (_visibilityTimer < VisibilityRefreshInterval) {
+            return;
+        }
+        _visibilityTimer = 0f;
+
+        // HasNoEnemyInSight count null map as false
+        if (EClass.game?.activeZone?.map is null) {
             return;
         }
 
-        if (!Activated) {
-            EClass.pc.ai.Cancel();
-            Msg.SayGod("emp_ui_combat_enter".lang());
+        var visible = !EClass._zone.IsRegion && !CharaVisibilityChangeEvent.HasNoEnemyInSight();
+        if (EnemyVisibility.GetValueOrDefault(EClass.pc.uid) == visible) {
+            return;
         }
 
-        Activated = true;
+        EnemyVisibility[EClass.pc.uid] = visible;
+        EmpLog.Debug("Self enemy visibility changed to {CombatVisible}", visible);
+        net.Delta.AddRemote(new EnemyVisibilityDelta {
+            PlayerId = EClass.pc.uid,
+            Visible = visible,
+        });
+    }
+
+    internal static void OnRemoteTaskReport(int uid, bool hasGoal)
+    {
+        if (!Activated) {
+            return;
+        }
+
+        bool changed;
+        if (hasGoal) {
+            changed = _decided.Add(uid) | _done.Remove(uid);
+        } else {
+            changed = _decided.Remove(uid);
+            if (Phase == CombatPhase.Executing) {
+                changed |= _done.Add(uid);
+            }
+        }
+
+        if (changed) {
+            EmpLog.Debug("Combat report from chara {Uid}, decided {CombatDecided}",
+                uid, hasGoal);
+        }
+    }
+
+    internal static void ChangePhaseLocal(CombatPhase phase)
+    {
+        if (Phase == phase) {
+            return;
+        }
+
+        var prev = Phase;
+        Phase = phase;
+        _executingTimer = 0f;
+
+        EmpLog.Debug("Combat phase changed to {CombatPhase}", phase);
+
+        switch (phase) {
+            case CombatPhase.Inactive:
+                _decided.Clear();
+                _done.Clear();
+                WaitForSelf = false;
+                Msg.SayGod("emp_ui_combat_exit".lang());
+                break;
+            case CombatPhase.Deciding when prev == CombatPhase.Inactive:
+                EClass.pc.ai.Cancel();
+                Msg.SayGod("emp_ui_combat_enter".lang());
+                break;
+            case CombatPhase.Executing:
+                _done.Clear();
+                break;
+        }
+    }
+
+    private static void HostPhaseUpdate(ElinNetBase net, List<NetPeerState> players)
+    {
+        var active = NetSession.Instance.Rules.UseTurnBasedCombat &&
+                     EnemyVisibility.Values.Any(v => v) &&
+                     players.Count >= 2;
+
+        if (!active) {
+            ChangePhase(net, CombatPhase.Inactive);
+            return;
+        }
+
+        // joined mid combat
+        if (Activated && players.Count != _lastPlayerCount) {
+            net.Delta.AddRemote(new CombatPhaseDelta {
+                Phase = Phase,
+            });
+        }
+        _lastPlayerCount = players.Count;
+
+        switch (Phase) {
+            case CombatPhase.Inactive:
+                ChangePhase(net, CombatPhase.Deciding);
+                break;
+
+            case CombatPhase.Deciding: {
+                var allDecided = !EClass.pc.HasNoGoal && players.All(p =>
+                    p.CharaUid == EClass.pc.uid ||
+                    (p.FindChara() is { } chara && _decided.Contains(chara.uid)));
+                if (allDecided) {
+                    ChangePhase(net, CombatPhase.Executing);
+                }
+                break;
+            }
+
+            case CombatPhase.Executing: {
+                _executingTimer += Time.deltaTime;
+                // disconnected mid combat
+                var allDone = EClass.pc.HasNoGoal && players.All(p =>
+                    p.CharaUid == EClass.pc.uid ||
+                    p.FindChara() is not { } chara ||
+                    _done.Contains(chara.uid));
+                if (allDone) {
+                    ChangePhase(net, CombatPhase.Deciding);
+                } else if (_executingTimer > ExecutingTimeout) {
+                    EmpLog.Warning("Combat executing phase timed out, forcing next round");
+                    ChangePhase(net, CombatPhase.Deciding);
+                }
+                break;
+            }
+        }
+    }
+
+    private static void ChangePhase(ElinNetBase net, CombatPhase phase)
+    {
+        if (Phase == phase) {
+            return;
+        }
+
+        net.Delta.AddRemote(new CombatPhaseDelta {
+            Phase = phase,
+        });
+        ChangePhaseLocal(phase);
+    }
+
+    private static void UpdateDecideMessage()
+    {
+        if (Phase != CombatPhase.Deciding) {
+            WaitForSelf = false;
+            return;
+        }
 
         if (EClass.pc.HasNoGoal) {
-            if (Paused && WaitForSelf) {
-                return;
+            if (!WaitForSelf) {
+                WaitForSelf = true;
+                Msg.SayGod("emp_ui_combat_decide".lang());
             }
-
-            Paused = true;
-            WaitForSelf = true;
-            Msg.SayGod("emp_ui_combat_decide".lang());
-
-            return;
-        }
-
-        var hasAnyoneToDecide = EClass.pc.party.members.Any(c => c.IsRemotePlayer && c.ai is GoalRemote { child: null }) ||
-                                players.Any(p => p.CharaUid != EClass.pc.uid && p.FindChara() is null);
-        if (hasAnyoneToDecide) {
-            if (Paused && !WaitForSelf) {
-                return;
-            }
-
-            Paused = true;
+        } else if (WaitForSelf) {
             WaitForSelf = false;
             Msg.SayGod("emp_ui_combat_wait".lang());
-
-            return;
         }
-
-        Paused = false;
-        WaitForSelf = false;
     }
 
     [HarmonyPrefix]
@@ -84,5 +225,37 @@ internal class ActionModeCombat
     private static bool PreventImmediateAITick()
     {
         return !Paused;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ActPlan.Item), nameof(ActPlan.Item.Perform))]
+    private static bool QueueActWhileDeciding(ActPlan.Item __instance, ref bool __result)
+    {
+        if (!Paused) {
+            return true;
+        }
+
+        var act = __instance.act;
+        var pos = __instance.pos;
+        if (!act.IsAct || pos is null) {
+            return true;
+        }
+
+        var cc = __instance.cc;
+        var dist = cc.pos.Distance(pos);
+        var canInteractNeighbor = dist == 1 && cc.CanInteractTo(pos);
+        if (act.PerformDistance != -1 && (dist > act.PerformDistance || (dist == 1 && !canInteractNeighbor))) {
+            // wrap DynamicAIAct
+            return true;
+        }
+
+        var tc = __instance.tc;
+        var tp = pos.Copy();
+        Act.CC = cc;
+        // no pos
+        cc.SetAIImmediate(new DynamicAIAct(act.GetText(), () => act.Perform(cc, tc, tp)));
+
+        __result = false;
+        return false;
     }
 }

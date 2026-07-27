@@ -1,5 +1,6 @@
 using ElinTogether.Elements;
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -31,6 +32,16 @@ public class CharaTaskDelta : ElinDelta
         // relay to clients
         if (net.IsHost) {
             net.Delta.AddRemote(this);
+            ActionModeCombat.OnRemoteTaskReport(chara.uid, act is not null);
+        }
+
+        if (chara.ai is not GoalRemote) {
+            // assume client GoalRemote is a light year away and drop it may desync the goals
+            if (!net.IsClient) {
+                return;
+            }
+
+            chara.SetAI(GoalRemote.Default);
         }
 
         if (chara.ai is not GoalRemote remote) {
