@@ -57,6 +57,11 @@ public static class CardCache
         _cards[card.uid] = new(card);
     }
 
+    internal static void Remove(int uid)
+    {
+        _cards.Remove(uid);
+    }
+
     internal static void Rebind(Card card, int uid)
     {
         _cards.Remove(card.uid);

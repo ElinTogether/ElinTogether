@@ -25,13 +25,14 @@ internal static class CardGenEvent
             return;
         }
 
-        if (ZoneActivateEvent.IsHappening) {
-            return;
-        }
-
         if (connection.IsClient) {
             // pending uid
             __result.uid = PendingUid.GetNext();
+
+            // client zone activation can't null uids
+            if (ZoneActivateEvent.IsHappening) {
+                return;
+            }
 
             if (PendingContext.IsActive && CharaProgressCompleteDelta.Current is null) {
                 CardCache.Add(__result);
@@ -39,6 +40,11 @@ internal static class CardGenEvent
             }
 
             CardCache.DelayDestroy(__result);
+            return;
+        }
+
+        // host zone activation include the gen events as snaphsots
+        if (ZoneActivateEvent.IsHappening) {
             return;
         }
 

@@ -29,8 +29,19 @@ public class CardGenDelta : ElinDelta
             return;
         }
 
-        if (CardCache.Find(Card.Uid) is not null) {
-            return;
+        if (CardCache.Find(Card.Uid) is { } cached) {
+            var sameKind = cached is Thing == (Card.Type == RemoteCard.CardType.Thing);
+            if (sameKind && !cached.isDestroyed) {
+                return;
+            }
+
+            // host card uid somehow falls into our local uid space
+            EmpLog.Warning("Uid {Uid} taken by client local card, evicting for host {CardType}",
+                Card.Uid, Card.Type);
+            if (!cached.isDestroyed) {
+                cached.Destroy();
+            }
+            CardCache.Remove(Card.Uid);
         }
 
         if (Card.Type == RemoteCard.CardType.Chara &&
