@@ -49,7 +49,8 @@ public class CharaMoveDelta : ElinDelta
             return;
         }
 
-        if (chara.pos != Pos) {
+        var pos = (Point)Pos;
+        if (chara.pos != pos && pos.IsInBounds) {
             chara.Stub_Move(Pos, MoveType);
         }
     }
