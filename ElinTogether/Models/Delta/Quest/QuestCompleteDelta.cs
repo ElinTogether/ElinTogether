@@ -12,7 +12,8 @@ public class QuestCompleteDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        var quest = game.quests.list.Find(q => q.uid == Uid);
+        var quest = game.quests.list.Find(q => q.uid == Uid) ??
+                    game.quests.globalList.Find(q => q.uid == Uid);
         if (quest is null || quest.isComplete) {
             return;
         }
