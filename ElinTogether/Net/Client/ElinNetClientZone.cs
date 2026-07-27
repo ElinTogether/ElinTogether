@@ -11,6 +11,10 @@ namespace ElinTogether.Net;
 [ConsoleCommandClassCustomizer("emp")]
 internal partial class ElinNetClient
 {
+    private const int MaxZoneSyncRetries = 3;
+
+    private int _zoneSyncFailures;
+
     /// <summary>
     ///     Request a map snapshot manually, mostly just used when joining a session
     /// </summary>
@@ -20,6 +24,22 @@ internal partial class ElinNetClient
             request);
 
         Host.Send(request);
+    }
+
+    private void RetryZoneSync()
+    {
+        if (++_zoneSyncFailures >= MaxZoneSyncRetries) {
+            EmpLog.Warning("Zone sync failed after {RetryCount} attempts, disconnecting",
+                _zoneSyncFailures);
+
+            Socket.Disconnect(Host, EmpDisconnectInfo.InvalidZone);
+            return;
+        }
+
+        EmpLog.Warning("Zone state unresolved, re-requesting current zone from host (attempt {RetryCount})",
+            _zoneSyncFailures);
+
+        RequestZoneState(MapDataRequest.CurrentRemoteZone);
     }
 
     /// <summary>
@@ -55,7 +75,7 @@ internal partial class ElinNetClient
                 if (parent is null) {
                     EmpLog.Warning("Remote zone parent does not exist in current game");
 
-                    Socket.Disconnect(Host, EmpDisconnectInfo.InvalidZone);
+                    RetryZoneSync();
                     return;
                 }
 
@@ -74,9 +94,11 @@ internal partial class ElinNetClient
         if (remoteZone?.ZoneFullName != response.ZoneFullName) {
             EmpLog.Warning("Zone state mismatch");
 
-            Socket.Disconnect(Host, EmpDisconnectInfo.InvalidZone);
+            RetryZoneSync();
             return;
         }
+
+        _zoneSyncFailures = 0;
 
         // suppress client-side map regeneration
         remoteZone.isGenerated = true;
@@ -136,6 +158,15 @@ internal partial class ElinNetClient
 
         // reassign zone pos
         this.StartDeferredCoroutine(() => {
+            // zone state may be stale
+            if (Session.CurrentZone?.uid != response.ZoneUid ||
+                _zone != Session.CurrentZone ||
+                !response.Pos.IsInActiveMapBounds) {
+                EmpLog.Debug("Skipping stale zone position sync (expected {ExpectedZoneUid}, got {GotZoneUid})",
+                    _zone?.uid, response.ZoneUid);
+                return;
+            }
+
             pc.Stub_Move(response.Pos, Card.MoveType.Force);
             pc.SetDir(pc.dir);
         });
