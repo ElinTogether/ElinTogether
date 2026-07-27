@@ -9,6 +9,8 @@ internal static class RemoteCraft
 {
     private static readonly ConditionalWeakTable<AI_UseCrafter, AIUseCrafterArgs> _selections = new();
 
+    internal static Chara? ProductReceiver { get; set; }
+
     internal static void Attach(AI_UseCrafter act, AIUseCrafterArgs args)
     {
         _selections.Add(act, args);

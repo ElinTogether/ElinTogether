@@ -23,8 +23,15 @@ public class CardAddThingDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (Thing.Find() is not Thing { isDestroyed: false } thing ||
-            Parent.Find() is not { isDestroyed: false } parent) {
+        if (Thing.Find() is not Thing { isDestroyed: false } thing) {
+            EmpLog.Warning("Dropping {DeltaType}, uid {Uid} cannot be resolved here",
+                nameof(CardAddThingDelta), Thing.Uid);
+            return;
+        }
+
+        if (Parent.Find() is not { isDestroyed: false } parent) {
+            EmpLog.Warning("Dropping {DeltaType}, parent uid {Uid} cannot be resolved here",
+                nameof(CardAddThingDelta), Parent.Uid);
             return;
         }
 
@@ -35,5 +42,19 @@ public class CardAddThingDelta : ElinDelta
         if (thing.parent != parent) {
             parent.AddThing(thing, TryStack, DestInvX, DestInvY);
         }
+    }
+
+    protected override bool OnRefresh()
+    {
+        if (Thing.Find() is not Thing { isDestroyed: false } thing) {
+            return false;
+        }
+
+        if (CardGenDelta.WasCreatedThisFrame(thing.uid)) {
+            Thing.Data = LZ4Bytes.Create(thing);
+            Thing.Num = thing.Num;
+        }
+
+        return true;
     }
 }

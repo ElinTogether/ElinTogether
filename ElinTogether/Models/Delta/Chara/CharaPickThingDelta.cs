@@ -66,7 +66,11 @@ public class CharaPickThingDelta : ElinDelta
                 break;
         }
 
-        if (!thing.isDestroyed && thing.parent == _zone) {
+        if (thing.isDestroyed || thing.parent != _zone) {
+            return;
+        }
+
+        if (net.IsHost || CanApplyOnPC) {
             net.Delta.AddRemote(new ZoneAddCardDelta {
                 Card = Thing,
                 Pos = thing.pos,

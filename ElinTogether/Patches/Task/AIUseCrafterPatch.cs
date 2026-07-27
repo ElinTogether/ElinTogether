@@ -81,6 +81,9 @@ internal static class AIUseCrafterPatch
 
         var crafter = __instance.crafter;
 
+        // is applying
+        using var simulate = ElinDelta.Simulate();
+
         foreach (var ing in __instance.ings) {
             if (ing is not null && ing.ExistsOnMap && __instance.owner is { } owner) {
                 ing.isHidden = false;
@@ -97,6 +100,33 @@ internal static class AIUseCrafterPatch
         }
 
         crafter.OnEndAI(__instance);
+        return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Card), nameof(Card.AddCard))]
+    internal static bool OnAddProduct(Card __instance, Card c, ref Card __result)
+    {
+        if (RemoteCraft.ProductReceiver is not { } receiver || __instance != EClass.pc) {
+            return true;
+        }
+
+        __result = receiver.AddCard(c);
+        return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.HoldCard))]
+    internal static bool OnHoldProduct(Chara __instance, Card t)
+    {
+        if (RemoteCraft.ProductReceiver is not { } receiver || !__instance.IsPC) {
+            return true;
+        }
+
+        if (t.GetRootCard() != receiver) {
+            receiver.AddCard(t);
+        }
+
         return false;
     }
 
@@ -195,6 +225,8 @@ internal static class AIUseCrafterPatch
                     }
                 },
                 onProgressComplete = () => {
+                    using var simulate = ElinDelta.Simulate();
+
                     if (crafter.StopSoundProgress) {
                         EClass.Sound.Stop(crafter.idSoundProgress);
                     }
@@ -203,8 +235,13 @@ internal static class AIUseCrafterPatch
                     var e = act.owner.elements.GetOrCreateElement(crafter.IDReqEle(act.recipe?.source));
 
                     if (act.recipe is { } recipe) {
-                        for (var i = 0; i < act.num; i++) {
-                            recipe.Craft(blessed, i == 0, act.ings, crafter);
+                        RemoteCraft.ProductReceiver = act.owner;
+                        try {
+                            for (var i = 0; i < act.num; i++) {
+                                recipe.Craft(blessed, i == 0, act.ings, crafter);
+                            }
+                        } finally {
+                            RemoteCraft.ProductReceiver = null;
                         }
 
                         EClass.Sound.Play("craft");

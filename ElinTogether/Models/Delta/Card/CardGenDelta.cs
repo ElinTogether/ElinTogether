@@ -23,7 +23,13 @@ public class CardGenDelta : ElinDelta
             return;
         }
 
-        if (Card.Data is null || CardCache.Find(Card.Uid) is not null) {
+        if (Card.Data is null) {
+            EmpLog.Warning("Dropping {DeltaType}, uid {Uid} has no data attached",
+                nameof(CardGenDelta), Card.Uid);
+            return;
+        }
+
+        if (CardCache.Find(Card.Uid) is not null) {
             return;
         }
 
@@ -74,6 +80,11 @@ public class CardGenDelta : ElinDelta
 
         Card.Data = LZ4Bytes.Create(card);
         return true;
+    }
+
+    internal static bool WasCreatedThisFrame(int uid)
+    {
+        return _createdInCurrentFrame.Contains(uid);
     }
 
     internal static void ClearRecordedUids()
