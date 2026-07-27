@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -13,6 +14,10 @@ public class CharaTickConditionDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         if (Owner.Find() is not Chara { IsPC: false } chara) {
+            return;
+        }
+
+        if (!chara.IsInActiveMap) {
             return;
         }
 

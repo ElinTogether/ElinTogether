@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ElinTogether.API.SourceValidation;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -64,6 +65,10 @@ public class CharaStateSnapshot : EClass
         // this is received from host side
         if (remoteChara is null) {
             chara.hp = Hp;
+        }
+
+        if (!Pos.IsInActiveMapBounds) {
+            return;
         }
 
         // one more check for lingering death events

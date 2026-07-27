@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -21,6 +22,10 @@ public class CharaTickDelta : ElinDelta
 
         // do not remote tick a client
         if (chara.IsPC) {
+            return;
+        }
+
+        if (!chara.IsInActiveMap) {
             return;
         }
 

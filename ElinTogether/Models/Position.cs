@@ -13,6 +13,10 @@ public class Position : IEquatable<Position>
     [Key(1)]
     public required int Z { get; init; }
 
+    internal bool IsInActiveMapBounds => EClass._map is { } map &&
+                                         X >= 0 && Z >= 0 &&
+                                         X < map.Size && Z < map.Size;
+
     public bool Equals(Position? other)
     {
         if (other is null) {

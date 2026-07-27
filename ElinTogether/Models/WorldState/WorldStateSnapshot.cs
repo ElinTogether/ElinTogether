@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -37,6 +38,10 @@ public class WorldStateSnapshot : EClass
 
         var snapshots = new Dictionary<int, CharaStateSnapshot>();
         foreach (var chara in _map.charas) {
+            if (!chara.IsInActiveMap) {
+                continue;
+            }
+
             snapshots[chara.uid] = CharaStateSnapshot.Create(chara);
         }
 

@@ -40,6 +40,8 @@ internal static class RemoteCardHelper
         }
 
         internal bool IsPlayer => chara.IsPC || chara.IsRemotePlayer;
+
+        internal bool IsInActiveMap => chara.currentZone == EClass._zone && chara.pos is { IsValid: true };
     }
 
     internal class RemoteCharaNetProfile
