@@ -20,7 +20,8 @@ public partial class ElinNetBase
         PluginHashList = PluginDataValidator.Default.GetValidation();
         ActMappingValidator.Default.BuildActMapping();
 
-        EmpLog.Debug("Created source validation rules: flags={Flags}, {SourceCount} sources, {PluginCount} plugins, {FileCount} files",
+        EmpLog.Debug(
+            "Created source validation rules: flags={Flags}, {SourceCount} sources, {PluginCount} plugins, {FileCount} files",
             ValidFlags, SourceList.Count, PluginHashList.Count, ValidationFilePaths.Count);
 
         if (ValidFlags.HasFlag(ValidationFlags.Sources)) {

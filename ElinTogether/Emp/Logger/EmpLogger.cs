@@ -2,7 +2,9 @@
 global using EmpPop = ElinTogether.EmpLogger;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using ElinTogether.Helper;
 using ElinTogether.Models;
@@ -21,10 +23,15 @@ namespace ElinTogether;
 
 internal static partial class EmpLogger
 {
+    private const string LogDirectory = "ElinMP/Logs";
+    private const string LogPrefix = "Session_";
+    private const int RetainedSessionCount = 10;
+
     private static readonly ConcurrentDictionary<IPAddress, string> _hashCache = [];
 
-
     private static ILogger DefaultLogger => field ??= GetDefaultLoggerConfiguration().CreateLogger();
+
+    internal static string SessionLogPath => field ??= CreateSessionLogPath();
 
     internal static LoggerConfiguration GetDefaultLoggerConfiguration()
     {
@@ -42,6 +49,32 @@ internal static partial class EmpLogger
     internal static void InitLogger(ILogger? custom = null)
     {
         EmpLog.Logger = custom ?? DefaultLogger;
+    }
+
+    private static string CreateSessionLogPath()
+    {
+        var dir = Path.Combine(Application.persistentDataPath, LogDirectory);
+        Directory.CreateDirectory(dir);
+        PruneSessionLogs(dir);
+
+        var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var path = Path.Combine(dir, $"{LogPrefix}{stamp}.log");
+        using var _ = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite);
+        return Path.Combine(dir, $"{LogPrefix}{stamp}_{Process.GetCurrentProcess().Id}.log");
+    }
+
+    private static void PruneSessionLogs(string dir)
+    {
+        try {
+            foreach (var stale in Directory.GetFiles(dir, $"{LogPrefix}*.log")
+                .Select(f => new FileInfo(f))
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .Skip(Math.Max(RetainedSessionCount - 1, 0))) {
+                IO.DeleteFile(stale.FullName);
+            }
+        } catch {
+            // noexcept
+        }
     }
 
     extension(LoggerConfiguration lc)
@@ -111,15 +144,12 @@ internal static partial class EmpLogger
                     outputTemplate: "[EMP][{Level:u4}-{Timestamp:HH:mm:ss}] {Message:lj}{NewLine}{Exception}")
                 .WriteTo.File(
                     new CompactJsonFormatter(new PlainJsonValueFormatter()),
-                    Path.Combine(Application.persistentDataPath, "ElinMP/Logs/Session_.log"),
+                    SessionLogPath,
                     LogEventLevel.Debug,
-#if DEBUG
-                    shared: true,
-#else
+#if !DEBUG
                     buffered: true,
 #endif
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 3);
+                    rollingInterval: RollingInterval.Infinite);
         }
     }
 
