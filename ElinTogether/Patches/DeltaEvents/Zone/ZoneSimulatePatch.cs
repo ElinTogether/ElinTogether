@@ -11,7 +11,10 @@ internal class ZoneSimulatePatch
 {
     internal static IEnumerable<MethodBase> TargetMethods()
     {
-        return OverrideMethodComparer.FindAllOverrides(typeof(Zone), nameof(Zone.OnBeforeSimulate));
+        return [
+            ..OverrideMethodComparer.FindAllOverrides(typeof(Zone), nameof(Zone.OnBeforeSimulate)),
+            AccessTools.Method(typeof(FactionBranch), nameof(FactionBranch.ReceivePackages)),
+        ];
     }
 
     [HarmonyPrefix]
