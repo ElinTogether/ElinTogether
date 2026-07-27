@@ -158,8 +158,11 @@ internal partial class ElinNetHost
             EmpLog.Debug("Halting abandoned act {ActType} of remote chara {Uid}, client reports idle",
                 stuck.GetType().Name, chara.uid);
 
-            TaskCache.RequestCancel(this, chara, stuck);
-            chara.SetNoGoal();
+            if (stuck is NoGoal) {
+                ((GoalRemote)chara.ai).HaltChildAct();
+            } else {
+                TaskCache.RequestCancel(this, chara, stuck);
+            }
         }
 
         _idleReports[state.Index] = 0;

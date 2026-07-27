@@ -37,6 +37,10 @@ public class CharaTaskDelta : ElinDelta
             return;
         }
 
+        if (remote.owner is null) {
+            remote.SetOwner(chara);
+        }
+
         // now assign new task or reset
         using (Simulate(net.IsHost && RemoteCraft.IsHostRun(act))) {
             remote.InsertAction(act);

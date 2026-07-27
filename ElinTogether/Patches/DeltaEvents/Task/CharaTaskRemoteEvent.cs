@@ -28,8 +28,14 @@ internal static class CharaTaskRemoteEvent
                 break;
         }
 
-        if (__instance.ai.GetType() == g.GetType() && g.IsNoGoal) {
+        // skip the idle assignment
+        if (__instance.ai.GetType() == g.GetType() && g.IsNoGoal && __instance.ai.owner is not null) {
             return false;
+        }
+
+        // clients only report ourselves
+        if (connection.IsClient && !__instance.IsPC) {
+            return true;
         }
 
         if (connection.IsHost && __instance.IsPC && TaskCache.GetRequiredPos(g) is { } tile &&

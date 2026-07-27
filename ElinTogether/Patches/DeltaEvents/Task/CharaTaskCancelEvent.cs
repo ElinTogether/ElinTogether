@@ -26,6 +26,8 @@ internal static class CharaTaskCancelEvent
                 // client can only cancel progress with delta
                 prevent = true;
                 break;
+            case ElinNetClient when owner.ai is GoalRemote:
+                return false;
             default:
                 return true;
         }

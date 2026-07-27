@@ -26,6 +26,12 @@ public class CharaTaskCancelDelta : ElinDelta
         }
 
         var type = ActMappingValidator.Default.IdToActMapping[ActId];
+
+        if (typeof(NoGoal).IsAssignableFrom(type)) {
+            LastCancelDelta.Remove(Owner.Uid);
+            return;
+        }
+
         var ai = chara.ai.Current;
         while (ai is not null && ai.GetType() != type) {
             ai = ai.parent;
