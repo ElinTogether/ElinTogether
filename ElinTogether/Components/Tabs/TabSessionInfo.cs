@@ -79,7 +79,7 @@ internal class TabSessionInfo : TabEmpBase
         infoGroup.Text(BuildPingStat(player));
 
         // action buttons: only show for non-host players
-        if (player.Index != 0) {
+        if (NetSession.Instance.IsHost || player.User.IsMe) {
             var btnRow = infoGroup.Horizontal();
             btnRow.Layout.childForceExpandWidth = true;
             btnRow.Layout.childAlignment = TextAnchor.MiddleCenter;
