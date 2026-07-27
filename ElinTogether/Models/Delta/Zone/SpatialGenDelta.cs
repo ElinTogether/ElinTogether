@@ -1,3 +1,4 @@
+using System;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -48,13 +49,23 @@ public class SpatialGenDelta : ElinDelta
 
         var (_, zoneId, zoneLv) = Zone.ParseZoneFullName(ZoneFullName);
         var parent = game.spatials.Find(ParentZoneUid);
-        remoteZone = SpatialGen.Create(zoneId, parent, true, Pos.X, Pos.Z) as Zone;
+        remoteZone = SpatialGen.Create(zoneId, parent, false, Pos.X, Pos.Z) as Zone;
 
         if (remoteZone is null) {
             return;
         }
 
+        remoteZone.lv = zoneLv;
         remoteZone.uid = ZoneUid;
+
+        if (game.spatials.Find(ZoneUid) is { } exist) {
+            EmpLog.Warning("Zone uid {ZoneUid} taken by local zone {LocalZoneFullName}, " +
+                           "replacing with host {ZoneFullName}",
+                ZoneUid, exist.ZoneFullName, ZoneFullName);
+        }
+
+        game.spatials.map[ZoneUid] = remoteZone;
+        game.spatials.uidNext = Math.Max(game.spatials.uidNext, ZoneUid + 1);
 
         // update on overworld
         if (parent is Region region) {

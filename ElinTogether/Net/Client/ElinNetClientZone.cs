@@ -37,6 +37,14 @@ internal partial class ElinNetClient
 
         // popping from spatial gen refs makes no sense actually
         var remoteZone = response.FindZone();
+        if (remoteZone is not null && remoteZone.ZoneFullName != response.ZoneFullName) {
+            // uid registered but clients don't really hold uid anyway
+            EmpLog.Warning("Zone uid {ZoneUid} occupied by divergent local zone {LocalZoneFullName}, " +
+                           "replacing with host {ZoneFullName}",
+                response.ZoneUid, remoteZone.ZoneFullName, response.ZoneFullName);
+            remoteZone = null;
+        }
+
         if (remoteZone is null) {
             EmpLog.Information("Remote zone does not exist, waiting for new spatial gen");
 
