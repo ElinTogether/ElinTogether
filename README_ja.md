@@ -14,9 +14,13 @@ Steam ワークショップ（リンク未作成）または [GitHub Releases](h
 
 フレンドとプレイする際は、最小限の MOD 構成を全プレイヤーで統一してください。Steam ワークショップコレクションの活用を推奨します。
 
-ホストになるには、**Steam から**ゲームを起動し、セーブデータをロードするか新規ゲームを作成し（推奨）、**Esc - Mod - Elin Together** からパネルを開いてください。
+ホストになるには、**Steam から**ゲームを起動し、セーブデータをロードするか新規ゲームを作成し（推奨）、**Esc - Mods - Elin Together** からパネルを開いてください。
 
 ## FAQ
+
+### 素早く再同期するにはどうすればよいですか？
+
+ホスト側でもゲスト側でも、コントロールパネルから再接続できます。
 
 ### ターンベースのワールドはどのように動作しますか？
 
@@ -38,13 +42,19 @@ Steam ワークショップ（リンク未作成）または [GitHub Releases](h
 
 ゲームを再起動して Steam 接続をクリーンアップしてください。
 
+### XXX MOD との互換性はありますか？
+
+現在、MOD との互換性に関するサポートは行っておりません。問題が発生した場合は、該当する MOD を削除してお試しください。
+
 ## バグ報告
 
 [Issue テンプレート](https://github.com/ElinTogether/ElinTogether/issues/new/choose) をご利用ください。
 
 ## ビルド
 
-このプロジェクトでは、環境変数 `ElinGamePath` を Elin ゲームのインストールルートフォルダに設定する必要があります。
+本プロジェクトでは、以下の環境変数を設定する必要があります。
+
+`ElinGamePath`: Elinのインストール先ルートディレクトリを指定します。
 ```
 ElinGamePath/
 ├─ BepInEx/
@@ -54,6 +64,8 @@ ElinGamePath/
 │  ├─ Managed/
 │  │  ├─ *.dll
 ```
+
+`SteamContentPath`: `YKFramework.dll` を参照できるようにするため、`steamapps/workshop/content` ディレクトリを指定します。
 
 このプロジェクトのコンパイルには [.NET SDK 11.0](https://dotnet.microsoft.com/en-us/download/dotnet/11.0) が必要です。
 
@@ -86,6 +98,7 @@ dotnet build ./ElinTogether -c Debug -o ./out --no-restore
 - [Omega](https://steamcommunity.com/profiles/76561198004587603) - テスト
 - [InuiDame](https://github.com/InuiDame) - テスト
 - [Drakeny](https://github.com/Drakeny) - テスト
+- [Overlord](https://github.com/overlord-99) - テスト
 - noa - プロジェクトと MOD コミュニティへのサポート
 
 ---

@@ -14,9 +14,13 @@
 
 与好友联机时，建议使用最少的模组列表，并确保所有玩家保持一致。推荐使用 Steam 创意工坊合集来分享。
 
-通过 **Steam** 启动游戏，加载存档或创建新游戏（推荐），然后通过 **Esc-模组-Elin Together** 打开面板作为主机。
+通过 **Steam** 启动游戏，加载存档或创建新游戏（推荐），然后通过 **Esc-Mods-Elin Together** 打开面板作为主机。
 
 ## FAQ
+
+### 如何快速重新同步？
+
+在面板中主机或者客机都可以重新连接。
 
 ### 回合制世界如何运作？
 
@@ -38,13 +42,21 @@
 
 重启游戏以清理 Steam 连接。
 
-## 报告 Bug
+### 和 <某某> 模组兼容吗？
+
+目前我们不提供模组兼容性方面的支持。遇到问题请尝试移除相关模组。
+
+## 报告 Bug 和新功能
 
 请使用[问题模板](https://github.com/ElinTogether/ElinTogether/issues/new/choose)提交。
 
+你也可以加入模组群 872068953 进行讨论。
+
 ## 构建
 
-此项目需要设置环境变量 `ElinGamePath`，指向 Elin 游戏安装的根目录。
+此项目需要设置如下环境变量:
+
+`ElinGamePath`，指向 Elin 游戏安装的根目录。
 ```
 ElinGamePath/
 ├─ BepInEx/
@@ -54,6 +66,8 @@ ElinGamePath/
 │  ├─ Managed/
 │  │  ├─ *.dll
 ```
+
+`SteamContentPath`，指向 `steamapps/workshop/content` 目录，以便能够引用 `YKFramework.dll`。
 
 此项目使用 [.NET SDK 11.0](https://dotnet.microsoft.com/en-us/download/dotnet/11.0) 进行编译。
 
@@ -86,6 +100,7 @@ dotnet build ./ElinTogether -c Debug -o ./out --no-restore
 - [Omega](https://steamcommunity.com/profiles/76561198004587603) - 测试
 - [InuiDame](https://github.com/InuiDame) - 测试
 - [Drakeny](https://github.com/Drakeny) - 测试
+- [Overlord](https://github.com/overlord-99) - 测试
 - noa - 支持着项目和模组社区
 
 ---

@@ -19,6 +19,10 @@ To be a host, start the game **via Steam**, load into a save or make a new game 
 
 ## FAQ
 
+### How to quickly resync?
+
+Use the Elin Together panel to reconnect a client or self.
+
 ### How does the turn-based world work?
 
 Each player acts at their own speed, and the host's world continues accordingly. Player actions are concurrent and do not block one another. You can also configure a shared average speed.
@@ -39,13 +43,19 @@ If somehow items are out of sync, try reconnecting.
 
 Restart the game to clean up the Steam connections.
 
+### Is this compatible with X mod?
+
+We are not providing mod compatibility right now. If issues occur, try removing it first.
+
 ## Report Bugs
 
 Use the [issue template here](https://github.com/ElinTogether/ElinTogether/issues/new/choose).
 
 ## Build
 
-This project requires environment variable `ElinGamePath` set to the root folder of the Elin game installation.
+This project requires 2 environment variables:
+
+`ElinGamePath` set to the root folder of the Elin game installation.
 ```
 ElinGamePath/
 ├─ BepInEx/
@@ -55,6 +65,8 @@ ElinGamePath/
 │  ├─ Managed/
 │  │  ├─ *.dll
 ```
+
+`SteamContentPath` set to your `steamapps/workshop/content` directory so `YKFramework.dll` can be referenced.
 
 This project uses [.NET SDK 11.0](https://dotnet.microsoft.com/en-us/download/dotnet/11.0) to compile correctly.
 
@@ -87,6 +99,7 @@ Please explain the changes and link any related issues. Be responsible for any A
 - [Omega](https://steamcommunity.com/profiles/76561198004587603) - testing
 - [InuiDame](https://github.com/InuiDame) - testing
 - [Drakeny](https://github.com/Drakeny) - testing
+- [Overlord](https://github.com/overlord-99) - testing
 - noa - supporting the project and modding community
 
 ---
