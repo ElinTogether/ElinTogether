@@ -41,6 +41,7 @@ public class CardAddThingDelta : ElinDelta
 
         if (thing.parent != parent) {
             parent.AddThing(thing, TryStack, DestInvX, DestInvY);
+            EmpLog.Debug("Add thing {Uid} into parent {ParentUid}", thing.uid, parent.uid);
         }
     }
 

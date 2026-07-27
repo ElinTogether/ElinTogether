@@ -53,6 +53,7 @@ public class ZoneAddCardDelta : ElinDelta
         // we derive all other state changes to sub deltas
         if (card.parent != zone || card.pos != Pos) {
             zone.AddCard(card, Pos.X, Pos.Z);
+            EmpLog.Debug("Zone add card {Uid} at {@Pos}", card.uid, Pos);
         }
     }
 }

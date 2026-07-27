@@ -14,7 +14,7 @@ internal class GameSaveLoad
             return true;
         }
 
-        EmpLog.Debug("Blocked saving game as client");
+        EmpPop.Debug("Blocked saving game as client");
         __result = true;
         return false;
     }
@@ -28,7 +28,7 @@ internal class GameSaveLoad
         }
 
         // TODO: add full client reconnection
-        EmpLog.Debug("Blocked loading game as host with active client connection");
+        EmpPop.Debug("Blocked loading game as host with active client connection");
         return false;
     }
 

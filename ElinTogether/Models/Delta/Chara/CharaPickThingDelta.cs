@@ -57,6 +57,18 @@ public class CharaPickThingDelta : ElinDelta
         switch (Type) {
             case PickType.Pick:
                 chara.Pick(thing);
+                // force add
+                if (net.IsHost && !thing.isDestroyed && thing.parent == _zone) {
+                    EmpLog.Warning("Mirror pick of {Uid} failed to store, forcing into chara {OwnerUid}",
+                        thing.uid, chara.uid);
+                    chara.AddThing(thing);
+                }
+
+                if (!thing.isDestroyed) {
+                    EmpLog.Debug("Chara {OwnerUid} picked {Uid}, now in parent {ParentUid}",
+                        chara.uid, thing.uid, (thing.parent as Card)?.uid ?? -1);
+                }
+
                 break;
             case PickType.PickOrDrop:
                 chara.PickOrDrop(Pos, thing);

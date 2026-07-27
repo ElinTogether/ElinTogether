@@ -25,6 +25,9 @@ public class CardModNumDelta : ElinDelta
             net.Delta.AddRemote(this);
         }
 
+        EmpLog.Debug("Applying card num {Uid}: {CardNum} -> {NewCardNum}",
+            card.uid, card.Num, Num);
+
         IsApplying = true;
         try {
             card.SetNum(Num);
