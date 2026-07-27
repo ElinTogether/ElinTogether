@@ -38,7 +38,7 @@ public class PingPointDelta : ElinDelta
     public void Play()
     {
         var color = PeerColorizer.GetColor(SenderIndex);
-        var effect = Effect.Get("rod");
+        var effect = Effect.Get("aura_heaven");
         effect.sr.color = color;
         effect.Play(Pos);
 
