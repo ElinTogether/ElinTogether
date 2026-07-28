@@ -26,8 +26,6 @@ public class CharaPickThingDelta : ElinDelta
     [Key(3)]
     public required PickType Type { get; init; }
 
-    public static bool CanApplyOnPC { get; set; }
-
     protected override void OnApply(ElinNetBase net)
     {
         // we do not apply to ourselves
@@ -35,7 +33,7 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
-        if (!CanApplyOnPC && chara.IsPC) {
+        if (!CharaProgressCompleteDelta.IsApplying && chara.IsPC) {
             return;
         }
 
@@ -49,12 +47,17 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
+        var type = Type;
+        if (CharaProgressCompleteDelta.IsApplying && chara.IsRemotePlayer) {
+            type = PickType.Pick;
+        }
+
         // relay to clients
-        if (net.IsHost && Type != PickType.Pick) {
+        if (net.IsHost && type != PickType.Pick) {
             net.Delta.AddRemote(this);
         }
 
-        switch (Type) {
+        switch (type) {
             case PickType.Pick:
                 chara.Pick(thing);
                 // force add
@@ -82,12 +85,10 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
-        if (net.IsHost || CanApplyOnPC) {
-            net.Delta.AddRemote(new ZoneAddCardDelta {
-                Card = Thing,
-                Pos = thing.pos,
-                ZoneUid = _zone.uid,
-            });
-        }
+        net.Delta.AddRemote(new ZoneAddCardDelta {
+            Card = Thing,
+            Pos = thing.pos,
+            ZoneUid = _zone.uid,
+        });
     }
 }

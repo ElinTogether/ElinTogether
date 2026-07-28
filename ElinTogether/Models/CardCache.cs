@@ -149,7 +149,7 @@ public static class CardCache
 
     public static void Update()
     {
-        _keepalive.RemoveAll(card => card.parent is not null);
+        _keepalive.RemoveAll(card => card.parent is not null || card.isDestroyed);
         _invalidCards.ForEach(card => card.Destroy());
         _invalidCards.Clear();
 
