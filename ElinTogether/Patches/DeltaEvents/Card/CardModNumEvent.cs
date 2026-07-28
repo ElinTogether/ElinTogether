@@ -38,7 +38,7 @@ internal static class CardModNumEvent
             Num = __instance.Num,
         };
 
-        if (CharaProgressCompleteEvent.IsHappening && NetSession.Instance.IsHost) {
+        if (CharaProgressCompleteEvent.IsHappening && connection.IsHost) {
             CharaProgressCompleteEvent.DeltaList.Add(delta);
             return;
         }

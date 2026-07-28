@@ -4,10 +4,11 @@ using HarmonyLib;
 
 namespace ElinTogether.Patches;
 
-[HarmonyPatch(typeof(Card), nameof(Card.Destroy))]
+[HarmonyPatch]
 internal static class CardDestroyEvent
 {
     [HarmonyPrefix]
+    [HarmonyPatch(typeof(Card), nameof(Card.Destroy))]
     internal static void OnDestroy(Card __instance)
     {
         if (NetSession.Instance.Connection is not { } connection) {
@@ -24,7 +25,7 @@ internal static class CardDestroyEvent
         }
 
         // client pending uid
-        if (NetSession.Instance.IsClient && PendingUid.IsPending(__instance.uid)) {
+        if (connection.IsClient && PendingUid.IsPending(__instance.uid)) {
             return;
         }
 

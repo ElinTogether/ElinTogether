@@ -11,18 +11,17 @@ internal static class CharaPickThingEvent
     [HarmonyPrefix]
     internal static bool OnCharaPickThingy(Chara __instance, Thing t, ref Thing __result)
     {
-        var session = NetSession.Instance;
-        if (session.Connection is not { } connection) {
+        if (NetSession.Instance.Connection is not { } connection) {
             return true;
         }
 
-        if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
+        if (connection.IsClient && !CardCache.Contains(t)) {
             // pick self without returning null
             __result = t;
             return false;
         }
 
-        if (CharaProgressCompleteEvent.IsHappening && NetSession.Instance.IsHost) {
+        if (connection.IsHost && CharaProgressCompleteEvent.IsHappening) {
             CharaProgressCompleteEvent.DeltaList.Add(new CharaPickThingDelta {
                 Owner = CharaProgressCompleteEvent.Chara!,
                 Thing = t,
@@ -65,11 +64,11 @@ internal static class CharaPickOrDropEvent
             return true;
         }
 
-        if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
+        if (connection.IsClient && !CardCache.Contains(t)) {
             return false;
         }
 
-        if (!CharaProgressCompleteEvent.IsHappening || connection.IsClient) {
+        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening) {
             return true;
         }
 
@@ -96,11 +95,11 @@ internal static class CharaTrySmoothPickEvent
             return true;
         }
 
-        if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
+        if (connection.IsClient && !CardCache.Contains(t)) {
             return false;
         }
 
-        if (!CharaProgressCompleteEvent.IsHappening || connection.IsClient) {
+        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening) {
             return true;
         }
 

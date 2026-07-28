@@ -29,7 +29,7 @@ internal static class InvOwnerOnProcessEvent
             return;
         }
 
-        if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
+        if (connection.IsClient && !CardCache.Contains(t)) {
             return;
         }
 

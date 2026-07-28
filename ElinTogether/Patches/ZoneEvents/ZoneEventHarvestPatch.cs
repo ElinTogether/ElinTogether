@@ -1,7 +1,7 @@
 using ElinTogether.Net;
 using HarmonyLib;
 
-namespace ElinTogether.Patches.ZoneEvents;
+namespace ElinTogether.Patches;
 
 [HarmonyPatch]
 internal static class ZoneEventHarvestPatch

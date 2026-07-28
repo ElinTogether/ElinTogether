@@ -15,7 +15,7 @@ internal static class ZoneAddCardEvent
             return true;
         }
 
-        if (NetSession.Instance.IsClient && !CardCache.Contains(t)) {
+        if (connection.IsClient && !CardCache.Contains(t)) {
             CardCache.DelayDestroy(t);
             return true;
         }
