@@ -167,7 +167,15 @@ internal partial class ElinNetClient
                 return;
             }
 
-            pc.Stub_Move(response.Pos, Card.MoveType.Force);
+            if (pc.isDead) {
+                pc.pos.Set(response.Pos.X, response.Pos.Z);
+                if (!_map.charas.Contains(pc)) {
+                    _zone.AddCard(pc, pc.pos);
+                }
+            } else {
+                pc.Stub_Move(response.Pos, Card.MoveType.Force);
+            }
+
             pc.SetDir(pc.dir);
         });
     }

@@ -20,6 +20,10 @@ internal static class ZoneAddCardEvent
             return true;
         }
 
+        if (!__instance.IsActiveZone) {
+            return true;
+        }
+
         // only host can propagate add card event to remotes
         var card = RemoteCard.Create(t);
         connection.Delta.AddRemote(new ZoneAddCardDelta {

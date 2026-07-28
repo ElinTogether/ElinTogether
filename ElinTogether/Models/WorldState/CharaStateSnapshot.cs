@@ -109,8 +109,11 @@ public class CharaStateSnapshot : EClass
         // somehow we are riding it
         if (chara.host is null) {
             // only apply position fix if on the same map
-            if (NetSession.Instance.CurrentZone?.map is not null && chara.pos != Pos && chara.pos.Distance(Pos) > 2) {
-                chara.Stub_Move(Pos, Card.MoveType.Force);
+            if (NetSession.Instance.CurrentZone?.map is not null && chara.pos != Pos) {
+                var dist = chara.pos.Distance(Pos);
+                if (dist > 2 && (dist > 10 || !CharaMoveDelta.HasRecentMove(chara))) {
+                    chara.Stub_Move(Pos, Card.MoveType.Force);
+                }
             }
         }
     }

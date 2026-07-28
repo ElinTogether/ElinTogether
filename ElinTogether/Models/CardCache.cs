@@ -130,6 +130,7 @@ public static class CardCache
         PendingRebind.Clear();
         PendingSplit.Clear();
         ThingRequest.Clear();
+        CharaMoveDelta.ClearRecentMoves();
     }
 
     [ElinPreLoad]

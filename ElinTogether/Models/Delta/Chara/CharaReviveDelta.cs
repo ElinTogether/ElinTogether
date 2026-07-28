@@ -23,6 +23,11 @@ public class CharaReviveDelta : ElinDelta
         }
 
         if (net is ElinNetHost host) {
+            // duplicate
+            if (!chara.isDead) {
+                return;
+            }
+
             Point point;
             if (Pos is { IsInActiveMapBounds: true } requested) {
                 point = requested;
@@ -50,6 +55,11 @@ public class CharaReviveDelta : ElinDelta
                 chara.Revive(pos, true);
             } else {
                 chara.Revive(msg: true);
+            }
+
+            // recursion
+            if (chara.IsPC) {
+                player.deathDialog = false;
             }
         }
 

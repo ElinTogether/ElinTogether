@@ -1,12 +1,16 @@
+using System.Collections.Generic;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
+using UnityEngine;
 
 namespace ElinTogether.Models;
 
 [MessagePackObject]
 public class CharaMoveDelta : ElinDelta
 {
+    private static readonly Dictionary<int, float> _recentMoves = [];
+
     [Key(0)]
     public required RemoteCard Owner { get; init; }
 
@@ -50,8 +54,19 @@ public class CharaMoveDelta : ElinDelta
         }
 
         var pos = (Point)Pos;
-        if (chara.pos != pos && pos.IsInBounds) {
-            chara.Stub_Move(Pos, MoveType);
+        if (pos.IsInBounds &&
+            (chara.pos.Equals(pos) || chara.Stub_Move(Pos, MoveType) == Card.MoveResult.Success)) {
+            _recentMoves[chara.uid] = Time.unscaledTime;
         }
+    }
+
+    internal static bool HasRecentMove(Chara chara)
+    {
+        return _recentMoves.TryGetValue(chara.uid, out var at) && Time.unscaledTime - at < 1f;
+    }
+
+    internal static void ClearRecentMoves()
+    {
+        _recentMoves.Clear();
     }
 }

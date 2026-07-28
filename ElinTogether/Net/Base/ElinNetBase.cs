@@ -1,5 +1,6 @@
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
+using HarmonyLib;
 using ReflexCLI.UI;
 using UnityEngine;
 
@@ -25,7 +26,7 @@ public abstract partial class ElinNetBase : EMono
         Initialize();
 
 #if !DEBUG
-        if (!HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
+        if (!Harmony.HasAnyPatches(ModInfo.Guid)) {
             EmpMod.SharedHarmony.PatchAll(EmpMod.Assembly);
         }
 #endif

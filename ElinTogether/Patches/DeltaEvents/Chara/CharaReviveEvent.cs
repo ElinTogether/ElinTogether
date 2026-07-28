@@ -30,14 +30,17 @@ internal static class CharaReviveEvent
             return false;
         }
 
-        EmpLog.Debug("Requesting revive at {@Pos}",
-            (Position?)(__instance.pos.IsValid ? __instance.pos : null));
+        Position? pos = (__instance.pos.IsValid && EClass._map.charas.Contains(__instance)) ? __instance.pos : null;
+        EmpLog.Debug("Requesting revive at {@Pos}", pos);
 
         client.Delta.AddRemote(new CharaReviveDelta {
             Owner = __instance,
             LastWords = null,
-            Pos = __instance.pos.IsValid ? __instance.pos : null,
+            Pos = pos,
         });
+
+        // scene
+        EClass.player.deathDialog = true;
 
         if (!__instance.pos.IsValid) {
             __instance.pos.Set(EClass._map.GetCenterPos());
