@@ -188,6 +188,8 @@
     <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=patches_005Cdeltaevents_005Cinventory/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean
+        x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=patches_005Cdeltaevents_005Cmisc/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=patches_005Cdeltaevents_005Cquest/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=patches_005Cdeltaevents_005Ctask/@EntryIndexedValue">True</s:Boolean>
