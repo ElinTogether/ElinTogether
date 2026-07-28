@@ -69,7 +69,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     /// </summary>
     public void Poll()
     {
-        if (_pollGroup == HSteamNetPollGroup.Invalid) {
+        if (_pollGroup == HSteamNetPollGroup.Invalid || NetShutdown.IsQuitting) {
             return;
         }
 
@@ -118,6 +118,37 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         DiscardListenSocket();
     }
 
+    internal void Shutdown()
+    {
+        if (_disposed) {
+            return;
+        }
+
+        _disposed = true;
+
+        SteamCallback<SteamNetConnectionStatusChangedCallback_t>.Remove(HandleStatusChange);
+
+        foreach (var peer in _peers) {
+            EmpLog.Verbose("Closing connection {@Peer}",
+                peer);
+
+            SteamNetworkingSockets.SetConnectionPollGroup(peer.Connection, HSteamNetPollGroup.Invalid);
+
+            SteamNetworkingSockets.CloseConnection(peer.Connection, 0, EmpDisconnectInfo.HostShutdown, false);
+
+            peer.Dispose();
+        }
+
+        _peers.Clear();
+        _broadcast.ClearTargets();
+        _broadcast.Dispose();
+
+        DiscardListenSocket();
+        DestroyPollGroup();
+
+        GC.SuppressFinalize(this);
+    }
+
     /// <summary>
     ///     Disconnect with reason
     /// </summary>
@@ -137,9 +168,11 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         // reciprocal disconnect
         _listener?.OnPeerDisconnected(peer, reason);
 
-        SteamNetworkingSockets.SetConnectionPollGroup(peer.Connection, HSteamNetPollGroup.Invalid);
+        if (!NetShutdown.IsQuitting) {
+            SteamNetworkingSockets.SetConnectionPollGroup(peer.Connection, HSteamNetPollGroup.Invalid);
 
-        SteamNetworkingSockets.CloseConnection(peer.Connection, 0, reason, true);
+            SteamNetworkingSockets.CloseConnection(peer.Connection, 0, reason, true);
+        }
 
         _peers.Remove(peer);
         _broadcast.RemoveTarget(peer);
@@ -228,11 +261,22 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             return;
         }
 
-        DiscardListenSocket();
+        _disposed = true;
+
+        if (!disposing) {
+            return;
+        }
+
+        _broadcast.Dispose();
+
+        if (NetShutdown.IsQuitting) {
+            return;
+        }
 
         SteamCallback<SteamNetConnectionStatusChangedCallback_t>.Remove(HandleStatusChange);
 
-        _disposed = true;
+        DiscardListenSocket();
+        DestroyPollGroup();
     }
 
 #endregion

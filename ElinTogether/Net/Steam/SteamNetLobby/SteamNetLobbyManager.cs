@@ -92,6 +92,10 @@ public class SteamNetLobbyManager : EClass
             _ => throw new ArgumentOutOfRangeException(nameof(SteamNetLobbyType), type, null),
         };
 
+#if DEBUG
+        lobbyType = ELobbyType.k_ELobbyTypePrivateUnique;
+#endif
+
         SteamMatchmaking.CreateLobby(lobbyType, maxPlayers);
     }
 
@@ -388,12 +392,12 @@ public class SteamNetLobbyManager : EClass
         List<LobbyData> lobbies = [];
 
         for (var i = 0; i < fetched; ++i) {
-            var lobbyId = SteamMatchmaking.GetLobbyByIndex(i);
-            if (lobbyId == CSteamID.Nil) {
+            LobbyData lobby = SteamMatchmaking.GetLobbyByIndex(i);
+            if (!lobby.IsValid || lobby.MemberCount == 0) {
                 continue;
             }
 
-            lobbies.Add(lobbyId);
+            lobbies.Add(lobby);
         }
 
         _deferOnComplete?.Invoke([..lobbies]);

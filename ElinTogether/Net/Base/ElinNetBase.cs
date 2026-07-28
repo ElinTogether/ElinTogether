@@ -33,6 +33,10 @@ public abstract partial class ElinNetBase : EMono
 
     protected virtual void Update()
     {
+        if (NetShutdown.IsQuitting) {
+            return;
+        }
+
         Scheduler.Tick();
         Socket.Poll();
 
@@ -46,6 +50,10 @@ public abstract partial class ElinNetBase : EMono
 
     private void OnDestroy()
     {
+        if (NetShutdown.IsQuitting) {
+            return;
+        }
+
         Stop();
         Socket.Dispose();
 
@@ -76,6 +84,11 @@ public abstract partial class ElinNetBase : EMono
         CreateValidation();
 
         _initialized = true;
+    }
+
+    internal void Shutdown()
+    {
+        Socket.Shutdown();
     }
 
     internal virtual void Stop()

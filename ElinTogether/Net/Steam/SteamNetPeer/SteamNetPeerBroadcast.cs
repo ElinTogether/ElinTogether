@@ -33,6 +33,10 @@ internal sealed class SteamNetPeerBroadcast(ISteamNetSerializer serializer)
 
     public override bool Send(byte[] bytes, SteamNetSendFlag sendFlags = SteamNetSendFlag.Reliable)
     {
+        if (NetShutdown.IsQuitting) {
+            return false;
+        }
+
         switch (_targets.Count) {
             case 0:
                 return false;
@@ -41,6 +45,10 @@ internal sealed class SteamNetPeerBroadcast(ISteamNetSerializer serializer)
         }
 
         lock (ArenaLock) {
+            if (Arena == IntPtr.Zero) {
+                return false;
+            }
+
             PinArena(bytes.Length);
             Marshal.Copy(bytes, 0, Arena, bytes.Length);
 

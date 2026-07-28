@@ -58,7 +58,7 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     }
 
     public ESteamNetworkingConnectionState ConnectionState =>
-        SteamNetworkingSockets.GetConnectionInfo(Connection, out var info)
+        !NetShutdown.IsQuitting && SteamNetworkingSockets.GetConnectionInfo(Connection, out var info)
             ? info.m_eState
             : ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_None;
 
@@ -81,9 +81,17 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
 
     public virtual bool Send(byte[] bytes, SteamNetSendFlag sendFlags = SteamNetSendFlag.Reliable)
     {
+        if (NetShutdown.IsQuitting) {
+            return false;
+        }
+
         var size = bytes.Length;
 
         lock (ArenaLock) {
+            if (Arena == IntPtr.Zero) {
+                return false;
+            }
+
             PinArena(size);
 
             Marshal.Copy(bytes, 0, Arena, size);
@@ -117,6 +125,10 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
     {
         const float pingAlpha = 0.2f;
         const float bandwidthAlpha = 0.15f;
+
+        if (NetShutdown.IsQuitting) {
+            return;
+        }
 
         var status = new SteamNetConnectionRealTimeStatus_t();
         var discard = new SteamNetConnectionRealTimeLaneStatus_t();
@@ -163,12 +175,15 @@ internal class SteamNetPeer : ISteamNetPeer, IDisposable
             return;
         }
 
-        if (Arena != IntPtr.Zero) {
-            _deallocator(Arena);
-            Arena = IntPtr.Zero;
-        }
-
         _disposed = true;
+
+        // the finalizer runs off-thread and must not take ArenaLock, so swap the pointer out
+        // atomically instead: a racing Send then sees IntPtr.Zero and bails rather than writing
+        // into freed native memory
+        var arena = Interlocked.Exchange(ref Arena, IntPtr.Zero);
+        if (arena != IntPtr.Zero) {
+            _deallocator(arena);
+        }
     }
 
 #endregion

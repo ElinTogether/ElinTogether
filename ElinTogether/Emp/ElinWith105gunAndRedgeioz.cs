@@ -35,6 +35,8 @@ internal sealed class EmpMod : BaseUnityPlugin
         EmpPop.InitLogger();
         EmpConfig.Bind();
 
+        NetShutdown.SetupApplicationHook();
+
         CommandRegistry.assemblies.Add(Assembly);
 
 #if DEBUG
@@ -61,8 +63,10 @@ internal sealed class EmpMod : BaseUnityPlugin
 
     private void OnDestroy()
     {
-        NetSession.Instance.ResetSession();
-        NetSession.Instance.Lobby.Shutdown();
+        if (!NetShutdown.IsQuitting) {
+            NetSession.Instance.ResetSession();
+            NetSession.Instance.Lobby.Shutdown();
+        }
 
         StringAllocator.UnpinSharedStringHandles();
     }

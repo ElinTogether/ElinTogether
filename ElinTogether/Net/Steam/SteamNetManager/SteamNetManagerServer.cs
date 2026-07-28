@@ -95,6 +95,16 @@ public partial class SteamNetManager
         IsListening = false;
     }
 
+    private void DestroyPollGroup()
+    {
+        if (_pollGroup == HSteamNetPollGroup.Invalid) {
+            return;
+        }
+
+        SteamNetworkingSockets.DestroyPollGroup(_pollGroup);
+        _pollGroup = HSteamNetPollGroup.Invalid;
+    }
+
     private void SetupSteamCallback()
     {
         if (IsListening) {
