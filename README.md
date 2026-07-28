@@ -5,17 +5,30 @@
 
 English | [中文](README_zh.md) | [日本語](README_ja.md)
 
-A WIP attempt of bringing networking feature to [Elin](https://store.steampowered.com/app/2135150/Elin/).
+Adventure through the world of [Elin](https://store.steampowered.com/app/2135150/Elin/) with your friends — build a home, dive into nefias, and watch error popups together.
+
+After months of development, this mod is now in public beta. Please report any bugs you run into.
 
 ## Play
 
-Requires [YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753).
+Requires [YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753). Make sure it's placed above Elin Together in the mod viewer.
 
 You can install this mod package via Steam Workshop (link unavailable) or the automated builds from [GitHub Releases](https://github.com/ElinTogether/ElinTogether/releases).
 
-To play with friends, it's recommended to use a minimal modlist and keep them consistent for all players. Use Steam Workshop Collections for that purpose.
+### Version
 
-To be a host, start the game **via Steam**, load into a save or make a new game (recommended), and open up the panel from **Esc-Mods-Elin Together**.
+The workshop release always tracks the latest Nightly build; if you run into compatibility issues with the stable game version, you can download the Stable build from GitHub instead.
+
+### To host
+
+- Launch the game **via Steam**, load a save or create a new game (recommended)
+- Press **Esc** → **Mods** → **Elin Together** to open the multiplayer panel
+- Start hosting there
+- Invite players from the panel or use your Steam friends list
+
+![Elin Together panel](https://i.postimg.cc/vHqQLbV0/Pix-Pin-2026-07-28-09-25-19.png)
+
+To play with friends, keep the mod list as small as possible and identical for every player — Steam Workshop Collections make this easy to share.
 
 ## FAQ
 
@@ -23,25 +36,25 @@ To be a host, start the game **via Steam**, load into a save or make a new game 
 
 You can ping by `P` key or press `Return` to chat.
 
-### How to quickly resync?
-
-Use the Elin Together panel to reconnect a client or self.
-
 ### How does the turn-based world work?
 
-Each player acts at their own speed, and the host's world continues accordingly. Player actions are concurrent and do not block one another. You can also configure a shared average speed.
+Each player acts at their own speed, and the host's world advances accordingly. Player actions are concurrent and do not block one another. You can also configure a shared average speed.
 
 ### How does combat work?
 
-On top of the fluid turn sync system, you can also enable classic turn-based combat in the config, where each player decides their actions before the world continues.
+On top of the fluid turn sync system, you can also enable classic turn-based combat in the config, where each player decides their action before the world continues.
+
+### Client players can't change map.
+
+It's intended. Only the host player can change maps.
 
 ### Client players can't advance some quests.
 
-It's intended. You may get errors as client player. The host player is the only one who can actually advance the quest.
+It's intended. You may get errors as a client player. Only the host player can actually advance quests.
 
 ### Client players may see ghost items that can't be interacted with.
 
-If somehow items are out of sync, try reconnecting.
+If items are out of sync, try resyncing — a quick resync can be triggered from the Elin Together panel on either the host or the client machine.
 
 ### Connection froze; not responding; can't rejoin...
 
@@ -49,11 +62,13 @@ Restart the game to clean up the Steam connections.
 
 ### Is this compatible with X mod?
 
-We are not providing mod compatibility right now. If issues occur, try removing it first.
+We are not providing mod compatibility support right now. If issues occur, try removing the mod in question first.
 
-## Report Bugs
+## Report Bugs & Feature Requests
 
 Use the [issue template here](https://github.com/ElinTogether/ElinTogether/issues/new/choose).
+
+Reports left in the Steam Workshop comments section are ignored.
 
 ## Build
 
