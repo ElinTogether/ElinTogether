@@ -21,7 +21,7 @@ internal static class CharaPickThingEvent
             return false;
         }
 
-        if (connection.IsHost && CharaProgressCompleteEvent.IsHappening) {
+        if (connection.IsHost && CharaProgressCompleteEvent.IsHappening && CharaProgressCompleteEvent.Chara.IsRemotePlayer) {
             CharaProgressCompleteEvent.DeltaList.Add(new CharaPickThingDelta {
                 Owner = CharaProgressCompleteEvent.Chara!,
                 Thing = t,
@@ -32,7 +32,7 @@ internal static class CharaPickThingEvent
             CardCache.KeepAlive(t);
 
             __result = t;
-            return !CharaProgressCompleteEvent.Chara.IsRemotePlayer;
+            return false;
         }
 
         if (connection.IsClient && PendingUid.IsPending(t.uid)) {
@@ -68,7 +68,7 @@ internal static class CharaPickOrDropEvent
             return false;
         }
 
-        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening) {
+        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening || !__instance.IsRemotePlayer) {
             return true;
         }
 
@@ -99,7 +99,7 @@ internal static class CharaTrySmoothPickEvent
             return false;
         }
 
-        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening) {
+        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening || !c.IsRemotePlayer) {
             return true;
         }
 

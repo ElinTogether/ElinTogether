@@ -33,10 +33,6 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
-        if (!CharaProgressCompleteDelta.IsApplying && chara.IsPC) {
-            return;
-        }
-
         if (Thing.Find() is not Thing { isDestroyed: false } thing) {
             TaskCache.CancelClientAct(net, this, Thing);
             return;
@@ -47,17 +43,21 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
-        var type = Type;
-        if (CharaProgressCompleteDelta.IsApplying && chara.IsRemotePlayer) {
-            type = PickType.Pick;
+        if (CharaProgressCompleteDelta.IsApplying) {
+            if (net.IsClient && chara.IsRemotePlayer) {
+                _zone.AddCard(thing);
+                return;
+            }
+        } else if (chara.IsPC) {
+            return;
         }
 
         // relay to clients
-        if (net.IsHost && type != PickType.Pick) {
+        if (net.IsHost && Type != PickType.Pick) {
             net.Delta.AddRemote(this);
         }
 
-        switch (type) {
+        switch (Type) {
             case PickType.Pick:
                 chara.Pick(thing);
                 // force add
