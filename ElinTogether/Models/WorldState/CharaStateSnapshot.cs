@@ -66,17 +66,25 @@ public class CharaStateSnapshot : EClass
             chara.hp = Hp;
         }
 
-        if (!Pos.IsInActiveMapBounds) {
+        if (chara.IsPC) {
             return;
         }
 
         // one more check for lingering death events
-        if (chara.isDead && chara.pos != Pos) {
-            chara.Revive(Pos, true);
+        if (!Pos.IsInActiveMapBounds) {
+            return;
         }
 
         // fixes should only be applied to other remote charas
-        if (chara.IsPC) {
+        if (remoteChara is null) {
+            if (chara.isDead && chara.pos != Pos) {
+                if (!chara.pos.IsValid) {
+                    chara.pos.Set(Pos.X, Pos.Z);
+                }
+
+                chara.Revive(Pos, true);
+            }
+        } else if (chara.isDead) {
             return;
         }
 
@@ -101,7 +109,7 @@ public class CharaStateSnapshot : EClass
         // somehow we are riding it
         if (chara.host is null) {
             // only apply position fix if on the same map
-            if (NetSession.Instance.CurrentZone?.map is not null && chara.pos != Pos) {
+            if (NetSession.Instance.CurrentZone?.map is not null && chara.pos != Pos && chara.pos.Distance(Pos) > 2) {
                 chara.Stub_Move(Pos, Card.MoveType.Force);
             }
         }

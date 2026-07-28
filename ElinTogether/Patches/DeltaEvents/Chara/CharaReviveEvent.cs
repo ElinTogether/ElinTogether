@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -9,22 +10,17 @@ internal static class CharaReviveEvent
 {
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Chara), nameof(Chara.MakeGrave))]
-    internal static bool OnCharaMakeGrave(Chara __instance, string lastword, out string? __state)
+    internal static bool OnCharaMakeGrave(Chara __instance)
     {
-        __state = null;
-
-        if (NetSession.Instance.Connection is not ElinNetClient || !__instance.IsPC) {
-            return true;
-        }
-
-        __state = lastword;
-        return false;
+        return NetSession.Instance.Connection is not ElinNetClient || !__instance.IsPC;
     }
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Chara), nameof(Chara.Revive))]
-    internal static bool OnCharaRevive(Chara __instance, string? __state)
+    internal static bool OnCharaRevive(Chara __instance, ref bool __state)
     {
+        __state = __instance.isDead;
+
         if (NetSession.Instance.Connection is not ElinNetClient client || ElinDelta.IsApplying) {
             return true;
         }
@@ -34,11 +30,41 @@ internal static class CharaReviveEvent
             return false;
         }
 
+        EmpLog.Debug("Requesting revive at {@Pos}",
+            (Position?)(__instance.pos.IsValid ? __instance.pos : null));
+
         client.Delta.AddRemote(new CharaReviveDelta {
             Owner = __instance,
-            LastWords = __state,
+            LastWords = null,
+            Pos = __instance.pos.IsValid ? __instance.pos : null,
         });
 
-        return true;
+        if (!__instance.pos.IsValid) {
+            __instance.pos.Set(EClass._map.GetCenterPos());
+        }
+
+        return false;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.Revive))]
+    internal static void OnCharaReviveEnd(Chara __instance, bool __state)
+    {
+        if (!__state || __instance.isDead || ElinDelta.IsApplying) {
+            return;
+        }
+
+        if (NetSession.Instance.Connection is not ElinNetHost host || !__instance.IsPlayer) {
+            return;
+        }
+
+        EmpLog.Debug("Revive chara {Uid} at {@Pos}",
+            __instance.uid, (Position?)(__instance.IsInActiveMap ? __instance.pos : null));
+
+        host.Delta.AddRemote(new CharaReviveDelta {
+            Owner = __instance,
+            LastWords = null,
+            Pos = __instance.IsInActiveMap ? __instance.pos : null,
+        });
     }
 }
