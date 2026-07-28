@@ -1,4 +1,5 @@
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -21,6 +22,7 @@ public class CardRendererTalkDelta : ElinDelta
             return;
         }
 
-        card.renderer.Say(Text, duration: Duration);
+        using var _ = ChatBubbleEvent.TalkSpeakerContext.Push(card);
+        card.HostRenderer.Say(Text, duration: Duration);
     }
 }

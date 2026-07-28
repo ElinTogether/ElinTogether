@@ -28,7 +28,8 @@ public static class CardCache
 
         if (NetSession.Instance.IsClient) {
             // if there is nothing wrong, this shouldn't happen
-            EmpLog.Warning("Card uid conflict: uid {Uid} held by local {LocalCardId} ({LocalCardNum}), refusing incoming {CardId}",
+            EmpLog.Warning(
+                "Card uid conflict: uid {Uid} held by local {LocalCardId} ({LocalCardNum}), refusing incoming {CardId}",
                 card.uid, stored.id, stored.Num, card.id);
             return;
         }

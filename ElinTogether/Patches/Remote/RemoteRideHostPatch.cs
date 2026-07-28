@@ -26,9 +26,40 @@ internal class RemoteRideHostPatch
         // }
         return new CodeMatcher(instructions)
             .MatchStartForward(
-                new CodeMatch(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(Card), nameof(Chara.IsPC))))
+                new CodeMatch(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(Card), nameof(Card.IsPC))))
             .SetInstruction(
-                Transpilers.EmitDelegate((Chara chara) => chara.IsPC || EClass.pc.host == chara))
+                Transpilers.EmitDelegate((Card card) => card.IsPC || EClass.pc.host == card))
             .InstructionEnumeration();
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ActRide), nameof(ActRide.Ride))]
+    internal static bool OnRideRemoteHost(Chara host, Chara t)
+    {
+        if (!IsRidingBeRiddenTheRide(host, t)) {
+            return true;
+        }
+
+        EmpLog.Debug("blocked cyclic ride, chara {OwnerUid} is already hosted by {TargetUid}", host.uid, t.uid);
+
+        if (host.IsPC) {
+            Msg.SayInvalidAction();
+        }
+
+        return false;
+    }
+
+    private static bool IsRidingBeRiddenTheRide(Chara host, Chara t)
+    {
+        var chara = host;
+        for (var depth = 0; chara is not null && depth < 8; ++depth) {
+            if (chara == t) {
+                return true;
+            }
+
+            chara = chara.host;
+        }
+
+        return chara is not null;
     }
 }

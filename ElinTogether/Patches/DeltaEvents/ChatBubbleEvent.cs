@@ -18,7 +18,7 @@ internal class ChatBubbleEvent
             return true;
         }
 
-        if (__instance.owner is not Chara chara) {
+        if ((TalkSpeakerContext.Speaker ?? __instance.owner) is not Chara chara) {
             return true;
         }
 
@@ -54,41 +54,39 @@ internal class ChatBubbleEvent
     }
 
     [HarmonyPatch]
-    internal static class MsgSaySynchronizationContext
+    internal static class TalkSpeakerContext
     {
+        internal static Card? Speaker { get; private set; }
+
+        internal static ScopeExit Push(Card? speaker)
+        {
+            var previous = Speaker;
+            Speaker = speaker;
+            return new() {
+                OnExit = () => Speaker = previous,
+            };
+        }
+
         internal static IEnumerable<MethodInfo> TargetMethods()
         {
             return [
+                AccessTools.Method(typeof(Card), nameof(Card.SayRaw)),
                 AccessTools.Method(typeof(Card), nameof(Card.TalkRaw)),
                 AccessTools.Method(typeof(Chara), nameof(Chara.TalkTopic)),
             ];
         }
 
-        internal static bool Prefix(out int __state)
+        [HarmonyPrefix]
+        internal static void OnBeforeTalk(Card __instance, out Card? __state)
         {
-            __state = EClass.game.log.currentLogIndex;
-            return NetSession.Instance.IsHost;
+            __state = Speaker;
+            Speaker = __instance;
         }
 
-        internal static void Postfix(int __state)
+        [HarmonyFinalizer]
+        internal static void OnAfterTalk(Card? __state)
         {
-            if (NetSession.Instance.Connection is not ElinNetHost host) {
-                return;
-            }
-
-            if (__state == EClass.game.log.currentLogIndex) {
-                return;
-            }
-
-            var text = EClass.game.log.dict[EClass.game.log.currentLogIndex - 1].text;
-            var color = MsgBlock.lastBlock.txt.color;
-            host.Delta.AddRemote(new MsgSayDelta {
-                Text = text,
-                R = color.r,
-                G = color.g,
-                B = color.b,
-                A = color.a,
-            });
+            Speaker = __state;
         }
     }
 }
