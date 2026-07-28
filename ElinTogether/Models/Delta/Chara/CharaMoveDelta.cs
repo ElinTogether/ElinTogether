@@ -33,10 +33,6 @@ public class CharaMoveDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (net.IsHost) {
-            net.Delta.AddRemote(this);
-        }
-
         // this only happens on game load
         if (core.game?.activeZone?.map is null) {
             net.Delta.DeferLocal(this);
@@ -48,14 +44,25 @@ public class CharaMoveDelta : ElinDelta
             return;
         }
 
+        if (chara.isDead) {
+            return;
+        }
+
         // drop this
         if (chara.currentZone != NetSession.Instance.CurrentZone) {
             return;
         }
 
         var pos = (Point)Pos;
-        if (pos.IsInBounds &&
-            (chara.pos.Equals(pos) || chara.Stub_Move(Pos, MoveType) == Card.MoveResult.Success)) {
+        if (!pos.IsInBounds) {
+            return;
+        }
+
+        if (net.IsHost) {
+            net.Delta.AddRemote(this);
+        }
+
+        if (chara.pos.Equals(pos) || chara.Stub_Move(Pos, MoveType) == Card.MoveResult.Success) {
             _recentMoves[chara.uid] = Time.unscaledTime;
         }
     }
@@ -63,6 +70,11 @@ public class CharaMoveDelta : ElinDelta
     internal static bool HasRecentMove(Chara chara)
     {
         return _recentMoves.TryGetValue(chara.uid, out var at) && Time.unscaledTime - at < 1f;
+    }
+
+    internal static void ClearRecentMove(int uid)
+    {
+        _recentMoves.Remove(uid);
     }
 
     internal static void ClearRecentMoves()

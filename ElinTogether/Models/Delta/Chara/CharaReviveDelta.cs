@@ -47,14 +47,17 @@ public class CharaReviveDelta : ElinDelta
             Pos = point;
             host.Delta.AddRemote(this);
         } else {
-            if (Pos is { IsInActiveMapBounds: true } pos) {
-                if (!chara.pos.IsValid) {
-                    chara.pos.Set(pos.X, pos.Z);
-                }
+            // duplicate
+            if (chara.isDead) {
+                if (Pos is { IsInActiveMapBounds: true } pos) {
+                    if (!chara.pos.IsValid) {
+                        chara.pos.Set(pos.X, pos.Z);
+                    }
 
-                chara.Revive(pos, true);
-            } else {
-                chara.Revive(msg: true);
+                    chara.Revive(pos, true);
+                } else {
+                    chara.Revive(msg: true);
+                }
             }
 
             // recursion

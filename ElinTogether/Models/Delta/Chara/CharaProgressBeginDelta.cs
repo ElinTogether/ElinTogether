@@ -27,11 +27,24 @@ public class CharaProgressBeginDelta : ElinDelta
             return;
         }
 
-        if (chara.ai is not GoalRemote remote) {
+        if (!ActMappingValidator.Default.IdToActMapping.TryGetValue(ActId, out var type)) {
             return;
         }
 
-        if (!ActMappingValidator.Default.IdToActMapping.TryGetValue(ActId, out var type)) {
+        if (chara.isDead) {
+            if (net.IsHost) {
+                EmpLog.Warning("Progress begin {ActType} of chara {Uid} refused, chara is dead, requesting cancel",
+                    type.Name, Owner.Uid);
+                net.Delta.AddRemote(new CharaTaskCancelDelta {
+                    Owner = Owner,
+                    ActId = ActId,
+                });
+            }
+
+            return;
+        }
+
+        if (chara.ai is not GoalRemote remote) {
             return;
         }
 

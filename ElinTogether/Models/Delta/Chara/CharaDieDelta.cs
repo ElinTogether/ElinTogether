@@ -33,6 +33,8 @@ public class CharaDieDelta : ElinDelta
             return;
         }
 
+        CharaMoveDelta.ClearRecentMove(chara.uid);
+
         var element = ElementId is null ? null : Element.Create(ElementId.Value);
         chara.Stub_Die(element, Origin, AttackSource, OriginalTarget);
     }

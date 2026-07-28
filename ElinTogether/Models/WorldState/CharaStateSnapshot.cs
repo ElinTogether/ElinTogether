@@ -25,6 +25,9 @@ public class CharaStateSnapshot : EClass
     [Key(4)]
     public PlayerCharaStateSnapshot? State { get; set; }
 
+    [Key(5)]
+    public required bool IsDead { get; init; }
+
     public static CharaStateSnapshot Create(Chara chara)
     {
         return new() {
@@ -32,6 +35,7 @@ public class CharaStateSnapshot : EClass
             Pos = chara.pos,
             CurrentZoneUid = chara.currentZone.uid,
             Hp = chara.hp,
+            IsDead = chara.isDead,
         };
     }
 
@@ -42,6 +46,7 @@ public class CharaStateSnapshot : EClass
             Pos = pc.pos,
             CurrentZoneUid = pc.currentZone.uid,
             Hp = pc.hp,
+            IsDead = pc.isDead,
             State = new() {
                 LastAct = ActMappingValidator.Default.ActToIdMapping.GetValueOrDefault(pc.ai.GetType(), 0),
                 LastReceivedTick = NetSession.Instance.Tick,
@@ -77,14 +82,18 @@ public class CharaStateSnapshot : EClass
 
         // fixes should only be applied to other remote charas
         if (remoteChara is null) {
-            if (chara.isDead && chara.pos != Pos) {
+            if (IsDead) {
+                return;
+            }
+
+            if (chara.isDead) {
                 if (!chara.pos.IsValid) {
                     chara.pos.Set(Pos.X, Pos.Z);
                 }
 
                 chara.Revive(Pos, true);
             }
-        } else if (chara.isDead) {
+        } else if (chara.isDead || IsDead) {
             return;
         }
 

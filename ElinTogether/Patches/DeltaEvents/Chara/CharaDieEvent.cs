@@ -13,6 +13,8 @@ internal static class CharaDieEvent
     {
         switch (NetSession.Instance.Connection) {
             case ElinNetHost host:
+                CharaMoveDelta.ClearRecentMove(__instance.uid);
+
                 host.Delta.DeferRemote(new CharaDieDelta {
                     Owner = __instance,
                     ElementId = e?.id,

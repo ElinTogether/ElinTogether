@@ -21,6 +21,15 @@ public class CharaTaskDelta : ElinDelta
         }
 
         var act = TaskArgs?.CreateSubAct();
+
+        if (chara.isDead) {
+            if (net.IsHost && act is not null) {
+                TaskCache.RequestCancel(net, Owner, act);
+            }
+
+            return;
+        }
+
         if (net.IsHost && TaskCache.GetRequiredPos(act) is { } pos &&
             TaskCache.IsPosTaken(pos, chara)) {
             EmpLog.Debug("Task {ActType} on {@Pos} refused for chara {Uid}, pos already taken",
