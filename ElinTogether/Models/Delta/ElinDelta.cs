@@ -33,6 +33,7 @@ namespace ElinTogether.Models;
 [Union(215, typeof(CharaGiveGiftDelta))]
 [Union(216, typeof(CharaSwitchHeldDelta))]
 [Union(217, typeof(CharaRemoveFromGameDelta))]
+[Union(218, typeof(CharaSleepDelta))]
 // Thing
 [Union(300, typeof(ThingDelta))]
 [Union(301, typeof(ThingRequest))]
@@ -41,6 +42,7 @@ namespace ElinTogether.Models;
 [Union(401, typeof(ZoneAddCardDelta))]
 // World
 [Union(500, typeof(GameDelta))]
+[Union(501, typeof(WorldDateAdvanceDelta))]
 // Misc
 [Union(600, typeof(OnBarterDelta))]
 [Union(601, typeof(CardRendererTalkDelta))]

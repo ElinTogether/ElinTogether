@@ -72,7 +72,7 @@ public class WorldStateSnapshot : EClass
         client.Delta.AddLocal(new DynamicDelta {
             Action = _ => {
                 // 1
-                world.date.raw = [..GameDate];
+                WorldDateAdvanceDelta.SetClientDate([..GameDate]);
 
                 // 2
                 foreach (var snapshot in CharaSnapshots) {
