@@ -122,4 +122,3 @@ jobs:
       tag_prefix: EMP
       release_name_prefix: "Elin Together - Preview"
       artifact_name_prefix: emp
-      prerelease: true

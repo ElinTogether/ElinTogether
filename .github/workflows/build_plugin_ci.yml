@@ -15,7 +15,7 @@ on:
       release_name_prefix:
         required: true
         type: string
-      prerelease:
+      force_prerelease:
         required: false
         type: boolean
         default: false
@@ -151,14 +151,18 @@ jobs:
           $verParts = "${{ needs.build-and-upload.outputs.file_version_short }}".Split('.')
           $series = "$($verParts[0]).$($verParts[1])"
 
-          $lastTag = @(git tag --list "${{ inputs.tag_prefix }}-*" --sort=-v:refname |
+          $lastTag = @(git tag --list "${{ inputs.tag_prefix }}-*" --merged HEAD --sort=-v:refname |
             ? { $_ -ne $tag })[0]
 
-          if ($lastTag -and $lastTag -notlike "${{ inputs.tag_prefix }}-$series.*") {
+          $seriesBump = -not $lastTag -or $lastTag -notlike "${{ inputs.tag_prefix }}-$series.*"
+
+          if ($lastTag -and $seriesBump) {
             $prevSeries = ($lastTag -replace "^${{ inputs.tag_prefix }}-") -replace '\.\d+$'
-            $seriesFirst = @(git tag --list "${{ inputs.tag_prefix }}-$prevSeries.*" --sort=v:refname)[0]
+            $seriesFirst = @(git tag --list "${{ inputs.tag_prefix }}-$prevSeries.*" --merged HEAD --sort=v:refname)[0]
             if ($seriesFirst) { $lastTag = $seriesFirst }
           }
+
+          $prerelease = if ('${{ inputs.force_prerelease }}' -eq 'true') { 'true' } else { (-not $seriesBump).ToString().ToLower() }
 
           $changelog = if ($lastTag) {
             $lastTagSha = git rev-parse $lastTag
@@ -171,14 +175,17 @@ jobs:
 
           $changelog | Set-Content -Path "${{ github.workspace }}/CHANGELOG.txt" -Encoding utf8
           echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
+          echo "::notice::$tag -> $(if ($prerelease -eq 'true') { 'prerelease' } else { 'release' }) (last tag: $lastTag)"
 
       - name: Create or Update Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.pack.outputs.tag }}
-          name: ${{ inputs.release_name_prefix }} ${{ needs.build-and-upload.outputs.file_version }}
+          name: ${{ needs.build-and-upload.outputs.file_version }}
           draft: false
-          prerelease: ${{ inputs.prerelease }}
+          prerelease: ${{ steps.pack.outputs.prerelease == 'true' }}
+          make_latest: ${{ steps.pack.outputs.prerelease != 'true' }}
           generate_release_notes: false
           body_path: ${{ github.workspace }}/CHANGELOG.txt
           files: ${{ github.workspace }}/release/*.zip
