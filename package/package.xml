@@ -7,6 +7,6 @@
     <loadPriority>100</loadPriority>
     <version>1.14.514</version>
     <tag>Multiplayer,Co-op,Integration</tag>
-    <visibility>Private</visibility>
+    <visibility>Public</visibility>
     <description/>
 </Meta>

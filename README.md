@@ -54,7 +54,7 @@ It's intended. You may get errors as a client player. Only the host player can a
 
 ### Client players may see ghost items that can't be interacted with.
 
-If items are out of sync, try resyncing — a quick resync can be triggered from the Elin Together panel on either the host or the client machine.
+If items are out of sync, try resyncing — a quick resync can be initiated from the Elin Together panel on either the host or the client side.
 
 ### Connection froze; not responding; can't rejoin...
 
