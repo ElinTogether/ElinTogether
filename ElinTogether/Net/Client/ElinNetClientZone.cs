@@ -141,42 +141,72 @@ internal partial class ElinNetClient
 
             player.zone = pc.currentZone = currentZone;
             scene.Init(Scene.Mode.Zone);
-        } else if (player.zone != currentZone) {
-            // do normal zone transition
+        } else {
+            if (_zone == currentZone) {
+                EmpLog.Debug("Reloading active zone from received snapshot");
+
+                currentZone.Deactivate();
+            }
+
             if (currentZone.IsLoaded) {
                 currentZone.UnloadMap();
             }
 
-            pc.MoveZone(currentZone);
-        } else {
-            EmpLog.Debug("Reloading active zone from received snapshot");
+            if (pc.currentZone != currentZone) {
+                if (pc.isDead) {
+                    // he is but a husk
+                    currentZone.AddCard(pc);
+                } else {
+                    pc.MoveZone(currentZone);
+                }
 
-            currentZone.Deactivate();
-            currentZone.UnloadMap();
-            scene.Init(Scene.Mode.Zone);
+                if (pc.currentZone != currentZone) {
+                    currentZone.AddCard(pc);
+                }
+            }
+
+            player.MoveZone(currentZone);
         }
 
         // reassign zone pos
         this.StartDeferredCoroutine(() => {
             // zone state may be stale
-            if (Session.CurrentZone?.uid != response.ZoneUid ||
-                _zone != Session.CurrentZone ||
-                !response.Pos.IsInActiveMapBounds) {
+            var fresh = Session.CurrentZone?.uid == response.ZoneUid && _zone == Session.CurrentZone;
+
+            if (pc.isDead) {
+                PutHimRightEr(fresh ? response.Pos : null);
+                return;
+            }
+
+            if (!fresh || !response.Pos.IsInActiveMapBounds) {
                 EmpLog.Debug("Skipping stale zone position sync (expected {ExpectedZoneUid}, got {GotZoneUid})",
                     _zone?.uid, response.ZoneUid);
                 return;
             }
 
-            if (pc.isDead) {
-                pc.pos.Set(response.Pos.X, response.Pos.Z);
-                if (!_map.charas.Contains(pc)) {
-                    _zone.AddCard(pc, pc.pos);
-                }
-            } else {
-                pc.Stub_Move(response.Pos, Card.MoveType.Force);
-            }
-
+            pc.Stub_Move(response.Pos, Card.MoveType.Force);
             pc.SetDir(pc.dir);
         });
+    }
+
+    private static void PutHimRightEr(Position? requested)
+    {
+        if (!pc.isDead || _zone is null || _map is null) {
+            return;
+        }
+
+        Point pos = requested is { IsInActiveMapBounds: true }
+            ? requested
+            : _map.GetCenterPos();
+
+        pc.pos.Set(pos.x, pos.z);
+        if (!_map.charas.Contains(pc)) {
+            _zone.AddCard(pc, pc.pos);
+        }
+
+        player.deathDialog = false;
+
+        EmpLog.Debug("Restored dead pc at {@Pos} in zone {ZoneUid}",
+            pc.pos, _zone.uid);
     }
 }

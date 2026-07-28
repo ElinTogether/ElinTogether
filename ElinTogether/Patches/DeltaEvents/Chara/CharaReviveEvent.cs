@@ -21,6 +21,10 @@ internal static class CharaReviveEvent
     {
         __state = __instance.isDead;
 
+        if (!__instance.isDead) {
+            return true;
+        }
+
         if (NetSession.Instance.Connection is not ElinNetClient client || ElinDelta.IsApplying) {
             return true;
         }
