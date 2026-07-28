@@ -34,7 +34,7 @@ namespace ElinTogether.Models;
 [Union(216, typeof(CharaSwitchHeldDelta))]
 [Union(217, typeof(CharaRemoveFromGameDelta))]
 [Union(218, typeof(CharaSleepDelta))]
-[Union(218, typeof(CharaStaminaDelta))]
+[Union(219, typeof(CharaStaminaDelta))]
 // Thing
 [Union(300, typeof(ThingDelta))]
 [Union(301, typeof(ThingRequest))]
