@@ -30,7 +30,7 @@ internal static class CardTryStackEvent
             return false;
         }
 
-        if (CharaPickThingDelta.CanApplyOnPC || ElinDelta.IsApplying) {
+        if (ElinDelta.IsApplying) {
             return true;
         }
 

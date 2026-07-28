@@ -30,7 +30,7 @@ internal static class CardDestroyEvent
         }
 
         // client replay delta list
-        if (connection.IsClient && (CharaPickThingDelta.CanApplyOnPC || ElinDelta.IsApplying)) {
+        if (connection.IsClient && ElinDelta.IsApplying) {
             return;
         }
 

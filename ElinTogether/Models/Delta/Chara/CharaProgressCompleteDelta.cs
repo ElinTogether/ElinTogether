@@ -20,6 +20,8 @@ public class CharaProgressCompleteDelta : ElinDelta
 
     public static CharaProgressCompleteDelta? Current { get; private set; }
 
+    public static new bool IsApplying => Current is not null;
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net.IsHost) {
@@ -68,10 +70,8 @@ public class CharaProgressCompleteDelta : ElinDelta
                 }
             }
 
-            CharaPickThingDelta.CanApplyOnPC = true;
             DeltaList.ForEach(action => action.Apply(net));
         } finally {
-            CharaPickThingDelta.CanApplyOnPC = false;
             Current = null;
         }
 
@@ -90,10 +90,8 @@ public class CharaProgressCompleteDelta : ElinDelta
     {
         Current = this;
         try {
-            CharaPickThingDelta.CanApplyOnPC = true;
             DeltaList.ForEach(action => action.Apply(net));
         } finally {
-            CharaPickThingDelta.CanApplyOnPC = false;
             Current = null;
         }
     }
