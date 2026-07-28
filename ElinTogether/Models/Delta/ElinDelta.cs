@@ -51,6 +51,7 @@ namespace ElinTogether.Models;
 [Union(603, typeof(EnemyVisibilityDelta))]
 [Union(604, typeof(PingPointDelta))]
 [Union(605, typeof(CombatPhaseDelta))]
+[Union(606, typeof(AddRecipeDelta))]
 // Inv
 [Union(700, typeof(InvOwnerOnProcessDelta))]
 [Union(701, typeof(InvRerollDelta))]
