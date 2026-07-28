@@ -8,8 +8,8 @@ body:
       value: |
         **Before you begin**
         - Make sure your mod and game are up to date. [Verify game files integrity in Steam](https://help.steampowered.com/en/faqs/view/0C48-FCBD-DA71-93EB) first.  
-        - Please check if the issue has already been reported before creating a new one.
-        - Attach your Player.log file. Provide as much details as possible.
+        - Please check if the issue has already been reported or tracked in TODO list before creating a new one.
+        - Attach your log files. Provide as much details as possible.
 
   - type: input
     id: game-version
@@ -57,9 +57,9 @@ body:
     attributes:
       label: Describe the bug and how to reproduce it
       description: |
-        Attach your **Player.log** — critical for diagnosis.
+        Attach your logs.
         - `%localappdata%low/Lafrontier/Elin/Player.log`
-        - (Optional) `%localappdata%low/Lafrontier/Elin/ElinMP/Session_latest.log`
+        - `%localappdata%low/Lafrontier/Elin/ElinMP/Session_{today}.log`
         - (Optional) Screenshots or videos.
       value: |
         1. Go to [...]

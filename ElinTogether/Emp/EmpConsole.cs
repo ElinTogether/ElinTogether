@@ -90,6 +90,12 @@ internal class EmpConsole
         NetSession.Instance.Lobby.InviteSteamOverlay();
     }
 
+    [ConsoleCommand("lobby.join")]
+    internal static void JoinSteamLobby(ulong steamId64)
+    {
+        NetSession.Instance.Lobby.ConnectLobby(steamId64);
+    }
+
 #if DEBUG
     [ConsoleCommand("add_local")]
     internal static void AddLocalServerUdp()

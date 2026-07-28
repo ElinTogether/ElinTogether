@@ -8,8 +8,8 @@ body:
       value: |
         **提交前请确认**
         - 确保你的模组和游戏已更新到最新版本。建议先[在 Steam 中验证游戏文件完整性](https://help.steampowered.com/en/faqs/view/0C48-FCBD-DA71-93EB)。
-        - 请先检查该问题是否已被其他人报告过。
-        - 请附上你的 Player.log 文件，并提供尽可能详细的信息。
+        - 请先检查该问题是否已被其他人报告过或者已在待办事项中。
+        - 请提供尽可能详细的信息。
 
   - type: input
     id: game-version
@@ -57,9 +57,9 @@ body:
     attributes:
       label: 描述 bug 及复现步骤
       description: |
-        请附上你的 **Player.log** — 这对诊断至关重要。
+        请附上你的 log 文件。
         - `%localappdata%low/Lafrontier/Elin/Player.log`
-        - （可选）`%localappdata%low/Lafrontier/Elin/ElinMP/Session_latest.log`
+        - `%localappdata%low/Lafrontier/Elin/ElinMP/Session_{今天}.log`
         - （可选）截图或视频。
       value: |
         1. 前往 [...]
