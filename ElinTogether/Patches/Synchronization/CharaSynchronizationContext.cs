@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using ElinTogether.Models;
+using ElinTogether.Net;
 using EModding.Helper;
 using HarmonyLib;
 using UnityEngine;
@@ -9,6 +11,8 @@ namespace ElinTogether.Patches;
 [HarmonyPatch]
 internal class CharaSynchronizationContext : SynchronizationContext
 {
+    private static int _PCStamina;
+
     [HarmonyTranspiler]
     [HarmonyPatch(typeof(Chara), nameof(Chara._Move))]
     internal static IEnumerable<CodeInstruction> OnCharaMove(IEnumerable<CodeInstruction> instructions)
@@ -46,5 +50,18 @@ internal class CharaSynchronizationContext : SynchronizationContext
     private static void SetActTime(Chara chara, float num)
     {
         chara.actTime = num * Mathf.Max(0.1f, (float)RefSpeed / chara.Speed);
+    }
+
+    internal static void Update()
+    {
+        var stamina = pc.stamina.value;
+        if (_PCStamina != stamina) {
+            NetSession.Instance.Connection!.Delta.AddRemote(new CharaStaminaDelta {
+                Chara = pc,
+                Stamina = stamina,
+            });
+        }
+
+        _PCStamina = stamina;
     }
 }

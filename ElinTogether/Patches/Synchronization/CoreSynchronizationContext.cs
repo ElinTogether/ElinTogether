@@ -30,6 +30,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         }
 
         CardCache.Update();
+        CharaSynchronizationContext.Update();
         NetProfileSynchronizationContext.Update();
         QuestSynchronizationContext.Update();
         connection.Delta.RefreshBuffer();
