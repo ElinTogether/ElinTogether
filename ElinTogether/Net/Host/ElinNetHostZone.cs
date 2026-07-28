@@ -97,5 +97,7 @@ internal partial class ElinNetHost
             ZoneUid = _zone.uid,
             Pos = pos,
         });
+
+        RemoveLeftOverCharas(null);
     }
 }

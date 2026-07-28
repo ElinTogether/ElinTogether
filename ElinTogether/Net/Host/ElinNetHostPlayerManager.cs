@@ -171,7 +171,7 @@ internal partial class ElinNetHost
     }
 
     [ElinPostLoad]
-    private static void RemoveLeftOverCharas(GameIOContext context)
+    private static void RemoveLeftOverCharas(GameIOContext? context)
     {
         IEnumerable<Chara> excluded = Session.Connection is ElinNetHost host
             ? host.ActiveRemoteCharas.Values
