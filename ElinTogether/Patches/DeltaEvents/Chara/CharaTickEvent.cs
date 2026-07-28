@@ -26,8 +26,6 @@ internal static class CharaTickEvent
 
         connection.Delta.AddRemote(new CharaTickDelta {
             Owner = __instance,
-            // technically this is from last tick
-            ActTime = __instance.actTime,
         });
 
         LastTick = NetSession.Instance.Tick;

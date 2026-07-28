@@ -5,12 +5,26 @@ using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
+using UnityEngine;
 
 namespace ElinTogether.Patches;
 
 [HarmonyPatch]
 internal class ElementChangedEvent
 {
+    private static int _dedupeFrame;
+    private static readonly HashSet<(int Uid, int ElementId)> _createdInCurrentFrame = [];
+
+    private static bool CreatedInCurrentFrame(int uid, int elementId)
+    {
+        if (Time.frameCount != _dedupeFrame) {
+            _dedupeFrame = Time.frameCount;
+            _createdInCurrentFrame.Clear();
+        }
+
+        return _createdInCurrentFrame.Add((uid, elementId));
+    }
+
     internal static IEnumerable<MethodBase> TargetMethods()
     {
         return [
@@ -30,7 +44,7 @@ internal class ElementChangedEvent
     }
 
     [HarmonyPostfix]
-    internal static void OnSyncElementChange(ElementContainer __instance, Element? __result, int[]? __state)
+    internal static void OnSyncElementChange(ElementContainer __instance, int id, Element? __result, int[]? __state)
     {
         if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
             return;
@@ -41,20 +55,43 @@ internal class ElementChangedEvent
                 return;
             }
 
-            if (__result is null || __result.owner != __instance) {
+            if (__result is null) {
                 return;
             }
 
-            if (__state is not null &&
-                __state.SequenceEqual([__result.vBase, __result.vExp, __result.vPotential, __result.vTempPotential])) {
+            var unowned = (connection.IsHost && chara.IsRemotePlayer) ||
+                          (connection.IsClient && !chara.IsPC);
+
+            if (__result.owner != __instance) {
+                if (__result.owner is null && __state is not null && !unowned && CreatedInCurrentFrame(chara.uid, id)) {
+                    EmpLog.Debug("Element {ElementId} removed on chara {Uid}",
+                        id, chara.uid);
+                    connection.Delta.AddRemote(new ElementChangeDelta {
+                        Owner = chara,
+                        Element = id,
+                        Value = [0, 0, 0, 0],
+                    });
+                }
                 return;
             }
 
-            if ((connection.IsHost && chara.IsRemotePlayer) ||
-                (connection.IsClient && !chara.IsPC)) {
+            int[] current = [__result.vBase, __result.vExp, __result.vPotential, __result.vTempPotential];
+            if (__state?.SequenceEqual(current) ?? current is [0, 0, 0, 0]) {
                 return;
             }
 
+            if (unowned) {
+                EmpLog.Debug("Local element {ElementId} change on unowned chara {Uid}: {ElementValues}",
+                    id, chara.uid, current);
+                return;
+            }
+
+            if (!CreatedInCurrentFrame(chara.uid, id)) {
+                return;
+            }
+
+            EmpLog.Debug("Element {ElementId} changed on chara {Uid}: {ElementValues}",
+                id, chara.uid, current);
             connection.Delta.AddRemote(ElementChangeDelta.Create(chara, __result));
         });
     }

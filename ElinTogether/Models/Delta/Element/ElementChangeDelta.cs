@@ -35,7 +35,10 @@ public class ElementChangeDelta : ElinDelta
         ele.CheckLevelBonus(chara.elements);
         ele.OnChangeValue();
 
-        if (ele is { vBase: 0, vExp: 0, vPotential: 0, vTempPotential: 0 }) {
+        EmpLog.Debug("Applying element {ElementId} on chara {Uid}: {ElementValues}",
+            Element, chara.uid, Value);
+
+        if (ele is { vBase: 0, vExp: 0, vPotential: 0, vSource: 0, vLink: 0 }) {
             chara.elements.Remove(Element);
         }
     }
