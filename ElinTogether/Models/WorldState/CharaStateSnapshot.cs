@@ -121,6 +121,8 @@ public class CharaStateSnapshot : EClass
             if (NetSession.Instance.CurrentZone?.map is not null && chara.pos != Pos) {
                 var dist = chara.pos.Distance(Pos);
                 if (dist > 2 && (dist > 10 || !CharaMoveDelta.HasRecentMove(chara))) {
+                    EmpLog.Debug("Reconcile force move chara {Uid} from {@FromPos} to {@Pos}",
+                        chara.uid, chara.pos.Copy(), (Point)Pos);
                     chara.Stub_Move(Pos, Card.MoveType.Force);
                 }
             }

@@ -22,6 +22,13 @@ internal static class CharaTaskRemoteEvent
         switch (connection) {
             // we are host, assign all active client charas as remote
             case ElinNetHost host when host.ActiveRemoteCharas.Values.Contains(__instance):
+                if (__instance.ai is not GoalRemote) {
+                    EmpLog.Debug("Reset remote on {Uid}, was {ActType}, requested {RequestedActType}",
+                        __instance.uid, __instance.ai.GetType().Name, g.GetType().Name);
+                }
+
+                g = GoalRemote.Default;
+                break;
             // we are client, assign all other charas as remote
             case ElinNetClient when !__instance.IsPC:
                 g = GoalRemote.Default;

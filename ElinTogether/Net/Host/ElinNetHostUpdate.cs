@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ElinTogether.API.SourceValidation;
 using ElinTogether.Elements;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using ElinTogether.Patches;
@@ -146,6 +147,55 @@ internal partial class ElinNetHost
         HaltAbandonedAct(state, chara);
     }
 
+    internal void SweepStaleCellEntries()
+    {
+        if (_map?.cells is not { } cells) {
+            return;
+        }
+
+        var size = _map.Size;
+        for (var x = 0; x < size; ++x) {
+            for (var z = 0; z < size; ++z) {
+                if (cells[x, z].detail?.charas is not { Count: > 0 } list) {
+                    continue;
+                }
+
+                var seen = 0;
+                for (var i = list.Count - 1; i >= 0; --i) {
+                    var c = list[i];
+                    if (!ActiveRemoteCharas.ContainsValue(c)) {
+                        continue;
+                    }
+
+                    if (c.pos.x == x && c.pos.z == z && ++seen == 1) {
+                        continue;
+                    }
+
+                    EmpLog.Warning("Removing stale chara {Uid} at {@FromPos}, actual pos {@Pos}",
+                        c.uid, new Point(x, z), c.pos);
+                    list.RemoveAt(i);
+                }
+            }
+        }
+
+        foreach (var chara in ActiveRemoteCharas.Values) {
+            var first = _map.charas.IndexOf(chara);
+            if (first < 0) {
+                continue;
+            }
+
+            for (var i = _map.charas.Count - 1; i > first; --i) {
+                if (_map.charas[i] != chara) {
+                    continue;
+                }
+
+                EmpLog.Warning("Removing duplicate map chara {Uid} at {@Pos}",
+                    chara.uid, chara.pos);
+                _map.charas.RemoveAt(i);
+            }
+        }
+    }
+
     private void HaltAbandonedAct(NetPeerState state, Chara chara)
     {
         if (chara.ai is GoalRemote { child: { } stuck } &&
@@ -170,6 +220,14 @@ internal partial class ElinNetHost
 
     private void UpdateRemotePlayerStates()
     {
+        foreach (var chara in ActiveRemoteCharas.Values) {
+            EmpLog.Debug("Remote chara {Uid} ai {ActType} at {@Pos} (in map: {InActiveMap})",
+                chara.uid, chara.ai?.GetType().Name, chara.pos,
+                chara.IsInActiveMap && (_map?.charas.Contains(chara) ?? false));
+        }
+
+        SweepStaleCellEntries();
+
         // collect peer connection stats into player states
         foreach (var peer in Socket.Peers) {
             if (States.TryGetValue(peer.Id, out var state)) {

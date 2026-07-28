@@ -1,5 +1,6 @@
 using System;
 using ElinTogether.Elements;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -12,7 +13,7 @@ internal static class CharaMoveEvent
     [HarmonyPrefix]
     internal static bool OnCharaMove(Chara __instance)
     {
-        return __instance.ai is not GoalRemote;
+        return __instance.ai is not GoalRemote && !__instance.IsActiveRemoteChara;
     }
 
     [HarmonyPostfix]
@@ -33,7 +34,7 @@ internal static class CharaMoveEvent
         // we are client, only ourselves should generate a delta
         // ignore all other relayed moves
 
-        if (__instance.ai is GoalRemote) {
+        if (__instance.ai is GoalRemote || __instance.IsActiveRemoteChara) {
             return;
         }
 
@@ -45,6 +46,7 @@ internal static class CharaMoveEvent
             Owner = __instance,
             Pos = newPoint,
             MoveType = type,
+            ZoneUid = session.CurrentZone?.uid ?? -1,
         });
     }
 

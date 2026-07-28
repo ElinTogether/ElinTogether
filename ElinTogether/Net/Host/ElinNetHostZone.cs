@@ -1,6 +1,9 @@
 using ElinTogether.Common;
+using ElinTogether.Elements;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
+using ElinTogether.Patches;
 using Serilog.Context;
 
 namespace ElinTogether.Net;
@@ -86,8 +89,25 @@ internal partial class ElinNetHost
         // we only move their characters to zone when they are ready
         Delta.AddRemote(CardGenDelta.Create(chara));
 
-        var pos = pc.pos.GetNearestPoint(allowChara: false, allowInstalled: false);
-        _zone.AddCard(chara, pos);
+        // move instead of add
+        var pos = pc.pos.GetNearestPoint(allowChara: false, allowInstalled: false) ?? pc.pos.Copy();
+        if (chara.IsInActiveMap && _map.charas.Contains(chara)) {
+            if (chara.Stub_Move(pos, Card.MoveType.Force) != Card.MoveResult.Success) {
+                pos = chara.pos.Copy();
+            }
+        } else {
+            if (!chara.pos.IsValid) {
+                chara.pos.Set(pos.x, pos.z);
+            }
+
+            _zone.AddCard(chara, pos);
+        }
+
+        if (chara.ai is not GoalRemote) {
+            chara.SetAI(GoalRemote.Default);
+        }
+
+        SweepStaleCellEntries();
 
         EmpLog.Debug("Assigned zone sync position to player {@Peer} at {@Pos}",
             peer, pos);

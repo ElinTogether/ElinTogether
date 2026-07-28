@@ -42,6 +42,9 @@ internal static class RemoteCardHelper
         internal bool IsPlayer => chara.IsPC || chara.IsRemotePlayer;
 
         internal bool IsInActiveMap => chara.currentZone == EClass._zone && chara.pos is { IsValid: true };
+
+        internal bool IsActiveRemoteChara => NetSession.Instance.Connection is ElinNetHost host &&
+                                             host.ActiveRemoteCharas.ContainsValue(chara);
     }
 
     internal class RemoteCharaNetProfile

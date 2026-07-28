@@ -20,6 +20,9 @@ public class CharaMoveDelta : ElinDelta
     [Key(2)]
     public Card.MoveType MoveType { get; init; }
 
+    [Key(3)]
+    public required int ZoneUid { get; init; }
+
     internal override bool RequiresGameStarted => false;
 
     public static implicit operator CharaMoveDelta(Chara chara)
@@ -28,6 +31,7 @@ public class CharaMoveDelta : ElinDelta
             Owner = chara,
             Pos = chara.pos,
             MoveType = Card.MoveType.Force,
+            ZoneUid = NetSession.Instance.CurrentZone?.uid ?? -1,
         };
     }
 
@@ -48,6 +52,13 @@ public class CharaMoveDelta : ElinDelta
             return;
         }
 
+        // stale
+        if (ZoneUid != -1 && ZoneUid != NetSession.Instance.CurrentZone?.uid) {
+            EmpLog.Debug("Dropping stale move on chara {Uid} (expected {ExpectedZoneUid}, got {GotZoneUid})",
+                Owner.Uid, NetSession.Instance.CurrentZone?.uid, ZoneUid);
+            return;
+        }
+
         // drop this
         if (chara.currentZone != NetSession.Instance.CurrentZone) {
             return;
@@ -62,7 +73,13 @@ public class CharaMoveDelta : ElinDelta
             net.Delta.AddRemote(this);
         }
 
+        var from = chara.pos.Copy();
         if (chara.pos.Equals(pos) || chara.Stub_Move(Pos, MoveType) == Card.MoveResult.Success) {
+            if (from.Distance(pos) > 3) {
+                EmpLog.Debug("Move delta jump chara {Uid} from {@FromPos} to {@Pos}",
+                    chara.uid, from, pos);
+            }
+
             _recentMoves[chara.uid] = Time.unscaledTime;
         }
     }

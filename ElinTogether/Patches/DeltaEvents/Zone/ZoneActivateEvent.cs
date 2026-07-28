@@ -31,6 +31,8 @@ internal static class ZoneActivateEvent
             return;
         }
 
+        host.SweepStaleCellEntries();
+
         // every zone activate should be relayed to clients
         // broadcast all map assets to clients when host finishes map loading
         CoroutineHelper.Deferred(() => host.PropagateZoneChangeState(__instance), 2);

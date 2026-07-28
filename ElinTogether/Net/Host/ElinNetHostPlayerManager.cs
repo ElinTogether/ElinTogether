@@ -71,10 +71,12 @@ internal partial class ElinNetHost
         EmpLog.Information("Sending save probe to player {@Peer} for replication",
             peer);
 
+        // register before any SetAI
+        ActiveRemoteCharas[peer.Id] = chara;
+
         chara.MakeAlly();
         chara.MoveZone(pc.currentZone);
         chara.SetBool("remote_chara", true);
-        ActiveRemoteCharas[peer.Id] = chara;
 
         var state = States[peer.Id] = new() {
             Index = peer.Id,
