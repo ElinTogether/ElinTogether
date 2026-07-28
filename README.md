@@ -19,6 +19,10 @@ To be a host, start the game **via Steam**, load into a save or make a new game 
 
 ## FAQ
 
+### How to communicate with other players?
+
+You can ping by `P` key or press `Return` to chat.
+
 ### How to quickly resync?
 
 Use the Elin Together panel to reconnect a client or self.
