@@ -23,8 +23,13 @@ internal static class CardDestroyEvent
             return;
         }
 
+        // client pending uid
+        if (NetSession.Instance.IsClient && PendingUid.IsPending(__instance.uid)) {
+            return;
+        }
+
         // client replay delta list
-        if (connection.IsClient && CharaPickThingDelta.CanApplyOnPC) {
+        if (connection.IsClient && (CharaPickThingDelta.CanApplyOnPC || ElinDelta.IsApplying)) {
             return;
         }
 

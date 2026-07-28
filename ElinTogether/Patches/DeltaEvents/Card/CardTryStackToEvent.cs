@@ -14,6 +14,10 @@ internal static class CardTryStackEvent
             return true;
         }
 
+        if (PendingSplit.Resolve(__instance.uid) == to.uid) {
+            return true;
+        }
+
         if (to.IsHostOwned != __instance.IsHostOwned) {
             return false;
         }
@@ -26,8 +30,7 @@ internal static class CardTryStackEvent
             return false;
         }
 
-        // eplay delta list
-        if (CharaPickThingDelta.CanApplyOnPC) {
+        if (CharaPickThingDelta.CanApplyOnPC || ElinDelta.IsApplying) {
             return true;
         }
 

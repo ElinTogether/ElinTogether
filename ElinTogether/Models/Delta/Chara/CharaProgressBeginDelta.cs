@@ -41,6 +41,15 @@ public class CharaProgressBeginDelta : ElinDelta
         }
 
         if (ai is null) {
+            if (net.IsHost) {
+                EmpLog.Warning("Progress begin {ActType} of chara {Uid} has no matching act, requesting cancel",
+                    type.Name, Owner.Uid);
+                net.Delta.AddRemote(new CharaTaskCancelDelta {
+                    Owner = Owner,
+                    ActId = ActId,
+                });
+            }
+
             return;
         }
 
@@ -61,6 +70,8 @@ public class CharaProgressBeginDelta : ElinDelta
 
         if ((ai is DelegateProgress ? ai : ai.child) is not AIProgress { status: AIAct.Status.Running } child) {
             if (net.IsHost) {
+                EmpLog.Warning("Progress begin {ActType} of chara {Uid} failed to reproduce, requesting cancel",
+                    type.Name, Owner.Uid);
                 TaskCache.RequestCancel(net, chara, ai);
             }
 

@@ -1,3 +1,4 @@
+using ElinTogether.Elements;
 using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
@@ -33,6 +34,11 @@ public class CharaSwitchHeldDelta : ElinDelta
         // update tool visual
         chara.NetProfile.RemoteMainHand = new(HeldMainHand, false);
         chara.NetProfile.RemoteOffHand = new(HeldOffHand, false);
+
+        // do not update tool if running task
+        if (chara.ai is GoalRemote { child.status: AIAct.Status.Running }) {
+            return;
+        }
 
         // empty hand
         if (HeldMainHand is null && HeldOffHand is null) {

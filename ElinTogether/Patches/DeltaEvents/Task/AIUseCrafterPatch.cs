@@ -99,7 +99,9 @@ internal static class AIUseCrafterPatch
             }
 
             ing.isHidden = false;
-            if ((i < args.Targets.Count ? args.Targets[i].Find() : null) is Thing { isDestroyed: false } origin) {
+            // split(1) == self
+            if ((i < args.Targets.Count ? args.Targets[i].Find() : null) is Thing { isDestroyed: false } origin
+                && origin != ing) {
                 EmpLog.Debug("Remote craft returning ing {Uid} num {CardNum} to origin {TargetUid}",
                     ing.uid, ing.Num, origin.uid);
                 origin.ModNum(ing.Num);

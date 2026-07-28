@@ -24,6 +24,11 @@ internal static class CardAddThingEvent
             return true;
         }
 
+        // client pending uid
+        if (connection.IsClient && (PendingUid.IsPending(t.uid) || PendingUid.IsPending(__instance.uid))) {
+            return true;
+        }
+
         if (!CardCache.Contains(__instance)) {
             return false;
         }
