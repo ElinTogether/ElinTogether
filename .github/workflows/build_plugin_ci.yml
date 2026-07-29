@@ -130,6 +130,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Download Artifacts
         uses: actions/download-artifact@v7
@@ -164,11 +165,28 @@ jobs:
 
           $prerelease = if ('${{ inputs.force_prerelease }}' -eq 'true') { 'true' } else { (-not $seriesBump).ToString().ToLower() }
 
+          $skipTypes = '^\s*(chore|docs|ci)(\([^)]*\))?!?\s*:'
+          $sep = [char]0x1f
+
           $changelog = if ($lastTag) {
-            $lastTagSha = git rev-parse $lastTag
-            @("Last Tag ($lastTag): $lastTagSha", "") + @(
-              git log "$($lastTag)..HEAD" --date=format:"%y-%m-%d %H:%M" --pretty=format:"- %cd %h %s @%an" |
-                ? { $_ -notmatch "cleanup|Merge branch" })
+            $lastTagSha = git rev-parse "$($lastTag)^{commit}"
+            $headSha = git rev-parse HEAD
+
+            # $lastTag..HEAD is exclusive of $lastTag, inclusive of HEAD (= the commit
+            # that triggered this run, since checkout pins github.sha)
+            $entries = @(
+              git log "$($lastTag)..HEAD" --no-merges --date=format:"%y-%m-%d %H:%M" --pretty=format:"%cd$sep%h$sep%s$sep%an" |
+                ? { $_ } |
+                % {
+                  $f = $_ -split $sep, 4
+                  [pscustomobject]@{ Date = $f[0]; Hash = $f[1]; Subject = $f[2]; Author = $f[3] }
+                } |
+                ? { $_.Subject -notmatch $skipTypes } |
+                % { "- $($_.Date) $($_.Hash) $($_.Subject) @$($_.Author)" })
+
+            if (-not $entries) { $entries = @("- no user-facing changes") }
+
+            @("Last Tag ($lastTag): $lastTagSha", "This Tag ($tag): $headSha", "") + $entries
           } else {
             @("Initial release", "")
           }
