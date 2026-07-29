@@ -50,12 +50,12 @@ internal class TabServerConfiguration : TabEmpBase
     {
         var modes = this.MakeCard();
 
-        modes.Toggle("emp_ui_sv_cfg_shared_speed", EmpConfig.Server.SharedAverageSpeed.Value, value => {
-            EmpConfig.Server.SharedAverageSpeed.Value = value;
-        });
+        modes.Toggle("emp_ui_sv_cfg_shared_speed", EmpConfig.Server.SharedAverageSpeed.Value,
+                value => EmpConfig.Server.SharedAverageSpeed.Value = value)
+            .SetTooltipLang(EmpConfig.Server.SharedAverageSpeed.Description.Description);
 
-        modes.Toggle("emp_ui_sv_cfg_turn_combat", EmpConfig.Server.TurnBasedCombat.Value, value => {
-            EmpConfig.Server.TurnBasedCombat.Value = value;
-        });
+        modes.Toggle("emp_ui_sv_cfg_turn_combat", EmpConfig.Server.TurnBasedCombat.Value,
+                value => EmpConfig.Server.TurnBasedCombat.Value = value)
+            .SetTooltipLang(EmpConfig.Server.TurnBasedCombat.Description.Description);
     }
 }

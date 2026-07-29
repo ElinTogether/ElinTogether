@@ -24,6 +24,6 @@ internal class TabClientConfiguration : TabEmpBase
                 LayerElinTogether.Instance?.Reopen();
             });
             EMono.ui.AddLayer(l);
-        });
+        }).SetTooltipLang(EmpConfig.Client.PingKeybind.Description.Description);
     }
 }
