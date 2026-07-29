@@ -19,8 +19,11 @@ internal static class CharaMakeAllyEvent
                     TemporaryAllyName = __instance.c_altName,
                 });
                 return true;
-            case ElinNetClient:
+            case ElinNetClient client:
                 // we are clients, drop the update and wait for delta
+                if (!ElinDelta.IsApplying) {
+                    client.Delta.AddRemote(CharaMakeAllyRequestDelta.Create(__instance, msg));
+                }
                 return false;
             default:
                 return true;
