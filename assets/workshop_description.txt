@@ -1,0 +1,77 @@
+[h1]Eternal League of Networking — Elin Together[/h1]
+
+[img]https://img.shields.io/github/tag/ElinTogether/ElinTogether.svg[/img]
+
+Adventure through the world of Elin with your friends — build a home, dive into nefias, and watch error popups together.
+
+After months of development, this mod is now in public beta. Please report any bugs you run into.
+
+[url=https://github.com/ElinTogether/ElinTogether]GitHub[/url]
+
+[h2]Setup[/h2]
+
+[b]Requires[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753]YK Framework[/url].
+
+Make sure it's placed above Elin Together in the mod viewer.
+
+[h2]Version[/h2]
+
+The workshop release always tracks the latest Nightly build; if you run into compatibility issues with the stable game version, you can download the Stable build from GitHub instead.
+
+[b]To host:[/b]
+[list]
+[*]Launch the game via Steam, load a save or create a new game (recommended)
+[*]Press [b]Esc[/b] → [b]Mods[/b] → [b]Elin Together[/b] to open the multiplayer panel
+[*]Start hosting there
+[*]Invite players from the panel or use your Steam friends list
+[/list]
+
+[img]https://i.postimg.cc/vHqQLbV0/Pix-Pin-2026-07-28-09-25-19.png[/img]
+
+To play with friends, keep the mod list as small as possible and identical for every player — Steam Workshop Collections make this easy to share.
+
+[h2]FAQ[/h2]
+
+[h3]How to communicate with other players?[/h3]
+You can ping by `P` key or press `Return` to chat.
+
+[h3]How does the turn-based world work?[/h3]
+Each player acts at their own speed and the host's world advances accordingly. Actions are concurrent and do not block one another. You can also configure a shared average speed.
+
+[h3]How does combat work?[/h3]
+On top of the fluid turn sync system, you can enable classic turn-based combat in the config, where every player decides their action before the world continues.
+
+[h3]Client players can't change map.[/h3]
+Intended. Only the host player can change maps.
+
+[h3]Client players can't advance some quests.[/h3]
+Intended. You may get errors as a client player. Only the host player can actually advance quests.
+
+[h3]Client players see ghost items that can't be interacted with.[/h3]
+If items are out of sync, try resyncing — a quick resync can be initiated from the panel on either the host or the client side.
+
+[h3]Connection froze, not responding, can't rejoin...[/h3]
+Restart the game to clean up the Steam connections.
+
+[h3]Does it work with <x> mod?[/h3]
+We are not providing mod compatibility support right now. If issues occur, try removing the mod in question first.
+
+[h2]Bug Reports & Feature Requests[/h2]
+
+Please report issues on GitHub: [url=https://github.com/ElinTogether/ElinTogether/issues/new/choose]submit a bug report[/url].
+
+[b]Reports left in the comments section are ignored.[/b]
+
+[h2]Credits[/h2]
+
+[list]
+[*]DK — code, framework
+[*]Redgeioz — code, framework
+[*]105gun — code
+[*]Han — extensive testing
+[*]Omega — testing
+[*]InuiDame — testing
+[*]Drakeny — testing
+[*]OVERLORD — testing
+[*]noa — project & community support
+[/list]

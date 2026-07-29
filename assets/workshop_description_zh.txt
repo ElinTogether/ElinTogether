@@ -1,0 +1,79 @@
+[h1]Eternal League of Networking — Elin Together[/h1]
+
+[img]https://img.shields.io/github/tag/ElinTogether/ElinTogether.svg[/img]
+
+和朋友一起闯荡 Elin 的世界——一起建家、一起下地城、一起看红字报错弹窗。
+
+经过数月的开发，本 Mod 目前进入公开测试阶段，如有 bug 请反馈。
+
+[url=https://github.com/ElinTogether/ElinTogether]GitHub[/url]
+
+[h2]安装[/h2]
+
+[b]需要[/b] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753]YK Framework[/url]。
+
+确保它排在 Elin Together 上面。
+
+[h2]版本[/h2]
+
+创意工坊上的版本始终适配夜间版 Nightly 构建；如果遇到稳定版兼容问题，也可以去 GitHub 下载 Stable 版本。
+
+[b]开主机：[/b]
+[list]
+[*]通过 Steam 启动游戏，加载存档或开新档（推荐）
+[*]按 [b]Esc[/b] → [b]Mods[/b] → [b]Elin Together[/b] 打开联机面板
+[*]在面板里开启主机
+[*]在面板里邀请玩家，或者直接用 Steam 好友列表
+[/list]
+
+[img]https://i.postimg.cc/vHqQLbV0/Pix-Pin-2026-07-28-09-25-19.png[/img]
+
+与好友联机时，建议使用最少的模组列表，并确保所有玩家保持一致。推荐使用 Steam 创意工坊合集来分享。
+
+[h2]FAQ[/h2]
+
+[h3]如何与其他玩家交流？[/h3]
+你可以按 `P` 键发送标记，或者按 `Return` 键聊天。
+
+[h3]回合制的世界是怎么运作的？[/h3]
+每位玩家按自己的速度行动，主机世界会相应推进。玩家行动可以同时进行，不会互相阻塞。你也可以在设置中配置共享平均速度。
+
+[h3]战斗怎么打？[/h3]
+在流畅的回合同步系统之上，你还可以在设置中开启经典回合制战斗，每位玩家决定行动后世界才会继续推进。
+
+[h3]客机玩家无法切换地图[/h3]
+这是预期行为。只有主机玩家可以切换地图。
+
+[h3]客机玩家无法推进某些任务[/h3]
+这是预期行为。作为客机玩家你可能会遇到错误。只有主机玩家才能实际推进任务。
+
+[h3]客机玩家看到没法互动的幽灵物品[/h3]
+如果物品出现不同步，请尝试重新同步，主机或客机均可使用面板进行快速重新同步操作。
+
+[h3]连接卡住、没反应、进不去……[/h3]
+重启游戏以清理 Steam 连接。
+
+[h3]和 <某某> 模组兼容吗？[/h3]
+目前我们不提供模组兼容性方面的支持。遇到问题请尝试移除相关模组。
+
+[h2]提交 Bug 和新功能[/h2]
+
+遇到问题请到 GitHub 反馈：[url=https://github.com/ElinTogether/ElinTogether/issues/new/choose]提交 Bug 报告[/url]。
+
+[b]发在评论区的错误反馈不会处理。[/b]
+
+模组制作相关讨论可以加入 Elin模组讨论群 872068953。
+
+[h2]致谢[/h2]
+
+[list]
+[*]DK — 代码、框架
+[*]Redgeioz — 代码、框架
+[*]105gun — 代码
+[*]Han — 大量测试
+[*]Omega — 测试
+[*]InuiDame — 测试
+[*]Drakeny — 测试
+[*]OVERLORD — 测试
+[*]noa — 支持项目与 Mod 社区
+[/list]
