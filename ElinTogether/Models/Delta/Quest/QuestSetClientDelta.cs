@@ -20,6 +20,10 @@ public class QuestSetClientDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
+        if (net.IsHost) {
+            return;
+        }
+
         if (NewChara.Find() is not Chara chara) {
             return;
         }

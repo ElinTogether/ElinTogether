@@ -15,6 +15,11 @@ internal static class QuestSetClientEvent
             return;
         }
 
+        // let host handle SetClient
+        if (connection.IsClient) {
+            return;
+        }
+
         if (!EClass.game.quests.list.Contains(__instance) && !ReferenceEquals(__instance.chara?.quest, __instance)) {
             // we can't find the quest, so just return
             return;

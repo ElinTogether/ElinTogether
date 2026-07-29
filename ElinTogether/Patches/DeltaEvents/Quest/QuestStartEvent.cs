@@ -4,30 +4,56 @@ using HarmonyLib;
 
 namespace ElinTogether.Patches;
 
-[HarmonyPatch]
+[HarmonyPatch(typeof(QuestManager), nameof(QuestManager.Start), typeof(Quest))]
 internal class QuestStartEvent
 {
     [HarmonyPrefix]
-    [HarmonyPatch(typeof(QuestManager), nameof(QuestManager.Start), typeof(Quest))]
+    internal static bool OnClientStart(Quest q, ref Quest __result)
+    {
+        if (NetSession.Instance.Connection is not ElinNetClient client) {
+            return true;
+        }
+
+        __result = q;
+
+        if (ElinDelta.IsApplying) {
+            return false;
+        }
+
+        if (EClass.game.quests.list.Exists(x => x.uid == q.uid)) {
+            return false;
+        }
+
+        if (q.uid < 0 || !q.IsRandomQuest || q.UseInstanceZone) {
+            EmpPop.Information("emp_ui_quest_client".lang());
+            return false;
+        }
+
+        client.Delta.AddRemote(new QuestAcceptDelta {
+            Uid = q.uid,
+            Client = q.person.chara,
+        });
+        EmpLog.Debug("Requesting quest accept {QuestUid} {QuestId}", q.uid, q.id);
+
+        return false;
+    }
+
+    [HarmonyPostfix]
     internal static void OnStart(Quest q)
     {
         if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
             return;
         }
 
-        // already started
-        var quests = EClass.game.quests;
-        if (quests.list.Contains(q)) {
+        if (connection.IsClient) {
             return;
         }
 
-        var owner = q.person.chara;
-        var canFind = ReferenceEquals(owner?.quest, q);
-        var isGlobal = quests.globalList.Contains(q);
         connection.Delta.AddRemote(new QuestStartDelta {
             Uid = q.uid,
-            Owner = owner,
-            Data = (!canFind && !isGlobal) ? LZ4Bytes.Create(q) : null,
+            Owner = q.person.chara,
+            AssignQuest = q.chara?.quest?.uid == q.uid,
+            Data = LZ4Bytes.Create(q),
         });
     }
 }

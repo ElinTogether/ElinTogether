@@ -61,7 +61,7 @@ namespace ElinTogether.Models;
 [Union(800, typeof(QuestCreateDelta))]
 [Union(801, typeof(QuestSetClientDelta))]
 [Union(802, typeof(QuestStartDelta))]
-[Union(803, typeof(QuestCreateInstanceZoneDelta))]
+[Union(803, typeof(QuestAcceptDelta))]
 [Union(804, typeof(QuestCompleteDelta))]
 [Union(805, typeof(QuestUpdateDelta))]
 [Union(806, typeof(QuestChangePhaseDelta))]

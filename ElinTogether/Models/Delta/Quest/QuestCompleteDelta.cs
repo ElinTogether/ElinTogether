@@ -3,7 +3,6 @@ using MessagePack;
 
 namespace ElinTogether.Models;
 
-// unused and maybe not needed
 [MessagePackObject]
 public class QuestCompleteDelta : ElinDelta
 {
@@ -15,6 +14,14 @@ public class QuestCompleteDelta : ElinDelta
         var quest = game.quests.list.Find(q => q.uid == Uid) ??
                     game.quests.globalList.Find(q => q.uid == Uid);
         if (quest is null || quest.isComplete) {
+            return;
+        }
+
+        if (net.IsHost) {
+            using (Simulate()) {
+                quest.Complete();
+            }
+
             return;
         }
 

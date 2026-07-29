@@ -34,7 +34,7 @@ internal static class QuestCompleteEvent
     [HarmonyPostfix]
     internal static void OnQuestComplete(Quest __instance)
     {
-        if (NetSession.Instance.Connection is not { } connection) {
+        if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
             return;
         }
 

@@ -99,5 +99,5 @@
     "LangGeneral.emp_ui_unknown_player.text": "玩家 {0}",
     "LangGeneral.emp_ui_reconnect.text": "重新连接",
     "LangGeneral.emp_dc_reconnect_request.text": "重新连接",
-    "LangGeneral.emp_ui_quest_client.text": "仅有主机可以接受任务"
+    "LangGeneral.emp_ui_quest_client.text": "此任务类型暂时不可由客机接取。"
 }
