@@ -220,11 +220,13 @@ internal partial class ElinNetHost
 
     private void UpdateRemotePlayerStates()
     {
+        /**
         foreach (var chara in ActiveRemoteCharas.Values) {
             EmpLog.Debug("Remote chara {Uid} ai {ActType} at {@Pos} (in map: {InActiveMap})",
                 chara.uid, chara.ai?.GetType().Name, chara.pos,
                 chara.IsInActiveMap && (_map?.charas.Contains(chara) ?? false));
         }
+        /**/
 
         SweepStaleCellEntries();
 

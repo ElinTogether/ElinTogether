@@ -77,6 +77,7 @@ internal partial class ElinNetHost
         chara.MakeAlly();
         chara.MoveZone(pc.currentZone);
         chara.SetBool("remote_chara", true);
+        GiveAxeToRemotePlayer(chara);
 
         var state = States[peer.Id] = new() {
             Index = peer.Id,
@@ -138,6 +139,7 @@ internal partial class ElinNetHost
             chara.Refresh();
 
             player.CreateEquip();
+            chara.AddThing("purse");
         } finally {
             chara.SetBool("emp_creating", false);
             player.chara = host;
@@ -170,6 +172,19 @@ internal partial class ElinNetHost
 
         EmpLog.Warning("Cannot request reconnect: peer {PeerIndex} not connected",
             peerIndex);
+    }
+
+    private static void GiveAxeToRemotePlayer(Chara chara)
+    {
+        if (!chara.GetBool("remote_axe_given")) {
+            try {
+                chara.SetBool("emp_creating", true);
+                chara.AddThing("axe");
+            } finally {
+                chara.SetBool("emp_creating", false);
+            }
+            chara.SetBool("remote_axe_given", true);
+        }
     }
 
     [ElinPostLoad]
