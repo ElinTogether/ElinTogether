@@ -45,6 +45,7 @@ namespace ElinTogether.Models;
 // World
 [Union(500, typeof(GameDelta))]
 [Union(501, typeof(WorldDateAdvanceDelta))]
+[Union(502, typeof(ShippingResultDelta))]
 // Misc
 [Union(600, typeof(OnBarterDelta))]
 [Union(601, typeof(CardRendererTalkDelta))]

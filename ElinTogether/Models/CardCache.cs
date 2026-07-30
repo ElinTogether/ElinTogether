@@ -100,6 +100,29 @@ public static class CardCache
                 Set(thing);
             }
         }
+
+        CacheGlobalContainers();
+    }
+
+    // off map
+    internal static void CacheGlobalContainers()
+    {
+        ReadOnlySpan<Thing?> containers = [
+            EClass.game?.cards.container_shipping,
+            EClass.game?.cards.container_deliver,
+            EClass.game?.cards.container_deposit,
+        ];
+
+        foreach (var container in containers) {
+            if (container is null) {
+                continue;
+            }
+
+            Set(container);
+            foreach (var thing in container.things.Flatten()) {
+                Set(thing);
+            }
+        }
     }
 
     internal static void CacheContainer(ThingContainer container)
