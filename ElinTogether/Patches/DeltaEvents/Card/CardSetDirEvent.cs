@@ -12,21 +12,22 @@ internal class CardSetDirEvent
 {
     internal static IEnumerable<MethodBase> TargetMethods()
     {
-        return OverrideMethodComparer.FindAllOverrides(typeof(Card), nameof(Card.SetDir), typeof(int));
+        return [
+            ..OverrideMethodComparer.FindAllOverrides(typeof(Card), nameof(Card.SetDir), typeof(int)),
+            AccessTools.Method(typeof(Chara), nameof(Chara.LookAt), [typeof(Point)]),
+        ];
     }
 
-    [HarmonyPrefix]
-    internal static bool OnSetDir(Card __instance, int d)
+    [HarmonyPostfix]
+    internal static void OnSetDir(Card __instance)
     {
         if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
-            return true;
+            return;
         }
 
         connection.Delta.AddRemote(new CardSetDirDelta {
             Card = __instance,
-            Dir = d,
+            Dir = __instance.dir,
         });
-
-        return true;
     }
 }
