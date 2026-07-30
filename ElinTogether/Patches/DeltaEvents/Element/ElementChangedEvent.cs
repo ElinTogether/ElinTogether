@@ -50,25 +50,27 @@ internal class ElementChangedEvent
             return;
         }
 
-        // trust client elements
-        if ((connection.IsHost || __instance.Chara?.IsPC is not true) && ElinDelta.IsApplying) {
+        if (!EClass.core.IsGameStarted || __instance.Card is not Chara chara) {
+            return;
+        }
+
+        // unowned
+        if ((connection.IsHost && chara.IsRemotePlayer) ||
+            (connection.IsClient && !chara.IsPC)) {
+            return;
+        }
+
+        if (ElinDelta.IsApplying && !(connection.IsClient && chara.IsPC)) {
             return;
         }
 
         CoroutineHelper.Deferred(() => {
-            if (!EClass.core.IsGameStarted || __instance.Card is not Chara chara) {
-                return;
-            }
-
             if (__result is null) {
                 return;
             }
 
-            var unowned = (connection.IsHost && chara.IsRemotePlayer) ||
-                          (connection.IsClient && !chara.IsPC);
-
             if (__result.owner != __instance) {
-                if (__result.owner is null && __state is not null && !unowned && CreatedInCurrentFrame(chara.uid, id)) {
+                if (__result.owner is null && __state is not null && CreatedInCurrentFrame(chara.uid, id)) {
                     EmpLog.Debug("Element {ElementId} removed on chara {Uid}",
                         id, chara.uid);
                     connection.Delta.AddRemote(new ElementChangeDelta {
@@ -82,12 +84,6 @@ internal class ElementChangedEvent
 
             int[] current = [__result.vBase, __result.vExp, __result.vPotential, __result.vTempPotential];
             if (__state?.SequenceEqual(current) ?? current is [0, 0, 0, 0]) {
-                return;
-            }
-
-            if (unowned) {
-                EmpLog.Debug("Local element {ElementId} change on unowned chara {Uid}: {ElementValues}",
-                    id, chara.uid, current);
                 return;
             }
 
