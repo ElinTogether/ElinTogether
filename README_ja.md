@@ -12,7 +12,7 @@
 
 [YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753) が必要です。MOD 一覧で Elin Together より上に配置してください。
 
-Steam ワークショップ（リンク未作成）または [GitHub Releases](https://github.com/ElinTogether/ElinTogether/releases) の自動ビルドからインストールできます。
+[Steam ワークショップ](https://steamcommunity.com/sharedfiles/filedetails/?id=3773298709) または [GitHub Releases](https://github.com/ElinTogether/ElinTogether/releases) の自動ビルドからインストールできます。
 
 ### バージョン
 

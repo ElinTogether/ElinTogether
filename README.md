@@ -13,7 +13,7 @@ After months of development, this mod is now in public beta. Please report any b
 
 Requires [YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753). Make sure it's placed above Elin Together in the mod viewer.
 
-You can install this mod package via Steam Workshop (link unavailable) or the automated builds from [GitHub Releases](https://github.com/ElinTogether/ElinTogether/releases).
+You can install this mod package via [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3773298709) or the automated builds from [GitHub Releases](https://github.com/ElinTogether/ElinTogether/releases).
 
 ### Version
 

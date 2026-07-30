@@ -12,7 +12,7 @@
 
 需要安装 [YK Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=3400020753)，并确保它排在 Elin Together 上面。
 
-你可以通过 Steam 创意工坊（链接暂未创建）或 [GitHub Releases](https://github.com/ElinTogether/ElinTogether/releases) 的自动构建版本安装此模组。
+你可以通过 [Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3773298709) 或 [GitHub Releases](https://github.com/ElinTogether/ElinTogether/releases) 的自动构建版本安装此模组。
 
 ### 版本
 
