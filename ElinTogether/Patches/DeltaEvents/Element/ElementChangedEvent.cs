@@ -46,7 +46,12 @@ internal class ElementChangedEvent
     [HarmonyPostfix]
     internal static void OnSyncElementChange(ElementContainer __instance, int id, Element? __result, int[]? __state)
     {
-        if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsApplying) {
+        if (NetSession.Instance.Connection is not { } connection) {
+            return;
+        }
+
+        // trust client elements
+        if ((connection.IsHost || __instance.Chara?.IsPC is not true) && ElinDelta.IsApplying) {
             return;
         }
 
