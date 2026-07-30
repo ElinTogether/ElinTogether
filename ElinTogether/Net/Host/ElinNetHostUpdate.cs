@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using ElinTogether.API.SourceValidation;
 using ElinTogether.Elements;
-using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using ElinTogether.Patches;

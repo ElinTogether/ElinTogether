@@ -14,7 +14,7 @@ internal class GameSaveLoad
             return true;
         }
 
-        EmpPop.Debug("Blocked saving game as client");
+        EmpLog.Debug("Blocked saving game as client");
         __result = true;
         return false;
     }
