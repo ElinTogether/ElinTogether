@@ -16,7 +16,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
                 host.WorldStateDeltaProcess();
                 return;
             case ElinNetClient client:
-                GameDelta = 0f;
+                // GameDelta = 0f; // moved to GameSyncCtx
                 client.WorldStateDeltaProcess();
                 return;
         }

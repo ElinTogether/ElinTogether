@@ -24,6 +24,11 @@ internal static class CharaTickEvent
             return false;
         }
 
+        // clients joined before assigning GoalRemote
+        if (connection.IsClient && !__instance.IsPC) {
+            return false;
+        }
+
         connection.Delta.AddRemote(new CharaTickDelta {
             Owner = __instance,
         });

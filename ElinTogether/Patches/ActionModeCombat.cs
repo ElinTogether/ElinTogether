@@ -1,7 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
+using ElinTogether.Elements;
 using ElinTogether.Models;
 using ElinTogether.Net;
+using EModding.Helper;
 using HarmonyLib;
 using UnityEngine;
 
@@ -26,6 +29,11 @@ public class ActionModeCombat
     private static float _executingTimer;
     private static float _visibilityTimer;
     private static int _lastPlayerCount;
+
+    private static readonly Dictionary<int, float> _turnBuffer = [];
+    private static float _turnBuffered;
+    private static bool _pcActedThisRound;
+    private static bool _executingBlockNotified;
 
     internal static Dictionary<int, bool> EnemyVisibility { get; } = [];
     internal static CombatPhase Phase { get; private set; }
@@ -55,6 +63,7 @@ public class ActionModeCombat
         RefreshSelfVisibility(connection);
 
         if (connection.IsHost) {
+            ApplyTurnBudget();
             HostPhaseUpdate(connection, players);
         }
 
@@ -118,6 +127,12 @@ public class ActionModeCombat
         var prev = Phase;
         Phase = phase;
         _executingTimer = 0f;
+        _executingBlockNotified = false;
+        if (phase != CombatPhase.Executing) {
+            _turnBuffer.Clear();
+            _turnBuffered = 0f;
+            _pcActedThisRound = false;
+        }
 
         EmpLog.Debug("Combat phase changed to {CombatPhase}", phase);
 
@@ -220,6 +235,103 @@ public class ActionModeCombat
         }
     }
 
+    internal static void OnRemotePlayerTick(Chara chara)
+    {
+        if (Phase != CombatPhase.Executing) {
+            return;
+        }
+
+        if (chara.ai is not GoalRemote { child: not null }) {
+            return;
+        }
+
+        // Chara.Tick
+        var remote = EClass.player.baseActTime * Mathf.Max(0.1f, (float)SynchronizationContext.RefSpeed / chara.Speed);
+        ReportPlayerTurn(chara.uid, remote);
+    }
+
+    private static void ReportPlayerTurn(int uid, float actTime)
+    {
+        _turnBuffer[uid] = _turnBuffer.GetValueOrDefault(uid) + Mathf.Max(actTime, 0.01f);
+    }
+
+    private static void ApplyTurnBudget()
+    {
+        if (!Activated || _turnBuffer.Count == 0) {
+            return;
+        }
+
+        if (EClass.game?.activeZone?.map is null) {
+            return;
+        }
+
+        var target = _turnBuffer.Values.Max();
+        var grant = target - _turnBuffered;
+        if (grant <= 0f) {
+            return;
+        }
+
+        _turnBuffered = target;
+        foreach (var chara in EClass._map.charas) {
+            if (chara.IsPC || chara.ai is GoalRemote) {
+                continue;
+            }
+
+            chara.roundTimer += grant;
+        }
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.Tick))]
+    private static void CapturePcTurnCount(Chara __instance, out int __state)
+    {
+        __state = Activated && __instance.IsPC ? EClass.player.stats.turns : -1;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.Tick))]
+    private static void ReportPcTurnConsumed(Chara __instance, int __state)
+    {
+        if (__state < 0 || Phase != CombatPhase.Executing) {
+            return;
+        }
+
+        // idle stats.turns++
+        if (EClass.player.stats.turns == __state) {
+            return;
+        }
+
+        _pcActedThisRound = true;
+
+        if (NetSession.Instance.Connection is ElinNetHost) {
+            ReportPlayerTurn(__instance.uid, __instance.actTime);
+        }
+    }
+
+    [HarmonyTranspiler]
+    [HarmonyPatch(typeof(GameUpdater.CharaUpdater), nameof(GameUpdater.CharaUpdater.FixedUpdate))]
+    private static IEnumerable<CodeInstruction> OnCharaUpdaterAccumulate(
+        IEnumerable<CodeInstruction> instructions)
+    {
+        return new CodeMatcher(instructions)
+            .MatchStartForward(
+                new OperandContains(OpCodes.Stfld, nameof(Card.roundTimer)))
+            .EnsureValid("CharaUpdater.FixedUpdate accumulate roundTimer")
+            .SetInstructionAndAdvance(
+                Transpilers.EmitDelegate(AccumulateRoundTimer))
+            .InstructionEnumeration();
+    }
+
+    private static void AccumulateRoundTimer(Chara chara, float value)
+    {
+        // non remote
+        if (Activated && NetSession.Instance.Connection is ElinNetHost && chara is { IsPC: false, ai: not GoalRemote }) {
+            return;
+        }
+
+        chara.roundTimer = value;
+    }
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(AIAct), nameof(AIAct.Tick))]
     private static bool PreventImmediateAITick()
@@ -231,7 +343,7 @@ public class ActionModeCombat
     [HarmonyPatch(typeof(ActPlan.Item), nameof(ActPlan.Item.Perform))]
     private static bool QueueActWhileDeciding(ActPlan.Item __instance, ref bool __result)
     {
-        if (!Paused) {
+        if (!Activated) {
             return true;
         }
 
@@ -239,6 +351,21 @@ public class ActionModeCombat
         var pos = __instance.pos;
         if (!act.IsAct || pos is null) {
             return true;
+        }
+
+        // one action per round
+        if (Phase == CombatPhase.Executing) {
+            if (!__instance.cc.IsPC) {
+                return true;
+            }
+
+            if (!_executingBlockNotified) {
+                _executingBlockNotified = true;
+                Msg.SayGod("emp_ui_combat_wait".lang());
+            }
+
+            __result = false;
+            return false;
         }
 
         var cc = __instance.cc;
@@ -255,6 +382,31 @@ public class ActionModeCombat
         // no pos
         cc.SetAIImmediate(new DynamicAIAct(act.GetText(), () => act.Perform(cc, tc, tp)));
 
+        __result = false;
+        return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(GoalManualMove), nameof(GoalManualMove.TryMove))]
+    private static bool LimitManualMoveStep(ref bool __result)
+    {
+        return GateManualMove(ref __result);
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(GoalManualMove), nameof(GoalManualMove.TryAltMove))]
+    private static bool LimitManualAltMoveStep(ref bool __result)
+    {
+        return GateManualMove(ref __result);
+    }
+
+    private static bool GateManualMove(ref bool __result)
+    {
+        if (Phase != CombatPhase.Executing || !_pcActedThisRound) {
+            return true;
+        }
+
+        EClass.player.nextMove = Vector2.zero;
         __result = false;
         return false;
     }

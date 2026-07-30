@@ -27,8 +27,16 @@ public class CharaTickDelta : ElinDelta
         }
 
         // we are host, relay the client tick to other players
-        if (net.IsHost) {
+        if (net is ElinNetHost host) {
+            // clients only tick their remote pc
+            if (!host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) || sender != chara) {
+                EmpLog.Warning("Refusing remote tick on {Uid} from peer {PeerIndex}",
+                    Owner.Uid, OriginPeer);
+                return;
+            }
+
             net.Delta.AddRemote(this);
+            ActionModeCombat.OnRemotePlayerTick(chara);
         }
 
         // do a remote tick
