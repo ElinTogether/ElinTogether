@@ -122,6 +122,8 @@
     <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=models_005Cenums/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean
+        x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=models_005Cintegrity/@EntryIndexedValue">True</s:Boolean>
+    <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=models_005Cpending/@EntryIndexedValue">True</s:Boolean>
     <s:Boolean
         x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=models_005Csessionstate/@EntryIndexedValue">True</s:Boolean>

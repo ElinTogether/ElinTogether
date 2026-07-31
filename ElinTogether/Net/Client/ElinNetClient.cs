@@ -61,6 +61,10 @@ internal partial class ElinNetClient : ElinNetBase
         Router.RegisterHandler<WorldStateSnapshot>(OnWorldStateSnapshot);
         Router.RegisterHandler<WorldStateDeltaList>(OnWorldStateDeltaResponse);
 
+        // integrity
+        Router.RegisterHandler<NetIntegrityRequest>(OnNetHandshakeRequest);
+        Router.RegisterHandler<NetIntegrityRejected>(OnNetHandshakeRejected);
+
         // source validation
         Router.RegisterHandler<SourceValidationRequest>(OnSourceValidationRequest);
         Router.RegisterHandler<SourceValidationFailed>(OnSourceValidationFailed);

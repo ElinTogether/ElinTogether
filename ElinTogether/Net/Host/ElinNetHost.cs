@@ -40,6 +40,7 @@ internal partial class ElinNetHost : ElinNetBase
         }
 
         Scheduler.Subscribe(DisconnectInactive, 1);
+        Scheduler.Subscribe(RemoveStaleIntegrityCheck, 2);
 
         // host also registers self state
         var selfState = States[0] = new() {
@@ -65,6 +66,10 @@ internal partial class ElinNetHost : ElinNetBase
 
     protected override void RegisterPackets()
     {
+        Router.ShouldReceivePacket = ShouldReceivePeerPacket;
+
+        Router.RegisterHandler<NetIntegrityResponse>(OnNetHandshakeResponse);
+
         Router.RegisterHandler<SessionNewPlayerResponse>(OnSessionNewPlayerResponse);
         Router.RegisterHandler<MapDataRequest>(OnMapDataRequest);
         Router.RegisterHandler<ZoneDataReceivedResponse>(OnZoneDataReceivedResponse);
@@ -118,13 +123,8 @@ internal partial class ElinNetHost : ElinNetBase
 
         EmpPop.Information("emp_player_connected".lang(), peer);
 
-        // do source validations
-        RequestSourceValidation(peer);
-
-        // and invite to steam lobby if clients aren't already in
-        peer.Send(new SteamLobbyRequest {
-            LobbyId = Session.Lobby.Current,
-        });
+        // shou lai
+        BeginHandshake(peer);
 
 #if DEBUG
         if (!IsDebugGuiActive) {
@@ -137,6 +137,7 @@ internal partial class ElinNetHost : ElinNetBase
     {
         EmpPop.Information("emp_player_disconnected".lang(), peer, disconnectInfo);
 
+        _handshakes.Remove(peer.Id);
         PendingRebind.ReleasePeer(peer.Id);
 
         if (States.Remove(peer.Id, out var state)) {

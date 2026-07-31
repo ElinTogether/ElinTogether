@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using ElinTogether.Helper;
+using ElinTogether.Common;
 using ElinTogether.Helper.String;
 using Steamworks;
 
@@ -7,12 +7,11 @@ namespace ElinTogether.Net.Steam;
 
 public class SteamNetConfig
 {
-    public static readonly long ConnectionKey = BuildVersionIntegrity.VersionStringToLong(ModInfo.BuildVersion);
-
     private readonly Dictionary<ESteamNetworkingConfigValue, SteamNetworkingConfigValue_t> _configs = [];
 
-    public static SteamNetConfig Default => field ??= new SteamNetConfig()
-        .Set(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_ConnectionUserData, ConnectionKey);
+    public static SteamNetConfig Default => new SteamNetConfig()
+        .Set(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_ConnectionUserData,
+            BuildVersionIntegrity.VersionStringToLong());
 
     public SteamNetworkingConfigValue_t[] Create()
     {

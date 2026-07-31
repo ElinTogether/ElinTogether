@@ -1,6 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.API.SourceValidation;
-using ElinTogether.Common;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 
@@ -13,42 +13,20 @@ internal partial class ElinNetHost
         ValidFlags = flags;
     }
 
-    private void RequestSourceValidation(ISteamNetPeer peer)
-    {
-        if (ValidFlags == ValidationFlags.None) {
-            EmpLog.Debug("Source validation disabled (flags=None), skipping for {@Peer}",
-                peer);
-            PreparePlayerJoin(peer);
-            return;
-        }
-
-        EmpLog.Debug("Requesting source validation from {@Peer} (flags={Flags})",
-            peer, ValidFlags);
-
-        var filePaths = GetValidationFilePaths();
-
-        var request = new SourceValidationRequest {
-            SourceNames = GetValidationSourceNames(),
-            FilePaths = filePaths,
-            ValidationFlags = (int)ValidFlags,
-        };
-
-        peer.Send(request);
-    }
-
     /// <summary>
     ///     Net event: Client proceeds to connection with mismatches
     /// </summary>
     private void OnSourceValidationContinue(SourceValidationContinue response, ISteamNetPeer peer)
     {
+        if (EmpConfig.Server.StrictValidationMode.Value) {
+            RejectHandshake(peer, NetIntegrityRejected.NetIntegrityRejectReason.IntegrityMismatch);
+            return;
+        }
+
         EmpLog.Information("Client {@Peer} chose to continue with mismatches.",
             peer);
 
-        if (EmpConfig.Server.StrictValidationMode.Value) {
-            Socket.Disconnect(peer, EmpDisconnectInfo.InvalidSource);
-        } else {
-            PreparePlayerJoin(peer);
-        }
+        AcceptHandshake(peer);
     }
 
     /// <summary>
@@ -59,24 +37,24 @@ internal partial class ElinNetHost
         EmpLog.Debug("Received source validation response from {@Peer}",
             peer);
 
-        var mismatchCount = 0;
-
-        // acts
-        // this is mandatory, syncs will not work properly without mapped acts
-        var actMismatches = new List<SourceValidationMismatch>();
-        if (!ActMappingValidator.Default.TryValidate(response.ActMapping, out var mismatches)) {
-            mismatchCount += mismatches.Count;
-            foreach (var (actName, m) in mismatches) {
-                actMismatches.Add(m);
+        // acts, man what can I say
+        if (!ActMappingValidator.Default.TryValidate(response.ActMapping, out var actMismatches)) {
+            foreach (var (actType, m) in actMismatches) {
                 EmpLog.Debug("Peer {@Peer} has act mismatch: {ActType} [{MismatchType}]",
-                    peer, actName, m.MismatchType);
+                    peer, actType, m.MismatchType);
             }
+
+            RejectHandshake(peer, NetIntegrityRejected.NetIntegrityRejectReason.ActMappingMismatch,
+                actMismatches.Values.Select(m => m.Entry));
+            return;
         }
+
+        var mismatchCount = 0;
 
         // sources
         var sourceMismatches = new List<SourceValidationMismatch>();
         if (ValidFlags.HasFlag(ValidationFlags.Sources)) {
-            if (!SourceDataValidator.Default.TryValidate(response.SourceHashes, out mismatches)) {
+            if (!SourceDataValidator.Default.TryValidate(response.SourceHashes, out var mismatches)) {
                 mismatchCount += mismatches.Count;
                 foreach (var (source, m) in mismatches) {
                     sourceMismatches.Add(m);
@@ -89,7 +67,7 @@ internal partial class ElinNetHost
         // plugins
         var pluginMismatches = new List<SourceValidationMismatch>();
         if (ValidFlags.HasFlag(ValidationFlags.Plugins)) {
-            if (!PluginDataValidator.Default.TryValidate(response.PluginHashes, out mismatches)) {
+            if (!PluginDataValidator.Default.TryValidate(response.PluginHashes, out var mismatches)) {
                 mismatchCount += mismatches.Count;
                 foreach (var (modId, m) in mismatches) {
                     pluginMismatches.Add(m);
@@ -103,7 +81,7 @@ internal partial class ElinNetHost
         var fileMismatches = new List<SourceValidationMismatch>();
         if (ValidFlags.HasFlag(ValidationFlags.Files)) {
             var fileValidator = new FileDataValidator(ValidationFilePaths);
-            if (!fileValidator.TryValidate(response.FileHashes, out mismatches)) {
+            if (!fileValidator.TryValidate(response.FileHashes, out var mismatches)) {
                 mismatchCount += mismatches.Count;
                 foreach (var (path, m) in mismatches) {
                     fileMismatches.Add(m);
@@ -116,7 +94,16 @@ internal partial class ElinNetHost
         if (mismatchCount == 0) {
             EmpLog.Information("Source validation passed for {@Peer}",
                 peer);
-            PreparePlayerJoin(peer);
+            AcceptHandshake(peer);
+            return;
+        }
+
+        if (EmpConfig.Server.StrictValidationMode.Value) {
+            var entries = sourceMismatches
+                .Concat(pluginMismatches)
+                .Concat(fileMismatches)
+                .Select(m => m.Entry);
+            RejectHandshake(peer, NetIntegrityRejected.NetIntegrityRejectReason.IntegrityMismatch, entries);
             return;
         }
 
@@ -124,7 +111,6 @@ internal partial class ElinNetHost
             SourceMismatches = sourceMismatches,
             PluginMismatches = pluginMismatches,
             FileMismatches = fileMismatches,
-            ActMismatches = actMismatches,
         });
     }
 }

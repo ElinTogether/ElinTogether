@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using ElinTogether.Common;
-using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using HeathenEngineering.SteamworksIntegration;
 using Serilog.Events;
@@ -58,14 +57,18 @@ public partial class SteamNetManager
         EmpLog.Debug("Received connection request from {RemoteIdentity}",
             user);
 
-        var connectionKey = BuildVersionIntegrity.VersionStringToLong(ModInfo.BuildVersion);
+        var connectionKey = BuildVersionIntegrity.VersionStringToLong();
         if (info.m_nUserData != connectionKey) {
-            EmpPop.Debug("emp_connection_rejected".Loc(
+            EmpLog.Warning("Rejecting {RemoteIdentity}: fingerprint {ClientFingerprint} != host {HostFingerprint}",
+                user, info.m_nUserData, connectionKey);
+
+            EmpPop.Debug("emp_version_rejected_host".Loc(
+                user.Name,
                 ModInfo.BuildVersion.TagColor(Color.green),
-                BuildVersionIntegrity.LongToVersionString(info.m_nUserData).TagColor(Color.red)));
+                BuildVersionIntegrity.GameVersion.TagColor(Color.green)));
 
             // only connect if we have same build version
-            SteamNetworkingSockets.CloseConnection(connection, 0, "emp_version_mismatch", false);
+            SteamNetworkingSockets.CloseConnection(connection, 0, BuildVersionIntegrity.GtfoReason(), false);
             return;
         }
 

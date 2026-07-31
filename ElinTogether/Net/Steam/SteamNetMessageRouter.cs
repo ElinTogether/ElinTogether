@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using ElinTogether.Common;
 using EModding.Helper.Runtime.Exceptions;
 
 namespace ElinTogether.Net.Steam;
@@ -8,6 +9,8 @@ public sealed class SteamNetMessageRouter : ISteamNetListener
 {
     private readonly ConcurrentDictionary<uint, Action<object, ISteamNetPeer>> _handlers = [];
 
+    public Func<object, ISteamNetPeer, bool>? ShouldReceivePacket { get; set; }
+
     public void OnPeerConnected(ISteamNetPeer peer)
     {
         OnPeerConnectedEvent?.Invoke(peer);
@@ -15,12 +18,16 @@ public sealed class SteamNetMessageRouter : ISteamNetListener
 
     public void OnPeerDisconnected(ISteamNetPeer peer, string reason)
     {
-        OnPeerDisconnectedEvent?.Invoke(peer, reason.lang());
+        OnPeerDisconnectedEvent?.Invoke(peer, EmpDisconnectInfo.Describe(reason));
     }
 
     public void OnMessageReceived(object? msg, ISteamNetPeer peer)
     {
         if (msg is null) {
+            return;
+        }
+
+        if (ShouldReceivePacket?.Invoke(msg, peer) is false) {
             return;
         }
 

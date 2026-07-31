@@ -5,6 +5,9 @@ using ElinTogether.Models;
 
 namespace ElinTogether.API.SourceValidation;
 
+/// <summary>
+///     This is now mandatory cuz clients will desync tasks if not validated
+/// </summary>
 public class ActMappingValidator : ISourceValidator
 {
     public readonly Dictionary<Type, int> ActToIdMapping = [];
@@ -58,9 +61,9 @@ public class ActMappingValidator : ISourceValidator
 
     public Dictionary<string, string> GetValidation()
     {
-        return IdToActMapping.ToDictionary(
-            kv => kv.Key.ToString(),
-            kv => kv.Value.FullName!);
+        return ActToIdMapping.ToDictionary(
+            kv => kv.Key.FullName!,
+            kv => kv.Value.ToString());
     }
 
     public void BuildActMapping()
@@ -79,7 +82,7 @@ public class ActMappingValidator : ISourceValidator
             })
             .Where(actType.IsAssignableFrom)
             .OrderBy(GetInheritanceDepth)
-            .ThenBy(t => t.Name);
+            .ThenBy(t => t.FullName, StringComparer.Ordinal);
 
         // keep NoGoal as 0 for bit checking
         IdToActMapping[0] = typeof(NoGoal);

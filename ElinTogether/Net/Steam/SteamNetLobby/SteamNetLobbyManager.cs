@@ -167,7 +167,10 @@ public class SteamNetLobbyManager : EClass
     {
         _deferOnComplete = onComplete;
 #if !DEBUG
-        SteamMatchmaking.AddRequestLobbyListStringFilter("EmpVersion", ModInfo.BuildVersion, 0);
+        SteamMatchmaking.AddRequestLobbyListStringFilter(
+            EmpLobbyData.EmpVersion, ModInfo.BuildVersion, ELobbyComparison.k_ELobbyComparisonEqual);
+        SteamMatchmaking.AddRequestLobbyListStringFilter(
+            EmpLobbyData.GameBuild, BuildVersionIntegrity.GameVersion, ELobbyComparison.k_ELobbyComparisonEqual);
 #endif
         SteamMatchmaking.AddRequestLobbyListDistanceFilter(ELobbyDistanceFilter.k_ELobbyDistanceFilterWorldwide);
         SteamMatchmaking.RequestLobbyList();
@@ -255,6 +258,7 @@ public class SteamNetLobbyManager : EClass
         Current.Name = SteamFriends.GetPersonaName();
 
         Current[EmpLobbyData.EmpVersion] = ModInfo.BuildVersion;
+        Current[EmpLobbyData.GameBuild] = BuildVersionIntegrity.GameVersion;
         Current[EmpLobbyData.CurrentZone] = core.game?.activeZone?.NameWithLevel ?? "";
 
         NetSession.Instance.SessionId = Current;
@@ -310,12 +314,23 @@ public class SteamNetLobbyManager : EClass
                 Friends.Client.RequestUserInformation(member.user, true);
             }
 
-            if (Current.GameVersion != core.version.GetText()) {
+            var mod = Current[EmpLobbyData.EmpVersion] ?? "";
+            var version = Current[EmpLobbyData.GameBuild] ?? "";
+            if (!BuildVersionIntegrity.Ok(mod, version)) {
+                EmpLog.Warning(
+                    "Leaving lobby {LobbyId}: mod {ClientModVersion} vs {HostModVersion}, " +
+                    "game {ClientGameVersion} vs {HostGameVersion}",
+                    Current,
+                    ModInfo.BuildVersion, mod,
+                    BuildVersionIntegrity.GameVersion, version);
+
                 NetSession.Instance.ResetSession();
 
-                EmpPop.Debug("emp_connection_rejected".Loc(
-                    Current.GameVersion.TagColor(Color.red),
-                    ModInfo.BuildVersion.TagColor(Color.green)));
+                EmpPop.Debug("emp_version_rejected_client".Loc(
+                    ModInfo.BuildVersion.TagColor(Color.green),
+                    mod.TagColor(Color.red),
+                    BuildVersionIntegrity.GameVersion.TagColor(Color.green),
+                    version.TagColor(Color.red)));
 
                 return;
             }

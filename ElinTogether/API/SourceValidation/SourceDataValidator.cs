@@ -6,7 +6,7 @@ using ElinTogether.Models;
 namespace ElinTogether.API.SourceValidation;
 
 /// <summary>
-///     Validates Elin source table checksums (source name → SHA256 of exported rows).
+///     Validates Chara Element Race Job Hobby Zone Quest Religion rows
 /// </summary>
 internal class SourceDataValidator : ISourceValidator
 {
@@ -23,16 +23,19 @@ internal class SourceDataValidator : ISourceValidator
         var hasMismatch = false;
 
         foreach (var (sourceName, hostSha) in hostChecksums) {
-            var clientSha = clientChecksums.GetValueOrDefault(sourceName);
-            if (clientSha == hostSha || clientSha is null) {
-                continue;
+            if (!clientChecksums.TryGetValue(sourceName, out var clientSha)) {
+                mismatches[sourceName] = new() {
+                    Entry = sourceName,
+                    MismatchType = SourceValidationMismatch.SourceMismatchType.MissingOnClient,
+                };
+                hasMismatch = true;
+            } else if (clientSha != hostSha) {
+                mismatches[sourceName] = new() {
+                    Entry = sourceName,
+                    MismatchType = SourceValidationMismatch.SourceMismatchType.HashChanged,
+                };
+                hasMismatch = true;
             }
-
-            mismatches[sourceName] = new() {
-                Entry = sourceName,
-                MismatchType = SourceValidationMismatch.SourceMismatchType.HashChanged,
-            };
-            hasMismatch = true;
         }
 
         return !hasMismatch;

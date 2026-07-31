@@ -19,14 +19,16 @@ public class SourceValidationResponse
     [Key(3)]
     public required Dictionary<string, string> ActMapping { get; init; }
 
-    public static SourceValidationResponse Create(IEnumerable<string> sourceNames, IEnumerable<string> filePaths)
+    public static SourceValidationResponse Create(SourceValidationRequest request)
     {
-        var fileValidator = new FileDataValidator(filePaths);
+        var flags = (ValidationFlags)request.ValidationFlags;
 
         return new() {
-            SourceHashes = SourceDataValidator.Default.GetValidation(sourceNames),
-            PluginHashes = PluginDataValidator.Default.GetValidation(),
-            FileHashes = fileValidator.GetValidation(),
+            SourceHashes = SourceDataValidator.Default.GetValidation(request.SourceNames),
+            PluginHashes = flags.HasFlag(ValidationFlags.Plugins)
+                ? PluginDataValidator.Default.GetValidation()
+                : [],
+            FileHashes = new FileDataValidator(request.FilePaths).GetValidation(),
             ActMapping = ActMappingValidator.Default.GetValidation(),
         };
     }

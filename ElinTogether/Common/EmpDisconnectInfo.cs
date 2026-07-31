@@ -1,3 +1,5 @@
+using ElinTogether.LangMod;
+
 namespace ElinTogether.Common;
 
 public static class EmpDisconnectInfo
@@ -15,4 +17,15 @@ public static class EmpDisconnectInfo
     public const string HostReconnectRequest = "emp_dc_reconnect_request";
     public const string RemoteClosed = "emp_dc_remote_closed";
     public const string ClientCancel = "emp_dc_client_cancel";
+    public const string VersionMismatch = "emp_dc_version_mismatch";
+    public const string ActMappingMismatch = "emp_dc_act_mismatch";
+
+    public static string Describe(string? reason)
+    {
+        if (BuildVersionIntegrity.GetGtfoReason(reason, out var mod, out var game)) {
+            return "emp_version_rejected_client".Loc(ModInfo.BuildVersion, mod, BuildVersionIntegrity.GameVersion, game);
+        }
+
+        return (reason ?? RemoteClosed).lang();
+    }
 }

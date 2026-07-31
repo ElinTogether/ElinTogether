@@ -14,7 +14,4 @@ public class SourceValidationFailed
 
     [Key(2)]
     public List<SourceValidationMismatch> FileMismatches { get; set; } = [];
-
-    [Key(3)]
-    public List<SourceValidationMismatch> ActMismatches { get; set; } = [];
 }
