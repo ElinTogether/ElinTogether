@@ -38,7 +38,9 @@ public class InvRerollDelta : ElinDelta
 
         EMono._zone.influence -= cost;
         shopOwner.c_dateStockExpire = 0;
-        shopOwner.trait.OnBarter(true);
+        using (Simulate()) {
+            shopOwner.trait.OnBarter(true);
+        }
 
         net.Delta.AddRemote(this);
 

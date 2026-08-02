@@ -16,6 +16,8 @@ public class OnBarterDelta : ElinDelta
         }
 
         if (net.IsHost) {
+            // restock
+            using var _ = Simulate();
             shopOwner.trait.OnBarter();
             return;
         }
@@ -29,10 +31,18 @@ public class OnBarterDelta : ElinDelta
 
         var invOwnerShop = inv.owner;
         if (!invOwnerShop.Container.IsHostOwned) {
+            // exclude temp chest
+            var temp = invOwnerShop.Container.Thing;
+            if (shopOwner.things.Find(t => t.id == "chest_merchant" && t != temp) is not { } chest) {
+                EmpLog.Warning("Merchant chest of {Uid} is not resolved here, keeping temp chest",
+                    shopOwner.uid);
+                return;
+            }
+
             // remove the temporary merchant chest
-            shopOwner.things.Remove(invOwnerShop.Container.Thing);
+            shopOwner.things.Remove(temp);
             // replace it with the real merchant chest
-            invOwnerShop.Container = shopOwner.things.Find("chest_merchant");
+            invOwnerShop.Container = chest;
         }
 
         inv.RefreshGrid();
