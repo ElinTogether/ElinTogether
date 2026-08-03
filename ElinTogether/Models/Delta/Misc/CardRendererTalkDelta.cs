@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -24,5 +25,10 @@ public class CardRendererTalkDelta : ElinDelta
 
         using var _ = ChatBubbleEvent.TalkSpeakerContext.Push(card);
         card.HostRenderer.Say(Text, duration: Duration);
+
+        if (card is Chara { IsPlayer: true, RemoteState: { } state }) {
+            WidgetPopText.Say($"{state.User.Name.TagColor(PeerColorizer.GetColor(state.Index))}: {Text}",
+                sprite: UIHelper.FindSprite("emo2_hint"));
+        }
     }
 }

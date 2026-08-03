@@ -45,6 +45,8 @@ internal static class RemoteCardHelper
 
         internal bool IsActiveRemoteChara => NetSession.Instance.Connection is ElinNetHost host &&
                                              host.ActiveRemoteCharas.ContainsValue(chara);
+
+        internal NetPeerState? RemoteState => NetSession.Instance.CurrentPlayers.FirstOrDefault(n => n.CharaUid == chara.uid);
     }
 
     internal class RemoteCharaNetProfile

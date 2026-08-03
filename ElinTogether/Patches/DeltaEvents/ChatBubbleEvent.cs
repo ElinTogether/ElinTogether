@@ -28,6 +28,10 @@ internal class ChatBubbleEvent
                 Text = text,
                 Duration = duration,
             });
+            if (chara.RemoteState is { } state ) {
+                WidgetPopText.Say($"{state.User.Name.TagColor(PeerColorizer.GetColor(state.Index))}: {text}",
+                    sprite: UIHelper.FindSprite("emo2_hint"));
+            }
             return true;
         }
 
