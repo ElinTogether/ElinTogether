@@ -1,6 +1,4 @@
 using System;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace ElinTogether.Common;
 
@@ -9,9 +7,11 @@ public class BuildVersionIntegrity : EClass
     public enum APIVersion
     {
         V1 = 1,
+        // sleep
+        V2 = 2,
     }
 
-    public const APIVersion APIVersionLatest = APIVersion.V1;
+    public const APIVersion APIVersionLatest = APIVersion.V2;
 
     public static string GameVersion => $"{core.version.major}.{core.version.minor}.{core.version.batch}.{core.version.fix}";
 
@@ -24,8 +24,7 @@ public class BuildVersionIntegrity : EClass
     public static long VersionStringToLong(string mod, string version)
     {
         var raw = $"{APIVersionLatest}|{mod}|{version}";
-        using var sha = SHA256.Create();
-        var folded = BitConverter.ToInt64(sha.ComputeHash(Encoding.UTF8.GetBytes(raw)), 0);
+        var folded = BitConverter.ToInt64([..raw.GetSha256Hash()], 0);
         return ((long)APIVersionLatest << 56) | (folded & 0x00FFFFFFFFFFFFFFL);
     }
 

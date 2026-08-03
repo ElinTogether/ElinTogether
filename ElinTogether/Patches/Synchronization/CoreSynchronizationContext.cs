@@ -33,6 +33,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         CharaSynchronizationContext.Update();
         NetProfileSynchronizationContext.Update();
         QuestSynchronizationContext.Update();
+        SleepSynchronizationContext.Update();
         connection.Delta.RefreshBuffer();
         switch (NetSession.Instance.Connection) {
             case ElinNetHost host:

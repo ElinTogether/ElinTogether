@@ -54,6 +54,11 @@ namespace ElinTogether.Models;
 [Union(604, typeof(PingPointDelta))]
 [Union(605, typeof(CombatPhaseDelta))]
 [Union(606, typeof(AddRecipeDelta))]
+[Union(607, typeof(CombatReadyDelta))]
+[Union(608, typeof(SleepRequestDelta))]
+[Union(609, typeof(SleepReadyDelta))]
+[Union(610, typeof(SleepStartDelta))]
+[Union(611, typeof(SleepCancelDelta))]
 // Inv
 [Union(700, typeof(InvOwnerOnProcessDelta))]
 [Union(701, typeof(InvRerollDelta))]

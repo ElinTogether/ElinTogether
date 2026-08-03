@@ -1,4 +1,5 @@
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -26,5 +27,8 @@ public class CharaSleepDelta : ElinDelta
 
         using var _ = Simulate();
         pc.OnSleep(Power, Days, pc.pos.IsSunLit);
+
+        pc.conSleep?.Kill();
+        SleepSynchronizationContext.CloseSleepLayerIfOpen();
     }
 }
