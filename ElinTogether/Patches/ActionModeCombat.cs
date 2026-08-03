@@ -35,11 +35,20 @@ public class ActionModeCombat
     private static bool _pcActedThisRound;
     private static bool _executingBlockNotified;
 
+    private static AIAct? _pendingAi;
+    private static Vector2 _pendingMoveDir;
+    private static bool _applyingPending;
+    private static bool _applyPendingQueued;
+    private static bool _cancelRequested;
+    private static bool? _lastReportedReady;
+
     internal static Dictionary<int, bool> EnemyVisibility { get; } = [];
     internal static CombatPhase Phase { get; private set; }
     internal static bool Activated => Phase != CombatPhase.Inactive;
     internal static bool Paused => Phase == CombatPhase.Deciding;
     internal static bool WaitForSelf { get; private set; }
+
+    internal static bool SelfDecided => _pendingAi is not null || !EClass.pc.HasNoGoal;
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Game), nameof(Game.OnUpdate))]
@@ -61,6 +70,7 @@ public class ActionModeCombat
         }
 
         RefreshSelfVisibility(connection);
+        UpdatePendingDecision(connection);
 
         if (connection.IsHost) {
             ApplyTurnBudget();
@@ -96,6 +106,66 @@ public class ActionModeCombat
         });
     }
 
+    private static void UpdatePendingDecision(ElinNetBase net)
+    {
+        if (_applyPendingQueued && Phase == CombatPhase.Executing) {
+            _applyPendingQueued = false;
+            ApplyPendingDecision(net);
+        }
+
+        if (Phase != CombatPhase.Deciding) {
+            return;
+        }
+
+        if (_cancelRequested) {
+            _cancelRequested = false;
+            // progress
+            if (!EClass.pc.HasNoGoal && EClass.pc.ai.Current is not AIProgress) {
+                EClass.pc.SetAI(new NoGoal());
+            }
+        }
+
+        if (net.IsClient) {
+            var ready = SelfDecided;
+            if (_lastReportedReady != ready) {
+                _lastReportedReady = ready;
+                EmpLog.Debug("Combat ready report {CombatDecided}", ready);
+                net.Delta.AddRemote(new CombatReadyDelta {
+                    Ready = ready,
+                });
+            }
+        }
+    }
+
+    private static void ApplyPendingDecision(ElinNetBase net)
+    {
+        var pending = _pendingAi;
+        _pendingAi = null;
+
+        if (pending is not null && !EClass.pc.isDead) {
+            _applyingPending = true;
+            try {
+                EmpLog.Debug("Combat applying pending decision {ActType}", pending.GetType().Name);
+                Act.CC = EClass.pc;
+                if (pending is GoalManualMove) {
+                    EClass.player.nextMove = _pendingMoveDir;
+                }
+
+                EClass.pc.SetAIImmediate(pending);
+            } finally {
+                _applyingPending = false;
+            }
+        }
+
+        // nothing
+        if (net.IsClient && EClass.pc.HasNoGoal) {
+            _lastReportedReady = false;
+            net.Delta.AddRemote(new CombatReadyDelta {
+                Ready = false,
+            });
+        }
+    }
+
     internal static void OnRemoteTaskReport(int uid, bool hasGoal)
     {
         if (!Activated) {
@@ -128,10 +198,15 @@ public class ActionModeCombat
         Phase = phase;
         _executingTimer = 0f;
         _executingBlockNotified = false;
+        _cancelRequested = false;
+        _lastReportedReady = null;
+        // entering Executing keeps the pending decision for the deferred apply
+        _applyPendingQueued = phase == CombatPhase.Executing;
         if (phase != CombatPhase.Executing) {
             _turnBuffer.Clear();
             _turnBuffered = 0f;
             _pcActedThisRound = false;
+            _pendingAi = null;
         }
 
         EmpLog.Debug("Combat phase changed to {CombatPhase}", phase);
@@ -178,7 +253,7 @@ public class ActionModeCombat
                 break;
 
             case CombatPhase.Deciding: {
-                var allDecided = !EClass.pc.HasNoGoal && players.All(p =>
+                var allDecided = SelfDecided && players.All(p =>
                     p.CharaUid == EClass.pc.uid ||
                     (p.FindChara() is { } chara && _decided.Contains(chara.uid)));
                 if (allDecided) {
@@ -224,7 +299,7 @@ public class ActionModeCombat
             return;
         }
 
-        if (EClass.pc.HasNoGoal) {
+        if (!SelfDecided) {
             if (!WaitForSelf) {
                 WaitForSelf = true;
                 Msg.SayGod("emp_ui_combat_decide".lang());
@@ -337,6 +412,42 @@ public class ActionModeCombat
     private static bool PreventImmediateAITick()
     {
         return !Paused;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.SetAIImmediate))]
+    private static bool CaptureDecisionWhileDeciding(Chara __instance, AIAct g)
+    {
+        if (Phase != CombatPhase.Deciding || _applyingPending || !__instance.IsPC || g.IsNoGoal) {
+            return true;
+        }
+
+        if (_pendingAi?.GetType() != g.GetType()) {
+            EmpLog.Debug("Combat pending decision {ActType}", g.GetType().Name);
+        }
+
+        _pendingAi = g;
+        if (g is GoalManualMove) {
+            _pendingMoveDir = EClass.player.nextMove;
+        }
+
+        return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(AIAct), nameof(AIAct.Cancel))]
+    private static void RevokeDecisionOnCancel(AIAct __instance)
+    {
+        if (Phase != CombatPhase.Deciding || __instance.owner is not { IsPC: true }) {
+            return;
+        }
+
+        if (_pendingAi is not null) {
+            _pendingAi = null;
+            EmpLog.Debug("Combat pending decision revoked");
+        }
+
+        _cancelRequested = true;
     }
 
     [HarmonyPrefix]

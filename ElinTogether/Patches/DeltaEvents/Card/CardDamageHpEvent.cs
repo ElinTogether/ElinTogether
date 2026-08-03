@@ -20,8 +20,11 @@ internal static class CardDamageHpEvent
                                         bool showEffect,
                                         Thing weapon,
                                         Chara originalTarget,
-                                        int resistPenetrationLevel)
+                                        int resistPenetrationLevel,
+                                        out CardDamageHpDelta? __state)
     {
+        __state = null;
+
         // simply drop the update as clients and wait for delta
         if (NetSession.Instance.Connection is not { } connection) {
             return true;
@@ -30,7 +33,7 @@ internal static class CardDamageHpEvent
         // when clients took damage, let host know
         // we don't execute on client side
         if (connection.IsHost || __instance.IsPC) {
-            connection.Delta.DeferRemote(new CardDamageHpDelta {
+            __state = new() {
                 Owner = __instance,
                 Dmg = dmg,
                 Ele = ele,
@@ -41,10 +44,20 @@ internal static class CardDamageHpEvent
                 Weapon = weapon,
                 OriginalTarget = originalTarget,
                 ResistPenetrationLevel = resistPenetrationLevel,
-            });
+            };
+            connection.Delta.DeferRemote(__state);
         }
 
         return connection.IsHost;
+    }
+
+    [HarmonyPostfix]
+    internal static void CaptureResolvedHp(Card __instance, CardDamageHpDelta? __state)
+    {
+        // deferred
+        if (__state is not null && NetSession.Instance.Connection is ElinNetHost) {
+            __state.HpAfter = __instance.hp;
+        }
     }
 
     extension(Card card)

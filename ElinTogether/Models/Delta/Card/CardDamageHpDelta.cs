@@ -37,6 +37,9 @@ public class CardDamageHpDelta : ElinDelta
     [Key(9)]
     public int ResistPenetrationLevel { get; init; }
 
+    [Key(10)]
+    public int? HpAfter { get; set; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (Owner.Find() is not { } card) {
@@ -45,6 +48,10 @@ public class CardDamageHpDelta : ElinDelta
 
         using (Simulate(net.IsHost)) {
             card.Stub_DamageHP(Dmg, Ele, EleP, AttackSource, Origin, ShowEffect, Weapon, OriginalTarget, ResistPenetrationLevel);
+        }
+
+        if (!net.IsHost && HpAfter is { } hpAfter && card is not Chara { isDead: true }) {
+            card.hp = hpAfter;
         }
     }
 }

@@ -23,6 +23,7 @@ internal static class CharaVisibilityChangeEvent
             }
 
             ActionModeCombat.EnemyVisibility[EClass.pc.uid] = true;
+            EmpLog.Debug("Self enemy visibility changed to {CombatVisible} on enemy entering screen", true);
             connection.Delta.AddRemote(new EnemyVisibilityDelta {
                 PlayerId = EClass.pc.uid,
                 Visible = true,
@@ -44,6 +45,7 @@ internal static class CharaVisibilityChangeEvent
             }
 
             ActionModeCombat.EnemyVisibility[EClass.pc.uid] = false;
+            EmpLog.Debug("Self enemy visibility changed to {CombatVisible} on actor killed", false);
             connection.Delta.AddRemote(new EnemyVisibilityDelta {
                 PlayerId = EClass.pc.uid,
                 Visible = false,
@@ -54,7 +56,7 @@ internal static class CharaVisibilityChangeEvent
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
-    internal static void OnDie()
+    internal static void OnDie(Chara __instance)
     {
         if (NetSession.Instance.Connection is not { } connection || EClass._zone.IsRegion) {
             return;
@@ -66,6 +68,7 @@ internal static class CharaVisibilityChangeEvent
             }
 
             ActionModeCombat.EnemyVisibility[EClass.pc.uid] = false;
+            EmpLog.Debug("Self enemy visibility changed to {CombatVisible} on chara {Uid} died", false, __instance.uid);
             connection.Delta.AddRemote(new EnemyVisibilityDelta {
                 PlayerId = EClass.pc.uid,
                 Visible = false,
