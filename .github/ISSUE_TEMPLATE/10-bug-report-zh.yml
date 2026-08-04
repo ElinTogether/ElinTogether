@@ -25,7 +25,7 @@ body:
     attributes:
       label: 模组版本
       description: 你正在运行的模组版本是什么？
-      placeholder: 例如 0.21.0 / Steam 创意工坊最新版
+      placeholder: 例如 0.26.204
     validations:
       required: true
 
@@ -46,7 +46,7 @@ body:
       label: 我已尝试以下步骤
       description: 勾选所有已尝试的项。
       options:
-        - label: 所有玩家的模组列表一致，且已验证游戏文件完整性。
+        - label: 所有玩家的模组列表一致，且已在Steam验证游戏文件完整性。
         - label: 重启游戏。
         - label: （如果是网络相关问题）重启 Steam。
     validations:
@@ -57,7 +57,7 @@ body:
     attributes:
       label: 描述 bug 及复现步骤
       description: |
-        请附上你的 log 文件。
+        请附上**主机和客机**的 log 文件。[如何找到 log 目录]([How to find logs](https://elin-modding.net/zh/articles/2_Getting%20Started/modding_cheatsheet))
         - `%localappdata%low/Lafrontier/Elin/Player.log`
         - `%localappdata%low/Lafrontier/Elin/ElinMP/Session_{今天}.log`
         - （可选）截图或视频。
