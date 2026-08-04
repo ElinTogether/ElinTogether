@@ -222,6 +222,17 @@ public class ActionModeCombat
                 EClass.pc.ai.Cancel();
                 Msg.SayGod("emp_ui_combat_enter".lang());
                 break;
+            case CombatPhase.Deciding:
+                if (!EClass.pc.HasNoGoal) {
+                    _pendingAi = EClass.pc.ai;
+                    _applyingPending = true;
+                    try {
+                        EClass.pc.SetAI(new NoGoal());
+                    } finally {
+                        _applyingPending = false;
+                    }
+                }
+                break;
             case CombatPhase.Executing:
                 _done.Clear();
                 break;
@@ -438,7 +449,7 @@ public class ActionModeCombat
     [HarmonyPatch(typeof(AIAct), nameof(AIAct.Cancel))]
     private static void RevokeDecisionOnCancel(AIAct __instance)
     {
-        if (Phase != CombatPhase.Deciding || __instance.owner is not { IsPC: true }) {
+        if (Phase != CombatPhase.Deciding || _applyingPending || __instance.owner is not { IsPC: true }) {
             return;
         }
 
