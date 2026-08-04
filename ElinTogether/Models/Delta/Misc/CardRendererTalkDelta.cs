@@ -23,6 +23,15 @@ public class CardRendererTalkDelta : ElinDelta
             return;
         }
 
+        // relay
+        if (net.IsHost) {
+            net.Delta.AddRemote(this);
+        }
+
+        if (card is Chara { IsPC: true }) {
+            return;
+        }
+
         using var _ = ChatBubbleEvent.TalkSpeakerContext.Push(card);
         card.HostRenderer.Say(Text, duration: Duration);
 
