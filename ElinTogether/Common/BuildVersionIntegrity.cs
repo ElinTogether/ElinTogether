@@ -9,9 +9,11 @@ public class BuildVersionIntegrity : EClass
         V1 = 1,
         // sleep
         V2 = 2,
+        // currency
+        V3 = 3,
     }
 
-    public const APIVersion APIVersionLatest = APIVersion.V2;
+    public const APIVersion APIVersionLatest = APIVersion.V3;
 
     public static string GameVersion => $"{core.version.major}.{core.version.minor}.{core.version.batch}.{core.version.fix}";
 

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using ElinTogether.Elements;
 using ElinTogether.Net;
 
 namespace ElinTogether.Helper;
@@ -32,7 +31,7 @@ internal static class RemoteCardHelper
         {
             get {
                 return NetSession.Instance.Connection switch {
-                    ElinNetHost => chara.ai is GoalRemote,
+                    ElinNetHost host => host.ActiveRemoteCharas.ContainsValue(chara),
                     ElinNetClient => !chara.IsPC && NetSession.Instance.CurrentPlayers.Any(n => n.CharaUid == chara.uid),
                     _ => false,
                 };

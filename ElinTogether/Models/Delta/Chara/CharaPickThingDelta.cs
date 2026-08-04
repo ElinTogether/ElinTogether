@@ -64,7 +64,10 @@ public class CharaPickThingDelta : ElinDelta
                 if (net.IsHost && !thing.isDestroyed && thing.parent == _zone) {
                     EmpLog.Warning("Mirror pick of {Uid} failed to store, forcing into chara {OwnerUid}",
                         thing.uid, chara.uid);
-                    chara.AddThing(thing);
+                    // clients must add thingy
+                    using (Simulate()) {
+                        chara.AddThing(thing);
+                    }
                 }
 
                 if (!thing.isDestroyed) {

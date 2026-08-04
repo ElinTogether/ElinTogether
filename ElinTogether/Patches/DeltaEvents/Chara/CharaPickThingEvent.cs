@@ -1,6 +1,9 @@
+using System.Collections.Generic;
+using System.Reflection.Emit;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
+using EModding.Helper;
 using HarmonyLib;
 
 namespace ElinTogether.Patches;
@@ -51,6 +54,23 @@ internal static class CharaPickThingEvent
         }
 
         return true;
+    }
+}
+
+[HarmonyPatch(typeof(Chara), nameof(Chara.TryPickGroundItem))]
+internal static class CharaTryPickGroundItemEvent
+{
+    [HarmonyTranspiler]
+    internal static IEnumerable<CodeInstruction> OnTryPickGroundItem(IEnumerable<CodeInstruction> instructions)
+    {
+        return new CodeMatcher(instructions)
+            .End()
+            .MatchStartBackwards(
+                new OperandContains(OpCodes.Callvirt, nameof(Card.IsPC)))
+            .EnsureValid("Chara.TryPickGroundItem npc property")
+            .SetInstructionAndAdvance(
+                Transpilers.EmitDelegate((Chara chara) => chara.IsPlayer))
+            .InstructionEnumeration();
     }
 }
 

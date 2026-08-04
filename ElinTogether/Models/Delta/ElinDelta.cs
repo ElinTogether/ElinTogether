@@ -39,6 +39,7 @@ namespace ElinTogether.Models;
 // Thing
 [Union(300, typeof(ThingDelta))]
 [Union(301, typeof(ThingRequest))]
+[Union(302, typeof(CardModCurrencyDelta))]
 // Zone
 [Union(400, typeof(SpatialGenDelta))]
 [Union(401, typeof(ZoneAddCardDelta))]

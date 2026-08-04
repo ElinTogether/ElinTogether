@@ -26,7 +26,13 @@ internal static class InvStartDragEvent
             return true;
         }
 
+        if (PendingUid.IsPending(thing.uid)) {
+            EmpLog.Warning("Refusing drag of pending thing {Uid}", thing.uid);
+            return false;
+        }
+
         if (!CardCache.Contains(thing)) {
+            EmpLog.Warning("Refusing drag of uncached thing {Uid}", thing.uid);
             return false;
         }
 
@@ -40,7 +46,7 @@ internal static class InvStartDragEvent
             .Then(t => {
                 dragItemCard.from.thing = t;
                 __instance.StartDrag(dragItemCard);
-            });
+            }, () => EmpLog.Warning("Drag request of thing {Uid} rejected by host", thing.uid));
 
         return false;
     }

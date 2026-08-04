@@ -19,4 +19,16 @@ internal static class AIPlayMusicPatch
                 Transpilers.EmitDelegate((Chara chara) => chara.IsPlayer))
             .InstructionEnumeration();
     }
+
+    [HarmonyTranspiler]
+    [HarmonyPatch(typeof(AI_PlayMusic), nameof(AI_PlayMusic.ThrowReward))]
+    internal static IEnumerable<CodeInstruction> OnThrowReward(IEnumerable<CodeInstruction> instructions)
+    {
+        return new CodeMatcher(instructions)
+            .MatchStartForward(
+                new CodeMatch(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(Card), nameof(Card.IsPC))))
+            .Repeat(cm => cm.SetInstructionAndAdvance(
+                Transpilers.EmitDelegate((Chara chara) => chara.IsPlayer)))
+            .InstructionEnumeration();
+    }
 }
