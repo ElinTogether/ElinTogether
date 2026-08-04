@@ -1,3 +1,4 @@
+using ElinTogether.Elements;
 using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
@@ -25,6 +26,8 @@ public class CharaReviveDelta : ElinDelta
         if (net is ElinNetHost host) {
             // duplicate
             if (!chara.isDead) {
+                Pos = chara.pos;
+                host.Delta.AddRemote(this);
                 return;
             }
 
@@ -43,6 +46,11 @@ public class CharaReviveDelta : ElinDelta
 
             chara.Revive(point, true);
             chara.MakeGrave(LastWords);
+
+            // Zone.AddCard during Revive
+            if (chara.IsActiveRemoteChara) {
+                chara.SetAI(GoalRemote.Default);
+            }
 
             Pos = point;
             host.Delta.AddRemote(this);
