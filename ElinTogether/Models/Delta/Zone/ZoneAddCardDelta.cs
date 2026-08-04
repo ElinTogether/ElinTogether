@@ -34,7 +34,7 @@ public class ZoneAddCardDelta : ElinDelta
         }
 
         if (card.isDestroyed) {
-            EmpLog.Warning("Attempting to add destroyed item to the zone");
+            EmpLog.Warning("Attempting to add destroyed item {Uid} to the zone at {@Pos}", card.uid, Pos);
             TaskCache.CancelClientAct(net, this, Card);
             return;
         }
