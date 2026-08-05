@@ -71,7 +71,11 @@ internal partial class ElinNetHost
         EmpLog.Debug("Player {@Peer} has finished zone replication",
             peer);
 
-        var chara = ActiveRemoteCharas[peer.Id];
+        if (!ActiveRemoteCharas.TryGetValue(peer.Id, out var chara)) {
+            EmpLog.Debug("Player {@Peer} has no registered chara yet, ignoring",
+                peer);
+            return;
+        }
 
         // check if the received zone is still the current zone
         // in case clients have a high RTT and host fast fingered to another zone
