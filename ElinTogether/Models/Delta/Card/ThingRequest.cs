@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -9,6 +10,8 @@ namespace ElinTogether.Models;
 public class ThingRequest : ElinDelta
 {
     private static readonly Dictionary<int, (Action<Thing>, Action?)> _callbackList = [];
+    private static readonly Dictionary<int, (WeakReference<Thing> thing, Card? origin, DateTime since)> _dangling = [];
+    private static readonly TimeSpan _danglingTimeout = TimeSpan.FromSeconds(10);
 
     private static int _nextId;
 
@@ -39,19 +42,26 @@ public class ThingRequest : ElinDelta
                 } finally {
                     IsApplying = false;
                 }
+            } else {
+                EmpLog.Warning("ThingRequest {RequestId} response has no pending callback, dropped",
+                    Id);
             }
 
             return;
         }
 
         if (thing is null || thing.parent is null) {
+            EmpLog.Warning("Rejecting ThingRequest {RequestId} from peer {PeerIndex}, uid {Uid} unresolved or parentless",
+                Id, OriginPeer, Thing?.Uid ?? -1);
             Respond(net, null);
             return;
         }
 
+        var origin = thing.parent as Card;
         var result = thing.Split(Num);
         result.parent?.RemoveCard(result);
         CardCache.KeepAlive(result);
+        RecordDangling(result, origin);
 
         Thing = result;
         Respond(net, result);
@@ -96,6 +106,43 @@ public class ThingRequest : ElinDelta
     internal static void Clear()
     {
         _callbackList.Clear();
+        _dangling.Clear();
         _nextId = 0;
+    }
+
+    private static void RecordDangling(Thing result, Card? origin)
+    {
+        _dangling[result.uid] = (new(result), origin, DateTime.Now);
+    }
+
+    internal static void InvalidateDangling()
+    {
+        if (_dangling.Count == 0 || NetSession.Instance.Connection is not ElinNetHost) {
+            return;
+        }
+
+        foreach (var (uid, entry) in _dangling.ToArray()) {
+            if (!entry.thing.TryGetTarget(out var dangling) || dangling.isDestroyed || dangling.parent is not null) {
+                _dangling.Remove(uid);
+                continue;
+            }
+
+            if (DateTime.Now - entry.since < _danglingTimeout) {
+                continue;
+            }
+
+            EmpLog.Warning("ThingRequest dangling of {Uid} was never dango dongo'd, returning to {ParentUid}",
+                uid, entry.origin?.uid ?? -1);
+
+            using (Simulate()) {
+                if (entry.origin is { isDestroyed: false } origin) {
+                    origin.AddThing(dangling);
+                } else {
+                    _zone.AddCard(dangling, pc.pos);
+                }
+            }
+
+            _dangling.Remove(uid);
+        }
     }
 }

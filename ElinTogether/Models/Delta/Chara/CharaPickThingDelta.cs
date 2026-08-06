@@ -88,6 +88,13 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
+        if (net.IsClient && !CharaProgressCompleteDelta.IsApplying) {
+            EmpLog.Warning("Relay {PickType} of {Uid} failed to store in {OwnerUid}, forcing local",
+                Type, thing.uid, chara.uid);
+            chara.AddThing(thing);
+            return;
+        }
+
         net.Delta.AddRemote(new ZoneAddCardDelta {
             Card = Thing,
             Pos = thing.pos,

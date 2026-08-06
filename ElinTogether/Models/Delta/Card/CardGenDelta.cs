@@ -47,6 +47,7 @@ public class CardGenDelta : ElinDelta
         if (Card.Type == RemoteCard.CardType.Chara &&
             game.cards.globalCharas.GetValueOrDefault(Card.Uid) is { } existing) {
             CardCache.Add(existing);
+            CardCache.CacheContainer(existing.things);
             return;
         }
 
@@ -91,11 +92,6 @@ public class CardGenDelta : ElinDelta
 
         Card.Data = LZ4Bytes.Create(card);
         return true;
-    }
-
-    internal static bool WasCreatedThisFrame(int uid)
-    {
-        return _createdInCurrentFrame.Contains(uid);
     }
 
     internal static void ClearRecordedUids()

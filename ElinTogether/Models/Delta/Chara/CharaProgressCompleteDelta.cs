@@ -84,6 +84,10 @@ public class CharaProgressCompleteDelta : ElinDelta
         }
 
         remote.InsertAction(null);
+
+        if (chara.held is { } held && held.GetRootCard() == chara) {
+            chara.held = null;
+        }
     }
 
     private void ReplayDeltaList(ElinNetBase net)

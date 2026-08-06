@@ -24,14 +24,14 @@ public class CardAddThingDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         if (Thing.Find() is not Thing { isDestroyed: false } thing) {
-            EmpLog.Warning("Dropping {DeltaType}, uid {Uid} cannot be resolved here",
-                nameof(CardAddThingDelta), Thing.Uid);
+            EmpLog.Warning("Dropping {DeltaType} from peer {PeerIndex}, uid {Uid} cannot be resolved here",
+                nameof(CardAddThingDelta), OriginPeer, Thing.Uid);
             return;
         }
 
         if (Parent.Find() is not { isDestroyed: false } parent) {
-            EmpLog.Warning("Dropping {DeltaType}, parent uid {Uid} cannot be resolved here",
-                nameof(CardAddThingDelta), Parent.Uid);
+            EmpLog.Warning("Dropping {DeltaType} from peer {PeerIndex}, parent uid {Uid} cannot be resolved here",
+                nameof(CardAddThingDelta), OriginPeer, Parent.Uid);
             return;
         }
 
@@ -40,7 +40,20 @@ public class CardAddThingDelta : ElinDelta
         }
 
         if (thing.parent != parent) {
-            parent.AddThing(thing, TryStack, DestInvX, DestInvY);
+            var added = parent.AddThing(thing, TryStack, DestInvX, DestInvY);
+            if (added == thing) {
+                if (DestInvX >= 0) {
+                    added.invX = DestInvX;
+                }
+
+                if (DestInvY >= 0) {
+                    added.invY = DestInvY;
+                    if (DestInvY == 1) {
+                        WidgetCurrentTool.dirty = true;
+                    }
+                }
+            }
+
             EmpLog.Debug("Add thing {Uid} into parent {ParentUid}", thing.uid, parent.uid);
         }
     }
@@ -51,7 +64,7 @@ public class CardAddThingDelta : ElinDelta
             return false;
         }
 
-        if (CardGenDelta.WasCreatedThisFrame(thing.uid)) {
+        if (NetSession.Instance.IsHost) {
             Thing.Data = LZ4Bytes.Create(thing);
             Thing.Num = thing.Num;
         }

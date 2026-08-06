@@ -77,12 +77,13 @@ internal class InvSplitThingEvent : EClass
                         .Then(thing => {
                             dragItemCard.from.thing = thing;
                             ui.StartDrag(dragItemCard);
-                        });
+                        }, () => EmpLog.Warning("Split request of thing {Uid} rejected by host",
+                            button.card.uid));
                 }
             }
         }
 
-        [SuppressMessage("ReSharper", "AccessToModifiedClosure")]
+        [SuppressMessage("ReSharper", "AccessToModifiedClosure", Justification = "It Just Works")]
         void UpdateButton()
         {
             if (itemSlider != null) {

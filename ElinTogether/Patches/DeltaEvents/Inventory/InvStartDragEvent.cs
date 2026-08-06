@@ -36,7 +36,7 @@ internal static class InvStartDragEvent
             return false;
         }
 
-        if (!CardCache.Contains(thing)) {
+        if (!CardCache.Contains(thing) && !CardCache.TryAdopt(thing)) {
             EmpLog.Warning("Refusing drag of uncached thing {Uid}", thing.uid);
             return false;
         }

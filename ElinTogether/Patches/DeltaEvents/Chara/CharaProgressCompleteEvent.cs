@@ -57,7 +57,17 @@ internal static class CharaProgressCompleteEvent
         var captured = DeltaList;
         DeltaList = [];
 
-        if (__instance.owner is null || __instance is TaskBuild) {
+        if (__instance.owner is null) {
+            return;
+        }
+
+        if (__instance is TaskBuild) {
+            if (NetSession.Instance.Connection is ElinNetHost buildHost) {
+                foreach (var delta in captured) {
+                    buildHost.Delta.AddRemote(delta);
+                }
+            }
+
             return;
         }
 
