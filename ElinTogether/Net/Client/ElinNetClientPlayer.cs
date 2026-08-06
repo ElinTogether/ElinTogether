@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ElinTogether.Common;
 using ElinTogether.Models;
 using UnityEngine.Events;
@@ -45,6 +46,15 @@ internal partial class ElinNetClient
     private void OnSaveDataProbe(SaveDataProbe probe)
     {
         EmpLog.Information("Received save data from host");
+
+        var equipped = new List<(int uid, int elementId)>();
+        if (Session.Player is { } previous && core.game is not null) {
+            foreach (var slot in previous.body.slots) {
+                if (slot.thing is { } worn && !PendingUid.IsPending(worn.uid)) {
+                    equipped.Add((worn.uid, slot.elementId));
+                }
+            }
+        }
 
         var probeGame = probe.MakeGameSave();
 
