@@ -45,7 +45,10 @@ public class CharaReviveDelta : ElinDelta
             }
 
             chara.Revive(point, true);
-            chara.MakeGrave(LastWords);
+
+            using (Simulate()) {
+                chara.MakeGrave(LastWords);
+            }
 
             // Zone.AddCard during Revive
             if (chara.IsActiveRemoteChara) {

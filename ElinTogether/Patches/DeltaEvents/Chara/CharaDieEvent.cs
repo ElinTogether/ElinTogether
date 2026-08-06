@@ -23,6 +23,12 @@ internal static class CharaDieEvent
                     OriginalTarget = originalTarget,
                 });
 
+                if (ElinDelta.IsApplying) {
+                    using var _ = ElinDelta.Simulate();
+                    __instance.Stub_Die(e, origin, attackSource, originalTarget);
+                    return false;
+                }
+
                 return true;
             case ElinNetClient:
                 // we are clients, drop the update and wait for delta

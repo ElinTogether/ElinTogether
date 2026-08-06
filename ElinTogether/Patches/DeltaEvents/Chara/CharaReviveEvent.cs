@@ -8,11 +8,18 @@ namespace ElinTogether.Patches;
 [HarmonyPatch]
 internal static class CharaReviveEvent
 {
+    private static string? _pendingLastWords;
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Chara), nameof(Chara.MakeGrave))]
-    internal static bool OnCharaMakeGrave(Chara __instance)
+    internal static bool OnCharaMakeGrave(Chara __instance, string lastword)
     {
-        return NetSession.Instance.Connection is not ElinNetClient || !__instance.IsPC;
+        if (NetSession.Instance.Connection is not ElinNetClient || !__instance.IsPC) {
+            return true;
+        }
+
+        _pendingLastWords = lastword;
+        return false;
     }
 
     [HarmonyPrefix]
@@ -39,9 +46,10 @@ internal static class CharaReviveEvent
 
         client.Delta.AddRemote(new CharaReviveDelta {
             Owner = __instance,
-            LastWords = null,
+            LastWords = _pendingLastWords,
             Pos = pos,
         });
+        _pendingLastWords = null;
 
         // scene
         EClass.player.deathDialog = true;
