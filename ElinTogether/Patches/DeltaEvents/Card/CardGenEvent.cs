@@ -48,6 +48,11 @@ internal static class CardGenEvent
             return;
         }
 
+        // ability fake card
+        if (__result is Thing { trait: TraitAbility }) {
+            return;
+        }
+
         connection.Delta.AddRemote(CardGenDelta.Create(__result));
     }
 }

@@ -14,7 +14,13 @@ internal static class InvTransactionEvent
             return true;
         }
 
-        if (!CardCache.Contains(__instance.thing)) {
+        // ability fake card
+        if (__instance.thing.trait is TraitAbility) {
+            return true;
+        }
+
+        if (!CardCache.Contains(__instance.thing) && !CardCache.TryAdopt(__instance.thing)) {
+            EmpLog.Warning("Refusing transaction of uncached thing {Uid}", __instance.thing.uid);
             return false;
         }
 

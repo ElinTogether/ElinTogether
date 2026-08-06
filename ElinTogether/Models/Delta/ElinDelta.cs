@@ -64,6 +64,7 @@ namespace ElinTogether.Models;
 [Union(700, typeof(InvOwnerOnProcessDelta))]
 [Union(701, typeof(InvRerollDelta))]
 [Union(702, typeof(InvSaveDataDelta))]
+[Union(703, typeof(InvPlaceAbilityDelta))]
 // Quest
 [Union(800, typeof(QuestCreateDelta))]
 [Union(801, typeof(QuestSetClientDelta))]

@@ -78,6 +78,26 @@ public static class CardCache
         return card is not null && Find(card.uid) == card;
     }
 
+    internal static bool TryAdopt(Card? card)
+    {
+        if (card is null || PendingUid.IsPending(card.uid)) {
+            return false;
+        }
+
+        if (Find(card.uid) is { } cached) {
+            return cached == card;
+        }
+
+        if (card.GetRootCard() is not Chara { IsPC: true }) {
+            return false;
+        }
+
+        EmpLog.Warning("Adopting uncached {CardId} {Uid} from pc into card cache",
+            card.id, card.uid);
+        Set(card);
+        return true;
+    }
+
     internal static Card? Find(int uid)
     {
         if (uid > 0 && _cards.TryGetValue(uid, out var reference)) {
@@ -142,6 +162,11 @@ public static class CardCache
     internal static void DelayDestroy(Card card)
     {
         _invalidCards.Add(card);
+    }
+
+    internal static void UndoDestroy(Card card)
+    {
+        _invalidCards.Remove(card);
     }
 
     private static void ClearCachedRefs()

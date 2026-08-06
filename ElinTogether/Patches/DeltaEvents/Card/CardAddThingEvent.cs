@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -8,6 +9,56 @@ namespace ElinTogether.Patches;
 [HarmonyPatch(typeof(Card), nameof(Card.AddThing), typeof(Thing), typeof(bool), typeof(int), typeof(int))]
 internal static class CardAddThingEvent
 {
+    private static readonly List<Thing> _pendingAbilityFakeCards = [];
+
+    internal static bool AbilityLayoutDirty;
+
+    internal static void FlushPendingAbilityFakeCard()
+    {
+        if (_pendingAbilityFakeCards.Count == 0 && !AbilityLayoutDirty) {
+            return;
+        }
+
+        if (NetSession.Instance.Connection is ElinNetClient client) {
+            foreach (var ab in _pendingAbilityFakeCards) {
+                if (ab.isDestroyed || string.IsNullOrEmpty(ab.c_idAbility) || ab.GetRootCard() != EClass.pc) {
+                    continue;
+                }
+
+                CardCache.UndoDestroy(ab);
+                AbilityLayoutDirty = true;
+            }
+
+            if (AbilityLayoutDirty) {
+                var layout = CollectLayout();
+                EmpLog.Debug("Reporting ability layout, {LayoutCount} entries", layout.Count);
+
+                client.Delta.AddRemote(new InvPlaceAbilityDelta {
+                    Layout = layout,
+                });
+            }
+        }
+
+        AbilityLayoutDirty = false;
+        _pendingAbilityFakeCards.Clear();
+    }
+
+    internal static List<InvPlaceAbilityDelta.AbilityTokenSlot> CollectLayout()
+    {
+        var layout = new List<InvPlaceAbilityDelta.AbilityTokenSlot>();
+        foreach (var token in EClass.pc.things) {
+            if (token is { trait: TraitAbility, isDestroyed: false } && !string.IsNullOrEmpty(token.c_idAbility)) {
+                layout.Add(new() {
+                    Alias = token.c_idAbility,
+                    InvX = token.invX,
+                    InvY = token.invY,
+                });
+            }
+        }
+
+        return layout;
+    }
+
     [HarmonyPrefix]
     internal static bool OnCardAddThing(Card __instance, Thing t, bool tryStack, int destInvX, int destInvY)
     {
@@ -24,12 +75,23 @@ internal static class CardAddThingEvent
             return true;
         }
 
+        // ability fake card
+        if (t.trait is TraitAbility) {
+            if (connection.IsClient && __instance.IsPC && PendingUid.IsPending(t.uid)) {
+                _pendingAbilityFakeCards.Add(t);
+            }
+
+            return true;
+        }
+
         // client pending uid
         if (connection.IsClient && (PendingUid.IsPending(t.uid) || PendingUid.IsPending(__instance.uid))) {
             return true;
         }
 
-        if (!CardCache.Contains(__instance)) {
+        if (!CardCache.Contains(__instance) && !CardCache.TryAdopt(__instance)) {
+            EmpLog.Warning("Suppressed add-thing of {Uid} into uncached parent {ParentUid}",
+                t.uid, __instance.uid);
             return false;
         }
 

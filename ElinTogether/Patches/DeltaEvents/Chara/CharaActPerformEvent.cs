@@ -20,7 +20,9 @@ internal static class CharaActPerformEvent
     internal static IEnumerable<MethodBase> TargetMethods()
     {
         return OverrideMethodComparer.FindAllOverrides(typeof(Act), nameof(Act.Perform))
-            .Where(mi => mi.DeclaringType != typeof(DynamicAct) && mi.DeclaringType != typeof(DynamicAIAct));
+            .Where(mi => mi.DeclaringType != typeof(DynamicAct) &&
+                         mi.DeclaringType != typeof(DynamicAIAct) &&
+                         mi.DeclaringType != typeof(ActQuickCraft));
     }
 
     [HarmonyPostfix]

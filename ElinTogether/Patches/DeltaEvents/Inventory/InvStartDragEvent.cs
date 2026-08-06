@@ -26,6 +26,11 @@ internal static class InvStartDragEvent
             return true;
         }
 
+        // ability fake card
+        if (thing.trait is TraitAbility) {
+            return true;
+        }
+
         if (PendingUid.IsPending(thing.uid)) {
             EmpLog.Warning("Refusing drag of pending thing {Uid}", thing.uid);
             return false;

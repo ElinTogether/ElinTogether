@@ -29,6 +29,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
             return;
         }
 
+        CardAddThingEvent.FlushPendingAbilityFakeCard();
         CardCache.Update();
         CharaSynchronizationContext.Update();
         NetProfileSynchronizationContext.Update();

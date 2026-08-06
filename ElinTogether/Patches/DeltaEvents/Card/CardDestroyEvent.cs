@@ -24,6 +24,15 @@ internal static class CardDestroyEvent
             return;
         }
 
+        // ability fake card
+        if (__instance is Thing { trait: TraitAbility }) {
+            if (connection.IsClient) {
+                CardAddThingEvent.AbilityLayoutDirty = true;
+            }
+
+            return;
+        }
+
         // client pending uid
         if (connection.IsClient && PendingUid.IsPending(__instance.uid)) {
             return;

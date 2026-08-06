@@ -61,6 +61,37 @@ internal partial class ElinNetClient
         probeGame.OnGameInstantiated();
         probeGame.OnLoad();
 
+        // ability fake card
+        try {
+            foreach (var (uid, elementId) in equipped) {
+                if (remoteChara.things.Find(uid) is { isDestroyed: false } worn &&
+                    worn.c_equippedSlot == 0 &&
+                    remoteChara.body.slots.Find(s => s.elementId == elementId && s.thing is null) is { } slot) {
+                    remoteChara.body.Equip(worn, slot, false);
+                }
+            }
+
+            foreach (var chara in game.cards.globalCharas.Values) {
+                if (chara != remoteChara) {
+                    InvPlaceAbilityDelta.InvalidateFakeAbilityCard(chara);
+                }
+            }
+
+            foreach (var slot in InvPlaceAbilityDelta.Parse(remoteChara.GetStr(InvPlaceAbilityDelta.LayoutKey))) {
+                CardBlueprint.SetNormalRarity();
+                var ab = ThingGen.Create("ability");
+                CardCache.UndoDestroy(ab);
+                remoteChara.AddThing(ab, false, slot.InvX, slot.InvY);
+                ab.c_idAbility = slot.Alias;
+                ab.invX = slot.InvX;
+                ab.invY = slot.InvY;
+            }
+
+            WidgetCurrentTool.dirty = true;
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Failed to restore equipment or ability layout after save probe");
+        }
+
         ui.RemoveLayer<LayerTitle>();
         ui.ShowCover();
         //scene.Init(Scene.Mode.StartGame);

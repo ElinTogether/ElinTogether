@@ -70,6 +70,15 @@ public class CharaSwitchHeldDelta : ElinDelta
             heldMainHand = heldOffHand = pc.held;
         }
 
+        // ability fake card
+        if (heldMainHand is not null && PendingUid.IsPending(heldMainHand.Uid)) {
+            heldMainHand = null;
+        }
+
+        if (heldOffHand is not null && PendingUid.IsPending(heldOffHand.Uid)) {
+            heldOffHand = null;
+        }
+
         return new() {
             Owner = pc,
             HeldMainHand = heldMainHand,
