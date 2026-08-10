@@ -7,8 +7,14 @@ namespace ElinTogether.Models;
 [MessagePackObject]
 public class InvOwnerOnProcessDelta : ElinDelta
 {
+    public enum RemoteInvOwnerType : byte
+    {
+        Unknown = 0,
+        Refuel = 1,
+    }
+
     [Key(1)]
-    public required RemoteCard Parent { get; init; }
+    public required RemoteCard? Parent { get; init; }
 
     [Key(2)]
     public required RemoteCard Thing { get; init; }
@@ -16,15 +22,32 @@ public class InvOwnerOnProcessDelta : ElinDelta
     [Key(3)]
     public required RemoteCard Dest { get; init; }
 
+    [Key(4)]
+    public RemoteInvOwnerType OwnerType { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
-        if (Parent.Find() is not { } parent
-            || Thing.Find() is not Thing { isDestroyed: false } thing
-            || Dest.Find() is not { } dest) {
+        if (Thing.Find() is not Thing { isDestroyed: false } thing ||
+            Dest.Find() is not { } dest) {
+            return;
+        }
+
+        // null parent is stale, from split
+        var parent = Parent?.Find();
+        if (Parent is not null && parent is null) {
             return;
         }
 
         if (thing.parent is not null && thing.parent != parent) {
+            return;
+        }
+
+        // refuel is dispatched by the type
+        if (OwnerType == RemoteInvOwnerType.Refuel) {
+            if (net is ElinNetHost refuelHost) {
+                ApplyRefuel(refuelHost, thing, dest);
+            }
+
             return;
         }
 
@@ -46,10 +69,6 @@ public class InvOwnerOnProcessDelta : ElinDelta
                 }
 
                 return;
-        }
-
-        if (net.IsHost) {
-            net.Delta.AddRemote(this);
         }
 
         InvOwnerDraglet? destInv = null;
@@ -86,7 +105,41 @@ public class InvOwnerOnProcessDelta : ElinDelta
                 break;
         }
 
-        destInv?._OnProcess(thing);
+        if (destInv is null) {
+            return;
+        }
+
+        if (net.IsHost) {
+            net.Delta.AddRemote(this);
+        }
+
+        destInv._OnProcess(thing);
+    }
+
+    private void ApplyRefuel(ElinNetHost host, Thing thing, Card dest)
+    {
+        using var _ = Simulate();
+
+        var trait = dest.trait;
+        var fuelValue = trait.GetFuelValue(thing);
+        if (fuelValue <= 0) {
+            EmpLog.Warning("Refusing refuel of {TargetUid} from peer {PeerIndex}, {CardId} is not fuel",
+                dest.uid, OriginPeer, thing.id);
+            return;
+        }
+
+        // client intent capped by stack and remaining capacity
+        var room = (trait.MaxFuel - dest.c_charges) / fuelValue;
+        var num = Mathf.Min(Thing.Num > 0 ? Thing.Num : thing.Num, thing.Num);
+        num = Mathf.Min(num, room);
+        if (num <= 0) {
+            EmpLog.Debug("Refuel of {TargetUid} is already full, ignoring {Uid}", dest.uid, thing.uid);
+            return;
+        }
+
+        // InvOwnerRefuel._OnProcess
+        var fuel = thing.Split(num);
+        trait.Refuel(fuel);
     }
 
     private void ApplyRecycle(ElinNetHost host, TraitRecycle recycle, Thing thing)
