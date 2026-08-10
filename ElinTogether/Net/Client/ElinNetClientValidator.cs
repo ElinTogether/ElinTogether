@@ -61,6 +61,8 @@ internal partial class ElinNetClient
         EmpLog.Debug("Host version verified: mod {HostModVersion}, game {HostGameVersion}",
             request.HostModVersion, request.HostGameVersion);
 
+        AdvanceHandshake(NetHandshakePhase.AwaitingIntegrity);
+
         Host.Send(NetIntegrityResponse.Create());
     }
 

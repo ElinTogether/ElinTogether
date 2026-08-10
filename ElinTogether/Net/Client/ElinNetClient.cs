@@ -55,6 +55,8 @@ internal partial class ElinNetClient : ElinNetBase
 
     protected override void RegisterPackets()
     {
+        Router.ShouldReceivePacket = ShouldReceiveHostPacket;
+
         // delta
         Router.RegisterHandler<ZoneDataResponse>(OnZoneDataResponse);
         Router.RegisterHandler<ZoneActivateResponse>(OnZoneActivateResponse);
@@ -101,6 +103,9 @@ internal partial class ElinNetClient : ElinNetBase
             Session.ResetSession();
             return;
         }
+
+        // reconnects
+        BeginHandshake();
 
         EmpPop.Information("emp_connecting_host".lang(), Host);
 

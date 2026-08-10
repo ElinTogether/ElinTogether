@@ -52,8 +52,8 @@ public class FileDataValidator(IEnumerable<string> filePaths) : ISourceValidator
                 using var fs = File.Open(fullPath.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 result[path] = fs.GetSha256Code();
             } catch (Exception ex) {
-                EmpLog.Warning("Failed to hash file {FilePath}: {Error}", path, ex.Message);
-                result[path] = $"error:{ex.Message}";
+                EmpLog.Warning(ex, "Failed to hash file {FilePath}", path);
+                result[path] = "error";
             }
         }
 

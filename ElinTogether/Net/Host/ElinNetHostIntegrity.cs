@@ -10,16 +10,7 @@ namespace ElinTogether.Net;
 
 internal partial class ElinNetHost
 {
-    public enum NetHandshakePhase
-    {
-        AwaitingVersion,
-        AwaitingIntegrity,
-        Joined,
-        Rejected,
-    }
-
     private readonly Dictionary<int, HandshakeState> _handshakes = [];
-
 
     private void BeginHandshake(ISteamNetPeer peer)
     {

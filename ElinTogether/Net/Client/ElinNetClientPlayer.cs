@@ -15,6 +15,9 @@ internal partial class ElinNetClient
     {
         EmpLog.Information("Received new player creation request");
 
+        // PreparePlayerJoin
+        AdvanceHandshake(NetHandshakePhase.Joined);
+
         ui.RemoveLayer<LayerEditBio>();
         var embark = ui.AddLayer<LayerEditBio>();
         var content = embark.GetComponentInChildren<Content>();
@@ -46,6 +49,9 @@ internal partial class ElinNetClient
     private void OnSaveDataProbe(SaveDataProbe probe)
     {
         EmpLog.Information("Received save data from host");
+
+        // PreparePlayerJoin
+        AdvanceHandshake(NetHandshakePhase.Joined);
 
         var equipped = new List<(int uid, int elementId)>();
         if (Session.Player is { } previous && core.game is not null) {

@@ -21,6 +21,7 @@ public class ZoneDataResponse
     public required LZ4Bytes Zone { get; init; }
 
     // TODO use a map surrogate for more efficient transporting
+    // TODO upcoming byte[] to int[] layout update from Elin
     [Key(3)]
     public required Dictionary<string, LZ4Bytes> Map { get; init; }
 
@@ -68,6 +69,9 @@ public class ZoneDataResponse
         var basePath = ResourceFetch.GetEmpSavePath();
 
         foreach (var (id, asset) in Map) {
+            if (id.Contains('.') || id.Contains('/') || id.Contains('\\')) {
+                continue;
+            }
             var path = Path.Combine(basePath, ZoneUid.ToString(), id);
             asset.DecompressToFile(path);
         }
