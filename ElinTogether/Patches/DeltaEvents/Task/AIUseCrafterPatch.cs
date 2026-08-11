@@ -180,7 +180,7 @@ internal static class AIUseCrafterPatch
                 SE.Play(crafter.idSoundBG);
             }
 
-            List<Thing> targets = [..args.Targets.Select(remote => (remote.Find() as Thing)!)];
+            List<Thing> targets = [..args.Targets.Select(remote => (remote?.Find() as Thing)!)];
             var blessed = BlessedState.Normal;
 
             using (ElinDelta.Simulate()) {
@@ -195,7 +195,7 @@ internal static class AIUseCrafterPatch
             }
 
             for (var i = 0; i < targets.Count; i++) {
-                if (!IsIngValid(targets[i], i)) {
+                if (!IsIngValid(targets, i)) {
                     NotifyClientCancel(act);
                     yield return act.Success();
                 }
@@ -390,9 +390,9 @@ internal static class AIUseCrafterPatch
         }
         yield break;
 
-        bool IsIngValid(Thing? t, int i)
+        bool IsIngValid(List<Thing> ings, int i)
         {
-            if (t is null || t.isDestroyed) {
+            if (ings[i] is not { isDestroyed: false } t) {
                 return false;
             }
 
@@ -401,7 +401,27 @@ internal static class AIUseCrafterPatch
                 return false;
             }
 
-            return crafter.IsFactory || crafter.IsCraftIngredient(t, i);
+            if (crafter.IsFactory) {
+                return true;
+            }
+
+            // multi drag crafter
+            if (i != 1) {
+                return crafter.IsCraftIngredient(t, i);
+            }
+
+            var main = ings.Count > 0 ? ings[0] : null;
+            foreach (var row in EClass.sources.recipes.rows) {
+                if (!crafter.IsIngredient(0, row, main) || (main == t && main.Num < 2)) {
+                    continue;
+                }
+
+                if (crafter.IsIngredient(i, row, t)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
