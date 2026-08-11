@@ -75,6 +75,7 @@ public class AIUseCrafterArgs : TaskArgsBase
             }
 
             recipe = Recipe.Create(source, RecipeMat);
+            BindIngredients(recipe);
         }
 
         if (recipe is not null && crafter is TraitFactory factory) {
@@ -89,5 +90,32 @@ public class AIUseCrafterArgs : TaskArgsBase
 
         RemoteCraft.Attach(act, this);
         return act;
+    }
+
+    private void BindIngredients(Recipe recipe)
+    {
+        recipe.BuildIngredientList();
+
+        var slots = recipe.ingredients;
+        var bound = new List<object>();
+        for (var i = 0; i < Targets.Count && i < slots.Count; i++) {
+            if (Targets[i].Find() is not Thing thing) {
+                continue;
+            }
+
+            slots[i].SetThing(thing);
+            bound.Add(new {
+                Uid = thing.uid,
+                thing.Num,
+            });
+        }
+
+        if (Targets.Count > slots.Count) {
+            EmpLog.Warning("Remote craft recipe {RecipeId} has less ingredient slots {@CraftIngs}",
+                recipe.id, Targets);
+        }
+
+        EmpLog.Debug("Remote craft recipe {RecipeId} bound ings {@CraftIngs}, mat {MaterialId}",
+            recipe.id, bound, recipe.GetMainMaterial().id);
     }
 }
