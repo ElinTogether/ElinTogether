@@ -15,7 +15,9 @@ internal static class CardModCurrencyEvent
             return;
         }
 
-        if (NetSession.Instance.Connection is not ElinNetClient client || ElinDelta.IsApplying) {
+        // ThingRequest replay is the client predicting, not applying
+        if (NetSession.Instance.Connection is not ElinNetClient client ||
+            (ElinDelta.IsApplying && !ThingRequest.IsApplying)) {
             return;
         }
 
