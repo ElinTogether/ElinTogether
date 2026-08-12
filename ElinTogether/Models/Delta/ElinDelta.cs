@@ -50,6 +50,7 @@ namespace ElinTogether.Models;
 [Union(500, typeof(GameDelta))]
 [Union(501, typeof(WorldDateAdvanceDelta))]
 [Union(502, typeof(ShippingResultDelta))]
+[Union(503, typeof(BranchResourceModDelta))]
 // Misc
 [Union(600, typeof(OnBarterDelta))]
 [Union(601, typeof(CardRendererTalkDelta))]

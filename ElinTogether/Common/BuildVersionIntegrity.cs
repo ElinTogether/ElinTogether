@@ -13,9 +13,11 @@ public class BuildVersionIntegrity : EClass
         V3 = 3,
         // refuel + toggle/charge channels
         V4 = 4,
+        // branch resource channel
+        V5 = 5,
     }
 
-    public const APIVersion APIVersionLatest = APIVersion.V4;
+    public const APIVersion APIVersionLatest = APIVersion.V5;
 
     public static string GameVersion => $"{core.version.major}.{core.version.minor}.{core.version.batch}.{core.version.fix}";
 
