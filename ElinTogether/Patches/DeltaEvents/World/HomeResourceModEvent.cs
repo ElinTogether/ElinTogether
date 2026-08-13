@@ -16,7 +16,7 @@ internal static class HomeResourceModEvent
         }
 
         if (NetSession.Instance.Connection is not ElinNetClient client ||
-            (ElinDelta.IsApplying && !ThingRequest.IsApplying)) {
+            ElinDelta.IsRemoteStateLanding) {
             return;
         }
 

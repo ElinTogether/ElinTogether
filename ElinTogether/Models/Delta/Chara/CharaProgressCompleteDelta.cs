@@ -20,7 +20,8 @@ public class CharaProgressCompleteDelta : ElinDelta
 
     public static CharaProgressCompleteDelta? Current { get; private set; }
 
-    public static new bool IsApplying => Current is not null;
+    // progress replay, client local sim
+    public static bool IsReplaying => Current is not null;
 
     protected override void OnApply(ElinNetBase net)
     {

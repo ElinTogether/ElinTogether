@@ -15,7 +15,8 @@ public class ThingRequest : ElinDelta
 
     private static int _nextId;
 
-    public static new bool IsApplying;
+    // client replaying local ... simulation?
+    public static bool IsReplayingIntent;
 
     [Key(0)]
     public required int Id { get; init; }
@@ -31,7 +32,7 @@ public class ThingRequest : ElinDelta
         var thing = Thing?.Find() as Thing;
         if (net.IsClient) {
             if (_callbackList.Remove(Id, out var value)) {
-                IsApplying = true;
+                IsReplayingIntent = true;
                 try {
                     var (onSuccess, onFail) = value;
                     if (thing is not null) {
@@ -40,7 +41,7 @@ public class ThingRequest : ElinDelta
                         onFail?.Invoke();
                     }
                 } finally {
-                    IsApplying = false;
+                    IsReplayingIntent = false;
                 }
             } else {
                 EmpLog.Warning("ThingRequest {RequestId} response has no pending callback, dropped",

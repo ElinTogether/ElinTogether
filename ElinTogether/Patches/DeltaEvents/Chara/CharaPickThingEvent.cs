@@ -24,8 +24,8 @@ internal static class CharaPickThingEvent
             return false;
         }
 
-        if (connection.IsHost && CharaProgressCompleteEvent.IsHappening && CharaProgressCompleteEvent.Chara.IsRemotePlayer) {
-            CharaProgressCompleteEvent.DeltaList.Add(new CharaPickThingDelta {
+        if (CharaProgressCompleteEvent.ShouldPack(true)) {
+            CharaProgressCompleteEvent.Pack(new CharaPickThingDelta {
                 Owner = CharaProgressCompleteEvent.Chara!,
                 Thing = t,
                 Pos = null,
@@ -88,11 +88,11 @@ internal static class CharaPickOrDropEvent
             return false;
         }
 
-        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening || !CharaProgressCompleteEvent.Chara.IsRemotePlayer) {
+        if (!CharaProgressCompleteEvent.ShouldPack(true)) {
             return true;
         }
 
-        CharaProgressCompleteEvent.DeltaList.Add(new CharaPickThingDelta {
+        CharaProgressCompleteEvent.Pack(new CharaPickThingDelta {
             Owner = CharaProgressCompleteEvent.Chara!,
             Thing = t,
             Pos = p,
@@ -101,7 +101,7 @@ internal static class CharaPickOrDropEvent
 
         CardCache.KeepAlive(t);
 
-        return !CharaProgressCompleteEvent.Chara.IsRemotePlayer;
+        return false;
     }
 }
 
@@ -119,11 +119,11 @@ internal static class CharaTrySmoothPickEvent
             return false;
         }
 
-        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening || !CharaProgressCompleteEvent.Chara.IsRemotePlayer) {
+        if (!CharaProgressCompleteEvent.ShouldPack(true)) {
             return true;
         }
 
-        CharaProgressCompleteEvent.DeltaList.Add(new CharaPickThingDelta {
+        CharaProgressCompleteEvent.Pack(new CharaPickThingDelta {
             Owner = CharaProgressCompleteEvent.Chara!,
             Thing = t,
             Pos = p,
@@ -132,6 +132,6 @@ internal static class CharaTrySmoothPickEvent
 
         CardCache.KeepAlive(t);
 
-        return !CharaProgressCompleteEvent.Chara.IsRemotePlayer;
+        return false;
     }
 }

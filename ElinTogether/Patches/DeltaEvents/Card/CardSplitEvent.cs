@@ -7,23 +7,19 @@ namespace ElinTogether.Patches;
 internal static class CardSplitEvent
 {
     [HarmonyPrefix]
-    internal static void OnSplit(Card __instance, ref bool __state)
+    internal static void OnSplit(Card __instance, out ElinDelta.PatchScope __state)
     {
-        __state = __instance.IsResolved;
-
-        if (__state) {
-            PendingContext.Enter();
-        }
+        __state = ElinDelta.PatchScope.Pending(__instance.IsResolved);
     }
 
     [HarmonyFinalizer]
-    internal static void OnSplitEnd(Card __instance, Thing? __result, bool __state)
+    internal static void OnSplitEnd(Card __instance, Thing? __result, ElinDelta.PatchScope __state)
     {
-        if (!__state) {
+        __state.Exit();
+
+        if (!__state.IsActive) {
             return;
         }
-
-        PendingContext.Exit();
 
         if (__result is not null && __result != __instance) {
             PendingSplit.Record(__result, __instance);

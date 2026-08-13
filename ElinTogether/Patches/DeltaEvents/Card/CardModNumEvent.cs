@@ -10,7 +10,7 @@ internal static class CardModNumEvent
     [HarmonyPrefix]
     internal static bool OnCardModNum(Card __instance, ref int a)
     {
-        if (CardModNumDelta.IsApplying || !__instance.IsResolved) {
+        if (CardModNumDelta.IsOverwriting || !__instance.IsResolved) {
             return true;
         }
 
@@ -21,7 +21,7 @@ internal static class CardModNumEvent
     [HarmonyPostfix]
     internal static void OnCardModNumEnd(Card __instance, int a)
     {
-        if (NetSession.Instance.Connection is not { } connection || a == 0 || CardModNumDelta.IsApplying) {
+        if (NetSession.Instance.Connection is not { } connection || a == 0 || CardModNumDelta.IsOverwriting) {
             return;
         }
 
@@ -38,8 +38,8 @@ internal static class CardModNumEvent
             Num = __instance.Num,
         };
 
-        if (CharaProgressCompleteEvent.IsHappening && connection.IsHost) {
-            CharaProgressCompleteEvent.DeltaList.Add(delta);
+        if (CharaProgressCompleteEvent.ShouldPack(false)) {
+            CharaProgressCompleteEvent.Pack(delta);
             return;
         }
 

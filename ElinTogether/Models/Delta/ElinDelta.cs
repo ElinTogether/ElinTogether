@@ -91,6 +91,9 @@ public abstract class ElinDelta : EClass
 
     public static bool IsApplying => _applyDepth > 0;
 
+    // remote applying, ThingRequest is local sim which does not cunt
+    public static bool IsRemoteStateLanding => IsApplying && !ThingRequest.IsReplayingIntent;
+
     internal int OriginPeer { get; set; }
 
     internal int DeferCount { get; set; }
@@ -133,6 +136,61 @@ public abstract class ElinDelta : EClass
     public bool Refresh()
     {
         return OnRefresh();
+    }
+
+    // for harmony patches
+    internal readonly struct PatchScope
+    {
+        private enum Kind : byte
+        {
+            None,
+            Simulate,
+            Pending,
+        }
+
+        private readonly Kind _kind;
+        private readonly int _restore;
+
+        private PatchScope(Kind kind, int restore)
+        {
+            _kind = kind;
+            _restore = restore;
+        }
+
+        internal bool IsActive => _kind != Kind.None;
+
+        internal static PatchScope Simulate(bool active = true)
+        {
+            if (!active) {
+                return default;
+            }
+
+            var previous = _applyDepth;
+            _applyDepth = 0;
+            return new(Kind.Simulate, previous);
+        }
+
+        internal static PatchScope Pending(bool active = true)
+        {
+            if (!active) {
+                return default;
+            }
+
+            PendingContext.Enter();
+            return new(Kind.Pending, 0);
+        }
+
+        internal void Exit()
+        {
+            switch (_kind) {
+                case Kind.Simulate:
+                    _applyDepth = _restore;
+                    break;
+                case Kind.Pending:
+                    PendingContext.Exit();
+                    break;
+            }
+        }
     }
 
     internal enum OverrideOrder

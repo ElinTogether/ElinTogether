@@ -1,19 +1,16 @@
-using ElinTogether.Net;
 using ElinTogether.Patches;
 
 namespace ElinTogether.Models;
 
 internal static class TaskProduct
 {
-    internal static bool IsReplaying => CharaProgressCompleteDelta.Current is not null;
-
     internal static bool Publish(string slot, Thing? product)
     {
-        if (!CharaProgressCompleteEvent.IsHappening || NetSession.Instance.IsClient) {
+        if (!CharaProgressCompleteEvent.ShouldPack(false)) {
             return false;
         }
 
-        CharaProgressCompleteEvent.DeltaList.Add(new ThingDelta {
+        CharaProgressCompleteEvent.Pack(new ThingDelta {
             Thing = product,
             Slot = slot,
         });
@@ -24,7 +21,7 @@ internal static class TaskProduct
     internal static bool TryClaim(string slot, out Thing? product)
     {
         product = null;
-        if (!IsReplaying) {
+        if (!CharaProgressCompleteDelta.IsReplaying) {
             return false;
         }
 

@@ -104,7 +104,7 @@ internal static class AIFishPatch
     [HarmonyPatch(typeof(AI_Fish.ProgressFish), nameof(AI_Fish.ProgressFish.OnProgressComplete))]
     internal static void OnProgressComplete(AI_Fish.ProgressFish __instance)
     {
-        if (!TaskProduct.IsReplaying) {
+        if (!CharaProgressCompleteDelta.IsReplaying) {
             return;
         }
 

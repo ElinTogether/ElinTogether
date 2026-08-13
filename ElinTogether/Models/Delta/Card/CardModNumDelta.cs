@@ -12,7 +12,9 @@ public class CardModNumDelta : ElinDelta
     [Key(1)]
     public required int Num { get; init; }
 
-    public static new bool IsApplying { get; private set; }
+    // SetNum -> ModNum, been overwritten by host value
+    // TODO could fix this by swapping Elin internal code
+    public static bool IsOverwriting { get; private set; }
 
     protected override void OnApply(ElinNetBase net)
     {
@@ -28,11 +30,11 @@ public class CardModNumDelta : ElinDelta
         EmpLog.Debug("Applying card num {Uid}: {CardNum} -> {NewCardNum}",
             card.uid, card.Num, Num);
 
-        IsApplying = true;
+        IsOverwriting = true;
         try {
             card.SetNum(Num);
         } finally {
-            IsApplying = false;
+            IsOverwriting = false;
         }
 
         // set num

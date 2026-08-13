@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -13,10 +14,26 @@ namespace ElinTogether.Patches;
 [HarmonyPatch]
 internal static class CharaProgressCompleteEvent
 {
-    internal static List<ElinDelta> DeltaList = [];
+    private static List<ElinDelta> DeltaList = [];
     internal static Chara? Chara { get; private set; }
     internal static bool IsHappening { get; private set; }
     internal static AIAct? Action { get; private set; }
+
+    // host packs side delta during ProgressComplete, clients replay
+    // pick is for remote players only
+    internal static bool ShouldPack(bool remoteOnly)
+    {
+        if (!IsHappening || NetSession.Instance.Connection is not { IsHost: true }) {
+            return false;
+        }
+
+        return !remoteOnly || Chara is { IsRemotePlayer: true };
+    }
+
+    internal static void Pack(ElinDelta delta)
+    {
+        DeltaList.Add(delta);
+    }
 
     internal static IEnumerable<MethodBase> TargetMethods()
     {
@@ -88,6 +105,22 @@ internal static class CharaProgressCompleteEvent
             CompletedActId = actId,
             DeltaList = captured,
         });
+    }
+
+    [HarmonyFinalizer]
+    internal static void OnProgressCompleteCleanup(Exception? __exception)
+    {
+        if (__exception is null || !IsHappening) {
+            return;
+        }
+
+        EmpLog.Warning("Progress complete of {OwnerUid} threw, discarding {ReplayCount} packed deltas",
+            Chara?.uid ?? -1, DeltaList.Count);
+
+        Chara = null;
+        Action = null;
+        IsHappening = false;
+        DeltaList = [];
     }
 
     internal static void SendCharaBuildDelta(TaskBuild taskBuild)

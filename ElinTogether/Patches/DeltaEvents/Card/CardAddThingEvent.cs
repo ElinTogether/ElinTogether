@@ -62,7 +62,7 @@ internal static class CardAddThingEvent
     [HarmonyPrefix]
     internal static bool OnCardAddThing(Card __instance, Thing t, bool tryStack, int destInvX, int destInvY)
     {
-        if (NetSession.Instance.Connection is not { } connection || (ElinDelta.IsApplying && !ThingRequest.IsApplying)) {
+        if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsRemoteStateLanding) {
             if (RemoteCraft.ProductReceiver is not null) {
                 EmpLog.Warning("Suppressed add-thing of {Uid} during remote craft, IsApplying guard hit",
                     t.uid);

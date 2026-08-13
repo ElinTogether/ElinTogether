@@ -34,7 +34,7 @@ internal static class CardGenEvent
                 return;
             }
 
-            if (PendingContext.IsActive && CharaProgressCompleteDelta.Current is null) {
+            if (PendingContext.IsActive && !CharaProgressCompleteDelta.IsReplaying) {
                 CardCache.Add(__result);
                 return;
             }
