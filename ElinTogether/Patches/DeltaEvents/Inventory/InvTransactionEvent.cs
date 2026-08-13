@@ -19,6 +19,11 @@ internal static class InvTransactionEvent
             return true;
         }
 
+        // effect windows is fake inv just like Windows 8
+        if (__instance.destInv is InvOwnerEffect) {
+            return true;
+        }
+
         if (!CardCache.Contains(__instance.thing) && !CardCache.TryAdopt(__instance.thing)) {
             EmpLog.Warning("Refusing transaction of uncached thing {Uid}", __instance.thing.uid);
             return false;

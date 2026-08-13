@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using ElinTogether.Net;
 using MessagePack;
 using UnityEngine;
@@ -11,7 +13,23 @@ public class InvOwnerOnProcessDelta : ElinDelta
     {
         Unknown = 0,
         Refuel = 1,
+        Effect = 2,
     }
+
+    // draglet effect
+    private static readonly HashSet<EffectId> _effectWhitelist = [
+        EffectId.Identify,
+        EffectId.GreaterIdentify,
+        EffectId.EnchantArmor,
+        EffectId.EnchantArmorGreat,
+        EffectId.EnchantWeapon,
+        EffectId.EnchantWeaponGreat,
+        EffectId.Uncurse,
+        EffectId.Lighten,
+        EffectId.Reconstruction,
+        EffectId.ChangeMaterial,
+        EffectId.ChangeRarity,
+    ];
 
     [Key(1)]
     public required RemoteCard? Parent { get; init; }
@@ -20,15 +38,29 @@ public class InvOwnerOnProcessDelta : ElinDelta
     public required RemoteCard Thing { get; init; }
 
     [Key(3)]
-    public required RemoteCard Dest { get; init; }
+    public required RemoteCard? Dest { get; init; }
 
     [Key(4)]
     public RemoteInvOwnerType OwnerType { get; init; }
 
+    [Key(5)]
+    public int Effect { get; init; }
+
+    [Key(6)]
+    public int EffectPower { get; init; }
+
+    [Key(7)]
+    public int EffectState { get; init; }
+
+    [Key(8)]
+    public string? EffectRefId { get; init; }
+
+    [Key(9)]
+    public RemoteCard? Consume { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
-        if (Thing.Find() is not Thing { isDestroyed: false } thing ||
-            Dest.Find() is not { } dest) {
+        if (Thing.Find() is not Thing { isDestroyed: false } thing) {
             return;
         }
 
@@ -39,6 +71,16 @@ public class InvOwnerOnProcessDelta : ElinDelta
         }
 
         if (thing.parent is not null && thing.parent != parent) {
+            return;
+        }
+
+        // effect draglets has fake inv
+        if (OwnerType == RemoteInvOwnerType.Effect) {
+            ApplyEffect(net, thing);
+            return;
+        }
+
+        if (Dest?.Find() is not { } dest) {
             return;
         }
 
@@ -114,6 +156,59 @@ public class InvOwnerOnProcessDelta : ElinDelta
         }
 
         destInv._OnProcess(thing);
+    }
+
+    private void ApplyEffect(ElinNetBase net, Thing thing)
+    {
+        var effectId = (EffectId)Effect;
+        if (!_effectWhitelist.Contains(effectId) ||
+            !Enum.IsDefined(typeof(BlessedState), EffectState)) {
+            EmpLog.Warning("Refusing unlisted effect {EffectId} of {Uid} from peer {PeerIndex}",
+                Effect, thing.uid, OriginPeer);
+            return;
+        }
+
+        if (net is ElinNetHost host) {
+            // only the peer thingies
+            if (thing.GetRootCard() is not Chara root || !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var owner) ||
+                root != owner) {
+                EmpLog.Warning("Refusing effect {EffectId} of {Uid} from peer {PeerIndex}",
+                    Effect, thing.uid, OriginPeer);
+                return;
+            }
+
+            // consumed thingy
+            if (Consume?.Find() is Thing t && t.GetRootCard() != owner) {
+                EmpLog.Warning("Refusing effect consume {Uid} from peer {PeerIndex}",
+                    t.uid, OriginPeer);
+                return;
+            }
+
+            // bogus
+            if (effectId == EffectId.ChangeMaterial &&
+                (EffectRefId is null || !sources.materials.alias.ContainsKey(EffectRefId))) {
+                EmpLog.Warning("Refusing effect {EffectId} of {Uid} from peer {PeerIndex}",
+                    Effect, thing.uid, OriginPeer);
+                return;
+            }
+
+            host.Delta.AddRemote(this);
+        }
+
+        using var _ = Simulate(net.IsHost);
+
+        var actRef = EffectRefId is null ? default : new ActRef { n1 = EffectRefId };
+        var power = Mathf.Clamp(EffectPower, 1, 1000);
+        ActEffect.Proc(effectId, power, (BlessedState)EffectState, thing.GetRootCard(), thing, actRef);
+
+        // InvOwnerChangeMaterial._OnProcess
+        if (effectId == EffectId.ChangeMaterial && thing.trait is TraitGodStatue god) {
+            god.OnChangeMaterial();
+        }
+
+        if (Consume?.Find() is Thing { isDestroyed: false } consume) {
+            consume.ModNum(-1);
+        }
     }
 
     private void ApplyRefuel(ElinNetHost host, Thing thing, Card dest)
