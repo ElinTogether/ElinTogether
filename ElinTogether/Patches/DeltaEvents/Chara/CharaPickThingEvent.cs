@@ -88,7 +88,7 @@ internal static class CharaPickOrDropEvent
             return false;
         }
 
-        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening || !__instance.IsRemotePlayer) {
+        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening || !CharaProgressCompleteEvent.Chara.IsRemotePlayer) {
             return true;
         }
 
@@ -119,7 +119,7 @@ internal static class CharaTrySmoothPickEvent
             return false;
         }
 
-        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening || !c.IsRemotePlayer) {
+        if (connection.IsClient || !CharaProgressCompleteEvent.IsHappening || !CharaProgressCompleteEvent.Chara.IsRemotePlayer) {
             return true;
         }
 
