@@ -103,7 +103,7 @@ jobs:
           $fileVersionShort = $fileVersion.Split('.')[0..2] -join '.'
           $debugSuffix = if ('${{ matrix.configuration }}' -eq 'Debug') { 'debug' } else { 'release' }
 
-          $artifactName = "${{ inputs.artifact_name_prefix }}-ci-builds-$fileVersionShort-${{ matrix.version }}-${{ steps.deps.outputs.tag }}-$debugSuffix"
+          $artifactName = "${{ inputs.artifact_name_prefix }}-ci-build-$fileVersionShort-${{ steps.deps.outputs.tag }}-$debugSuffix"
 
           echo "file_version=$fileVersion" >> $env:GITHUB_OUTPUT
           echo "file_version_short=$fileVersionShort" >> $env:GITHUB_OUTPUT
