@@ -16,6 +16,17 @@ public class OnBarterDelta : ElinDelta
         }
 
         if (net.IsHost) {
+            // resync host chest
+            if (shopOwner.things.Find("chest_merchant") is { } stock) {
+                net.Delta.AddRemote(new CardAddThingDelta {
+                    Thing = RemoteCard.Create(stock),
+                    Parent = shopOwner,
+                    TryStack = false,
+                    DestInvX = -1,
+                    DestInvY = -1,
+                });
+            }
+
             // restock
             using var _ = Simulate();
             shopOwner.trait.OnBarter();

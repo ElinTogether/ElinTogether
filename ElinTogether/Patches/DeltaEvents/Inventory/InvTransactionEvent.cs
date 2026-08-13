@@ -28,6 +28,14 @@ internal static class InvTransactionEvent
             return true;
         }
 
+        // check so replay can be canceled
+        InvOwner.Transaction.error = new() {
+            card = __instance.thing,
+        };
+        if (!__instance.IsValid()) {
+            return true;
+        }
+
         ThingRequest
             .Create(__instance.thing, __instance.num)
             .Send()
