@@ -1,4 +1,5 @@
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -20,7 +21,7 @@ public class CharaRemoveFromGameDelta : ElinDelta
             return;
         }
 
-        pc.party.RemoveMember(chara);
+        pc.party.Stub_RemoveMember(chara);
         game.cards.globalCharas.Remove(chara);
         _zone.RemoveCard(chara);
     }
