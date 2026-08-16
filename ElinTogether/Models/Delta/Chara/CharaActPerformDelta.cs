@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -57,7 +58,16 @@ public class CharaActPerformDelta : ElinDelta
         var act = _builtInMapping.GetValueOrDefault(ActId);
         act ??= chara.elements.GetElement(ActId)?.act ?? ACT.Create(ActId);
         act.id = ActId;
-        act.Perform(chara, TargetCard, Pos);
+
+        // pos compensation if high rtt
+        var target = TargetCard?.Find();
+        var pos = Pos;
+        if (target is Chara { isDead: false, IsInActiveMap: true } targetChara &&
+            pos is not null && targetChara.pos.Distance(pos) <= 2) {
+            pos = targetChara.pos;
+        }
+
+        act.Perform(chara, target, pos);
     }
 
     private static void ApplyBuiltInMapping()
