@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ElinTogether.API.SourceValidation;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using MessagePack;
@@ -28,6 +29,18 @@ public class CharaStateSnapshot : EClass
     [Key(5)]
     public required bool IsDead { get; init; }
 
+    [Key(6)]
+    public required Hostility Hostility { get; init; }
+
+    [Key(7)]
+    public required Hostility OriginalHostility { get; init; }
+
+    [Key(8)]
+    public required int UidMaster { get; init; }
+
+    [Key(9)]
+    public required MinionType MinionType { get; init; }
+
     public static CharaStateSnapshot Create(Chara chara)
     {
         return new() {
@@ -36,6 +49,10 @@ public class CharaStateSnapshot : EClass
             CurrentZoneUid = chara.currentZone.uid,
             Hp = chara.hp,
             IsDead = chara.isDead,
+            Hostility = chara.hostility,
+            OriginalHostility = chara.c_originalHostility,
+            UidMaster = chara.c_uidMaster,
+            MinionType = chara.c_minionType,
         };
     }
 
@@ -47,6 +64,10 @@ public class CharaStateSnapshot : EClass
             CurrentZoneUid = pc.currentZone.uid,
             Hp = pc.hp,
             IsDead = pc.isDead,
+            Hostility = pc.hostility,
+            OriginalHostility = pc.c_originalHostility,
+            UidMaster = pc.c_uidMaster,
+            MinionType = pc.c_minionType,
             State = new() {
                 LastAct = ActMappingValidator.Default.ActToIdMapping.GetValueOrDefault(pc.ai.GetType(), 0),
                 LastReceivedTick = NetSession.Instance.Tick,
@@ -73,6 +94,21 @@ public class CharaStateSnapshot : EClass
 
         if (chara.IsPC) {
             return;
+        }
+
+        // hostility checks
+        if (remoteChara is null && !chara.IsRemotePlayer) {
+            chara.hostility = Hostility;
+            chara.c_originalHostility = OriginalHostility;
+            if (chara.c_uidMaster != UidMaster) {
+                chara.c_uidMaster = UidMaster;
+                chara.master = null;
+                chara.FindMaster();
+            }
+
+            if (chara.c_minionType != MinionType) {
+                chara.c_minionType = MinionType;
+            }
         }
 
         // one more check for lingering death events
