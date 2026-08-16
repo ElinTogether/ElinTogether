@@ -43,6 +43,7 @@ namespace ElinTogether.Models;
 [Union(221, typeof(CharaEquipDelta))]
 [Union(222, typeof(PartyMemberDelta))]
 [Union(223, typeof(CharaFaithDelta))]
+[Union(224, typeof(CharaFeatPointDelta))]
 // Thing
 [Union(300, typeof(ThingDelta))]
 [Union(301, typeof(ThingRequest))]
