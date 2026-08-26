@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 using UnityEngine;
@@ -125,11 +126,25 @@ public class InvOwnerOnProcessDelta : ElinDelta
                     altar = altarChaos,
                 };
                 break;
-            case TraitAltar altar:
-                destInv = new InvOwnerOffering(dest) {
-                    altar = altar,
-                };
-                break;
+            case TraitAltar altar: {
+                if (thing.GetRootCard() is not Chara { IsRemotePlayer: true } offerer) {
+                    return;
+                }
+
+                if (net is ElinNetHost offerHost) {
+                    if (!offerHost.ActiveRemoteCharas.TryGetValue(OriginPeer, out var offerSender) ||
+                        offerSender != offerer) {
+                        EmpLog.Warning("Refusing offering of {Uid} from peer {PeerIndex}",
+                            thing.uid, OriginPeer);
+                        return;
+                    }
+
+                    offerHost.Delta.AddRemote(this);
+                }
+
+                altar.OnOffer(offerer, thing);
+                return;
+            }
             case TraitBank:
                 destInv = new InvOwnerDeliver(dest) {
                     mode = InvOwnerDeliver.Mode.Bank,
