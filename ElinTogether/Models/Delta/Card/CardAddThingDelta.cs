@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -35,6 +37,15 @@ public class CardAddThingDelta : ElinDelta
             return;
         }
 
+        if (net is ElinNetHost host && OriginPeer != 0 &&
+            thing.GetRootCard() is Chara { IsPlayer: true } holder &&
+            holder != host.ActiveRemoteCharas.GetValueOrDefault(OriginPeer)) {
+            EmpLog.Warning("Refusing {DeltaType} from peer {PeerIndex}, uid {Uid} is held by player {HolderUid}",
+                nameof(CardAddThingDelta), OriginPeer, Thing.Uid, holder.uid);
+            Rebind(net, Thing, thing);
+            return;
+        }
+
         if (net.IsHost) {
             net.Delta.AddRemote(this);
         }
@@ -56,6 +67,21 @@ public class CardAddThingDelta : ElinDelta
 
             EmpLog.Debug("Add thing {Uid} into parent {ParentUid}", thing.uid, parent.uid);
         }
+    }
+
+    internal static void Rebind(ElinNetBase net, RemoteCard remote, Thing thing)
+    {
+        if (thing.parent is not Card parent) {
+            return;
+        }
+
+        net.Delta.AddRemote(new CardAddThingDelta {
+            Thing = remote,
+            Parent = parent,
+            TryStack = false,
+            DestInvX = thing.invX,
+            DestInvY = thing.invY,
+        });
     }
 
     protected override bool OnRefresh()

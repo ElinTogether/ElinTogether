@@ -38,8 +38,11 @@ public class CharaPickThingDelta : ElinDelta
             return;
         }
 
+        // realign
         if (net.IsHost && thing.GetRootCard() is Chara holder && holder != chara && holder.IsPlayer) {
-            TaskCache.CancelClientAct(net, this, Thing);
+            EmpLog.Warning("Refusing {DeltaType} from peer {PeerIndex}, uid {Uid} is held by player {HolderUid}",
+                nameof(CharaPickThingDelta), OriginPeer, Thing.Uid, holder.uid);
+            CardAddThingDelta.Rebind(net, Thing, thing);
             return;
         }
 
