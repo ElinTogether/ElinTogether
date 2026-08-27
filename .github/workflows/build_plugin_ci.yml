@@ -111,11 +111,31 @@ jobs:
           echo "out_dir=$outDir" >> $env:GITHUB_OUTPUT
           echo "debug_suffix=$debugSuffix" >> $env:GITHUB_OUTPUT
 
+      - name: Pack
+        id: pack
+        shell: pwsh
+        run: |
+          $packDir = "${{ github.workspace }}\pack"
+          New-Item -ItemType Directory -Path $packDir -Force | Out-Null
+
+          $zipPath = Join-Path -Path $packDir -ChildPath "${{ steps.build.outputs.file_name }}.zip"
+
+          # CreateFromDirectory puts the contents at the zip root and, unlike
+          # Compress-Archive, neither skips hidden files nor throws on them
+          [System.IO.Compression.ZipFile]::CreateFromDirectory(
+            "${{ steps.build.outputs.out_dir }}", $zipPath,
+            [System.IO.Compression.CompressionLevel]::Optimal, $false)
+
+          $sha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
+          echo "pack_dir=$packDir" >> $env:GITHUB_OUTPUT
+          echo "::notice::${{ steps.build.outputs.file_name }}.zip sha256=$sha"
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.build.outputs.file_name }}
-          path: ${{ steps.build.outputs.out_dir }}
+          path: ${{ steps.pack.outputs.pack_dir }}
+          compression-level: 0
 
   release:
     name: Release
@@ -137,17 +157,11 @@ jobs:
         with:
           path: ${{ github.workspace }}/dist
 
-      - name: Pack Artifacts & Changelog
+      - name: Changelog
         id: pack
         shell: pwsh
         run: |
           $tag = "${{ inputs.tag_prefix }}-${{ needs.build-and-upload.outputs.file_version_short }}"
-          $outDir = "${{ github.workspace }}/release"
-          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
-
-          Get-ChildItem -Path "${{ github.workspace }}/dist" -Directory | ForEach-Object {
-            Compress-Archive -Path "$($_.FullName)/*" -DestinationPath "$outDir/$($_.Name).zip" -Force
-          }
 
           $verParts = "${{ needs.build-and-upload.outputs.file_version_short }}".Split('.')
           $series = "$($verParts[0]).$($verParts[1])"
@@ -206,7 +220,7 @@ jobs:
           make_latest: ${{ steps.pack.outputs.prerelease != 'true' }}
           generate_release_notes: false
           body_path: ${{ github.workspace }}/CHANGELOG.txt
-          files: ${{ github.workspace }}/release/*.zip
+          files: ${{ github.workspace }}/dist/*/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
