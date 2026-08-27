@@ -44,6 +44,7 @@ namespace ElinTogether.Models;
 [Union(222, typeof(PartyMemberDelta))]
 [Union(223, typeof(CharaFaithDelta))]
 [Union(224, typeof(CharaFeatPointDelta))]
+[Union(225, typeof(CharaLevelDelta))]
 // Thing
 [Union(300, typeof(ThingDelta))]
 [Union(301, typeof(ThingRequest))]

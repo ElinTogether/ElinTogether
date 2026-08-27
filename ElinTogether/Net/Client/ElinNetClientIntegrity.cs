@@ -45,8 +45,11 @@ internal partial class ElinNetClient
 
         var allowed = _handshakePhase switch {
             NetHandshakePhase.AwaitingVersion => packet is NetIntegrityRequest,
-            NetHandshakePhase.AwaitingIntegrity => packet is SourceValidationRequest or SourceValidationFailed or
-                SteamLobbyRequest or SessionNewPlayerRequest or SaveDataProbe, // ok
+            NetHandshakePhase.AwaitingIntegrity => packet is SourceValidationRequest or
+                SourceValidationFailed or
+                SteamLobbyRequest or
+                SessionNewPlayerRequest or
+                SaveDataProbe, // ok
             _ => false,
         };
 

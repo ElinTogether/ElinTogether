@@ -20,7 +20,14 @@ internal static class RemoteTravelRegionPatch
             .EnsureValid("Chara._Move currentZone.IsRegion")
             .Advance(1)
             .InsertAndAdvance(
-                Transpilers.EmitDelegate((bool isRegion) => isRegion && NetSession.Instance.IsHost))
+                new CodeInstruction(OpCodes.Ldarg_0),
+                Transpilers.EmitDelegate((bool isRegion, Chara chara) => {
+                    // client exp comp
+                    if (isRegion && chara.IsPC && NetSession.Instance.IsClient) {
+                        EClass.player.distanceTravel++;
+                    }
+                    return isRegion && NetSession.Instance.IsHost;
+                }))
             .InstructionEnumeration();
     }
 }
