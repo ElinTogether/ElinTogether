@@ -144,7 +144,7 @@ internal static class AIFuckPatch
                                 num4 = 10;
                             }
                             thiz.totalAffinity += num3;
-                            tc.ModAffinity(EClass.pc, num3, true, true);
+                            tc.ModAffinity(cc, num3, true, true);
                             cc.elements.ModExp(237, num4);
                             if (EClass.rnd(4) == 0) {
                                 cc.stamina.Mod(-1);

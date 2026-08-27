@@ -28,6 +28,11 @@ internal class ActThrowEvent
             };
         }
 
+        // exp comp
+        if (!connection.IsHost && c.IsPC) {
+            c.ModExp(SKILL.throwing, 50);
+        }
+
         return connection.IsHost;
     }
 

@@ -20,6 +20,9 @@ public class WorldDateAdvanceDelta : ElinDelta
             return;
         }
 
+        var hours = world.date.GetRaw() / 60;
+        var days = world.date.GetRawDay();
+
         SetClientDate([..GameDate]);
 
         foreach (var zoneEvent in _zone.events.list) {
@@ -31,12 +34,30 @@ public class WorldDateAdvanceDelta : ElinDelta
             return;
         }
 
-        EmpLog.Debug("Catching up needs for host time advance {AdvancedMins} {NeedTicks}",
+        EmpLog.Debug("Catching up host time adv {AdvancedMins} {NeedTicks}",
             Minutes, ticks);
 
         using var _ = Simulate();
         for (var i = 0; i < ticks && !pc.isDead; ++i) {
             pc.TickConditions();
+        }
+
+        hours = world.date.GetRaw() / 60 - hours;
+        days = world.date.GetRawDay() - days;
+        if (hours is > 0 and <= 24 && !pc.isDead) {
+            for (var h = 0; h < hours; h++) {
+                player.OnAdvanceHour();
+            }
+
+            if (!player.prayed && pc.Evalue(FEAT.featModelBeliever) > 0) {
+                ActPray.TryPray(pc, true);
+            }
+        }
+
+        if (days is > 0 and <= 3 && !pc.isDead) {
+            for (var d = 0; d < days; d++) {
+                player.OnAdvanceDay();
+            }
         }
     }
 
