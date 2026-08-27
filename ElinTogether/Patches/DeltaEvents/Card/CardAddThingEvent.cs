@@ -90,6 +90,14 @@ internal static class CardAddThingEvent
         }
 
         if (!CardCache.Contains(__instance) && !CardCache.TryAdopt(__instance)) {
+            if (connection.IsHost) {
+                if (!ZoneActivateEvent.IsHappening) {
+                    EmpLog.Verbose("Skipping add-thing sync of {Uid} into uncached parent {ParentUid}",
+                        t.uid, __instance.uid);
+                }
+                return true;
+            }
+
             EmpLog.Warning("Suppressed add-thing of {Uid} into uncached parent {ParentUid}",
                 t.uid, __instance.uid);
             return false;

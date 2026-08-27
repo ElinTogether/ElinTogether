@@ -37,4 +37,10 @@ internal static class ZoneActivateEvent
         // broadcast all map assets to clients when host finishes map loading
         CoroutineHelper.Deferred(() => host.PropagateZoneChangeState(__instance), 2);
     }
+
+    [HarmonyFinalizer]
+    internal static void OnActivateZoneFinalize()
+    {
+        IsHappening = false;
+    }
 }
