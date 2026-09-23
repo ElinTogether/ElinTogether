@@ -80,7 +80,15 @@ public class ActMappingValidator : ISourceValidator
                     return [];
                 }
             })
-            .Where(actType.IsAssignableFrom)
+            .Where(t => {
+                try {
+                    return actType.IsAssignableFrom(t);
+                } catch (Exception ex) {
+                    EmpLog.Warning("Skipping type {TypeName}: {Error}",
+                        t.FullName, ex.Message);
+                    return false;
+                }
+            })
             .OrderBy(GetInheritanceDepth)
             .ThenBy(t => t.FullName, StringComparer.Ordinal);
 
