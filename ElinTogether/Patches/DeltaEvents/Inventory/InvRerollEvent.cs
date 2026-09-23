@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reflection;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -10,8 +11,9 @@ internal static class InvRerollEvent
 {
     internal static MethodInfo TargetMethod()
     {
-        return AccessTools.Method(
-            AccessTools.FirstInner(typeof(UIInventory), t => t.Name.Contains("DisplayClass71_10")), "<RefreshMenu>b__48");
+        return typeof(UIInventory).GetNestedTypes(AccessTools.all)
+            .SelectMany(t => t.GetMethods(AccessTools.all))
+            .FirstOrDefault(mi => mi.Name == "<RefreshMenu>b__48")!;
     }
 
     [HarmonyPrefix]
