@@ -1,4 +1,5 @@
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -27,6 +28,7 @@ public class CardToggleDelta : ElinDelta
 
         if (net.IsHost) {
             using var _ = Simulate();
+            using var __ = MsgRelayContext.Suppress();
             card.trait.Toggle(IsOn, Silent);
             if (card.isOn != IsOn) {
                 net.Delta.AddRemote(new CardToggleDelta {

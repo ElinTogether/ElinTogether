@@ -202,7 +202,10 @@ internal static class AIUseCrafterPatch
             }
 
             if (!crafter.IsFuelEnough(act.num, targets)) {
-                Msg.Say("notEnoughFuel");
+                using (MsgRelayContext.RedirectTo(act.owner)) {
+                    Msg.Say("notEnoughFuel");
+                }
+
                 NotifyClientCancel(act);
                 yield return act.Success();
             }
@@ -293,6 +296,7 @@ internal static class AIUseCrafterPatch
                     if (act.recipe is { } recipe) {
                         RemoteCraft.ProductReceiver = act.owner;
                         try {
+                            using var _ = MsgRelayContext.RedirectTo(act.owner);
                             for (var i = 0; i < act.num; i++) {
                                 recipe.Craft(blessed, i == 0, act.ings, crafter);
                             }
@@ -309,7 +313,11 @@ internal static class AIUseCrafterPatch
                         act.owner.renderer.PlayAnime(AnimeID.JumpSmall);
                         recipe.TryGetFirstTimeBonus();
                     } else {
-                        var t = crafter.Craft(act);
+                        Thing? t;
+                        using (MsgRelayContext.RedirectTo(act.owner)) {
+                            t = crafter.Craft(act);
+                        }
+
                         if (t is not null) {
                             if (t.category.ignoreBless == 0) {
                                 t.SetBlessedState(blessed);

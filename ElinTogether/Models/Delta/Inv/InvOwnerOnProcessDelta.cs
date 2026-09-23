@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ElinTogether.Helper;
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using MessagePack;
 using UnityEngine;
 
@@ -211,6 +212,7 @@ public class InvOwnerOnProcessDelta : ElinDelta
         }
 
         using var _ = Simulate(net.IsHost);
+        using var __ = MsgRelayContext.Suppress(net.IsHost);
 
         var actRef = EffectRefId is null ? default : new ActRef { n1 = EffectRefId };
         var power = Mathf.Clamp(EffectPower, 1, 1000);
@@ -249,6 +251,8 @@ public class InvOwnerOnProcessDelta : ElinDelta
 
         // InvOwnerRefuel._OnProcess
         var fuel = thing.Split(num);
+        // fueled
+        using var __ = MsgRelayContext.RedirectTo(OriginPeer);
         trait.Refuel(fuel);
     }
 
@@ -257,6 +261,7 @@ public class InvOwnerOnProcessDelta : ElinDelta
         using var _ = Simulate();
 
         var receiver = ResolveReceiver(host);
+        using var __ = MsgRelayContext.RedirectTo(OriginPeer);
         SE.Play("trash");
         Msg.Say("dump", thing, recycle.owner.Name);
 
