@@ -17,9 +17,11 @@ public class BuildVersionIntegrity : EClass
         V5 = 5,
         // identify + invowner effect channels
         V6 = 6,
+        // build side effects ride in CharaBuildDelta
+        V7 = 7,
     }
 
-    public const APIVersion APIVersionLatest = APIVersion.V6;
+    public const APIVersion APIVersionLatest = APIVersion.V7;
 
     public static string GameVersion => $"{core.version.major}.{core.version.minor}.{core.version.batch}.{core.version.fix}";
 
