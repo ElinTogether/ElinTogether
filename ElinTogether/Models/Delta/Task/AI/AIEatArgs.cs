@@ -6,15 +6,15 @@ namespace ElinTogether.Models.AI;
 public class AIEatArgs : TaskArgsBase
 {
     [Key(0)]
-    public required RemoteCard Target { get; init; }
+    public required RemoteCard? Target { get; init; }
 
     [Key(1)]
     public required bool Cook { get; init; }
 
-    public static AIEatArgs Create(AI_Eat ai)
+    public static AIEatArgs Create(AI_Eat ai, Chara owner)
     {
         return new() {
-            Target = ai.target,
+            Target = PendingSplit.Split(ai.target ?? owner.held),
             Cook = ai.cook,
         };
     }

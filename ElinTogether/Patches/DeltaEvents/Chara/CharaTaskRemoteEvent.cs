@@ -89,7 +89,7 @@ internal static class CharaTaskRemoteEvent
             AI_Dance ai => AIDanceArgs.Create(ai),
             AI_Deconstruct ai => AIDeconstructArgs.Create(ai),
             AI_Drink ai => AIDrinkArgs.Create(ai),
-            AI_Eat ai => AIEatArgs.Create(ai),
+            AI_Eat ai => AIEatArgs.Create(ai, __instance),
             AI_Equip ai => AIEquipArgs.Create(ai),
             AI_Farm ai => AIFarmArgs.Create(ai),
             AI_Fish ai => AIFishArgs.Create(ai),
