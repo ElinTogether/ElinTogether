@@ -14,7 +14,8 @@ namespace ElinTogether.Patches;
 [HarmonyPatch]
 internal static class CharaProgressCompleteEvent
 {
-    private static List<ElinDelta> DeltaList = [];
+    private static List<ElinDelta> _deltaList = [];
+    private static List<ElinDelta>? _sideDeltaList;
     internal static Chara? Chara { get; private set; }
     internal static bool IsHappening { get; private set; }
     internal static AIAct? Action { get; private set; }
@@ -32,7 +33,15 @@ internal static class CharaProgressCompleteEvent
 
     internal static void Pack(ElinDelta delta)
     {
-        DeltaList.Add(delta);
+        _deltaList.Add(delta);
+    }
+
+    internal static ScopeExit CollectBuildSideEffects(List<ElinDelta> into)
+    {
+        _sideDeltaList = into;
+        return new() {
+            OnExit = () => _sideDeltaList = null,
+        };
     }
 
     internal static IEnumerable<MethodBase> TargetMethods()
@@ -57,8 +66,8 @@ internal static class CharaProgressCompleteEvent
             return true;
         }
 
-        if (Chara.IsPC && !ElinDelta.IsApplying) {
-            SendCharaBuildDelta(taskBuild);
+        if (connection.IsClient && Chara.IsPC && !ElinDelta.IsApplying && taskBuild.held is not null) {
+            connection.Delta.AddRemote(CharaBuildDelta.Create(taskBuild));
         }
 
         return connection.IsHost || ElinDelta.IsApplying;
@@ -71,18 +80,30 @@ internal static class CharaProgressCompleteEvent
         Action = null;
         IsHappening = false;
 
-        var captured = DeltaList;
-        DeltaList = [];
+        var captured = _deltaList;
+        _deltaList = [];
 
         if (__instance.owner is null) {
             return;
         }
 
-        if (__instance is TaskBuild) {
-            if (NetSession.Instance.Connection is ElinNetHost buildHost) {
-                foreach (var delta in captured) {
-                    buildHost.Delta.AddRemote(delta);
-                }
+        if (__instance is TaskBuild taskBuild) {
+            if (NetSession.Instance.Connection is not ElinNetHost buildHost) {
+                return;
+            }
+
+            if (_sideDeltaList is { } collector) {
+                collector.AddRange(captured);
+                return;
+            }
+
+            if (taskBuild.owner.IsPC && taskBuild.held is not null && !ElinDelta.IsApplying) {
+                buildHost.Delta.AddRemote(CharaBuildDelta.Create(taskBuild, captured));
+                return;
+            }
+
+            foreach (var delta in captured) {
+                buildHost.Delta.AddRemote(delta);
             }
 
             return;
@@ -115,27 +136,11 @@ internal static class CharaProgressCompleteEvent
         }
 
         EmpLog.Warning("Progress complete of {OwnerUid} threw, discarding {ReplayCount} packed deltas",
-            Chara?.uid ?? -1, DeltaList.Count);
+            Chara?.uid ?? -1, _deltaList.Count);
 
         Chara = null;
         Action = null;
         IsHappening = false;
-        DeltaList = [];
-    }
-
-    internal static void SendCharaBuildDelta(TaskBuild taskBuild)
-    {
-        if (taskBuild.held is null) {
-            return;
-        }
-
-        NetSession.Instance.Connection!.Delta.AddRemote(new CharaBuildDelta {
-            Held = taskBuild.held,
-            Owner = taskBuild.owner,
-            Pos = taskBuild.pos,
-            Dir = taskBuild.recipe._dir,
-            Altitude = taskBuild.altitude,
-            BridgeHeight = taskBuild.bridgeHeight,
-        });
+        _deltaList = [];
     }
 }
