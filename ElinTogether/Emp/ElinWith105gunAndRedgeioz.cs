@@ -41,10 +41,6 @@ internal sealed class EmpMod : BaseUnityPlugin
 
 #if DEBUG
         SharedHarmony.PatchAll(Assembly);
-
-        if (EmpConfig.Dev.Listener.Value) {
-            gameObject.AddComponent<EmpDebugListener>();
-        }
 #endif
     }
 
