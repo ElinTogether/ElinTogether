@@ -27,6 +27,10 @@ internal class RemotePartyPatch
     [HarmonyPatch(typeof(Player), nameof(Player.MaxAlly), MethodType.Getter)]
     internal static void OnGetRemoteMaxAlly(Player __instance, ref int __result)
     {
+        if (NetSession.Instance.Connection is ElinNetClient && EClass.pc.party?.leader is { IsPC: false } leader) {
+            __result = Mathf.Min(Mathf.Max(leader.CHA / 10, 1), 5) + leader.Evalue(FEAT.featParty);
+        }
+
         __result = Mathf.Max(__result, NetSession.Instance.CurrentPlayers.Count);
     }
 }

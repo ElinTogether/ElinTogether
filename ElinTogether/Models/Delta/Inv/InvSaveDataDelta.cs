@@ -7,46 +7,60 @@ namespace ElinTogether.Models;
 public class InvSaveDataDelta : ElinDelta
 {
     [Key(0)]
-    public required string WindowId { get; init; }
+    public required RemoteCard Container { get; init; }
 
     [Key(1)]
     public required LZ4Bytes Data { get; init; }
 
-    [Key(2)]
-    public required bool IsShop { get; init; }
-
     protected override void OnApply(ElinNetBase net)
     {
+        if (Container.Find() is not { isDestroyed: false } container) {
+            EmpLog.Warning("Dropping {DeltaType} from peer {PeerIndex}, uid {Uid} cannot be resolved here",
+                nameof(InvSaveDataDelta), OriginPeer, Container.Uid);
+            return;
+        }
+
         if (Data.Decompress<Window.SaveData>() is not { } data) {
             return;
         }
 
-        // refresh sort
-        var pref = EMono.player.pref;
-        if (IsShop) {
-            pref.sortInvShop = data.sortMode;
-            pref.sort_ascending_shop = data.sort_ascending;
+        if (net.IsHost) {
+            net.Delta.AddRemote(this);
+        }
+
+        if (container.c_windowSaveData is not { } saveData) {
+            container.c_windowSaveData = data;
         } else {
-            pref.sortInv = data.sortMode;
-            pref.sort_ascending = data.sort_ascending;
+            saveData.autodump = data.autodump;
+            saveData.priority = data.priority;
+            saveData.flag = data.flag;
+            saveData.sharedType = data.sharedType;
+            saveData.category = data.category;
+            saveData.sortMode = data.sortMode;
+            saveData.sort_ascending = data.sort_ascending;
+            saveData.alwaysSort = data.alwaysSort;
+            saveData.excludeDump = data.excludeDump;
+            saveData.excludeCraft = data.excludeCraft;
+            saveData.compress = data.compress;
+            saveData.advDistribution = data.advDistribution;
+            saveData.noRotten = data.noRotten;
+            saveData.onlyRottable = data.onlyRottable;
+            saveData.cats = data.cats;
+            saveData.filter = data.filter;
+            saveData._filterStrs = null;
         }
 
-        var inv = LayerInventory.listInv.Find(l => l.invs[0].window.idWindow == WindowId)?.invs[0];
-        if (inv == null) {
-            if (Window.dictData.TryGetValue(WindowId, out var saveData)) {
-                saveData.CopyFrom(data);
-            } else {
-                Window.dictData[WindowId] = data;
+        foreach (var layer in LayerInventory.listInv) {
+            var inv = layer.invs[0];
+            if (inv.owner.Container != container) {
+                continue;
             }
-            return;
+
+            if (inv.isList) {
+                inv.RefreshList();
+            } else {
+                inv.RefreshGrid();
+            }
         }
-
-        inv.window.saveData.CopyFrom(data);
-        inv.RefreshWindow();
-
-        // refresh share button
-        var flag = data.sharedType == ContainerSharedType.Shared;
-        inv.window.buttonShared.image.sprite = flag ? EMono.core.refs.icons.shared : EMono.core.refs.icons.personal;
-        inv.window.buttonShared.tooltip.lang = flag ? "hintShared" : "hintPrivate";
     }
 }

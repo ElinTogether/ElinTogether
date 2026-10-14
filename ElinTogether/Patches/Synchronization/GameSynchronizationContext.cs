@@ -40,7 +40,8 @@ internal class GameSynchronizationContext : SynchronizationContext
         }
 
         if (NetSession.Instance.Rules.UseSharedSpeed) {
-            RefSpeed = NetSession.Instance.SharedSpeed;
+            var shared = NetSession.Instance.SharedSpeed;
+            RefSpeed = shared > 0 ? shared : pc.Speed;
         } else {
             var min = (float)NetSession.Instance.CurrentPlayers.Where(n => n.Speed > 0).Min(n => n.Speed);
             var max = (float)NetSession.Instance.CurrentPlayers.Max(n => n.Speed);
