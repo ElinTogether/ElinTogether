@@ -17,7 +17,7 @@ public class CharaRemoveFromGameDelta : ElinDelta
             return;
         }
 
-        if (Owner.Find() is not Chara chara) {
+        if (Owner.Find() is not Chara chara || chara.IsPC) {
             return;
         }
 

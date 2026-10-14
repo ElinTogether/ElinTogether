@@ -94,10 +94,7 @@ public class WorldStateSnapshot : EClass
                 game.cards.uidNext = GlobalUidNext;
 
                 // 4
-                if (NetSession.Instance.Rules.UseSharedSpeed &&
-                    SharedSpeed > 0f) {
-                    NetSession.Instance.SharedSpeed = SharedSpeed;
-                }
+                NetSession.Instance.SharedSpeed = SharedSpeed;
             },
         });
     }

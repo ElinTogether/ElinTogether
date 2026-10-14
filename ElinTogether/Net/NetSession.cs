@@ -80,6 +80,7 @@ public class NetSession : EClass
             RemoveComponent();
 
             Tick = 0;
+            SharedSpeed = 0;
             Self = null;
             CurrentPlayers.Clear();
             Lobby.LeaveLobby();
