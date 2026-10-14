@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using UnityEngine;
 
@@ -7,7 +8,10 @@ internal class TabClientConfiguration : TabEmpBase
 {
     public override void OnLayout()
     {
-        var btnGroup = Horizontal();
+        var keys = this.MakeCard();
+        keys.TextFlavor("emp_ui_cl_cfg_keybind");
+
+        var btnGroup = keys.Horizontal();
         btnGroup.Layout.childForceExpandWidth = true;
 
         var pingKey = new EInput.KeyMap {

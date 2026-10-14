@@ -36,6 +36,10 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
         }
 
+        if (core.IsGameStarted && NetSession.Instance.IsHost) {
+            _tabs.Add(CreateTab<TabRemoteCharas>("emp_ui_tab_charas", "emp_tab_charas"));
+        }
+
         _tabs.Add(CreateTab<TabLobbyBrowser>("emp_ui_tab_lobby", "emp_tab_lobby"));
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
     }

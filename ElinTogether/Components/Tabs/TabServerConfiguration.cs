@@ -50,6 +50,8 @@ internal class TabServerConfiguration : TabEmpBase
     {
         var modes = this.MakeCard();
 
+        modes.TextFlavor("emp_ui_sv_cfg_sync_rules");
+
         modes.Toggle("emp_ui_sv_cfg_shared_speed", EmpConfig.Server.SharedAverageSpeed.Value,
                 value => EmpConfig.Server.SharedAverageSpeed.Value = value)
             .SetTooltipLang(EmpConfig.Server.SharedAverageSpeed.Description.Description);
