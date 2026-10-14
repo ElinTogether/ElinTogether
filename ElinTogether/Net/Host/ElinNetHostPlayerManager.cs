@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.Common;
+using ElinTogether.Helper;
+using ElinTogether.Helper.Extensions;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using UnityEngine;
@@ -16,15 +19,29 @@ internal partial class ElinNetHost
     public int SharedActState => States.Values.Sum(s => s.LastAct);
 
     /// <summary>
-    ///     Shared speed of all players
+    ///     Shared speed of all players that reported one, 0 before anyone did
     /// </summary>
-    public int SharedSpeed => (int)States.Values.Average(s => s.Speed);
+    public int SharedSpeed
+    {
+        get {
+            var reported = States.Values.Where(s => s.Speed > 0).ToArray();
+            return reported.Length == 0 ? 0 : (int)reported.Average(s => s.Speed);
+        }
+    }
 
     [ElinGameIOProperty("remote_chara")]
-    private static Dictionary<ulong, int> SavedRemoteCharas
+    internal static Dictionary<ulong, int> SavedRemoteCharas
     {
         get => field ??= [];
         set;
+    }
+
+    [ElinPreSceneInit]
+    private static void ResetSavedRemoteCharas(Scene.Mode mode)
+    {
+        if (mode == Scene.Mode.Title) {
+            SavedRemoteCharas = [];
+        }
     }
 
     public static void RemoveRemoteChara(Chara remoteChara, bool broadcast = true)
@@ -45,6 +62,43 @@ internal partial class ElinNetHost
         }
     }
 
+    public static void DeleteRemoteChara(ulong steamId)
+    {
+        if (!SavedRemoteCharas.Remove(steamId, out var charaUid)) {
+            return;
+        }
+
+        if (game.cards.globalCharas.Find(charaUid) is not { IsSavedRemoteChara: true } chara ||
+            SavedRemoteCharas.ContainsValue(charaUid)) {
+            EmpLog.Warning("Removed stale saved remote chara {Uid} of {RemoteIdentity}",
+                charaUid, steamId.ToString());
+            return;
+        }
+
+        if (Session.Connection is ElinNetHost host) {
+            var active = host.ActiveRemoteCharas.FirstOrDefault(kv => kv.Value == chara);
+            if (active.Value is not null) {
+                host.DisconnectPeer(active.Key, EmpDisconnectInfo.HostCharaDeleted);
+            } else {
+                host.Delta.AddRemote(new CharaRemoveFromGameDelta {
+                    Owner = chara,
+                });
+            }
+        }
+
+        CardCache.Remove(chara.uid);
+        foreach (var thing in chara.things.Flatten()) {
+            CardCache.Remove(thing.uid);
+        }
+
+        chara.held?.Destroy();
+        chara.RemoveGlobal();
+        chara.DestroyImmediate();
+
+        EmpLog.Information("Deleted remote chara {Uid} of {RemoteIdentity}",
+            charaUid, steamId.ToString());
+    }
+
     /// <summary>
     ///     PeerConnect -> Prepare -> MoveZone -> SaveProbe
     /// </summary>
@@ -56,6 +110,11 @@ internal partial class ElinNetHost
         if (!SavedRemoteCharas.TryGetValue(peer.User, out var charaUid) ||
             game.cards.globalCharas.Find(charaUid) is not { } chara) {
             EmpLog.Debug("Remote character does not exist, request for new character generation");
+            peer.Send(new SessionNewPlayerRequest());
+        } else if (!chara.IsSavedRemoteChara || ActiveRemoteCharas.Any(kv => kv.Key != peer.Id && kv.Value == chara)) {
+            EmpLog.Warning("Discarding saved remote chara {Uid} of {@Peer}, it is not a free remote player chara",
+                charaUid, peer);
+            SavedRemoteCharas.Remove(peer.User);
             peer.Send(new SessionNewPlayerRequest());
         } else {
             // remote character exists
@@ -99,6 +158,12 @@ internal partial class ElinNetHost
     /// </summary>
     private void OnSessionNewPlayerResponse(SessionNewPlayerResponse response, ISteamNetPeer peer)
     {
+        if (States.ContainsKey(peer.Id)) {
+            EmpLog.Warning("Dropping unrequested remote chara creation from player {@Peer}",
+                peer);
+            return;
+        }
+
         EmpLog.Information("Received remote chara creation from player {@Peer}",
             peer);
 
@@ -145,6 +210,9 @@ internal partial class ElinNetHost
             player.chara = host;
         }
 
+        foreach (var stale in SavedRemoteCharas.Where(kv => kv.Value == chara.uid).ToArray()) {
+            SavedRemoteCharas.Remove(stale.Key);
+        }
         SavedRemoteCharas[peer.User] = chara.uid;
 
         SendSaveProbe(chara, peer);
@@ -195,7 +263,7 @@ internal partial class ElinNetHost
             : [];
 
         var currentRemoteCharas = game.cards.globalCharas.Values
-            .Where(c => c.GetBool("remote_chara"));
+            .Where(c => c.IsSavedRemoteChara);
 
         foreach (var chara in currentRemoteCharas.Except(excluded)) {
             RemoveRemoteChara(chara);

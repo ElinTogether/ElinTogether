@@ -14,6 +14,7 @@ public static class EmpDisconnectInfo
     public const string NewHost = "emp_dc_new_host";
     public const string HostLeftLobby = "emp_dc_host_left_lobby";
     public const string HostKick = "emp_dc_host_kick";
+    public const string HostCharaDeleted = "emp_dc_host_chara_deleted";
     public const string HostReconnectRequest = "emp_dc_reconnect_request";
     public const string RemoteClosed = "emp_dc_remote_closed";
     public const string ClientCancel = "emp_dc_client_cancel";

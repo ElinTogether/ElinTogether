@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using ElinTogether.Common;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net.Steam;
 using HeathenEngineering.SteamworksIntegration;
@@ -50,12 +51,12 @@ internal partial class ElinNetHost : ElinNetBase
         };
 
         // setup session states
+        Session.Rules = NetSessionRules.Default;
         Session.Player = pc;
         Session.Self = selfState;
+        Session.CurrentPlayers.Clear();
         Session.CurrentPlayers.Add(selfState);
-        Session.SharedSpeed = NetSession.Instance.Rules.UseSharedSpeed
-            ? SharedSpeed
-            : -1;
+        RefreshSharedSpeed();
 
         EmpPop.Information("emp_server_started".lang());
 
@@ -106,7 +107,7 @@ internal partial class ElinNetHost : ElinNetBase
 
         // remove all left over chara
         foreach (var chara in _map.charas.ToArray()) {
-            if (chara.GetBool("remote_chara") && !ActiveRemoteCharas.Values.Contains(chara)) {
+            if (chara.IsSavedRemoteChara && !ActiveRemoteCharas.Values.Contains(chara)) {
                 RemoveRemoteChara(chara);
             }
         }
@@ -157,9 +158,7 @@ internal partial class ElinNetHost : ElinNetBase
 
         Broadcast(SessionPlayersSnapshot.Create());
 
-        // keep ticking but no update
-        if (States.Count == 0) {
-            PauseWorldStateUpdate();
+        if (_handshakes.Count == 0) {
             StopDebugGui();
         }
     }

@@ -197,6 +197,12 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
         peer.User.SetPlayedWith();
 
+        foreach (var stale in _peers.Where(p => p.User == peer.User).ToArray()) {
+            EmpLog.Information("Replacing connection of {@Peer} with a new one",
+                stale);
+            Disconnect(stale, EmpDisconnectInfo.RemoteClosed);
+        }
+
         SteamNetworkingSockets.SetConnectionPollGroup(connection, _pollGroup);
 
         _peers.Add(peer);
@@ -234,6 +240,15 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
                 var peer = _peers.FirstOrDefault(p => p.Connection == connection);
                 if (peer is not null) {
                     Disconnect(peer, status.m_info.m_szEndDebug);
+                }
+
+                break;
+            case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+                var lost = _peers.FirstOrDefault(p => p.Connection == connection);
+                if (lost is not null) {
+                    EmpLog.Debug("Lost connection to {@Peer}: {Reason}",
+                        lost, status.m_info.m_szEndDebug);
+                    Disconnect(lost, EmpDisconnectInfo.Timeout);
                 }
 
                 break;

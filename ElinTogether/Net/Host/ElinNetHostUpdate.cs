@@ -12,7 +12,6 @@ internal partial class ElinNetHost
 {
     private readonly Dictionary<int, int> _idleReports = [];
     private WorldStateSnapshot? _lastTick;
-    private bool _pauseUpdate;
 
     /// <summary>
     ///     Propagate current world state snapshot
@@ -29,12 +28,9 @@ internal partial class ElinNetHost
     /// </summary>
     private void WorldStateSnapshotUpdate()
     {
-        if (_pauseUpdate) {
-            return;
-        }
-
         Session.Tick++;
         Session.CurrentZone = _zone;
+        RefreshSharedSpeed();
 
         try {
             _lastTick = PropagateWorldState();
@@ -55,10 +51,6 @@ internal partial class ElinNetHost
     /// </summary>
     internal void WorldStateDeltaUpdate()
     {
-        if (_pauseUpdate) {
-            return;
-        }
-
         if (!Delta.HasPendingOut) {
             return;
         }
@@ -82,6 +74,13 @@ internal partial class ElinNetHost
         }
 
         Delta.ProcessLocalBatch(this);
+    }
+
+    private void RefreshSharedSpeed()
+    {
+        Session.SharedSpeed = NetSession.Instance.Rules.UseSharedSpeed
+            ? SharedSpeed
+            : -1;
     }
 
     /// <summary>
@@ -132,11 +131,6 @@ internal partial class ElinNetHost
         state.LastAct = response.State.LastAct;
         state.Speed = response.State.Speed;
         state.LastReceivedTick = response.State.LastReceivedTick;
-
-        // if server disabled shared speed, we use -1
-        Session.SharedSpeed = NetSession.Instance.Rules.UseSharedSpeed
-            ? SharedSpeed
-            : -1;
 
         WorldStateSnapshot.CachedRemoteSnapshots.Add(response);
 
@@ -245,7 +239,7 @@ internal partial class ElinNetHost
 #region Scheduler Jobs
 
     /// <summary>
-    ///     Subscribe all scheduler jobs and reset pause state
+    ///     Subscribe all scheduler jobs
     ///     TODO profile the snapshot cost, see if we can use more granular hashed snapshot
     /// </summary>
     public void StartWorldStateUpdate()
@@ -256,12 +250,10 @@ internal partial class ElinNetHost
         Scheduler.Subscribe(WorldStateSnapshotUpdate, 5f);
         // 50hz delta dispatch
         Scheduler.Subscribe(SynchronizationContext.AllowDeltaSending, 50f);
-
-        _pauseUpdate = false;
     }
 
     /// <summary>
-    ///     Unsubscribe all scheduler jobs and reset pause state, also resets the server tick
+    ///     Unsubscribe all scheduler jobs, also resets the server tick
     /// </summary>
     public void StopWorldStateUpdate()
     {
@@ -271,33 +263,7 @@ internal partial class ElinNetHost
 
         Session.Tick = 0;
 
-        _pauseUpdate = false;
-
         EmpLog.Debug("Stopping server state update");
-    }
-
-    /// <summary>
-    ///     Pause sending out deltas, *but they still accumulate*
-    /// </summary>
-    public void PauseWorldStateUpdate()
-    {
-        _pauseUpdate = true;
-
-        EmpLog.Debug("Pausing server state update");
-    }
-
-    /// <summary>
-    ///     Resume sending out deltas
-    /// </summary>
-    public void ResumeWorldStateUpdate(bool clearDelta)
-    {
-        _pauseUpdate = false;
-
-        EmpLog.Debug("Resuming server state update");
-
-        if (clearDelta) {
-            Delta.ClearOut();
-        }
     }
 
 #endregion

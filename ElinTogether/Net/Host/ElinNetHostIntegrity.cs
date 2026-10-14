@@ -36,7 +36,9 @@ internal partial class ElinNetHost
         var allowed = state.Phase switch {
             NetHandshakePhase.AwaitingVersion => packet is NetIntegrityResponse,
             NetHandshakePhase.AwaitingIntegrity => packet is SourceValidationResponse or SourceValidationContinue,
-            NetHandshakePhase.Joined => true,
+            NetHandshakePhase.Joined => packet is not (NetIntegrityResponse or
+                SourceValidationResponse or
+                SourceValidationContinue),
             _ => false,
         };
 
