@@ -171,6 +171,14 @@ internal static class WorldCopyStore
         return Hex(sha.ComputeHash(stream)) == file.Hash;
     }
 
+    /// <summary>
+    ///     The folder a whole copy of that save gets when it is kept
+    /// </summary>
+    internal static string DirOf(string folder, WorldCopyManifest manifest)
+    {
+        return Path.Combine(folder, $"{CopyPrefix}{manifest.Handover:D4}-{manifest.Saved}");
+    }
+
     internal enum Closed
     {
         Kept,
@@ -224,7 +232,7 @@ internal static class WorldCopyStore
 
             File.WriteAllText(Path.Combine(incoming, ManifestName), JsonConvert.SerializeObject(manifest, Formatting.Indented));
 
-            var target = Path.Combine(folder, $"{CopyPrefix}{manifest.Handover:D4}-{manifest.Saved}");
+            var target = DirOf(folder, manifest);
             if (Directory.Exists(target)) {
                 Directory.Delete(target, true);
             }

@@ -30,6 +30,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         SaveDepot.Update();
         HiddenServer.Update();
         PeerKeeper.Update();
+        CrossCheck.Update();
         EmpServer.Update();
         EmpAutoHost.Update();
         // (alone on a map of its own the host link is still there: the host still hears it)

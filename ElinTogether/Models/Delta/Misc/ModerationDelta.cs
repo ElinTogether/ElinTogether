@@ -50,6 +50,8 @@ public class ModerationDelta : ElinDelta
 
         Muted.Clear();
         Muted.UnionWith(Mutes);
+        // (a keeper that names admins the signed list does not have is reported, plan 4.5)
+        Helper.CrossCheck.Admins(Admins);
         AdminIds.Clear();
         // (a peer-hosted world: an admin is one of the signed list, whatever its keeper says)
         AdminIds.UnionWith(Helper.PeerHosting.Active ? Admins.Where(Helper.PeerHosting.AdminSet().Contains) : Admins);

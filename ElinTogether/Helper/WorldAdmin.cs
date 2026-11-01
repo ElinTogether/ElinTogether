@@ -104,7 +104,25 @@ internal static class WorldAdmin
         internal string Reason = "";
     }
 
+    /// <summary>
+    ///     The guests' cross-check reports on one version (plan 4.5, P7): how many, from how many independent players
+    ///     (never the one who kept it), and the kinds reported
+    /// </summary>
+    internal sealed class FlagRow
+    {
+        internal int Count;
+        internal int Reporters;
+        internal bool Strong;
+        internal string Kinds = "";
+        internal string Detail = "";
+    }
+
     internal static List<VersionRow> Versions { get; private set; } = [];
+
+    /// <summary>
+    ///     Flagged versions by number (none: no report, or a service without the flag routes)
+    /// </summary>
+    internal static Dictionary<long, FlagRow> Flags { get; private set; } = [];
     internal static long Head { get; private set; }
     internal static string Keeper { get; private set; } = "";
     internal static List<HostBan> HostBans { get; private set; } = [];
@@ -316,6 +334,7 @@ internal static class WorldAdmin
         internal long Head;
         internal string Keeper = "";
         internal List<HostBan> HostBans = [];
+        internal Dictionary<long, FlagRow> Flags = [];
         internal readonly Dictionary<string, JObject?> Docs = [];
         internal readonly Dictionary<string, long> Seq = [];
     }
@@ -364,6 +383,7 @@ internal static class WorldAdmin
             Head = read.Head;
             Keeper = read.Keeper;
             HostBans = read.HostBans;
+            Flags = read.Flags;
             foreach (var kind in DocKinds) {
                 Docs[kind] = read.Docs.TryGetValue(kind, out var doc) ? doc : null;
                 Seq[kind] = read.Seq.TryGetValue(kind, out var seq) ? seq : 0;
@@ -400,6 +420,23 @@ internal static class WorldAdmin
                 GameDate = (string?)v["game_date"] ?? "",
                 RollbackOf = v["rollback_of"] is { Type: JTokenType.Integer } of ? (long)of : null,
             });
+        }
+
+        // (a service from before the cross-checks answers 404: no flags shown)
+        var flags = Send("GET", $"/v1/admin/flags?world={World}&limit=50", null);
+        if (flags.Status == 200 && flags.Json?["flags"] is JArray flagged) {
+            foreach (var f in flagged) {
+                var items = f["items"] as JArray ?? [];
+                read.Flags[(long?)f["n"] ?? 0] = new() {
+                    Count = (int?)f["count"] ?? 0,
+                    Reporters = (int?)f["reporters"] ?? 0,
+                    Strong = (bool?)f["strong"] ?? false,
+                    Kinds = string.Join(", ", items.Select(i => (string?)i["kind"] ?? "").Where(k => k.Length > 0).Distinct()),
+                    Detail = items.FirstOrDefault() is { } first
+                        ? $"{(string?)first["subject"]}: {(string?)first["before"]} -> {(string?)first["after"]}"
+                        : "",
+                };
+            }
         }
 
         var bans = Expect(Send("GET", "/v1/admin/hostbans", null), 200);

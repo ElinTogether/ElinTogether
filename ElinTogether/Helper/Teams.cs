@@ -77,6 +77,11 @@ internal static class Teams
     {
         var (team, asked, known) = (TeamOf(EClass.pc?.uid ?? 0), Requests.Keys.ToArray(), _told);
         _told = true;
+        // (a peer-hosted world: lands moved in a way no claim, abandon or team move makes are reported)
+        if (known) {
+            CrossCheck.Lands(_zones, delta);
+        }
+
         _teams = new(delta.TeamList);
         _names = new(delta.Names);
         _zones = new(delta.Zones);
