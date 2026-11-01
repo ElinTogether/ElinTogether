@@ -75,8 +75,9 @@ public class CardAddThingDelta : ElinDelta
             return;
         }
 
-        // an installed thing on the way to Vernis's mine is nobody's to take (MineWay)
-        if (net is ElinNetHost && FromPeer && MineWay.ProtectsCard(thing)) {
+        // an installed thing on the way to Vernis's mine is nobody's to take, nor the furniture of Vernis not claimed
+        // (MineWay; build mode's deconstruct tool is open there)
+        if (net is ElinNetHost && FromPeer && (MineWay.ProtectsCard(thing) || MineWay.IsTownFurniture(thing))) {
             SendBack(net, Thing);
             return;
         }

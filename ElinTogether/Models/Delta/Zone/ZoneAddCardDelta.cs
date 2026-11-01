@@ -65,9 +65,10 @@ public class ZoneAddCardDelta : ElinDelta
             return;
         }
 
-        // an installed thing is not moved onto, nor off, the way to Vernis's mine (MineWay): put back where it is
+        // an installed thing is not moved onto, nor off, the way to Vernis's mine, nor the furniture of Vernis not claimed
+        // (MineWay): put back where it is
         if (net is ElinNetHost wayHost && FromPeer && card is Thing { IsInstalled: true } && card.parent == zone &&
-            (MineWay.ProtectsCard(card) || MineWay.Protects(Pos.X, Pos.Z, System.Math.Max(card.W, card.H) - 1))) {
+            (MineWay.ProtectsCard(card) || MineWay.IsTownFurniture(card) || MineWay.Protects(Pos.X, Pos.Z, System.Math.Max(card.W, card.H) - 1))) {
             SendBack(wayHost, Card);
             return;
         }

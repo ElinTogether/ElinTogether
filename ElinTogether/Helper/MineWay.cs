@@ -77,6 +77,15 @@ internal static class MineWay
         return card is Thing { IsInstalled: true } thing && thing.parent == EClass._zone && Protects(thing.pos, Extent(thing));
     }
 
+    /// <summary>
+    ///     The town's own furniture of Vernis not claimed (installed, a resident's): nobody takes it, a guest's delta
+    ///     included
+    /// </summary>
+    internal static bool IsTownFurniture(Card? card)
+    {
+        return card is Thing { IsInstalled: true, isNPCProperty: true } thing && thing.parent is Zone zone && Commons.IsOpenTown(zone);
+    }
+
     internal static int Extent(Card card)
     {
         return Mathf.Max(card.W, card.H) - 1;
@@ -110,7 +119,7 @@ internal static class MineWay
             AM_Terrain terrain => terrain.brushRadius,
             AM_Build build => Extent(build.recipe),
             AM_MoveInstalled { target: { } moved } => Extent(moved),
-            AM_Mine or AM_Dig or AM_FlagCell or AM_MoveInstalled => 0,
+            AM_Mine or AM_Dig or AM_FlagCell or AM_MoveInstalled or AM_Deconstruct => 0,
             _ => -1,
         };
         if (extent < 0 || !Protects(_end, extent)) {
@@ -149,6 +158,48 @@ internal static class MineWay
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     The deconstruct tool of build mode (Vernis not claimed opens it to everyone): the game puts away any thing
+    ///     it can, a resident's included. Here not the town's things (isNPCProperty) while the town is its own, nor an
+    ///     installed thing on the way to the mine; the rest as the game does (AM_Deconstruct.Perform)
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(AM_Deconstruct), nameof(AM_Deconstruct.Perform))]
+    private static bool OnDeconstruct(AM_Deconstruct __instance, Point point, bool perform, ref int __result)
+    {
+        if (!Commons.On || !IsVernis(EClass._zone)) {
+            return true;
+        }
+
+        var openTown = Commons.IsOpenTown(EClass._zone);
+        var list = point.ListCards();
+        list.Reverse();
+        var num = 0;
+        foreach (var item in list) {
+            if ((!EClass.debug.ignoreBuildRule && (!item.isThing || !item.trait.CanPutAway)) ||
+                (__instance.ignoreInstalled && item.IsInstalled) || item.IsPCParty ||
+                (openTown && item.isNPCProperty) || ProtectsCard(item)) {
+                continue;
+            }
+
+            if (perform) {
+                item.PlaySound(item.material.GetSoundDead(item.sourceCard));
+                if (item.isThing) {
+                    EClass._map.PutAway(item.Thing);
+                } else {
+                    item.Destroy();
+                }
+
+                BuildMenu.dirtyCat = true;
+            }
+
+            num++;
+        }
+
+        __result = num;
+        return false;
     }
 }
 
