@@ -293,7 +293,7 @@ internal class TabServerConfiguration : TabEmpBase
     }
 
     // the index of Custom in SettingsTable.Presets: it writes nothing, it is what a world is when it matches no preset
-    private static readonly int Custom = System.Array.IndexOf(SettingsTable.Presets, "custom");
+    private static readonly int Custom = SettingsTable.CustomPreset;
 
     // the page of a group of rules: the presets page comes first
     private static int PageOf(Group group) => group.Page;
@@ -372,24 +372,24 @@ internal class TabServerConfiguration : TabEmpBase
     }
 
     /// <summary>
-    ///     Recommended, Classic and Custom as three cards side by side; the current one is tinted and says so. A
-    ///     friend sees them as a read-only answer
+    ///     The presets as cards, three to a row (six or seven cards no longer fit on one line at the same font); the
+    ///     current one is tinted and says so. A friend sees them as a read-only answer
     /// </summary>
     private void BuildPresetCards(YKLayout page, int preset)
     {
-        var row = Vertical(page).Horizontal();
-        row.Layout.childForceExpandWidth = true;
-        row.Layout.childControlHeight = true;
-        row.Layout.childForceExpandHeight = true;
-        row.Layout.spacing = UIHelper.RowSpacing * 1.5f;
-        row.Layout.childAlignment = TextAnchor.UpperLeft;
-        for (var i = 0; i < SettingsTable.Presets.Length; i++) {
-            if (!ShowPreset(i, preset)) {
-                continue;
+        const int perRow = 3;
+        var shown = Enumerable.Range(0, SettingsTable.Presets.Length).Where(i => ShowPreset(i, preset)).ToList();
+        var rows = Vertical(page);
+        rows.Layout.spacing = UIHelper.RowSpacing * 1.5f;
+        YKLayout? row = null;
+        for (var n = 0; n < shown.Count; n++) {
+            if (n % perRow == 0) {
+                row = NewCardRow(rows);
             }
 
+            var i = shown[n];
             var index = i;
-            var card = Vertical(row, true);
+            var card = Vertical(row!, true);
             card.LayoutElement().flexibleWidth = 1f;
             card.LayoutElement().preferredWidth = 0f;
             card.Fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
@@ -440,6 +440,13 @@ internal class TabServerConfiguration : TabEmpBase
             });
         }
 
+        // (a last row with fewer cards keeps the same card width: empty cells fill it)
+        for (var n = shown.Count; row is not null && n % perRow != 0; n++) {
+            var cell = row.Vertical().LayoutElement();
+            cell.flexibleWidth = 1f;
+            cell.preferredWidth = 0f;
+        }
+
         if (!_guest && SettingsTable.CanUndo) {
             Vertical(page).ButtonRow().RowButton("emp_ui_sv_undo".lang(), () => {
                 Capture();
@@ -448,8 +455,19 @@ internal class TabServerConfiguration : TabEmpBase
         }
     }
 
+    private static YKLayout NewCardRow(YKLayout parent)
+    {
+        var row = parent.Horizontal();
+        row.Layout.childForceExpandWidth = true;
+        row.Layout.childControlHeight = true;
+        row.Layout.childForceExpandHeight = true;
+        row.Layout.spacing = UIHelper.RowSpacing * 1.5f;
+        row.Layout.childAlignment = TextAnchor.UpperLeft;
+        return row;
+    }
+
     // the index of the public server preset in SettingsTable.Presets
-    private static readonly int Official = System.Array.IndexOf(SettingsTable.Presets, "official");
+    private static readonly int Official = SettingsTable.OfficialPreset;
 
     /// <summary>
     ///     The public server card is for its owner only: a dedicated server (-empserver), or the game that can sign the

@@ -40,13 +40,18 @@ internal static class SettingsTableCheck
             }
         }
 
-        // presets computed, never stored: the defaults read as Recommended, the Classic values as Classic, one box
-        // off the defaults as Custom with that one row listed
-        if (SettingsTable.Preset(RuleSource.Defaults) != 0 || SettingsTable.Preset(SettingsTable.Classic) != 1) {
+        // presets computed, never stored: each preset's values read as that preset, the old Classic values (no card
+        // since 2026-11-01) as Custom, one box off the defaults as Custom with that one row listed
+        for (var i = 0; i < SettingsTable.Presets.Length; i++) {
+            if (i != SettingsTable.CustomPreset && SettingsTable.Preset(SettingsTable.PresetSource(i)) != i) {
+                failures.Add($"presets: {SettingsTable.Presets[i]} reads {SettingsTable.Preset(SettingsTable.PresetSource(i))}");
+            }
+        }
+        if (SettingsTable.Preset(RuleSource.Defaults) != 0 || SettingsTable.Preset(SettingsTable.Classic) != SettingsTable.CustomPreset) {
             failures.Add($"presets: defaults {SettingsTable.Preset(RuleSource.Defaults)}, classic {SettingsTable.Preset(SettingsTable.Classic)}");
         }
         var one = Source(new() { [EmpConfig.Server.PlayerTrade] = !(bool)EmpConfig.Server.PlayerTrade.DefaultValue });
-        if (SettingsTable.Preset(one) != 2 || string.Join(",", SettingsTable.Differences(one, RuleSource.Defaults)) != "player_trade") {
+        if (SettingsTable.Preset(one) != SettingsTable.CustomPreset ||string.Join(",", SettingsTable.Differences(one, RuleSource.Defaults)) != "player_trade") {
             failures.Add($"presets: one box off reads {SettingsTable.Preset(one)}: {string.Join(",", SettingsTable.Differences(one, RuleSource.Defaults))}");
         }
 
@@ -87,7 +92,8 @@ internal static class SettingsTableCheck
                 }
             }
 
-            foreach (var preset in new[] { 1, 0 }) {
+            // (the public server preset last but one: Recommended puts everything back to the defaults)
+            foreach (var preset in new[] { "duo", "hardcore", "community", "official", "recommended" }.Select(SettingsTable.PresetIndex)) {
                 SettingsTable.ApplyPreset(preset);
                 if (SettingsTable.Preset(RuleSource.Current) != preset) {
                     failures.Add($"preset {preset} applied reads {SettingsTable.Preset(RuleSource.Current)}");
