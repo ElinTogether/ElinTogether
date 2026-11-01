@@ -32,7 +32,7 @@ internal static class TeamBanner
     /// <summary>
     ///     12 colours that read on a dark page (the colour-blind safe set of <see cref="PeerColorizer" /> first)
     /// </summary>
-    private static readonly int[] Palette = [
+    internal static readonly int[] Palette = [
         0x0072b2, 0xe69f00, 0xcc79a7, 0x009e73, 0xd55e00, 0x56b4e9,
         0xf0e442, 0x9a6fe0, 0xe0554f, 0x8fbf3f, 0x4fd1c5, 0xb0b0b0,
         // the emblem's further twelve (heraldry's deep and pale tinctures): never a team's colour
@@ -96,7 +96,7 @@ internal static class TeamBanner
     private static Dictionary<int, string> Things => KeepsBook ? ElinNetHost.TeamThings : _toldThings;
 
     /// <summary>
-    ///     The team's emblem as its canonical <c>e1|</c> text (<see cref="TeamEmblem" />), an old single-thing value
+    ///     The team's emblem as its canonical text (<see cref="TeamEmblem" />), an old single-thing value
     ///     upgraded on the banner colour. Null when the team has none (else the old element emblem draws)
     /// </summary>
     internal static string? ThingOf(int teamId) =>
@@ -114,7 +114,7 @@ internal static class TeamBanner
         }
 
         // (a guest without a mod's thing still draws the rest)
-        var layers = emblem.Layers.Where(l => Normalize(l.Thing) != null).ToList();
+        var layers = emblem.Layers.Where(l => l.IsShape || Normalize(l.Thing) != null).ToList();
         return layers.Count == 0 ? null : emblem with { Layers = layers };
     }
 
@@ -174,16 +174,15 @@ internal static class TeamBanner
         }
 
         if (thing.Length > 0) {
-            // an emblem of up to 12 things or monsters of the game (an old single id is upgraded to one layer); any
+            // an emblem of up to 16 layers, things or monsters of the game or shapes (an old single id is upgraded to one layer); any
             // text that does not read, a field out of range or an id the game does not know is refused
             if (TeamEmblem.Canonical(thing, color, Normalize) is not { } canonical) {
                 return false;
             }
 
-            // (the team's colour is the emblem's background when it is one of the twelve team colours, else it stays)
-            var bg = TeamEmblem.Parse(canonical)!.Background;
+            // (the team's colour is the emblem's bottom shape's when it is one of the twelve team colours, else it stays)
             var had = ElinNetHost.TeamBanners.TryGetValue(team, out var old) && old.Length == 2;
-            var teamColour = bg < ColorCount ? bg : had ? old![1] : color;
+            var teamColour = TeamEmblem.TeamColour(TeamEmblem.Parse(canonical)!) ?? (had ? old![1] : color);
             ElinNetHost.TeamThings[team] = canonical;
             ElinNetHost.TeamBanners[team] = [had ? old![0] : 0, teamColour];
             EmpLog.Information("Team {TeamId} banner: emblem {Emblem}", team, canonical);
@@ -276,7 +275,8 @@ internal static class TeamBanner
         var color = ColorOf(banner.Color);
         if (EmblemOf(teamId) is { } emblem) {
             // the baked emblem (background, shape and layers in one sprite shared by every view)
-            TeamEmblemBaker.Place(row.transform, TeamEmblemBaker.Get(emblem), size);
+            // (a click shows it large, with the team's name)
+            EmblemZoom.Zoomable(TeamEmblemBaker.Place(row.transform, TeamEmblemBaker.Get(emblem), size), teamId);
         } else if (Emblems.FirstOrDefault(e => e.Id == banner.Icon).Sprite is { } sprite) {
             // the emblem on a square of the colour, like an item (no detached colour bar beside it)
             Frame(row, color, sprite, size, true, null);
@@ -345,67 +345,40 @@ internal static class TeamBanner
         return done;
     }
 
-    private const int PageSize = 24;
-    // (eight 30 px things and their gaps fit in a page of the book)
-    private const int PerRow = 8;
     private static string _query = "";
-    private static int _page;
 
     // 0 items, 1 monsters
     private static int _kind;
 
-    private static List<(string Value, string Name, Sprite Sprite)> Search()
-    {
-        var q = _query.Trim().ToLowerInvariant();
-        bool Match(string id, string? name) => q.Length == 0 || id.ToLowerInvariant().Contains(q) || (name ?? "").ToLowerInvariant().Contains(q);
-        if (_kind == 1) {
-            return EClass.sources.charas.rows
-                .Where(r => !string.IsNullOrEmpty(r.id) && Match(r.id, r.GetName()))
-                .Select(r => (Value: "c:" + r.id, Name: r.GetName() ?? r.id, Sprite: r.GetSprite()))
-                .Where(r => r.Sprite != null)
-                .OrderBy(r => r.Name)
-                .ToList();
-        }
-
-        return EClass.sources.things.rows
-            .Where(r => !string.IsNullOrEmpty(r.id) && Match(r.id, r.GetName()))
-            .Select(r => (Value: "t:" + r.id, Name: r.GetName() ?? r.id, Sprite: r.GetSprite()))
-            .Where(r => r.Sprite != null)
-            .OrderBy(r => r.Name)
-            .ToList();
-    }
-
     /// <summary>
-    ///     Two pills (Items / Monsters) over a search field over every thing or monster of the game (name in the
-    ///     player's language, or id), results paged; a click gives the typed id to <paramref name="onPick" />
+    ///     Two pills (Items / Monsters) over a search field over one scrolled grid of every thing or monster of the
+    ///     game (<see cref="SpriteGrid" />: name in the player's language, English name or id, filtered as it is typed);
+    ///     a click gives the typed id to <paramref name="onPick" />
     /// </summary>
     internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick, bool itemsOnly = false)
     {
-        var list = card.Vertical();
-        list.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        list.Layout.spacing = 4f;
+        SpriteGridView? grid = null;
+        void Show() => grid?.Show(SpriteGrid.Filter(SpriteGrid.All(_kind == 1), _query));
+
         if (itemsOnly) {
             // (the Market: things only, no Items / Monsters pills)
             _kind = 0;
         } else {
             Pills(card, ["emp_ui_team_banner_items".lang(), "emp_ui_team_banner_monsters".lang()], _kind, i => {
                 _kind = i;
-                _page = 0;
-                FillThings(list, colour, onPick);
+                Show();
             });
         }
 
         var search = card.InputText(_query);
         search.field.characterLimit = 40;
         search.StyleAsSearch("emp_ui_team_banner_search".lang());
-        // (the list follows the pills and the field)
-        list.transform.SetAsLastSibling();
         search.field.onValueChanged.AddListener(text => {
             _query = text;
-            _page = 0;
-            FillThings(list, colour, onPick);
+            Show();
         });
-        FillThings(list, colour, onPick);
+        grid = SpriteGrid.Build(card, colour, onPick);
+        Show();
     }
 
     /// <summary>
@@ -436,38 +409,6 @@ internal static class TeamBanner
 
         group.SetColors();
         group.Init(selected, i => onPick(i));
-    }
-
-    private static void FillThings(YKLayout list, Color colour, System.Action<string> onPick)
-    {
-        foreach (Transform child in list.transform) {
-            Object.Destroy(child.gameObject);
-        }
-
-        var found = Search();
-        var pages = Mathf.Max(1, (found.Count + PageSize - 1) / PageSize);
-        _page = Mathf.Clamp(_page, 0, pages - 1);
-        YKLayout? row = null;
-        var n = 0;
-        foreach (var thing in found.Skip(_page * PageSize).Take(PageSize)) {
-            if (n++ % PerRow == 0) {
-                row = list.Row();
-            }
-
-            var value = thing.Value;
-            Frame(row!, colour, thing.Sprite, 30f, false, () => onPick(value));
-        }
-
-        var bar = list.ButtonRow();
-        bar.SignButton("<", () => {
-            _page--;
-            FillThings(list, colour, onPick);
-        }, 44f);
-        bar.Text($"{_page + 1} / {pages}");
-        bar.SignButton(">", () => {
-            _page++;
-            FillThings(list, colour, onPick);
-        }, 44f);
     }
 
     /// <summary>
