@@ -145,6 +145,14 @@ internal partial class EmpConfig
             "To undo: unsubscribe from them on the Workshop, or switch them off in the Mod Viewer. Only with \"Fetch the mods of the game by itself\"\n" +
             "保留所加入游戏的模组：你的 Steam 账号会在创意工坊订阅它们，并在你自己的模组列表中保持启用。第一次仍会重启一次，之后再次加入同一游戏无需重启。关闭时：不订阅直接获取，每次启动后第一次加入都会重启");
 
+        // the mod version whose patch notes this player has seen (the Patch notes tab shows a badge until then)
+        Client.PatchNotesSeen = config.Bind(
+            "Client",
+            "PatchNotesSeen",
+            "",
+            "The Elin Together version whose patch notes you have seen (set by itself when the Patch notes tab is opened)\n" +
+            "你已查看过更新说明的 Elin Together 版本（打开“更新说明”标签页时自动设置）");
+
         Client.PingKeybind = config.Bind(
             "Client",
             "PingKeybind",
@@ -1099,6 +1107,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> KeepMods { get; set; } = null!;
         internal static ConfigEntry<bool> FetchCodeMods { get; set; } = null!;
         internal static ConfigEntry<string> TrustedHosts { get; set; } = null!;
+        internal static ConfigEntry<string> PatchNotesSeen { get; set; } = null!;
     }
 
     internal static class Server

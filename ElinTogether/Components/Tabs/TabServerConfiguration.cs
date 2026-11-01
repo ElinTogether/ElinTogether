@@ -113,6 +113,11 @@ internal class TabServerConfiguration : TabEmpBase
         // sub-tabs (user, 2026-10-28): the presets, then one page per group of rules
         var pages = new List<(string, System.Action<YKVertical>)> {
             ("emp_ui_sub_presets".lang(), page => {
+                // the save "Host a game" chose at the title screen: these rules, then Start (TabPlay.HostPick)
+                if (!_guest && !EClass.core.IsGameStarted && TabPlay.HostPick is { } pick) {
+                    BuildStartHosting(page, pick);
+                }
+
                 BuildBanner(page);
                 BuildPresetCards(page, preset);
                 if (preset == Custom) {
@@ -191,6 +196,16 @@ internal class TabServerConfiguration : TabEmpBase
         }
 
         return Custom;
+    }
+
+    private static void BuildStartHosting(YKLayout page, GameIndex pick)
+    {
+        var name = TabPlay.SaveName(pick);
+        var card = page.Card("emp_ui_host_start_title".Loc(name));
+        card.TextSmall("emp_ui_host_start_desc".lang(), FontColor.Gray);
+        var buttons = card.ButtonRow();
+        buttons.RowButton("emp_ui_host_start".Loc(name), () => TabPlay.StartHosting(pick));
+        buttons.RowButton("emp_ui_host_back".lang(), TabPlay.BackToSaves);
     }
 
     private void BuildBanner(YKLayout page)

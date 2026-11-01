@@ -47,7 +47,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         var opening = !string.IsNullOrEmpty(Data.StartingTab) ? Data.StartingTab : _lastOpenedTab;
         // at the title screen only the tabs that work there (user 2026-11-01: the others are for a game in progress)
         var inGame = EClass.core.IsGameStarted;
-        if (!inGame && opening is not (null or "" or TabPlay.TabName or "emp_tab_server" or TabReport.TabName or "emp_tab_client")) {
+        if (!inGame && opening is not (null or "" or TabPlay.TabName or "emp_tab_server" or TabReport.TabName or "emp_tab_client" or "emp_tab_patchnotes")) {
             opening = TabPlay.TabName;
         }
 
@@ -85,6 +85,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             DecorateLastTab("icon_menu_7", "emp_tip_tab_info");
         }
 
+        _tabs.Add(CreateTab<TabPatchNotes>("emp_ui_tab_patchnotes", TabPatchNotes.TabName));
+        DecorateLastTab("icon_LayerJournal", "emp_tip_tab_patchnotes");
         _tabs.Add(CreateTab<TabReport>("emp_help_report", TabReport.TabName));
         DecorateLastTab("icon_Memo", "emp_tip_tab_report");
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
@@ -436,6 +438,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         switch (tab) {
             case TabChat.TabName:
                 return ChatLog.Unread;
+            case TabPatchNotes.TabName:
+                return TabPatchNotes.Unseen ? 1 : 0;
             case "emp_tab_team" when EClass.core.IsGameStarted && NetSession.Instance.InGame && NetSession.Instance.Rules.UseTeams:
                 var me = EClass.pc.uid;
                 var team = Teams.TeamOf(me);
