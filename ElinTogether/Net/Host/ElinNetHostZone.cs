@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Common;
 using ElinTogether.Elements;
@@ -12,6 +13,11 @@ namespace ElinTogether.Net;
 
 internal partial class ElinNetHost
 {
+    /// <summary>
+    ///     Player -> the loaded map it was last put on by OnZoneDataReceivedResponse (weak: an unloaded map is let go)
+    /// </summary>
+    private readonly Dictionary<ulong, WeakReference<Map>> _placedOn = [];
+
     /// <summary>
     ///     Send the player a map snapshot from given zone
     /// </summary>
@@ -160,6 +166,15 @@ internal partial class ElinNetHost
                     ? at.Copy()
                     : at.GetNearestPoint(allowChara: false) ?? at.Copy();
             }
+        } else if (_placedOn.TryGetValue(peer.User, out var placed) && placed.TryGetTarget(out var placedMap) &&
+                   placedMap == _map && chara.IsInActiveMap && placedMap.charas.Contains(chara) &&
+                   chara.pos is { IsValid: true, IsInBounds: true }) {
+            // GitHub issue 52: this map was already sent to it and it was put on it (at its own tile, the spot
+            // above is spent), and the same map comes again (the host's own zone change after the copy sent to
+            // that player alone, after the host stepped out and back in): it stays where it stands instead of
+            // being put next to the host
+            pos = chara.pos.Copy();
+            keepSpot = true;
         }
         // never a tile outside this map: the game does not check (Map.OnCardAddedToZone), the character would
         // be left in the list of the map and on no tile, and its player without an answer
@@ -220,6 +235,7 @@ internal partial class ElinNetHost
 
         EmpLog.Debug("Assigned zone sync position to player {@Peer} at {@Pos}",
             peer, pos);
+        _placedOn[peer.User] = new(_map);
 
         // after that, their characters will always be party members
         peer.Send(new ZoneActivateResponse {
