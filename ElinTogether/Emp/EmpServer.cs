@@ -104,6 +104,7 @@ internal static class EmpServer
 
         _next = Time.unscaledTime + 2f;
         AudioListener.volume = 0f;
+        LogMemory();
 
         // the visible game that started this server is gone (closed, crashed): saved and stopped within seconds, no
         // process left behind holding 2 GB. Before the session is open there is nothing to save
@@ -244,6 +245,52 @@ internal static class EmpServer
         }
 
         Tell("running");
+    }
+
+    private const float MemoryLogSeconds = 600f;
+    private static float _nextMemoryLog;
+
+    /// <summary>
+    ///     Every 10 minutes, one line: what the process holds and the sizes of what could grow, so a server that
+    ///     swells shows which part does (the idle public server took 1.4 GB an hour, 2026-11-01: the mesh passes)
+    /// </summary>
+    private static void LogMemory()
+    {
+        if (Time.unscaledTime < _nextMemoryLog) {
+            return;
+        }
+
+        _nextMemoryLog = Time.unscaledTime + MemoryLogSeconds;
+        try {
+            long privateBytes;
+            using (var self = System.Diagnostics.Process.GetCurrentProcess()) {
+                privateBytes = self.PrivateMemorySize64;
+            }
+
+            int passes = 0, batches = 0;
+            foreach (var pass in Resources.FindObjectsOfTypeAll<MeshPass>()) {
+                passes++;
+                batches += pass.batches?.Count ?? 0;
+            }
+
+            var cards = Models.CardCache.Counts;
+            EmpLog.Information(
+                "Server memory: managed {Managed} MB, private {Private} MB, Unity reserved {Reserved} MB, " +
+                "mesh batches {Batches} in {Passes} passes, card cache {Cards}/{KeptAlive}/{Invalid}, " +
+                "textures {Textures}, render textures {RenderTextures}, materials {Materials}, meshes {Meshes}, " +
+                "replay frames {Frames}, chat {Chat}, journal {Journal}, players {Players}, up {Up}",
+                GC.GetTotalMemory(false) >> 20, privateBytes >> 20,
+                UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong() >> 20,
+                batches, passes, cards.Cards, cards.KeptAlive, cards.Invalid,
+                Resources.FindObjectsOfTypeAll<Texture2D>().Length,
+                Resources.FindObjectsOfTypeAll<RenderTexture>().Length,
+                Resources.FindObjectsOfTypeAll<Material>().Length,
+                Resources.FindObjectsOfTypeAll<Mesh>().Length,
+                ReplayBuffer.FrameCount, ChatLog.Entries.Count, ActivityJournal.ToldCount,
+                NetSession.Instance.CurrentPlayers.Count, DateTime.Now - _started);
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "Server memory could not be measured");
+        }
     }
 
     /// <summary>
