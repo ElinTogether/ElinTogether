@@ -102,6 +102,7 @@ internal partial class ElinNetClient
         // a peer-hosted world: the rules of whoever keeps it are the signed ones, or this game leaves it (the keeper's
         // own game too, a guest of its hidden server like everyone)
         if (Helper.PeerHosting.Active && Helper.PeerRules.Check(rules) is { } differ) {
+            Helper.CrossCheck.Rules("rules", differ);
             LeaveKeeper(differ);
             return;
         }

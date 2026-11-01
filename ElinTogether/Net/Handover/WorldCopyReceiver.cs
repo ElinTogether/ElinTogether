@@ -163,10 +163,10 @@ internal static class WorldCopyReceiver
         _received.Clear();
 
         _closing = STask.Run(() => WorldCopyStore.Close(folder, manifest, received, previous));
-        EmpMod.Instance.StartCoroutine(Closing());
+        EmpMod.Instance.StartCoroutine(Closing(folder, manifest));
     }
 
-    private static IEnumerator Closing()
+    private static IEnumerator Closing(string folder, WorldCopyManifest manifest)
     {
         while (!_closing!.IsCompleted) {
             yield return null;
@@ -175,6 +175,9 @@ internal static class WorldCopyReceiver
         _badPrevious = _closing.IsFaulted || _closing.Result == WorldCopyStore.Closed.BadPrevious;
         if (_closing.IsFaulted) {
             EmpLog.Warning(_closing.Exception!, "World copy not kept");
+        } else if (_closing.Result == WorldCopyStore.Closed.Kept) {
+            // a peer-hosted world: the guest compares this save with the one before (PLAN_peer_hosted_server 4.5)
+            Helper.CrossCheck.CopyKept(WorldCopyStore.DirOf(folder, manifest), manifest);
         }
 
         _closing = null;

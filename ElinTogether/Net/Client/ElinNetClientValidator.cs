@@ -68,6 +68,7 @@ internal partial class ElinNetClient
 
         // a peer-hosted world: whoever keeps it runs the build its signed rules allow (PLAN_peer_hosted_server row 12)
         if (PeerHosting.Active && PeerRules.CheckBuild(request.HostModVersion) is { } build) {
+            CrossCheck.Rules("build", build);
             LeaveKeeper(build);
             return;
         }

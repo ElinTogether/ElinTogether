@@ -69,6 +69,11 @@ internal static class TabWorldAdmin
 
         card.KeyValue("emp_wa_keeper".lang(), WorldAdmin.Keeper.Length > 0 ? WorldAdmin.Keeper : "emp_wa_keeper_none".lang());
         card.KeyValue("emp_wa_head".lang(), WorldAdmin.Head > 0 ? "#" + WorldAdmin.Head : "-");
+        if (WorldAdmin.Flags.Count > 0) {
+            var strong = WorldAdmin.Flags.Values.Count(f => f.Strong);
+            card.TextSmall("emp_wa_flags_summary".Loc(WorldAdmin.Flags.Count, strong), strong > 0 ? FontColor.Bad : FontColor.Warning);
+        }
+
         card.ButtonRow().RowButton("emp_wa_refresh".lang(), WorldAdmin.Refresh);
         card.Divider();
 
@@ -76,7 +81,8 @@ internal static class TabWorldAdmin
         if (versions.Count == 0) {
             card.TextSmall(WorldAdmin.Loaded ? "emp_wa_versions_none".lang() : "emp_wa_busy".lang(), FontColor.Gray);
         } else {
-            var list = card.ListArea(versions.Count, 8, 56f);
+            // (a flagged version has one line more)
+            var list = card.ListArea(versions.Count, 8, WorldAdmin.Flags.Count > 0 ? 72f : 56f);
             foreach (var v in versions) {
                 VersionLine(list, v);
             }
@@ -93,7 +99,14 @@ internal static class TabWorldAdmin
                     (v.N == WorldAdmin.Head ? " · " + "emp_wa_current".lang() : "");
         var who = v.Name.Length > 0 ? v.Name : v.Steam.Length > 0 ? v.Steam : "?";
         var detail = "emp_wa_version_detail".Loc(who, Size(v.Size), v.Count, v.GameDate.Length > 0 ? v.GameDate : "-");
-        row.TextColumn(title, detail);
+        var column = row.TextColumn(title, detail);
+
+        // guests' cross-check reports on it (plan 4.5): one player amber, two or more independent players red
+        if (WorldAdmin.Flags.TryGetValue(v.N, out var flag)) {
+            var text = (flag.Strong ? "emp_wa_flag_strong" : "emp_wa_flag").Loc(flag.Count, flag.Reporters, flag.Kinds) +
+                       (flag.Detail.Length > 0 ? " · " + flag.Detail : "");
+            column.TextSmall(text, flag.Strong ? FontColor.Bad : FontColor.Warning);
+        }
 
         if (v.N != WorldAdmin.Head) {
             row.RowButton("emp_wa_rollback".lang(), () => AskRollback(v));

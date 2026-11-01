@@ -1436,5 +1436,8 @@
     "LangGeneral.emp_ui_sv_opt_preset_community.text": "大型团体 / 社区",
     "LangGeneral.emp_ui_sv_desc_preset_duo.text": "适合一起旅行、共享一切的2到4位朋友。",
     "LangGeneral.emp_ui_sv_desc_preset_hardcore.text": "适合玩家可以互相击杀的永久死亡世界。",
-    "LangGeneral.emp_ui_sv_desc_preset_community.text": "适合分成队伍、各自按节奏游玩的10人以上。"
+    "LangGeneral.emp_ui_sv_desc_preset_community.text": "适合分成队伍、各自按节奏游玩的10人以上。",
+    "LangGeneral.emp_wa_flag.text": "已标记：{1} 名玩家的 {0} 份报告（{2}）",
+    "LangGeneral.emp_wa_flag_strong.text": "严重标记：{1} 名独立玩家的 {0} 份报告（{2}）",
+    "LangGeneral.emp_wa_flags_summary.text": "玩家检查标记了 {0} 个版本，其中 {1} 个由两名或以上玩家标记"
 }
