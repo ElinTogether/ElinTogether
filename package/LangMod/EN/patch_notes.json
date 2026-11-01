@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.26.1729",
+    "date": "2026-11-02",
+    "title": "team ranks, emblem editor, presets, join a friend, many fixes",
+    "bullets": [
+      "Join a friend: the Play tab lists your Steam friends who are in an Elin Together game, one click to join. Join by address is behind \"More…\".",
+      "World rules presets: new Duo, Hardcore and Big group presets; the Classic card is gone. Greyed rules and buttons say why.",
+      "Team ranks (when team leaders are on): create ranks and give each one its own permissions (bank, lands, invites…). The host checks them too.",
+      "Team join choice: a player already in a team who is accepted by another one chooses to keep its team or join the new one.",
+      "Emblem editor (first version): shapes as layers, colour picker, game sprites, text, undo/redo, codes to share, a large view of another team's emblem.",
+      "Clearer menus: Lands is a sub-tab of Team, server info pages are sub-tabs of World rules, admin tools under one Admin button, the window, its rows and boxes keep their size, the chat log stays where you scrolled, version and disconnect messages in plain words, a lasting banner with Leave game while waiting after a permadeath.",
+      "Host and guest equality: companions' levels and feat points, anatomy and team codex on kills, affinity and party experience, planters, breweries, gods' days, supporter trees, the Mani statue reroll, quest boards and towns refreshed by a guest's visit, conquered nefias and new nefias while the host is away, the new season's ground.",
+      "Fixes: #30 a scroll of return no longer waits for idle turns while others play.",
+      "Safety: no mail lost (journal, broken letters can be restored by the admin), saves and map hand-backs can no longer be cut halfway, leased ids never overlap, reconnect never gives up silently, quitting with the last world copy is never blocked.",
+      "Server: no more memory leak on a server left idle; two Better Elin patches made safe.",
+      "Groundwork for a public server hosted by the players in turn (not active yet)."
+    ]
+  },
+  {
     "version": "0.26.1643",
     "date": "2026-11-01",
     "title": "clearer menus, update notice, patch notes, many fixes",
