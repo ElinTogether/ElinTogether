@@ -1284,5 +1284,9 @@
     "LangGeneral.emp_ui_host_start.text": "开始主持 {0}",
     "LangGeneral.emp_ui_host_open.text": "你的游戏已开放：好友可以加入了。",
     "LangGeneral.emp_ui_host_failed.text": "无法向多人模式开放你的游戏：{0} 游戏仍以单人模式载入。",
-    "LangGeneral.emp_ui_host_failed_log.text": "服务器未能启动（请查看模组日志）。"
+    "LangGeneral.emp_ui_host_failed_log.text": "服务器未能启动（请查看模组日志）。",
+    "LangGeneral.emp_ui_tab_patchnotes.text": "更新说明",
+    "LangGeneral.emp_tip_tab_patchnotes.text": "每个版本的改动",
+    "LangGeneral.emp_ui_patchnotes_installed.text": "已安装",
+    "LangGeneral.emp_ui_patchnotes_none.text": "未找到更新说明"
 }
