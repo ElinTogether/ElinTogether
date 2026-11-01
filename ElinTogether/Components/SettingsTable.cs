@@ -648,7 +648,8 @@ internal static class SettingsTable
     /// </summary>
     internal static void ForceOfficial()
     {
-        if (!OfficialServer.Hosting) {
+        // (a peer-hosted world plays its signed rules, PeerRules, whoever keeps it)
+        if (!OfficialServer.Hosting || Helper.PeerHosting.Active) {
             return;
         }
 

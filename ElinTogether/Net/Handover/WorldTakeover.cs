@@ -52,7 +52,14 @@ internal static class WorldTakeover
         // a world with admins (admin tools, council 2026-10-27) is taken over by one of them only: whoever takes it
         // over gets the host's powers, bans included
         ulong me = session.Self?.User ?? HeathenEngineering.SteamworksIntegration.UserData.Me;
-        if (ModerationDelta.AdminIds.Count > 0 && !ModerationDelta.AdminIds.Contains(me)) {
+        // a peer-hosted world: whoever keeps it next has no power for it (it is a guest of its hidden server), so
+        // anyone the signed lists do not ban may (lead dev 2026-11-01: everyone, right away; the store's lease and
+        // eligibility come with P5), and the admin list the former keeper told is not asked
+        if (Helper.PeerHosting.Active) {
+            if (Helper.PeerHosting.IsBanned(me)) {
+                return "banned from this world by its signed list";
+            }
+        } else if (ModerationDelta.AdminIds.Count > 0 && !ModerationDelta.AdminIds.Contains(me)) {
             return "only an admin of this world takes it over";
         }
 

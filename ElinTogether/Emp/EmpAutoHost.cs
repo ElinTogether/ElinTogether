@@ -102,7 +102,8 @@ internal static class EmpAutoHost
         }
 
         // (with the box "hidden server", a hidden game hosts it and this one joins)
-        if (!local && HiddenServer.TryStart(Open)) {
+        // (a peer-hosted world, PeerHosting: always, the bench's local port too, never the classic way)
+        if ((!local || PeerHosting.Active) && HiddenServer.TryStart(Open)) {
             return;
         }
 

@@ -66,7 +66,18 @@ internal partial class ElinNetHost : ElinNetBase
             return;
         }
 
+        // a peer-hosted world opens on a hidden server only: a visible game hosting it would be a host with powers no
+        // guest has (PLAN_peer_hosted_server section 3)
+        if (PeerHosting.Active && !EmpServer.Requested) {
+            EmpLog.Warning("Cannot start server: this peer-hosted world opens through the hidden server only");
+            EmpPop.Information("emp_peer_no_classic".Loc("emp_peer_why_hidden".lang()));
+            Session.ResetSession();
+            return;
+        }
+
         BackupBeforeNewVersion();
+        // a peer-hosted world: its signed rules, admins and bans, whatever this machine's files say
+        BeginPeerHosted();
         // the official server's fixed rules, over whatever the file says
         Components.SettingsTable.ForceOfficial();
         // the headless official server: the whole preset, its admins, its message of the day (before the rules are read)

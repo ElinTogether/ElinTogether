@@ -53,6 +53,21 @@ internal partial class ElinNetHost
             return false;
         }
 
+        // a peer-hosted world: keeping it gives nothing (PLAN_peer_hosted_server section 3, rows 2-3). The seat is a
+        // plain guest, turned away like one when the signed lists ban it, and an admin only if they name it
+        if (PeerHostedServer) {
+            if (Refusal(peer.User) is { } refused) {
+                EmpLog.Information("Hidden server: the owner's seat {@Peer} refused: {Reason}", peer, refused);
+                AdminLog($"refused owner seat {(ulong)peer.User} {peer.User.Name}: {refused}");
+                Socket.Disconnect(peer, refused);
+                return false;
+            }
+
+            OwnerSeat = peer.User;
+            EmpLog.Information("Hidden server: {@Peer} is the owner's seat, a plain guest of this peer-hosted world", peer);
+            return true;
+        }
+
         OwnerSeat = peer.User;
         // (the host of a game administers it without being asked; the owner of this one is not "the host" any more)
         Admins[OwnerSeat] = 1;

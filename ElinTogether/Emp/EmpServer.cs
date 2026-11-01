@@ -158,6 +158,12 @@ internal static class EmpServer
                 return;
             }
 
+            // a peer-hosted world is kept on its signed rules or not at all (PeerHosting)
+            if (PeerHosting.Active && PeerHosting.Current.SignedRules is null) {
+                Fail("emp_peer_no_rules".lang());
+                return;
+            }
+
             EmpLog.Information("Server: opening the session on port {Port}", Common.EmpConstants.LocalPort);
             try {
                 session.InitializeComponent<ElinNetHost>().StartServer(true, alsoSteam: true);
@@ -213,7 +219,11 @@ internal static class EmpServer
                 File.Delete(taken);
                 File.Move(orders, taken);
                 foreach (var line in File.ReadAllLines(taken).Where(l => l.Trim().Length > 0)) {
-                    _order = line.Trim() == "backup" ? Backup() : host.RunOrder(line);
+                    // (a peer-hosted world: any process of the keeper's machine writes this file; admin orders come
+                    // over the network from a signed admin, PLAN_peer_hosted_server section 3 row 7)
+                    _order = line.Trim() == "backup" ? Backup()
+                        : PeerHosting.Active ? "refused: a peer-hosted world takes orders from its signed admins only"
+                        : host.RunOrder(line);
                     EmpLog.Information("Server: order {Order}: {Result}", line, _order);
                 }
 
@@ -221,6 +231,10 @@ internal static class EmpServer
             } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
                 // the application writes it at the same time: next tick
             }
+        }
+
+        if (session.Connection is ElinNetHost keeper) {
+            keeper.PeerHostedTick();
         }
 
         // nobody is there to save: the server does, while someone plays
