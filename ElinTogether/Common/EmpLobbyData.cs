@@ -23,4 +23,11 @@ public static class EmpLobbyData
     ///     "1" when anyone who finds the game can join it (PublicGame), "0" for the host's friends and invited players
     /// </summary>
     public const string Public = "EmpPublic";
+
+    /// <summary>
+    ///     What opened the game: "game" (a player's game), "hidden" (the hidden server a player's game started and
+    ///     plays on, HiddenServer), "server" (a dedicated -empserver). The list keeps one game per host account and
+    ///     prefers the hidden server's lobby
+    /// </summary>
+    public const string ServerKind = "EmpServerKind";
 }

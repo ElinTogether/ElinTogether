@@ -370,11 +370,25 @@ internal class TabPlay : TabEmpBase
     // "More..." under the friends' games open, kept while the game runs
     private static bool _moreOpen;
 
+    // the games of "Join a friend": not listed a second time under the public servers (live report 2026-11-01)
+    private static readonly HashSet<ulong> _friendLobbies = [];
+    private static readonly HashSet<ulong> _friendIds = [];
+
+    // host account -> the lobby the list keeps for it (SteamNetLobbyManager.OnePerHost)
+    private static readonly Dictionary<ulong, ulong> _liveLobbyOf = [];
+
     private static void BuildJoin(YKVertical page)
     {
         var card = page.Card("emp_ui_play_join_title".lang());
         // the friends in an Elin Together game now, one Join each (user 2026-11-01); Steam invites still work
         var games = FriendGames.Now();
+        _friendLobbies.Clear();
+        _friendIds.Clear();
+        foreach (var game in games) {
+            _friendLobbies.Add(game.Lobby);
+            _friendIds.Add(game.FriendId);
+        }
+
         if (games.Count == 0) {
             card.Text("emp_ui_play_friends_none".lang(), FontColor.Gray);
         }
@@ -387,10 +401,13 @@ internal class TabPlay : TabEmpBase
                 continue;
             }
 
-            var lobby = game.Lobby;
+            var (lobby, friendId) = (game.Lobby, game.FriendId);
             var join = line.Button("emp_ui_team_join_short".lang(), () => {
                 LayerElinTogether.Instance?.Close();
-                NetSession.Instance.Lobby.ConnectLobby(new Steamworks.CSteamID(lobby));
+                // the friend's game as the list of games keeps it: one game per account, the hidden server's lobby
+                // first (Steam may name a left-over lobby of the same friend)
+                var target = _liveLobbyOf.TryGetValue(friendId, out var live) ? live : lobby;
+                NetSession.Instance.Lobby.ConnectLobby(new Steamworks.CSteamID(target));
             });
             var element = join.LayoutElement();
             element.preferredWidth = 90f;
@@ -540,7 +557,16 @@ internal class TabPlay : TabEmpBase
             // the project's own public game first (user, 2026-10-27), checked by its signature, not by its name
             var all = lobbies.Select(l => (Lobby: l, Official: OfficialServer.IsOfficial(l))).ToArray();
             FillOfficial(officialCard, all.Where(l => l.Official).Select(l => (LobbyData?)l.Lobby).FirstOrDefault());
-            var sorted = all.Where(l => !l.Official).ToArray();
+            _liveLobbyOf.Clear();
+            foreach (var (lobby, _) in all) {
+                if (lobby.GameServer.id.m_SteamID is var host and not 0) {
+                    _liveLobbyOf[host] = lobby.SteamId.m_SteamID;
+                }
+            }
+
+            // (a friend's game is under "Join a friend" already: one entry per game on the page)
+            var sorted = all.Where(l => !l.Official && !_friendLobbies.Contains(l.Lobby.SteamId.m_SteamID) &&
+                                        !_friendIds.Contains(l.Lobby.GameServer.id.m_SteamID)).ToArray();
             var total = sorted.Sum(l => l.Lobby.MemberCount);
             status.text = sorted.Length == 0 ? "emp_ui_play_none".lang() : "emp_ui_lobby_tally".Loc(total);
             if (sorted.Length == 0) {

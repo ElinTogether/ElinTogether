@@ -12,7 +12,7 @@ namespace ElinTogether.Helper.Steam;
 /// </summary>
 internal static class FriendGames
 {
-    internal readonly record struct Game(ulong Lobby, string Friend);
+    internal readonly record struct Game(ulong Lobby, string Friend, ulong FriendId);
 
     /// <summary>One entry per game (several friends in one game: the first one found names it)</summary>
     internal static List<Game> Now()
@@ -36,7 +36,7 @@ internal static class FriendGames
                     continue;
                 }
 
-                games.Add(new(lobby, SteamFriends.GetFriendPersonaName(friend)));
+                games.Add(new(lobby, SteamFriends.GetFriendPersonaName(friend), friend.m_SteamID));
             }
         } catch (Exception ex) {
             // (no Steam: no friends to list)
