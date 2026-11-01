@@ -245,6 +245,10 @@ internal partial class ElinNetClient
 
         AdoptHostUid(travel.Zone, grant.ZoneUid);
 
+        // a thing held on the mouse is in no bag: back in it before our last actions and our character go out
+        // (GitHub issue 48)
+        HeldDrag.PutBack("leaving for " + travel.Zone.ZoneFullName);
+
         if (grant.Guest) {
             // leave where we are (handing our zone back if we hold one, or only our character when we were
             // a guest: the host forwards it to the owner of the zone we go to), then that owner expects us,
@@ -448,6 +452,8 @@ internal partial class ElinNetClient
     /// </summary>
     internal void LeaveZoneSession(int zoneUid)
     {
+        // (issue 48) what is held on the mouse goes with our last actions
+        HeldDrag.PutBack("leaving a zone session");
         FlushDeltasNow();
         Host.Send(new ZoneGuestLeave {
             ZoneUid = zoneUid,
@@ -662,6 +668,8 @@ internal partial class ElinNetClient
                 return;
             }
 
+            // (issue 48) held on the mouse, in no bag: back in it while this game keeps our character
+            HeldDrag.PutBack("keeping the map the host left");
             EnterAway(zone);
         } else {
             // still open if the owner has not closed it yet
@@ -830,6 +838,12 @@ internal partial class ElinNetClient
         }
 
         WorldStateDeltaProcess();
+
+        // the host hands our character to the one keeping this map and our game reloads from that player's world:
+        // a thing held on the mouse (a stack just split) was in neither, lost (GitHub issue 48). Back in its bag,
+        // and that reaches the host before our ack
+        HeldDrag.PutBack("staying as the guest of the player keeping this map");
+        FlushDeltasNow();
 
         _pendingTravel = (_zone, new ZoneTransition());
         _pendingGrant = grant;
@@ -1272,6 +1286,9 @@ internal partial class ElinNetClient
 
     private void HandBackAwayZone(bool rejoin, ZoneArrival? arrival = null)
     {
+        // our character goes with the release: what is held on the mouse first back in its bag (issue 48)
+        HeldDrag.PutBack(rejoin ? "going back to the host" : "handing back our zone");
+
         Host.Send(CreateLeaseRelease(rejoin, arrival: arrival));
 
         if (Session.ZoneSession is ElinNetHost) {

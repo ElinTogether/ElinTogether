@@ -12,7 +12,7 @@ namespace ElinTogether.Models;
 public class ThingRequest : ElinDelta
 {
     private static readonly Dictionary<int, (Action<Thing>, Action?, DateTime Asked)> _callbackList = [];
-    private static readonly Dictionary<int, (WeakReference<Thing> thing, Card? origin, DateTime since)> _dangling = [];
+    private static readonly Dictionary<int, (WeakReference<Thing> thing, Card? origin, DateTime since, int peer)> _dangling = [];
     private static readonly TimeSpan _danglingTimeout = TimeSpan.FromSeconds(10);
 
     private static int _nextId;
@@ -40,6 +40,12 @@ public class ThingRequest : ElinDelta
                     if (thing is not null && DateTime.Now - asked > _answerTimeout) {
                         EmpLog.Warning("ThingRequest {RequestId} answered after {Seconds:F1}s, not taken: the host puts {Uid} back",
                             Id, (DateTime.Now - asked).TotalSeconds, thing.uid);
+                        onFail?.Invoke();
+                    } else if (thing is not null && net is ElinNetClient { IsInTransfer: true }) {
+                        // answered while we leave the host map: it puts that back in our bag before our character
+                        // goes (ReturnDanglingOf), held here it would be in no bag of the next world (issue 48)
+                        EmpLog.Warning("ThingRequest {RequestId} answered while leaving, not taken: the host puts {Uid} back",
+                            Id, thing.uid);
                         onFail?.Invoke();
                     } else if (thing is not null) {
                         onSuccess(thing);
@@ -119,7 +125,7 @@ public class ThingRequest : ElinDelta
         result.parent?.RemoveCard(result);
         // at once: a throw from here on lost the thing, out of its chest and in nobody's hands (reliability audit
         // 2026-10-27, #11). Recorded, it goes back where it was if the asker never takes it
-        RecordDangling(result, origin);
+        RecordDangling(result, origin, OriginPeer);
 
         try {
 #if DEBUG
@@ -209,12 +215,28 @@ public class ThingRequest : ElinDelta
         _nextId = 0;
     }
 
-    private static void RecordDangling(Thing result, Card? origin)
+    private static void RecordDangling(Thing result, Card? origin, int peer)
     {
-        _dangling[result.uid] = (new(result), origin, DateTime.Now);
+        _dangling[result.uid] = (new(result), origin, DateTime.Now, peer);
     }
 
     internal static void InvalidateDangling()
+    {
+        ReturnDangling(null);
+    }
+
+    /// <summary>
+    ///     What this player was handed and still holds out of any bag goes back where it was at once, before its
+    ///     character leaves this map, is handed to another game or goes away (GitHub issue 48: gold split and held
+    ///     while leaving was in no copy of the character). A game of this version puts it back itself first, see
+    ///     HeldDrag
+    /// </summary>
+    internal static void ReturnDanglingOf(int peer)
+    {
+        ReturnDangling(peer);
+    }
+
+    private static void ReturnDangling(int? peer)
     {
         if (_dangling.Count == 0 || NetSession.Instance.Connection is not ElinNetHost) {
             return;
@@ -226,12 +248,12 @@ public class ThingRequest : ElinDelta
                 continue;
             }
 
-            if (DateTime.Now - entry.since < _danglingTimeout) {
+            if (peer is null ? DateTime.Now - entry.since < _danglingTimeout : entry.peer != peer) {
                 continue;
             }
 
-            EmpLog.Warning("ThingRequest dangling of {Uid} was never dango dongo'd, returning to {ParentUid}",
-                uid, entry.origin?.uid ?? -1);
+            EmpLog.Warning("ThingRequest dangling of {Uid} was never dango dongo'd, returning to {ParentUid} (peer {PeerIndex} leaving {Leaving})",
+                uid, entry.origin?.uid ?? -1, entry.peer, peer is not null);
 
             using (Simulate()) {
                 if (entry.origin is { isDestroyed: false } origin) {

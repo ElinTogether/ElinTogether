@@ -271,6 +271,8 @@ internal partial class ElinNetHost : ElinNetBase
 
         _handshakes.Remove(peer.Id);
         PendingRebind.ReleasePeer(peer.Id);
+        // what it held out of any bag is back in it now, not 10 s later (issue 48)
+        ThingRequest.ReturnDanglingOf(peer.Id);
         ForgetFlood(peer.Id);
 
         if (IsZoneSession) {

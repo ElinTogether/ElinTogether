@@ -14,6 +14,9 @@ internal class GameSaveLoad
     {
         // an away client reads as host but only holds a copy of the host world
         if (NetSession.Instance.IsHost && !NetSession.Instance.IsAway) {
+            // a stack split here is held out of any bag (InvSplitThingEvent): in no save either (issue 48)
+            Helper.HeldDrag.PutBack("saving");
+
             // the maps players handed back go in with this save, not before (the game skips an autosave it was told to)
             if (!(isAutoSave && EClass.debug.ignoreAutoSave)) {
                 try {
