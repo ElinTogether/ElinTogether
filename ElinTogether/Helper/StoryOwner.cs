@@ -80,7 +80,8 @@ internal static class StoryOwner
             var now = UnityEngine.Time.unscaledTime;
             if (now - _officialAt > 1f || now < _officialAt) {
                 _officialAt = now;
-                _official = Net.Steam.OfficialServer.Hosting;
+                // (a peer-hosted world plays its signed rules only, even kept by the PC with the key: PeerRules)
+                _official = Net.Steam.OfficialServer.Hosting && !PeerHosting.Active;
             }
 
             return _official;

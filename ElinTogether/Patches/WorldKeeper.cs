@@ -72,6 +72,10 @@ internal static class WorldKeeperHooks
         // expired quests: fame and karma
         yield return AccessTools.Method(typeof(QuestManager), nameof(QuestManager.OnAdvanceHour));
         yield return AccessTools.Method(typeof(Region), nameof(Region.CheckRandomSites));
+        // the sites a night renews (LayerSleep: the Opatos pillow expires them all, waking on the world map draws
+        // new ones): the world's sites are drawn by its keeper, a guest's would exist in its game alone
+        yield return AccessTools.Method(typeof(Region), nameof(Region.RenewRandomSites));
+        yield return AccessTools.Method(typeof(Region), nameof(Region.UpdateRandomSites));
         yield return AccessTools.Method(typeof(World), nameof(World.CreateDayData));
         yield return AccessTools.Method(typeof(Faction), nameof(Faction.OnAdvanceDay));
         // salary, tax bill, karma for unpaid bills

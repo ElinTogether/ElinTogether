@@ -52,7 +52,11 @@ internal static class HiddenServer
     /// <summary>
     ///     This game starts its worlds on a hidden server: the box is ticked, on Windows, and this game is not a server
     /// </summary>
-    internal static bool Wanted => EmpConfig.Server.HiddenServer.Value && SettingsTable.HiddenServerAvailable &&
+    /// <remarks>
+    ///     A peer-hosted world (PeerHosting) is always kept this way, box or not: whoever keeps it plays as a plain
+    ///     guest of its hidden server, through the same checks as every other player
+    /// </remarks>
+    internal static bool Wanted => (EmpConfig.Server.HiddenServer.Value || PeerHosting.Active) && SettingsTable.HiddenServerAvailable &&
                                    !EmpServer.Requested;
 
     /// <summary>
@@ -126,7 +130,8 @@ internal static class HiddenServer
             var save = EClass.game.isCloud ? "cloud:" + Game.id : Game.id;
             var log = Path.Combine(Folder, "server.log");
             var start = new ProcessStartInfo(exe,
-                $"-batchmode -nographics -empserver \"{save}\" -empparent {Process.GetCurrentProcess().Id} -empmute -logFile \"{log}\"") {
+                $"-batchmode -nographics -empserver \"{save}\" -empparent {Process.GetCurrentProcess().Id} -empmute -logFile \"{log}\"" +
+                (PeerHosting.Active ? " " + LocalPeerHosting.Argument : "")) {
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(exe),
@@ -253,6 +258,14 @@ internal static class HiddenServer
 
     private static void Fallback(Action classic, string why)
     {
+        // a peer-hosted world is never hosted the classic way: that would make its keeper a host again
+        if (PeerHosting.Active) {
+            EmpLog.Warning("Hidden server: not used, and this peer-hosted world is not hosted the usual way ({Why})", why);
+            EmpPop.Information("emp_peer_no_classic".Loc(why));
+            NetSession.Instance.ResetSession();
+            return;
+        }
+
         EmpLog.Warning("Hidden server: not used, the world is hosted the usual way ({Why})", why);
         EmpPop.Information("emp_hidden_fallback".Loc(why));
         try {

@@ -77,13 +77,14 @@ public class AIUseCrafterArgs : TaskArgsBase
             return DelegateProgress.Create(typeof(AI_UseCrafter)).SetDuration(Duration, 5);
         }
 
-        var crafter = Factory.Find() switch {
+        var crafter = TaskCache.FindOrAdopt(Factory) switch {
             Chara chara => new TraitSelfFactory { owner = chara },
             Thing { trait: TraitCrafter trait } => trait,
             _ => null,
         };
 
         if (crafter is null) {
+            EmpLog.Information("Remote craft refused: crafter uid {Uid} is not here", Factory.Uid);
             return new NoGoal();
         }
 
@@ -118,7 +119,7 @@ public class AIUseCrafterArgs : TaskArgsBase
         var slots = recipe.ingredients;
         var bound = new List<object>();
         for (var i = 0; i < Targets.Count && i < slots.Count; i++) {
-            if (Targets[i].Find() is not Thing thing) {
+            if (TaskCache.FindOrAdopt(Targets[i]) is not Thing thing) {
                 continue;
             }
 

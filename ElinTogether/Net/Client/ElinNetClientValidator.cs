@@ -66,6 +66,12 @@ internal partial class ElinNetClient
         EmpLog.Debug("Host version verified: mod {HostModVersion}, game {HostGameVersion}",
             request.HostModVersion, request.HostGameVersion);
 
+        // a peer-hosted world: whoever keeps it runs the build its signed rules allow (PLAN_peer_hosted_server row 12)
+        if (PeerHosting.Active && PeerRules.CheckBuild(request.HostModVersion) is { } build) {
+            LeaveKeeper(build);
+            return;
+        }
+
         // not the same version of Elin: the host decides whether that is allowed, this player is told
         if (!BuildVersionIntegrity.SameGame(request.HostGameVersion)) {
             EmpPop.Information("emp_game_version_differs".Loc(Host.User.Name, request.HostGameVersion,

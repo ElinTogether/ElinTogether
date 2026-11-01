@@ -137,6 +137,20 @@ internal static class OtherPlayerPatch
             };
         }
 
+        // teams learning on their own: the weak spot is read in the striker's team's codex, not the local team's
+        // (the codex reads before the kill's AddKill, which CodexPatch counts for the killer's team)
+        var getPlayer = AccessTools.PropertyGetter(typeof(EClass), nameof(EClass.player));
+        var addKill = AccessTools.Method(typeof(CodexManager), nameof(CodexManager.AddKill));
+        var kill = list.FindIndex(c => c.Calls(addKill));
+        var origin = AccessTools.Method(typeof(Card), nameof(Card.DamageHP), [typeof(long), typeof(int), typeof(int), typeof(AttackSource), typeof(Card),
+            typeof(bool), typeof(Thing), typeof(Chara), typeof(int)]).GetParameters().First(p => p.Name == "origin").Position + 1;
+        for (var i = 1; i < (kill < 0 ? list.Count : kill); i++) {
+            if (list[i].LoadsField(codex) && list[i - 1].Calls(getPlayer)) {
+                list[i - 1] = new CodeInstruction(OpCodes.Ldarg_S, (byte)origin).MoveLabelsFrom(list[i - 1]);
+                list[i] = CodeInstruction.Call(typeof(TeamKnowledge), nameof(TeamKnowledge.CodexOf)).MoveLabelsFrom(list[i]);
+            }
+        }
+
         return list;
     }
 
@@ -251,6 +265,38 @@ internal static class OtherPlayerPatch
         }
 
         return list;
+    }
+
+    /// <summary>
+    ///     A finishing blow by a planter (665) grows a plant that becomes a minion of "the player" when the striker is
+    ///     of the party: the host's. The player behind the striker
+    /// </summary>
+    [HarmonyTranspiler]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
+    internal static IEnumerable<CodeInstruction> OnPlanterFinish(IEnumerable<CodeInstruction> instructions)
+    {
+        var makeMinion = AccessTools.Method(typeof(Chara), nameof(Chara.MakeMinion));
+        var list = instructions.ToList();
+        var planter = list.FindIndex(c => c.LoadsConstant(665));
+        for (var i = System.Math.Max(planter, 1); planter >= 0 && i < list.Count; i++) {
+            if (list[i].Calls(makeMinion) && list[i - 1].LoadsConstant((int)MinionType.Friend)) {
+                // (origin, the second argument)
+                list.Insert(i, new CodeInstruction(OpCodes.Ldarg_2));
+                list[i + 1] = CodeInstruction.Call(typeof(OtherPlayerPatch), nameof(MakePlantOf)).MoveLabelsFrom(list[i + 1]);
+                break;
+            }
+        }
+
+        return list;
+    }
+
+    internal static void MakePlantOf(Chara plant, Chara master, MinionType type, Card? origin)
+    {
+        if (IsMultiplayer && master == EClass.pc && PlayerKarma.PlayerBehind(origin) is { } player) {
+            master = player;
+        }
+
+        plant.MakeMinion(master, type);
     }
 
     internal static void MakeMinionOf(Chara plant, Chara master, MinionType type)

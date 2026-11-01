@@ -44,6 +44,11 @@ internal static class ReplayBuffer
 
     internal static IEnumerator Run()
     {
+        // a dedicated server has no screen to film and nobody reports a bug from it (memory audit 2026-11-01)
+        if (EmpServer.Requested) {
+            yield break;
+        }
+
         var endOfFrame = new WaitForEndOfFrame();
         var wait = new WaitForSecondsRealtime(Every);
         while (true) {
@@ -165,6 +170,16 @@ internal static class ReplayBuffer
 
     /// <summary>Whether a report has a picture of the game screen to take</summary>
     internal static bool HasGamePicture => _game is not null || HasFrames;
+
+    /// <summary>How many pictures the video holds (the server's memory log)</summary>
+    internal static int FrameCount
+    {
+        get {
+            lock (_frames) {
+                return _frames.Count;
+            }
+        }
+    }
 
     /// <summary>Whether the video has a picture</summary>
     internal static bool HasFrames

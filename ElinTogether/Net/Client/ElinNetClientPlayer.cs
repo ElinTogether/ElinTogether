@@ -316,6 +316,11 @@ internal partial class ElinNetClient
         // on that same map, the cover goes away at once instead of the 4 s fade of a first join
         _coverZone = core.IsGameStarted && _zone is { } standing ? standing.uid : 0;
 
+        // the world of the player keeping our map after all (no soft stay, or given up): the game ran still until now
+        if (IsZoneSession) {
+            (Session.Transport as ElinNetClient)?.EndSoftStay();
+        }
+
         // on the host link: back from independent travel, the probe rebuilds the whole game
         // on a zone session: joining another player's zone, the probe is its world
         // also when refused as a guest right after leaving the host map: not away yet, but coming back all the same

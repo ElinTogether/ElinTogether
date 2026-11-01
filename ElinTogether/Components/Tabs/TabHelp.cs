@@ -13,7 +13,7 @@ namespace ElinTogether.Components;
 /// </summary>
 internal static class TabHelp
 {
-    private const string Repo = "https://github.com/jeanfreger/elin-together-independence";
+    internal const string Repo = "https://github.com/jeanfreger/elin-together-independence";
 
     // topic, the tab where it is done (tab name, its label id)
     private static readonly (string Id, string Tab, string Label)[] Topics = [
@@ -22,15 +22,14 @@ internal static class TabHelp
         ("teams", "emp_tab_team", "emp_ui_tab_team"),
         ("lands", "emp_tab_lands", "emp_ui_tab_lands"),
         ("trading", TabPlayers.TabName, "emp_ui_tab_players"),
-        ("duels", "emp_tab_server", "emp_ui_tab_server"),
+        ("duels", TabServerConfiguration.RulesLink, "emp_ui_tab_server"),
     ];
 
-    /// <summary>The Help pages, shown as sub-tabs of the Server info tab</summary>
+    /// <summary>The Help page, the last sub-tab of World rules in a game (About went: Status shows the version)</summary>
     public static List<(string, System.Action<YKVertical>)> Pages()
     {
         return [
             ("emp_ui_sub_how".lang(), BuildHow),
-            ("emp_help_about".lang(), BuildAbout),
         ];
     }
 
@@ -61,7 +60,7 @@ internal static class TabHelp
             var card = text.Card($"emp_help_{id}_t".lang());
             card.Text($"emp_help_{id}".lang());
             card.ButtonRow().RowButton("emp_ui_help_open".Loc(label.lang()),
-                () => LayerElinTogether.Instance?.Window.SwitchContent(tab));
+                () => LayerElinTogether.Instance?.Open(tab));
             for (var i = 0; i < rows.Count; i++) {
                 if (rows[i].GetComponent<UnityEngine.UI.Image>() is { } shade) {
                     shade.color = i == index ? new(0.28f, 0.22f, 0.13f, 0.14f) : new(0f, 0f, 0f, 0.001f);
@@ -80,15 +79,6 @@ internal static class TabHelp
         }
 
         Show(Mathf.Clamp(_topic, 0, Topics.Length - 1), false);
-    }
-
-    private static void BuildAbout(YKVertical page)
-    {
-        var card = page.Card("emp_help_about".lang());
-        card.Text("emp_help_version".Loc(""));
-        card.KeyValue("emp_ui_kv_version".lang(), ModInfo.BuildVersion);
-        card.TextSmall("emp_help_about_desc".lang(), FontColor.Gray);
-        card.ButtonRow().RowButton("emp_help_github".lang(), () => Application.OpenURL(Repo));
     }
 
     // the report's draft, kept while the window is closed and opened again, cleared once sent

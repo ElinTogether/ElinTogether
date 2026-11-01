@@ -99,6 +99,13 @@ internal partial class ElinNetClient
     /// <param name="rules"></param>
     private void OnSessionRulesUpdate(NetSessionRules rules)
     {
+        // a peer-hosted world: the rules of whoever keeps it are the signed ones, or this game leaves it (the keeper's
+        // own game too, a guest of its hidden server like everyone)
+        if (Helper.PeerHosting.Active && Helper.PeerRules.Check(rules) is { } differ) {
+            LeaveKeeper(differ);
+            return;
+        }
+
         // the first rules of this host are the snapshot of the join; after that, a change is told in one line and
         // the card "This world's rules" is drawn again (before them the session holds this game's own config)
         var changed = Components.SettingsTable.NoticeChanges(_rulesReceived ? NetSession.Instance.Rules : null, rules);
@@ -111,6 +118,18 @@ internal partial class ElinNetClient
     }
 
     private bool _rulesReceived;
+
+    /// <summary>
+    ///     This keeper of a peer-hosted world does not play its signed rules (or build): left, the reason shown by the
+    ///     disconnection's own window (OnPeerDisconnected; a reason of ours, so no reconnection is tried). The
+    ///     store hears of it with P3 (report)
+    /// </summary>
+    internal void LeaveKeeper(string why)
+    {
+        var reason = Common.EmpDisconnectInfo.With(Common.EmpDisconnectInfo.PeerRules, why);
+        EmpLog.Warning("Peer-hosted world: the keeper {@Peer} is left, its rules are not the signed ones: {Why}", Host, why);
+        Socket.Disconnect(Host, reason);
+    }
 
 #region Scheduler Jobs
 

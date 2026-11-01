@@ -19,6 +19,9 @@ public static class CardCache
     private static readonly List<int> _deadUids = [];
     private static float _nextSweep;
 
+    /// <summary>Entries of the table, cards kept alive, cards waiting to be destroyed (the server's memory log)</summary>
+    internal static (int Cards, int KeptAlive, int Invalid) Counts => (_cards.Count, _keepalive.Count, _invalidCards.Count);
+
     internal static void Add(Card card)
     {
         var stored = Find(card.uid);

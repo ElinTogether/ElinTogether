@@ -161,6 +161,17 @@ public class WorldDateAdvanceDelta : ElinDelta
             if (world.date.month % 2 == 0) {
                 player.holyWell++;
             }
+
+            // the season's look of the ground and of the things on it (GameDate.AdvanceMonth): a guest on the host's
+            // map kept the old season's until it changed map
+            if (_map is { } map) {
+                map.RefreshAllTiles();
+                foreach (var thing in map.things) {
+                    if (thing.renderer.hasActor) {
+                        thing.renderer.RefreshSprite();
+                    }
+                }
+            }
         }
 
         if (now / Date.YearToken > before / Date.YearToken) {

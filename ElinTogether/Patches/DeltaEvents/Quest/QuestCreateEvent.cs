@@ -22,9 +22,14 @@ internal static class QuestCreateEvent
             : null;
         // the "Reroll Quests" button of the board in a client's game: the game that keeps the map draws them
         // (the button spent the influence here and drew nothing)
-        if (force && !ElinDelta.IsApplying && session.Connection is ElinNetClient client && __instance == EClass._zone) {
+        // and its free draw (the board opened, LayerQuestBoard): the day's new offers are drawn there too, else a
+        // guest on the host's map saw only the offers of the host's last own look at the board. On arrival the
+        // request of the visit asks for it (ZoneVisitEvent)
+        if (!ElinDelta.IsApplying && session.Connection is ElinNetClient client && __instance == EClass._zone &&
+            (force || !ZoneVisitEvent.IsVisiting)) {
             client.Delta.AddRemote(new QuestRerollDelta {
                 ZoneUid = __instance.uid,
+                Kind = force ? QuestRerollDelta.Reroll : QuestRerollDelta.Board,
             });
         }
 

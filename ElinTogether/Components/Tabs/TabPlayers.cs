@@ -600,7 +600,7 @@ internal class TabPlayers : TabEmpBase
         var self = NetSession.Instance.Self;
         ulong me = self?.User ?? UserData.Me;
         var mine = player.IsMe;
-        var admin = isHost || ModerationDelta.AdminIds.Contains(me);
+        var admin = PeerHosting.IAmAdmin();
         var extras = isHost ? ElinNetHost.AdminExtrasOn : NetSession.Instance.Rules.AdminExtras;
         var moderator = !admin && extras && ModerationDelta.ModeratorIds.Contains(me);
         var peerIndex = player.PeerIndex;

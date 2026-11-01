@@ -29,6 +29,11 @@ internal static class ServerInfo
     /// </summary>
     internal static string ReadFile(string name)
     {
+        // a peer-hosted world: the signed texts, whatever the keeper's files say
+        if (PeerRules.Text(name) is { } signed) {
+            return signed;
+        }
+
         try {
             var text = File.Exists(FilePath(name)) ? File.ReadAllText(FilePath(name)).Replace("\r", "").Trim() : "";
             return text.Length > MaxLength ? text.Substring(0, MaxLength) : text;

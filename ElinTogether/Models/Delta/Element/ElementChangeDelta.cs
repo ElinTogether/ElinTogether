@@ -40,6 +40,11 @@ public class ElementChangeDelta : ElinDelta
 
         ele.CheckLevelBonus(chara.elements);
         ele.OnChangeValue();
+        // the god's blessing follows the faith skill (85) as it does in the player's own game (Player.OnAdvanceDay);
+        // 306 refreshes it in its own OnChangeValue (SKILL)
+        if (Element == 85) {
+            chara.RefreshFaithElement();
+        }
 
         EmpLog.Debug("Applying element {ElementId} on chara {Uid}: {ElementValues}",
             Element, chara.uid, Value);

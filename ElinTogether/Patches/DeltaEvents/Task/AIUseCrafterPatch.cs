@@ -263,7 +263,9 @@ internal static class AIUseCrafterPatch
                 SE.Play(crafter.idSoundBG);
             }
 
-            List<Thing> targets = [..args.Targets.Select(remote => (remote?.Find() as Thing)!)];
+            // (an ingredient in a chest of the map may be one this game never registered: GitHub issue 33, the
+            // guest's garbage in a sturdy box beside the Millstone)
+            List<Thing> targets = [..args.Targets.Select(remote => (TaskCache.FindOrAdopt(remote) as Thing)!)];
             var blessed = BlessedState.Normal;
 
             using (ElinDelta.Simulate()) {
@@ -279,6 +281,15 @@ internal static class AIUseCrafterPatch
 
             for (var i = 0; i < targets.Count; i++) {
                 if (!IsIngValid(targets, i)) {
+                    // logged and told: the player saw its craft run and nothing come of it (GitHub issue 33)
+                    EmpLog.Information(
+                        "Remote craft of chara {OwnerUid} at {CrafterId} refused: ingredient {Slot} (uid {Uid}) {Reason}",
+                        act.owner.uid, crafter.owner.id, i, i < args.Targets.Count ? args.Targets[i]?.Uid ?? 0 : 0,
+                        targets[i] is { isDestroyed: false } refused ? $"{refused.id} is not taken here" : "is not here");
+                    using (MsgRelayContext.RedirectTo(act.owner)) {
+                        Msg.SayNothingHappen();
+                    }
+
                     NotifyClientCancel(act);
                     yield return act.Success();
                 }

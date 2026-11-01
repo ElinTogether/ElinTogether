@@ -22,7 +22,8 @@ internal class PauseGame
 
         // our map and our character are with the host, its answer is on its way: nothing moves here meanwhile,
         // see ElinNetClient.IsAwaitingSoftRejoin
-        if (NetSession.Instance.Transport is ElinNetClient { IsAwaitingSoftRejoin: true }) {
+        // (or the player keeping the map we stay on is joined, see ElinNetClient.IsAwaitingSoftStay)
+        if (NetSession.Instance.Transport is ElinNetClient { IsAwaitingSoftRejoin: true } or ElinNetClient { IsAwaitingSoftStay: true }) {
             __result = true;
             return;
         }

@@ -61,6 +61,31 @@ internal static class TaskCache
         }
     }
 
+    /// <summary>
+    ///     The card a player names, adopted into the card cache when this game (the host) has it but uncached: in a
+    ///     chest of the map, never registered. Null when it really is not here
+    /// </summary>
+    internal static Card? FindOrAdopt(RemoteCard? target)
+    {
+        if (target is null) {
+            return null;
+        }
+
+        if (target.Find() is { } card) {
+            return card;
+        }
+
+        if (!NetSession.Instance.IsHost || FindUncached(target) is not { isDestroyed: false } real) {
+            return null;
+        }
+
+        CardCache.Set(real);
+        _adopted++;
+        EmpLog.Warning("Uid {Uid} named by a player is here but was not in the card cache, adopted ({Adopted} so far)",
+            target.Uid, _adopted);
+        return real;
+    }
+
     private static int _adopted;
     private static int _refused;
 
@@ -73,7 +98,8 @@ internal static class TaskCache
             return EClass._map?.FindChara(target.Uid);
         }
 
-        return target.Parent?.Find()?.things.Find(target.Uid) ?? EClass._map?.FindThing(target.Uid);
+        // (the chest itself may be one never registered)
+        return FindOrAdopt(target.Parent)?.things.Find(target.Uid) ?? EClass._map?.FindThing(target.Uid);
     }
 
     internal static void RequestCancel(ElinNetBase net, RemoteCard owner, AIAct act)

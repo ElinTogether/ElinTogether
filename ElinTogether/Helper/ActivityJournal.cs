@@ -32,6 +32,9 @@ internal static class ActivityJournal
     // a guest's copy, newest last
     private static readonly List<Entry> Told = [];
 
+    /// <summary>A guest's copy of the journal, in lines (the server's memory log)</summary>
+    internal static int ToldCount => Told.Count;
+
     /// <summary>
     ///     Recording is on: the host's box, in the game that keeps the book (never in a zone session)
     /// </summary>

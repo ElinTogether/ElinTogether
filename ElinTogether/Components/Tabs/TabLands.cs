@@ -15,43 +15,37 @@ namespace ElinTogether.Components;
 ///     everyone else may do there, its offline protection and its container log, then the team bank and the player's
 ///     delivery box. The leader changes the rules; the others see the same drop-downs, greyed
 /// </summary>
-internal class TabLands : TabEmpBase
+internal static class TabLands
 {
     private static readonly string[] LandIcons = ["icon_container", "icon_influence"];
 
-    public override void OnLayout()
+    /// <summary>
+    ///     The Lands page, a sub-tab of Team (user 2026-11-01: fewer tabs; Team only shows it when teams are on)
+    /// </summary>
+    internal static void Build(YKVertical page)
     {
-        if (Waits()) {
-            return;
-        }
-
-        if (!TabTeam.TeamsOn) {
-            TabTeam.BuildOff(this, "emp_ui_tab_lands");
-            return;
-        }
-
         var me = EClass.pc.uid;
         var mine = Teams.TeamOf(me);
         // (a player in no team: its own lands, its own rules)
         var lands = Teams.LandsOf(StoryOwner.Of(me)).ToList();
         if (mine == Teams.Wanderers && lands.Count == 0) {
-            TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_noteam".lang(), "emp_ui_land_go_team".lang(),
-                () => LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_team"));
-            BuildBoxes(this, mine);
-            BuildCommons(this);
+            TabTeam.EmptyPage(page.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_noteam".lang(), "emp_ui_land_go_team".lang(),
+                () => page.GetComponentInParent<TabTeam>()?.ShowPage(0));
+            BuildBoxes(page, mine);
+            BuildCommons(page);
             return;
         }
 
         if (lands.Count == 0) {
-            TabTeam.EmptyPage(this.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_none".lang());
-            BuildBoxes(this, mine);
-            BuildCommons(this);
+            TabTeam.EmptyPage(page.Card("emp_ui_tab_lands".lang()), LandIcons, "emp_ui_land_none".lang());
+            BuildBoxes(page, mine);
+            BuildCommons(page);
             return;
         }
 
         // the journal's two pages: the lands (scrolled past five) and the boxes on the left, the picked land's rules
         // on the right (a card per land ran under the window's bottom edge)
-        var (left, right) = this.Book();
+        var (left, right) = page.Book();
         var picked = lands.Contains(_picked) ? _picked : lands[0];
         var card = left.Card("emp_ui_tab_lands".lang());
         // (whose lands: the team's emblem and name over them)

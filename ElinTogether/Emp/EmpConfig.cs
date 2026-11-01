@@ -1093,6 +1093,16 @@ internal partial class EmpConfig
                 "本地UDP测试身份（仅 Debug 构建），0 为使用 Steam 账号",
                 new AcceptableValueRange<int>(0, 999)));
 
+        // (no page shows it: a stand-in until the store says which world is peer-hosted, PLAN_peer_hosted_server P4)
+        Dev.PeerHosted = config.Bind(
+            "Dev",
+            "PeerHosted",
+            false,
+            "Test of the world kept by its players: hosting always goes through the hidden server, whoever keeps the world is a plain guest of it, " +
+            "admins, bans and rules come from ElinMP/peer_hosting.json (the store replaces it), and a keeper whose rules differ is left. " +
+            "Same as the launch argument -emppeerhosted. Leave off\n" +
+            "玩家共同维护的世界测试：开放世界总是通过隐藏服务器，维护世界的人只是普通访客；管理员、封禁和规则来自 ElinMP/peer_hosting.json；访客会离开规则不同的维护者。与启动参数 -emppeerhosted 相同。请保持关闭");
+
         Dev.BotLaunchers = config.Bind(
             "Dev",
             "BotLaunchers",
@@ -1115,6 +1125,7 @@ internal partial class EmpConfig
     {
         internal static ConfigEntry<bool> Listener { get; set; } = null!;
         internal static ConfigEntry<int> Identity { get; set; } = null!;
+        internal static ConfigEntry<bool> PeerHosted { get; set; } = null!;
         internal static ConfigEntry<string> BotLaunchers { get; set; } = null!;
         internal static ConfigEntry<bool> BotAllActions { get; set; } = null!;
     }
