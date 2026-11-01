@@ -157,7 +157,9 @@ internal static class EmpUi
         var col = row.Vertical();
         col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         col.Layout.spacing = 0f;
+        // (what the controls leave, never the width of its words: a longer title moved the row's button)
         col.LayoutElement().flexibleWidth = 1f;
+        col.LayoutElement().preferredWidth = 0f;
         col.Text(title).SetSize(UIHelper.LabelSize);
         if (!string.IsNullOrEmpty(description)) {
             GreyLine(col, description!);
@@ -443,6 +445,7 @@ internal static class EmpUi
         col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         col.Layout.spacing = 0f;
         col.LayoutElement().flexibleWidth = 1f;
+        col.LayoutElement().preferredWidth = 0f;
         // one line each, cut with an ellipsis; the row keeps one height whatever the names
         // (the width the row leaves the words in a page of the book: a team chip with its name took the most of it and
         // the names broke over two lines; the team is now one small mark, its name on the player's page)
@@ -725,12 +728,16 @@ internal static class EmpUi
 
     /// <summary>
     ///     A clipped frame of a fixed height holding a list that scrolls by wheel or drag (the Other teams list); returns
-    ///     the list to fill
+    ///     the list to fill. <paramref name="fillPage" />: the frame also takes, once, the height the page leaves
+    ///     empty under it in the window (TabEmpBase.FillPage)
     /// </summary>
-    public static YKVertical ScrollList(this YKLayout parent, float height)
+    public static YKVertical ScrollList(this YKLayout parent, float height, bool fillPage = false)
     {
         var frame = new GameObject("ScrollList", typeof(RectTransform), typeof(LayoutElement), typeof(RectMask2D), typeof(Image), typeof(ScrollRect));
         frame.transform.SetParent(parent.transform, false);
+        if (fillPage) {
+            frame.AddComponent<TabEmpBase.FillsPage>();
+        }
         var element = frame.GetComponent<LayoutElement>();
         element.minHeight = element.preferredHeight = height;
         element.flexibleWidth = 1f;
@@ -936,6 +943,8 @@ internal static class EmpUi
         var element = col.LayoutElement();
         element.flexibleWidth = 1f;
         element.minWidth = 0f;
+        // (the row's room after the box and the marks: the words wrap in it instead of widening it)
+        element.preferredWidth = 0f;
         return col;
     }
 
