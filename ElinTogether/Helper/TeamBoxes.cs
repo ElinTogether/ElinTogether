@@ -384,7 +384,10 @@ internal static class TeamBoxes
         }
 
         foreach (var (peer, chara) in host.ActiveRemoteCharas) {
-            if (host.IsAwayPeer(peer)) {
+            // (away, or loading a map or a whole world, e.g. a soft rejoin given up: the copies it held belong to the
+            // game it leaves, Replica. It is sent them again once it stands on the map, bench team_ranks_check W1:
+            // a guest whose copies were lost kept none of its team's bank, its owner had not changed)
+            if (host.IsAwayPeer(peer) || !host.IsSettled(peer)) {
                 _told.Remove(peer);
                 continue;
             }
@@ -394,12 +397,14 @@ internal static class TeamBoxes
                 continue;
             }
 
-            _told[peer] = owner;
-            host.SendDeltaTo(peer, new TeamBoxDelta {
-                Bank = LZ4Bytes.Create(Personal(chara.uid)),
-                Delivery = LZ4Bytes.Create(Box(owner, Delivery)),
-                TeamBank = TeamOf(chara.uid) is > 0 and var team ? LZ4Bytes.Create(Box(team, Bank)) : null,
-            });
+            // (noted only once it went: a send that failed is tried again at the next poll)
+            if (host.SendDeltaTo(peer, new TeamBoxDelta {
+                    Bank = LZ4Bytes.Create(Personal(chara.uid)),
+                    Delivery = LZ4Bytes.Create(Box(owner, Delivery)),
+                    TeamBank = TeamOf(chara.uid) is > 0 and var team ? LZ4Bytes.Create(Box(team, Bank)) : null,
+                })) {
+                _told[peer] = owner;
+            }
         }
     }
 
