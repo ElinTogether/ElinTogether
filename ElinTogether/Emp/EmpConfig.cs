@@ -153,6 +153,28 @@ internal partial class EmpConfig
             "The Elin Together version whose patch notes you have seen (set by itself when the Patch notes tab is opened)\n" +
             "你已查看过更新说明的 Elin Together 版本（打开“更新说明”标签页时自动设置）");
 
+        // the update check (Helper.UpdateCheck): on by default, the last answer, the version already told about
+        Client.CheckUpdates = config.Bind(
+            "Client",
+            "CheckUpdates",
+            true,
+            "Check on GitHub, at most every six hours, whether a newer Elin Together was released, and say so\n" +
+            "每六小时最多在 GitHub 检查一次是否有更新的 Elin Together 版本，并提示");
+
+        Client.UpdateLatest = config.Bind(
+            "Client",
+            "UpdateLatest",
+            "",
+            "The last update check, set by itself: time|version|page\n" +
+            "上次检查更新的结果（自动设置）");
+
+        Client.UpdateAnnounced = config.Bind(
+            "Client",
+            "UpdateAnnounced",
+            "",
+            "The newer version already announced by a message (set by itself)\n" +
+            "已通过消息提示过的新版本（自动设置）");
+
         Client.PingKeybind = config.Bind(
             "Client",
             "PingKeybind",
@@ -1117,6 +1139,9 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> FetchCodeMods { get; set; } = null!;
         internal static ConfigEntry<string> TrustedHosts { get; set; } = null!;
         internal static ConfigEntry<string> PatchNotesSeen { get; set; } = null!;
+        internal static ConfigEntry<bool> CheckUpdates { get; set; } = null!;
+        internal static ConfigEntry<string> UpdateLatest { get; set; } = null!;
+        internal static ConfigEntry<string> UpdateAnnounced { get; set; } = null!;
     }
 
     internal static class Server

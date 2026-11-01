@@ -60,6 +60,14 @@ internal class TabClientConfiguration : TabEmpBase
                 });
                 EMono.ui.AddLayer(l);
             }, EmpConfig.Client.PingKeybind.Description.Description);
+
+        // the update check (UpdateCheck), on by default
+        var updates = EmpConfig.Client.CheckUpdates;
+        card.ToggleRow("emp_ui_cl_check_updates".lang(), "emp_ui_cl_desc_check_updates".lang(), updates.Value, v => {
+            updates.Value = v;
+            UpdateCheck.Begin();
+            Patches.TitleButtonPatch.ShowUpdate();
+        }).SetTooltipLang(updates.Description.Description);
     }
 
     // the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice

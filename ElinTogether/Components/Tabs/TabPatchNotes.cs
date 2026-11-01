@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ElinTogether.Helper;
+using ElinTogether.LangMod;
 using Newtonsoft.Json;
 using UnityEngine;
 using YKF;
@@ -91,6 +92,10 @@ internal class TabPatchNotes : TabEmpBase
         var notes = Notes;
         var (left, right) = page.Book();
         var list = left.Card("emp_ui_tab_patchnotes".lang());
+        if (UpdateCheck.Newer is { } newer) {
+            list.Text("emp_update_newer".Loc(newer), FontColor.Good);
+        }
+
         if (notes.Count == 0) {
             list.Text("emp_ui_patchnotes_none".lang());
             return;
