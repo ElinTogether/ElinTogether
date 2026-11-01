@@ -84,6 +84,12 @@ public class TeamsDelta : ElinDelta
     [Key(11)]
     public int[]? QuestSharers { get; init; }
 
+    /// <summary>
+    ///     Chara uid -> the team that accepted its request while it was in another team, waiting for its choice
+    /// </summary>
+    [Key(12)]
+    public Dictionary<int, int>? Offers { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         return "not a request";
