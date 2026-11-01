@@ -84,8 +84,9 @@ internal partial class EmpConfig
             return;
         }
 
+        // no popup here: every save of the file from a page came back as "settings changed (xN)". A friend is told
+        // a real change of a rule it plays by (SettingsTable.NoticeChanges, emp_ui_rules_changed)
         var config = EmpMod.Instance.Config;
-        EmpPop.PopupInternal("emp_ui_config_changed".lang());
 
         config.SaveOnConfigSet = false;
         config.Reload();

@@ -14,9 +14,10 @@ namespace ElinTogether.Components;
 /// <summary>
 ///     The rules page ("World rules", step 6 of dev/PLAN_multiplayer_hub.md), the same page for everyone: the host
 ///     edits, a friend reads what the host told (SettingsTable.FromRules, as before). A banner says who decides,
-///     three preset cards, a search box, then a collapsible group per card of SettingsTable with each row as title,
-///     grey line, control; the advanced rows are folded per group. Changes apply at once. Searching, folding and
-///     jumping only show or hide what is built (no redraw), so the typed text stays
+///     the preset cards and the seven main rules on one page; everything else behind one "Advanced rules" fold that
+///     opens the sub-tabs of the groups (user 2026-11-01: clear for a new player, no long texts). A row's explanation
+///     is its hover tooltip and a small "?" (it was a grey paragraph under each row). A friend sees only what differs
+///     from Recommended. Changes apply at once
 /// </summary>
 internal class TabServerConfiguration : TabEmpBase
 {
@@ -31,6 +32,11 @@ internal class TabServerConfiguration : TabEmpBase
     private static float _savedY;
     private static int _restore;
 
+    // the advanced rules are folded away until the host opens them; kept over redraws while the game runs, never
+    // stored. A jump to a folded row opens them, redraws and then jumps
+    private static bool _advancedOpen;
+    private static string? _pendingJump;
+
     private sealed class Line(SettingRow row, GameObject go, string hay, bool changed)
     {
         internal SettingRow Row => row;
@@ -39,9 +45,11 @@ internal class TabServerConfiguration : TabEmpBase
         internal bool Changed => changed;
     }
 
-    private sealed class Group(string id)
+    private sealed class Group(string id, int page)
     {
         internal string Id => id;
+        // (the sub-tab it is on: 0 for the main rules)
+        internal int Page => page;
         // (the group's page)
         internal GameObject Card = null!;
         internal string Title = "";
@@ -49,6 +57,8 @@ internal class TabServerConfiguration : TabEmpBase
     }
 
     private readonly List<Group> _groups = [];
+    // the rows built on this page, so a row under a choice is indented only when its choice is drawn above it
+    private readonly HashSet<string> _built = [];
     private bool _guest;
     private RuleSource _src = RuleSource.Current;
     private RuleSource _target = RuleSource.Defaults;
@@ -110,7 +120,19 @@ internal class TabServerConfiguration : TabEmpBase
         // (a custom world is compared with the recommended rules)
         _target = SettingsTable.PresetSource(preset == Custom ? 0 : preset);
 
-        // sub-tabs (user, 2026-10-28): the presets, then one page per group of rules
+        // a friend reads a short summary: what differs from Recommended, not every row read-only
+        if (_guest) {
+            SubTabs("server", [("", page => {
+                BuildBanner(page);
+                BuildPresetCards(page, preset);
+                BuildGuestSummary(page, rows);
+            })]);
+            return;
+        }
+
+        // the main page: presets, the seven main rules, then the fold; the groups of advanced rules as sub-tabs only
+        // once the fold is open (user, 2026-11-01)
+        var advanced = rows.Where(r => r.Advanced).ToList();
         var pages = new List<(string, System.Action<YKVertical>)> {
             ("emp_ui_sub_presets".lang(), page => {
                 // the save "Host a game" chose at the title screen: these rules, then Start (TabPlay.HostPick)
@@ -120,31 +142,114 @@ internal class TabServerConfiguration : TabEmpBase
 
                 BuildBanner(page);
                 BuildPresetCards(page, preset);
+                BuildMain(page, rows.Where(r => !r.Advanced).ToList());
                 if (preset == Custom) {
                     BuildDifferences(page, rows);
                 }
+                BuildAdvancedFold(page, advanced.Count(r => r.Id is not ("checks" or "bills")));
             }),
         };
-        // two groups of rules per pill (nine pills on two lines were not the game's look)
-        var filled = SettingsTable.Cards.Where(id => rows.Any(r => r.Card == id)).ToList();
-        for (var i = 0; i < filled.Count; i += 2) {
-            var ids = filled.Skip(i).Take(2).ToList();
-            pages.Add((string.Join(" & ", ids.Select(id => $"emp_ui_sub_{id}".lang())), page => {
-                foreach (var id in ids) {
-                    BuildGroup(page, id, rows.Where(r => r.Card == id).ToList());
-                }
-            }));
+        if (_advancedOpen) {
+            // two groups of rules per pill (nine pills on two lines were not the game's look)
+            var filled = SettingsTable.Cards.Where(id => advanced.Any(r => r.Card == id)).ToList();
+            for (var i = 0; i < filled.Count; i += 2) {
+                var ids = filled.Skip(i).Take(2).ToList();
+                var index = pages.Count;
+                pages.Add((string.Join(" & ", ids.Select(id => $"emp_ui_sub_{id}".lang())), page => {
+                    foreach (var id in ids) {
+                        BuildGroup(page, id, index, advanced.Where(r => r.Card == id).ToList());
+                    }
+                }));
+            }
         }
 
         SubTabs("server", pages);
         ApplyFilter();
     }
 
+    /// <summary>
+    ///     The seven rules a new host decides (who joins, characters, travel, combat pace, building, fights, when the
+    ///     host leaves), in one box on the first page
+    /// </summary>
+    private void BuildMain(YKVertical page, List<SettingRow> rows)
+    {
+        var group = new Group("main", 0) { Title = "emp_ui_sv_main_title".lang() };
+        var box = Vertical(page).Box(group.Title);
+        group.Card = box.gameObject;
+        box.Layout.spacing = UIHelper.RowSpacing * 2;
+        foreach (var row in rows) {
+            if (BuildRow(box, row) is { } line) {
+                group.Lines.Add(line);
+            }
+        }
+
+        _groups.Add(group);
+    }
+
+    /// <summary>
+    ///     "Advanced rules (N) >": opens the sub-tabs of the groups (and their pills); open, it folds them back
+    /// </summary>
+    private void BuildAdvancedFold(YKVertical page, int count)
+    {
+        var label = _advancedOpen ? "emp_ui_sv_adv_hide".lang() : "emp_ui_sv_adv_show".Loc(count);
+        var button = Vertical(page).ButtonRow().RowButton(label, () => {
+            _advancedOpen = !_advancedOpen;
+            SetSubTab("server", _advancedOpen ? 1 : 0);
+            LayerElinTogether.Instance?.Reopen();
+        });
+        button.SetTooltipLang("emp_ui_sv_adv_tip");
+    }
+
+    /// <summary>
+    ///     A friend's page: the rules that differ from Recommended, one line each (label, value, the recommended one);
+    ///     a world on Recommended says so in one line
+    /// </summary>
+    private void BuildGuestSummary(YKLayout page, List<SettingRow> rows)
+    {
+        var diff = rows.Where(r => r.Under is null && r.Id is not ("checks" or "bills" or "client_mods") &&
+                                   IsChanged(r, _src, RuleSource.Defaults)).ToList();
+        if (diff.Count == 0) {
+            page.Card("emp_ui_sv_diff_title".Loc(0)).Text("emp_ui_sv_guest_all_recommended".lang()).SetSize(UIHelper.LabelSize);
+            return;
+        }
+
+        var card = page.Card("emp_ui_sv_diff_title".Loc(diff.Count));
+        var list = card.ListArea(diff.Count, 10, 24f);
+        foreach (var row in diff) {
+            var line = list.Horizontal();
+            line.Layout.childForceExpandWidth = false;
+            line.Layout.childAlignment = TextAnchor.MiddleLeft;
+            line.Layout.spacing = 6f;
+            var text = line.Text("emp_ui_sv_diff_line".Loc(row.Label, ValueText(row, _src), ValueText(row, RuleSource.Defaults)));
+            text.SetSize(UIHelper.LabelSize);
+            text.LayoutElement().flexibleWidth = 1f;
+            Hint(line, row.Description);
+        }
+    }
+
+    /// <summary>
+    ///     The small "?" after a row's title: its explanation as a hover tooltip, and in a popup on a click (no mouse
+    ///     hover on a Steam Deck's touch screen)
+    /// </summary>
+    private static void Hint(YKLayout parent, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) {
+            return;
+        }
+
+        var hint = parent.Button("?", () => EmpPop.Information(text));
+        hint.SetTooltipLang(text);
+        var element = hint.LayoutElement();
+        element.minWidth = element.preferredWidth = 30f;
+        element.preferredHeight = UIHelper.RowHeight - 6f;
+        element.flexibleWidth = 0f;
+    }
+
     // the index of Custom in SettingsTable.Presets: it writes nothing, it is what a world is when it matches no preset
     private static readonly int Custom = System.Array.IndexOf(SettingsTable.Presets, "custom");
 
     // the page of a group of rules: the presets page comes first
-    private int PageOf(Group group) => _groups.IndexOf(group) / 2 + 1;
+    private static int PageOf(Group group) => group.Page;
 
     protected override void OnSubTabShown(int index)
     {
@@ -232,6 +337,10 @@ internal class TabServerConfiguration : TabEmpBase
         row.Layout.spacing = UIHelper.RowSpacing * 1.5f;
         row.Layout.childAlignment = TextAnchor.UpperLeft;
         for (var i = 0; i < SettingsTable.Presets.Length; i++) {
+            if (!ShowPreset(i, preset)) {
+                continue;
+            }
+
             var index = i;
             var card = Vertical(row, true);
             card.LayoutElement().flexibleWidth = 1f;
@@ -268,8 +377,14 @@ internal class TabServerConfiguration : TabEmpBase
             pick.targetGraphic = face;
             pick.onClick.AddListener(() => {
                 if (index == Custom) {
-                    // Custom writes nothing: it opens the first group of rules, to edit by hand
-                    ShowSubTab(1);
+                    // Custom writes nothing: it opens the advanced rules, to edit by hand
+                    if (!_advancedOpen) {
+                        _advancedOpen = true;
+                        SetSubTab("server", 1);
+                        LayerElinTogether.Instance?.Reopen();
+                    } else {
+                        ShowSubTab(1);
+                    }
                     return;
                 }
 
@@ -285,6 +400,16 @@ internal class TabServerConfiguration : TabEmpBase
             });
         }
     }
+
+    // the index of the public server preset in SettingsTable.Presets
+    private static readonly int Official = System.Array.IndexOf(SettingsTable.Presets, "official");
+
+    /// <summary>
+    ///     The public server card is for its owner only: a dedicated server (-empserver), or the game that can sign the
+    ///     public server; a world already on it shows it too. A friend's host never sees it
+    /// </summary>
+    private static bool ShowPreset(int index, int current) =>
+        index != Official || current == Official || EmpServer.Requested || OfficialServer.CanHost();
 
     /// <summary>
     ///     What makes the world Custom, as a short list of the rows that differ from the recommended rules; a click
@@ -314,9 +439,9 @@ internal class TabServerConfiguration : TabEmpBase
     ///     the main rows on the left, the advanced ones on the right ("Advanced"); a group without advanced rows is cut
     ///     in two halves. A row stays with the rows under it
     /// </summary>
-    private void BuildGroup(YKVertical page, string id, List<SettingRow> rows)
+    private void BuildGroup(YKVertical page, string id, int pageIndex, List<SettingRow> rows)
     {
-        var group = new Group(id) { Title = $"emp_ui_sv_sec_{id}".lang() };
+        var group = new Group(id, pageIndex) { Title = $"emp_ui_sv_sec_{id}".lang() };
         // (a page holds two groups: each in a box of its own, so a search can hide one)
         var holder = Vertical(page);
         group.Card = holder.gameObject;
@@ -387,9 +512,10 @@ internal class TabServerConfiguration : TabEmpBase
         var block = parent.Vertical();
         block.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         block.Layout.spacing = 2f;
-        if (row.Under is not null) {
+        if (row.Under is not null && _built.Contains(row.Under)) {
             block.Layout.padding = new(UIHelper.SubIndent, 0, 0, 0);
         }
+        _built.Add(row.Id);
 
         var needs = NeedsText(row);
         var enabled = !_guest && needs is null;
@@ -413,6 +539,7 @@ internal class TabServerConfiguration : TabEmpBase
             element.flexibleWidth = 0f;
             toggle.AsRow();
             toggle.interactable = enabled;
+            toggle.SetTooltipLang(row.Description);
         }
 
         var words = top.Vertical();
@@ -421,6 +548,7 @@ internal class TabServerConfiguration : TabEmpBase
         words.LayoutElement().flexibleWidth = 1f;
         words.LayoutElement().minWidth = 0f;
         words.Text(row.Label).SetSize(UIHelper.LabelSize);
+        Hint(top, row.Description);
 
         if (changed) {
             MakeDot(top);
@@ -434,7 +562,7 @@ internal class TabServerConfiguration : TabEmpBase
             }
         }
 
-        // (a box setting's grey lines stay beside its box, under its title; a choice's go under its dropdown)
+        // (a box setting's warning stays beside its box, under its title; a choice's goes under its dropdown)
         var below = row.Entry is not null ? words : block;
         if (row is { Choice: { } choice }) {
             var current = choice.Read(_src);
@@ -453,10 +581,7 @@ internal class TabServerConfiguration : TabEmpBase
             dropdown.interactable = enabled;
         }
 
-        foreach (var text in row.Description.Split('\n')) {
-            below.TextSmall(text, FontColor.Gray);
-        }
-
+        // (the explanation is the "?" tooltip: the grey paragraph under every row made the page a wall of text)
         if (needs is not null) {
             below.TextSmall(needs, FontColor.Warning);
         }
@@ -506,7 +631,12 @@ internal class TabServerConfiguration : TabEmpBase
         var block = Vertical(parent);
         block.Layout.padding = new(UIHelper.SubIndent, 0, 0, 0);
         block.Layout.spacing = 2f;
-        block.Text(row.Label).SetSize(UIHelper.LabelSize);
+        var head = block.Horizontal();
+        head.Layout.childForceExpandWidth = false;
+        head.Layout.childAlignment = TextAnchor.MiddleLeft;
+        head.Layout.spacing = 6f;
+        head.Text(row.Label).SetSize(UIHelper.LabelSize);
+        Hint(head, row.Description);
         if (_guest) {
             block.TextSmall(value.Trim().Length > 0 ? value : "emp_ui_sv_client_mods_none".lang());
         } else {
@@ -521,10 +651,6 @@ internal class TabServerConfiguration : TabEmpBase
                     SettingsTable.Write([(EmpConfig.Server.ClientOnlyMods, clean)]);
                 }
             });
-        }
-
-        foreach (var text in row.Description.Split('\n')) {
-            block.TextSmall(text, FontColor.Gray);
         }
 
         return new(row, block.gameObject, $"{row.Label} {row.Description} {value}", false);
@@ -610,6 +736,12 @@ internal class TabServerConfiguration : TabEmpBase
     {
         var group = _groups.FirstOrDefault(g => g.Lines.Any(l => l.Row.Id == rowId));
         if (group is null) {
+            // a folded advanced row: open the fold, redraw, then jump (OnLayout)
+            if (!_guest && !_advancedOpen && SettingsTable.Rows().Any(r => r.Id == rowId && r.Advanced)) {
+                _advancedOpen = true;
+                _pendingJump = rowId;
+                LayerElinTogether.Instance?.Reopen();
+            }
             return;
         }
 
@@ -659,6 +791,12 @@ internal class TabServerConfiguration : TabEmpBase
     /// </summary>
     internal static void Tick()
     {
+        // a jump to a folded row, once the page drawn again with the fold open is shown (Jump)
+        if (_pendingJump is { } jump && _instance != null && _instance.isActiveAndEnabled) {
+            _pendingJump = null;
+            _instance.Jump(jump);
+        }
+
         if (_restore == 0 || _instance == null || !_instance.isActiveAndEnabled ||
             _instance.GetComponentInParent<ScrollRect>() is not { content: { } content } scroll) {
             return;

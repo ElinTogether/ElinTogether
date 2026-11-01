@@ -205,6 +205,8 @@ internal class TabMarket : TabEmpBase
         var rows = Rows().Where(Shows).ToList();
         if (rows.Count == 0) {
             _list.Text("emp_ui_market_empty".lang(), FontColor.Gray);
+            // (an empty board says what to do: the Post page, one click away)
+            _list.ButtonRow().RowButton("emp_ui_market_post_ad".lang(), () => ShowSubTab(1));
             return;
         }
 

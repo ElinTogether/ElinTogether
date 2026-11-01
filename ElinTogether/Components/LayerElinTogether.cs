@@ -431,15 +431,18 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
     /// <summary>
     ///     What waits on a tab, as a count after its label (user 2026-10-30): unread chat lines, the players asking
-    ///     to join the team this player leads, or the invitation it was sent
+    ///     to join the team this player leads, or the invitation it was sent, the letters not opened yet (Players, where
+    ///     the Mail sub-tab is). The HUD button's dot adds them up (HubDot)
     /// </summary>
-    private static int BadgeOf(string tab)
+    internal static int BadgeOf(string tab)
     {
         switch (tab) {
             case TabChat.TabName:
                 return ChatLog.Unread;
             case TabPatchNotes.TabName:
                 return TabPatchNotes.Unseen ? 1 : 0;
+            case TabPlayers.TabName:
+                return Mailbox.Unread;
             case "emp_tab_team" when EClass.core.IsGameStarted && NetSession.Instance.InGame && NetSession.Instance.Rules.UseTeams:
                 var me = EClass.pc.uid;
                 var team = Teams.TeamOf(me);

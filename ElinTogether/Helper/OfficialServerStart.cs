@@ -92,8 +92,8 @@ internal static class OfficialServerStart
 
     // PLAN_official_server section 3: English, then Chinese on the next lines
     private const string Motd =
-        "Welcome to the Elin Together public server (run by the mod's team, not by the developer of Elin). Beta: the world may roll back. Report bugs with Help > Report. Be kind.\n" +
-        "欢迎来到 Elin Together 公共服务器（由本模组团队运营，与 Elin 开发者无关）。测试阶段：世界可能回档。遇到问题请用 帮助 > 报告。请友善待人。";
+        "Welcome to the Elin Together public server (run by the mod's team, not by the developer of Elin). Beta: the world may roll back. Report bugs with Multiplayer > Report a bug. Be kind.\n" +
+        "欢迎来到 Elin Together 公共服务器（由本模组团队运营，与 Elin 开发者无关）。测试阶段：世界可能回档。遇到问题请用 多人游戏 > 反馈问题。请友善待人。";
 
     private const string Rules =
         "1. No harassment, spam or hate.\n" +

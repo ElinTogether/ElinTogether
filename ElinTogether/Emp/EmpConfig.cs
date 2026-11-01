@@ -160,6 +160,14 @@ internal partial class EmpConfig
             "Keybind for pinging map\n" +
             "键盘键位用于标记一处地点");
 
+        // the worlds (host and character) whose first-steps card this player has seen (Helper.FirstSteps)
+        Client.FirstStepsSeen = config.Bind(
+            "Client",
+            "FirstStepsSeen",
+            "",
+            "The worlds whose first-steps card was shown, as hostSteamId:characterUid;... Empty it to see the card again\n" +
+            "已显示过入门卡片的世界，格式为 主机SteamID:角色UID;...。清空即可再次显示");
+
         Server.SourceValidationSet = config.Bind(
             "Server",
             "SourceValidation",
@@ -1099,6 +1107,7 @@ internal partial class EmpConfig
     internal static class Client
     {
         internal static ConfigEntry<KeyCode> PingKeybind { get; set; } = null!;
+        internal static ConfigEntry<string> FirstStepsSeen { get; set; } = null!;
         internal static ConfigEntry<string> DepotPath { get; set; } = null!;
         internal static ConfigEntry<string> DepotPassword { get; set; } = null!;
         internal static ConfigEntry<string> ServerAddress { get; set; } = null!;
