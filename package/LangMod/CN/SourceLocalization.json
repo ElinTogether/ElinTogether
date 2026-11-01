@@ -1319,5 +1319,10 @@
     "LangGeneral.emp_tip_cfg_record_replay.text": "保留最近 30 秒的画面（每秒一张小图，仅保存在内存中），并随问题报告一起发送",
     "LangGeneral.emp_ui_play_friends_none.text": "现在没有好友在主持游戏。请让好友点击“邀请好友”。",
     "LangGeneral.emp_ui_play_more.text": "更多…",
-    "LangGeneral.emp_gain_capped.text": "已达到本服务器每小时收入上限，其余部分不予支付。"
+    "LangGeneral.emp_gain_capped.text": "已达到本服务器每小时收入上限，其余部分不予支付。",
+    "LangGeneral.emp_peer_no_classic.text": "这个世界由玩家轮流维护，只能通过隐藏服务器开放（{0}）：本次未开放。",
+    "LangGeneral.emp_peer_why_hidden.text": "此游戏无法运行隐藏服务器",
+    "LangGeneral.emp_peer_no_rules.text": "找不到此世界的签名规则",
+    "LangGeneral.emp_dc_peer_rules.text": "你已离开：维护此世界的玩家没有使用其签名规则。",
+    "LangGeneral.emp_dc_peer_rules_why.text": "你已离开：维护此世界的玩家没有使用其签名规则：{0}"
 }

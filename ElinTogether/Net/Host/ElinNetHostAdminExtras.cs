@@ -57,6 +57,10 @@ internal partial class ElinNetHost
 
     internal string MakeModerator(ulong user, bool on)
     {
+        if (PeerHostedServer) {
+            return "refused: a peer-hosted world has no moderators of its keeper's making";
+        }
+
         if (!AdminExtrasOn) {
             return "Moderators, freeze and jail are off (host box)";
         }

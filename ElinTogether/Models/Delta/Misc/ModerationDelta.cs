@@ -51,7 +51,8 @@ public class ModerationDelta : ElinDelta
         Muted.Clear();
         Muted.UnionWith(Mutes);
         AdminIds.Clear();
-        AdminIds.UnionWith(Admins);
+        // (a peer-hosted world: an admin is one of the signed list, whatever its keeper says)
+        AdminIds.UnionWith(Helper.PeerHosting.Active ? Admins.Where(Helper.PeerHosting.AdminSet().Contains) : Admins);
         ModeratorIds.Clear();
         ModeratorIds.UnionWith(Moderators);
         FrozenIds.Clear();

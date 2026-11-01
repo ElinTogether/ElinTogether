@@ -143,6 +143,7 @@ internal partial class ElinNetHost
         }
 
         Bans[user] = reason?.Trim() ?? "";
+        NoteSessionBan(user, true);
         EmpLog.Information("Admin: banned {User} ({Reason})", user, reason ?? "");
         AdminLog($"ban {user} ({reason})");
         foreach (var peer in Socket.Peers.Where(p => (ulong)p.User == user).ToList()) {
@@ -266,6 +267,10 @@ internal partial class ElinNetHost
 
     internal string MakeAdmin(ulong user, bool admin)
     {
+        if (PeerHostedServer) {
+            return "refused: the admins of a peer-hosted world are its signed list";
+        }
+
         if (admin) {
             Admins[user] = 1;
         } else if (!Admins.Remove(user)) {
@@ -414,6 +419,12 @@ internal partial class ElinNetHost
 
     internal static string Unban(ulong user)
     {
+        // (a peer-hosted world: the store's list is the world's, lifted there only)
+        if (PeerHostedServer && Helper.PeerHosting.IsBanned(user)) {
+            return $"{user} is banned by the signed list of this world, not here";
+        }
+
+        NoteSessionBan(user, false);
         KeptOut.Remove(user);
         if (!Bans.Remove(user)) {
             return $"{user} was not banned";

@@ -360,11 +360,7 @@ internal static class Market
     /// </summary>
     internal static bool IModerate()
     {
-        if (NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false }) {
-            return true;
-        }
-
         var me = (ulong)(NetSession.Instance.Self?.User ?? UserData.Me);
-        return ModerationDelta.AdminIds.Contains(me) || ModerationDelta.ModeratorIds.Contains(me);
+        return PeerHosting.IAmAdmin() || ModerationDelta.ModeratorIds.Contains(me);
     }
 }

@@ -225,7 +225,7 @@ internal static class ContainerLog
     // the menu shows the line to those the host would answer: admins, the land's team (the host checks again)
     private static bool MayAsk(Zone zone)
     {
-        if (NetSession.Instance.Transport is ElinNetHost || ModerationDelta.AdminIds.Contains(NetSession.Instance.Self?.User ?? UserData.Me)) {
+        if (PeerHosting.IAmAdmin()) {
             return true;
         }
 
