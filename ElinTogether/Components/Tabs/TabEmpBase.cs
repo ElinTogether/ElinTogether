@@ -324,6 +324,10 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
         // (a page built while hidden never drew its selected pill: draw it again now that the tab is shown)
         _pills?.RefreshButtons();
         FitButtons();
+        // (rows added since the build: their texts wrap inside their column and their flexible parts keep the
+        // width the row leaves them, so nothing changes size when a row is drawn again)
+        UIHelper.WrapTexts(this);
+        UIHelper.StableWidths(this);
         for (var i = 0; i < 2; i++) {
             this.RebuildLayout(true);
             this.RebuildLayoutTo<UIContent>();
@@ -357,5 +361,48 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
         FitButtons();
         this.RebuildLayout(true);
         this.RebuildLayoutTo<UIContent>();
+        if (FillPage()) {
+            this.RebuildLayout(true);
+            this.RebuildLayoutTo<UIContent>();
+        }
+    }
+
+    /// <summary>
+    ///     Marks a scrolled list (EmpUi.ScrollList) that takes the height the page leaves under it, once
+    /// </summary>
+    internal sealed class FillsPage : MonoBehaviour
+    {
+        public bool Done;
+    }
+
+    /// <summary>
+    ///     The first time a page with a filling list is laid out shown, the list grows by the height left empty under
+    ///     the page in the window's view (the Chat log, the Market board): the window's room is used, and the height
+    ///     is set once, so it never changes again while the page is open (lead dev 2026-11-01: wasted space, menus
+    ///     that change size). True when a list grew
+    /// </summary>
+    private bool FillPage()
+    {
+        var lists = GetComponentsInChildren<FillsPage>(false).Where(f => !f.Done).ToList();
+        if (lists.Count == 0 || GetComponentInParent<ScrollRect>() is not { viewport: { } view, content: { } content } ||
+            view.rect.height < 100f) {
+            return false;
+        }
+
+        var spare = view.rect.height - content.rect.height - 4f;
+        foreach (var list in lists) {
+            list.Done = true;
+        }
+
+        if (spare < 8f) {
+            return false;
+        }
+
+        foreach (var list in lists) {
+            var element = list.GetComponent<LayoutElement>();
+            element.minHeight = element.preferredHeight = element.preferredHeight + Mathf.Floor(spare / lists.Count);
+        }
+
+        return true;
     }
 }

@@ -155,6 +155,7 @@ internal class TabTeam : TabEmpBase
     private void BuildTeamPage(YKVertical page, int me, int mine)
     {
         var (left, right) = page.Book();
+        TeamOfferCard.Build(left, me);
         BuildInvitation(left, me);
         if (mine == Teams.Wanderers) {
             BuildFound(left);

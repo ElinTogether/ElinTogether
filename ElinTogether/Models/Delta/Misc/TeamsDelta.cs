@@ -85,10 +85,16 @@ public class TeamsDelta : ElinDelta
     public int[]? QuestSharers { get; init; }
 
     /// <summary>
+    ///     Chara uid -> the team that accepted its request while it was in another team, waiting for its choice
+    /// </summary>
+    [Key(12)]
+    public Dictionary<int, int>? Offers { get; init; }
+
+    /// <summary>
     ///     Team id -> its ranks and who holds which (<see cref="TeamRanks.Pack" />), for the teams that edited them; an
     ///     older host sends none and every team has the default ranks
     /// </summary>
-    [Key(12)]
+    [Key(13)]
     public Dictionary<int, string>? Ranks { get; init; }
 
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)

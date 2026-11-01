@@ -47,7 +47,8 @@ internal class TabChat : TabEmpBase
             Refill();
         }, Mathf.Max(0, Channels().IndexOf(_filter)));
 
-        _list = card.ScrollList(330f);
+        // (a fixed frame that takes the room the page leaves, once: a line that arrives only fills it)
+        _list = card.ScrollList(330f, true);
         _scroll = _list.GetComponentInParent<ScrollRect>();
         Refill();
 
@@ -124,6 +125,7 @@ internal class TabChat : TabEmpBase
 
         var box = row.Vertical();
         box.LayoutElement().flexibleWidth = 1f;
+        box.LayoutElement().preferredWidth = 0f;
         var input = box.InputText(_draft);
         input.field.characterLimit = 500;
         input.AllowAnyText();
@@ -188,7 +190,7 @@ internal class TabChat : TabEmpBase
             });
         }
 
-        ToBottom();
+        ToBottom(true);
     }
 
     private static bool Shows(ChatLog.Line line) => _filter < 0 || line.Channel == _filter;
@@ -202,17 +204,25 @@ internal class TabChat : TabEmpBase
             _ => "",
         };
         var head = tag.Length > 0 ? $"[{tag}] ".TagColor(ChatLog.ColorOf(line.Channel)) : "";
-        _list!.Text($"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{line.Who}: {line.Text}");
+        var text = _list!.Text($"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{line.Who}: {line.Text}");
+        // (the line wraps at the log's width: its prefab's fitter sized it to the unwrapped line, wider than the log)
+        UIHelper.WrapTexts(text);
         _count++;
     }
 
-    private void ToBottom()
+    // the log is at its newest line (or too short to scroll): a new line keeps it there
+    private bool AtBottom() => _scroll == null || _scroll.content == null || _scroll.viewport == null ||
+                               _scroll.content.rect.height <= _scroll.viewport.rect.height + 1f ||
+                               _scroll.verticalNormalizedPosition <= 0.02f;
+
+    // only the log is laid out again (never the window); scrolled to the newest line unless the player scrolled up
+    private void ToBottom(bool stick)
     {
         if (_list != null) {
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_list.transform);
         }
 
-        if (_scroll != null) {
+        if (stick && _scroll != null) {
             _scroll.verticalNormalizedPosition = 0f;
         }
     }
@@ -238,10 +248,11 @@ internal class TabChat : TabEmpBase
             return;
         }
 
+        var stick = AtBottom();
         foreach (var line in entries.Skip(entries.Count - added).Where(Shows)) {
             AddLine(line);
         }
 
-        ToBottom();
+        ToBottom(stick);
     }
 }

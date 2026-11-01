@@ -89,6 +89,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         TabEmpBase.BuildOnly = null;
         foreach (var tab in _tabs) {
             UIHelper.WrapTexts(tab);
+            UIHelper.StableWidths(tab);
             tab.RebuildLayout(true);
         }
     }
@@ -110,6 +111,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         }
 
         Window.transform.localPosition = _browsedPosition;
+        KeepWindowSize();
         try {
             JournalTabsOnTheLeft();
         }
@@ -130,6 +132,25 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 #if DEBUG
     private bool _debugHidden;
 #endif
+
+    /// <summary>
+    ///     The window keeps the size it opened at (Bound) whatever its tabs hold: a size fitter the window's prefab or
+    ///     a skin might put on it, or on its content view, is switched off, so a longer page scrolls inside it
+    /// </summary>
+    private void KeepWindowSize()
+    {
+        foreach (var fitter in Window.GetComponents<UnityEngine.UI.ContentSizeFitter>()) {
+            fitter.enabled = false;
+        }
+
+        if (ClassExtension.Find(Window, "Content View") is { } view) {
+            foreach (var fitter in view.GetComponents<UnityEngine.UI.ContentSizeFitter>()) {
+                fitter.enabled = false;
+            }
+        }
+
+        Window.RectTransform.sizeDelta = Bound.size;
+    }
 
     /// <summary>
     ///     The character sheet's window art on this window: the ornament at the top right and the faint drawing in the
@@ -457,8 +478,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             case "emp_tab_team" when EClass.core.IsGameStarted && NetSession.Instance.InGame && NetSession.Instance.Rules.UseTeams:
                 var me = EClass.pc.uid;
                 var team = Teams.TeamOf(me);
-                return team == Teams.Wanderers ? (Teams.InviteOf(me) != 0 ? 1 : 0)
-                    : TeamRanks.Can(me, TeamPerm.Recruit, team) ? Teams.Asking(team).Count() : 0;
+                return (Teams.OfferOf(me) != 0 ? 1 : 0) + (team == Teams.Wanderers ? (Teams.InviteOf(me) != 0 ? 1 : 0)
+                    : TeamRanks.Can(me, TeamPerm.Recruit, team) ? Teams.Asking(team).Count() : 0);
             default:
                 return 0;
         }

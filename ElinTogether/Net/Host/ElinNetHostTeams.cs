@@ -324,6 +324,11 @@ internal partial class ElinNetHost
     /// </summary>
     internal static Dictionary<int, int> TeamInvites { get; } = [];
 
+    /// <summary>
+    ///     Chara uid -> the team that accepted its request while it was in another team, until it chooses. Not saved
+    /// </summary>
+    internal static Dictionary<int, int> TeamOffers { get; } = [];
+
     // closed lands: a player standing on a land that closed on it (the rule changed, it left or was put out of the team,
     // it arrived some way the entry checks do not see) has this long to leave, then is moved out
     private const float LandGraceSeconds = 30f;
@@ -342,6 +347,7 @@ internal partial class ElinNetHost
         if (!IsZoneSession && _zone is not null && UnityEngine.Time.unscaledTime >= _abandonAt) {
             _abandonAt = UnityEngine.Time.unscaledTime + 60f;
             Teams.CheckAbandon();
+            Teams.ExpireOffers();
         }
 
         if (IsZoneSession || !Teams.LandRulesOn || _zone is null) {
@@ -422,6 +428,7 @@ internal partial class ElinNetHost
             Owners = new(CardOwners),
             Requests = new(TeamRequests),
             Invites = new(TeamInvites),
+            Offers = new(TeamOffers),
             ZoneRules = new(ZoneRules),
             Bills = TeamBills.Told(),
             Story = TeamStory.Told(),

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Common;
 using ElinTogether.Helper;
 using ElinTogether.Helper.Steam;
@@ -99,7 +100,17 @@ public class SteamNetLobbyManager : EClass
     public void CreateLobby(SteamNetLobbyType type = SteamNetLobbyType.Public, int maxPlayers = 16, bool quiet = false)
     {
         LeaveLobby();
+
+        // the game that plays on its hidden server has no lobby of its own: the server's is the only one of this
+        // account (two lobbies of one player were two entries in everyone's list, the wrong one not joinable, live
+        // report 2026-11-01)
+        if (PlaysOnHiddenServer) {
+            EmpLog.Warning("No lobby created: this game plays on its hidden server, whose lobby is the one friends join");
+            return;
+        }
+
         _quiet = quiet;
+        _creating = true;
 
         EmpLog.Information("Creating steam {LobbyType} lobby",
             type);
@@ -140,8 +151,25 @@ public class SteamNetLobbyManager : EClass
     {
         Current.Leave();
         Current = CSteamID.Nil;
-        SteamFriends.ClearRichPresence();
+        _creating = false;
+        // (one Steam account, two games: the rich presence is the account's, and the hidden server's says where to
+        // join; the game that plays on it does not wipe it)
+        if (!PlaysOnHiddenServer) {
+            SteamFriends.ClearRichPresence();
+        }
     }
+
+    // a lobby asked of Steam and not created yet: the answer that comes when nothing waits for it any more is left
+    private bool _creating;
+
+    // the lobby this game asked to enter, see OnLobbyEntered
+    private ulong _joining;
+
+    /// <summary>
+    ///     This game started a hidden server on this machine and plays on it (or is starting it): the server, on the
+    ///     same Steam account, holds the only lobby
+    /// </summary>
+    private static bool PlaysOnHiddenServer => !EmpServer.Requested && (HiddenServer.Playing || HiddenServer.Starting);
 
     /// <summary>
     ///     Connect by lobby id
@@ -173,6 +201,7 @@ public class SteamNetLobbyManager : EClass
         }
 
         (NetSession.Instance.Transport as ElinNetClient)?.MarkLobbyJoinRequested();
+        _joining = lobby.SteamId.m_SteamID;
         SteamMatchmaking.JoinLobby(lobby);
     }
 
@@ -281,6 +310,27 @@ public class SteamNetLobbyManager : EClass
 
     private void OnLobbyCreated(LobbyCreated_t created)
     {
+        // the game playing on its hidden server asked for none: a lobby of the server's, told on the same account,
+        // is not this game's to fill in or to leave
+        if (PlaysOnHiddenServer) {
+            EmpLog.Information("Lobby {LobbyId} created on this account ignored: this game plays on its hidden server",
+                created.m_ulSteamIDLobby);
+            return;
+        }
+
+        // an answer nothing waits for any more (the session was reset, or a second lobby was asked before the first
+        // came): kept, it would stay listed with this game's data and no key would ever be written in it, so whoever
+        // joined it waited and failed (two entries of one game, live report 2026-11-01). Left at once
+        if (!_creating) {
+            if (created.m_eResult == EResult.k_EResultOK && created.m_ulSteamIDLobby != 0) {
+                EmpLog.Warning("Lobby {LobbyId} created after it stopped being wanted: left", created.m_ulSteamIDLobby);
+                SteamMatchmaking.LeaveLobby(new CSteamID(created.m_ulSteamIDLobby));
+            }
+
+            return;
+        }
+
+        _creating = false;
         if (created.m_eResult != EResult.k_EResultOK || created.m_ulSteamIDLobby == 0) {
             EmpLog.Warning("Lobby creation failed with {Result}",
                 created.m_eResult);
@@ -323,6 +373,7 @@ public class SteamNetLobbyManager : EClass
         Current[EmpLobbyData.Handover] = ElinNetHost.HandoverNumber.ToString();
 
         Current[EmpLobbyData.Public] = OpenToAll ? "1" : "0";
+        Current[EmpLobbyData.ServerKind] = EmpServer.Hidden ? "hidden" : EmpServer.Requested ? "server" : "game";
 
         // the project's own public game: shown first and as official in everyone's list
         if (Signs && OfficialServer.Sign(Current.SteamId.m_SteamID) is { } signature) {
@@ -368,6 +419,16 @@ public class SteamNetLobbyManager : EClass
     private void OnLobbyEntered(LobbyEnter_t state)
     {
         LobbyEnter enter = state;
+
+        // the hidden server's own lobby, entered on the same account as it was created: not this game's
+        var entered = state.m_ulSteamIDLobby;
+        if (PlaysOnHiddenServer && entered != _joining && entered != ((CSteamID)Current).m_SteamID) {
+            EmpLog.Information("Lobby {LobbyId} entered on this account ignored: this game plays on its hidden server",
+                entered);
+            return;
+        }
+
+        _joining = 0;
         if (enter.Locked || enter.Response != EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess) {
             EmpLog.Warning("Lobby enter refused with {Response}, locked {Locked}",
                 enter.Response, enter.Locked);
@@ -440,6 +501,16 @@ public class SteamNetLobbyManager : EClass
                 return;
             }
 
+            // the host left this lobby and Steam gave it to one of its players: nobody in it lets anyone into the
+            // game it names, a join would only wait and fail. Said plainly instead
+            if (!HostKeeps(Current)) {
+                EmpLog.Warning("Leaving lobby {LobbyId}: its owner {Owner} is not the game's host {Host}",
+                    Current, SteamMatchmaking.GetLobbyOwner(Current).m_SteamID, Current.GameServer.id.m_SteamID);
+                NetSession.Instance.ResetSession();
+                EmpPop.Block("emp_lobby_host_gone".lang());
+                return;
+            }
+
             EmpPop.Information("emp_lobby_joined".lang(),
                 Current[EmpLobbyData.EmpVersion]);
 
@@ -451,6 +522,12 @@ public class SteamNetLobbyManager : EClass
 
     private void OnLobbyChatUpdate(LobbyChatUpdate_t update)
     {
+        // (the key of a player who entered another lobby of this account was written in this one: that player
+        // never found it and its join failed)
+        if (update.m_ulSteamIDLobby != ((CSteamID)Current).m_SteamID) {
+            return;
+        }
+
         UpdateRichPresence();
 
         UserData user = update.m_ulSteamIDUserChanged;
@@ -523,7 +600,8 @@ public class SteamNetLobbyManager : EClass
     {
         LobbyDataUpdateEventData data = update;
 
-        if (data.lobby.IsOwner) {
+        // (the data of the lobbies of a list comes this way too: a kick out of another game is not this one's)
+        if (data.lobby.IsOwner || data.lobby != Current) {
             return;
         }
 
@@ -551,12 +629,48 @@ public class SteamNetLobbyManager : EClass
                 continue;
             }
 
+            // a lobby its host left (Steam gave it to a player in it): no game behind it any more
+            if (!HostKeeps(lobby)) {
+                continue;
+            }
+
             lobbies.Add(lobby);
         }
 
-        _deferOnComplete?.Invoke([..lobbies]);
+        _deferOnComplete?.Invoke(OnePerHost(lobbies));
         _deferOnComplete = null;
     }
 
 #endregion
+
+    /// <summary>
+    ///     The lobby is still kept by the account of the game it names (its game server): false when the host left and
+    ///     Steam gave the lobby to one of its players. True when either is not known
+    /// </summary>
+    private static bool HostKeeps(LobbyData lobby)
+    {
+        try {
+            var host = lobby.GameServer.id.m_SteamID;
+            var owner = SteamMatchmaking.GetLobbyOwner(lobby.SteamId).m_SteamID;
+            return host == 0 || owner == 0 || owner == host;
+        } catch (Exception) {
+            return true;
+        }
+    }
+
+    /// <summary>
+    ///     One game per host account: an account hosts one game (a player who plays on a hidden server hosts none
+    ///     itself, its server does), so two lobbies of one account are a left-over and the live one. The hidden
+    ///     server's is kept first, then the one with the most players, then the newest
+    /// </summary>
+    internal static LobbyData[] OnePerHost(IEnumerable<LobbyData> lobbies)
+    {
+        return lobbies
+            .GroupBy(l => l.GameServer.id.m_SteamID is var host and not 0 ? host : l.SteamId.m_SteamID)
+            .Select(g => g.OrderByDescending(l => l[EmpLobbyData.ServerKind] == "hidden")
+                .ThenByDescending(l => l.MemberCount)
+                .ThenByDescending(l => l.SteamId.m_SteamID)
+                .First())
+            .ToArray();
+    }
 }

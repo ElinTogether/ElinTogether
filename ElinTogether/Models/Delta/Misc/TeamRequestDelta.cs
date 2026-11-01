@@ -96,6 +96,16 @@ public enum TeamAsk : byte
     ///     quests", <see cref="TeamQuests" />)
     /// </summary>
     ShareQuests,
+
+    /// <summary>
+    ///     The player, accepted by a team while in another one, joins it. Id is the team that accepted
+    /// </summary>
+    JoinOffered,
+
+    /// <summary>
+    ///     The player, accepted by a team while in another one, keeps its team. Id is the team that accepted
+    /// </summary>
+    KeepTeam,
 }
 
 /// <summary>

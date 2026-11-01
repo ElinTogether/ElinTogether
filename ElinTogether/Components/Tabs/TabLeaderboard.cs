@@ -47,7 +47,7 @@ internal static class TabLeaderboard
             Leaderboards.Ask(i);
         }, _board);
         // the top ten scroll inside the card (seven in view); the player's own rank stays under them
-        _list = card.ScrollList(7 * (RowH + UIHelper.RowSpacing) - UIHelper.RowSpacing);
+        _list = card.ScrollList(7 * (RowH + UIHelper.RowSpacing) - UIHelper.RowSpacing, true);
         _you = card.Vertical();
         _you.Fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
         Leaderboards.Changed = b => {
