@@ -1325,5 +1325,6 @@
     "LangGeneral.emp_ver_game_differs.text": "游戏版本不同：你和主机必须使用相同的 Elin 版本（相同的 Steam 分支）。",
     "LangGeneral.emp_ver_numbers.text": "模组：你 {0}，主机 {1}。游戏：你 {2}，主机 {3}。",
     "LangGeneral.emp_permadeath_banner.text": "你已经死亡。朋友可以在酒保处复活你。",
-    "LangGeneral.emp_permadeath_leave.text": "离开游戏"
+    "LangGeneral.emp_permadeath_leave.text": "离开游戏",
+    "LangGeneral.emp_ui_admin_menu.text": "管理…"
 }
