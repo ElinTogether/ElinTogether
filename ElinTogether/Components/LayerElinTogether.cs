@@ -457,8 +457,8 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             case "emp_tab_team" when EClass.core.IsGameStarted && NetSession.Instance.InGame && NetSession.Instance.Rules.UseTeams:
                 var me = EClass.pc.uid;
                 var team = Teams.TeamOf(me);
-                return team == Teams.Wanderers ? (Teams.InviteOf(me) != 0 ? 1 : 0)
-                    : Teams.LeaderOf(team) == me ? Teams.Asking(team).Count() : 0;
+                return (Teams.OfferOf(me) != 0 ? 1 : 0) + (team == Teams.Wanderers ? (Teams.InviteOf(me) != 0 ? 1 : 0)
+                    : Teams.LeaderOf(team) == me ? Teams.Asking(team).Count() : 0);
             default:
                 return 0;
         }
