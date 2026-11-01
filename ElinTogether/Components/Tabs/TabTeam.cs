@@ -35,7 +35,7 @@ internal class TabTeam : TabEmpBase
                 () => LayerElinTogether.Instance?.Window.SwitchContent(TabPlay.TabName));
         } else if (NetSession.Instance.Transport is ElinNetHost) {
             EmptyPage(card, TeamIcons, "emp_ui_team_off".lang(), "emp_ui_team_turn_on".lang(), () => {
-                LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_server");
+                LayerElinTogether.Instance?.Open(TabServerConfiguration.RulesLink);
                 TabServerConfiguration.ShowRule("teams");
             });
         } else {
@@ -81,6 +81,24 @@ internal class TabTeam : TabEmpBase
 
     private static string Cap(string text) => text.Length == 0 ? text : char.ToUpper(text[0]) + text.Substring(1);
 
+    public const string TabName = "emp_tab_team";
+
+    /// <summary>The Lands sub-tab's place on this page (the Lands tab became that sub-tab, user 2026-11-01)</summary>
+    internal const int LandsPage = 1;
+
+    /// <summary>The old Lands tab's name opens the Lands sub-tab of this page</summary>
+    internal static string Redirect(string tab)
+    {
+        if (tab != "emp_tab_lands") {
+            return tab;
+        }
+
+        SetSubTab("team", LandsPage);
+        return TabName;
+    }
+
+    internal void ShowPage(int index) => ShowSubTab(index);
+
     public override void OnLayout()
     {
         if (Waits()) {
@@ -98,6 +116,8 @@ internal class TabTeam : TabEmpBase
         var mine = Teams.TeamOf(me);
         var pages = new List<(string, System.Action<YKVertical>)> {
             ("emp_ui_team_tab_team".lang(), page => BuildTeamPage(page, me, mine)),
+            // the lands, always second (LandsPage: the old Lands tab's links open it)
+            ("emp_ui_tab_lands".lang(), TabLands.Build),
         };
         // the emblem has its own page, laid out to fit the window (it sat under the team page, out of reach). Teams
         // only: a player alone founds a team of one for an emblem (user 2026-10-30)

@@ -61,10 +61,9 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             DecorateLastTab("icon_LayerPeople", "emp_tip_tab_players");
 
             // the teams and their lands (council 2026-10-28): always there, saying so when teams are off
-            _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
+            // (Lands is a sub-tab of Team since 2026-11-01, user: fewer tabs)
+            _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", TabTeam.TabName));
             DecorateLastTab("icon_elements_23", "emp_tip_tab_team");
-            _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
-            DecorateLastTab("icon_LayerHome", "emp_tip_tab_lands");
 
             // journal and rankings (PLAN_hub_features): one tab with two sub-tabs, so the strip keeps the game's own label size
             _tabs.Add(CreateTab<TabCommunity>("emp_ui_tab_community", TabCommunity.TabName));
@@ -76,14 +75,9 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         }
 
         // the world's rules: always there. The host edits them (also at the title screen, before hosting), a guest
-        // reads the host's (the tab's own guest view)
-        _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
+        // reads the host's (the tab's own guest view). In a game the old Server info pages are its last sub-tabs
+        _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", TabServerConfiguration.TabName));
         DecorateLastTab("icon_elements_39", "emp_tip_tab_server");
-
-        if (inGame) {
-            _tabs.Add(CreateTab<TabServerInfo>("emp_ui_tab_info", "emp_tab_info"));
-            DecorateLastTab("icon_menu_7", "emp_tip_tab_info");
-        }
 
         _tabs.Add(CreateTab<TabPatchNotes>("emp_ui_tab_patchnotes", TabPatchNotes.TabName));
         DecorateLastTab("icon_LayerJournal", "emp_tip_tab_patchnotes");
@@ -219,7 +213,24 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
     public static void OpenPanelSesame(string targetTab = "")
     {
-        YK.CreateLayer<LayerElinTogether, LayerCreationData>(new(TabCommunity.Redirect(targetTab)));
+        YK.CreateLayer<LayerElinTogether, LayerCreationData>(new(Redirect(targetTab)));
+    }
+
+    /// <summary>
+    ///     A tab's name, or an old one that is a sub-tab now (Journal, Rankings, Lands, Server info): the tab that holds
+    ///     it, its sub-tab chosen for when it is shown
+    /// </summary>
+    internal static string Redirect(string tab) => TabServerConfiguration.Redirect(TabTeam.Redirect(TabCommunity.Redirect(tab)));
+
+    /// <summary>
+    ///     A link inside the window: switches to the tab (old names redirected) and shows the sub-tab the link chose,
+    ///     the tab built already or not
+    /// </summary>
+    internal void Open(string tab)
+    {
+        var target = Redirect(tab);
+        Window.SwitchContent(target);
+        _tabs.FirstOrDefault(t => t.name == target)?.ShowChosenSubTab();
     }
 
     /// <summary>The Journal layer's window in its prefab (looked up like Layer.Create does, never instantiated).</summary>

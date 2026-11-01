@@ -105,6 +105,33 @@ internal class TabServerConfiguration : TabEmpBase
         return row.Entry is { } e && fixedEntries.Contains(e) || row.Choice is { } c && c.Entries.All(fixedEntries.Contains);
     }
 
+    public const string TabName = "emp_tab_server";
+
+    /// <summary>A link to the rules' own first page, whatever sub-tab the page was left on</summary>
+    internal const string RulesLink = "emp_tab_rules";
+
+    // the rules' own pages come first; the server's pages (TabServerInfo) after them, in a game
+    private int _rulePages = int.MaxValue;
+
+    /// <summary>
+    ///     The old Server info tab opens its Status page here (its pages are sub-tabs of World rules now, user
+    ///     2026-11-01); RulesLink opens the first page
+    /// </summary>
+    internal static string Redirect(string tab)
+    {
+        switch (tab) {
+            case TabServerInfo.OldTabName:
+                SetSubTab("server", "emp_info_status".lang());
+                return TabName;
+            case RulesLink:
+                SetSubTab("server", 0);
+                SetSubTab("server", "emp_ui_sub_presets".lang());
+                return TabName;
+            default:
+                return tab;
+        }
+    }
+
     public override void OnLayout()
     {
         if (Waits()) {
@@ -122,11 +149,16 @@ internal class TabServerConfiguration : TabEmpBase
 
         // a friend reads a short summary: what differs from Recommended, not every row read-only
         if (_guest) {
-            SubTabs("server", [("", page => {
-                BuildBanner(page);
-                BuildPresetCards(page, preset);
-                BuildGuestSummary(page, rows);
-            })]);
+            var guestPages = new List<(string, System.Action<YKVertical>)> {
+                ("emp_ui_sub_presets".lang(), page => {
+                    BuildBanner(page);
+                    BuildPresetCards(page, preset);
+                    BuildGuestSummary(page, rows);
+                }),
+            };
+            _rulePages = guestPages.Count;
+            AddServerPages(guestPages);
+            SubTabs("server", guestPages);
             return;
         }
 
@@ -163,8 +195,20 @@ internal class TabServerConfiguration : TabEmpBase
             }
         }
 
+        _rulePages = pages.Count;
+        AddServerPages(pages);
         SubTabs("server", pages);
         ApplyFilter();
+    }
+
+    /// <summary>
+    ///     The old Server info tab's pages, after the rules' own (in a game only: the title screen keeps its tabs)
+    /// </summary>
+    private static void AddServerPages(List<(string, System.Action<YKVertical>)> pages)
+    {
+        if (EClass.core.IsGameStarted) {
+            pages.AddRange(TabServerInfo.Pages());
+        }
     }
 
     /// <summary>
@@ -253,7 +297,7 @@ internal class TabServerConfiguration : TabEmpBase
 
     protected override void OnSubTabShown(int index)
     {
-        if (_search.Trim().Length > 0) {
+        if (_search.Trim().Length > 0 && index < _rulePages) {
             ApplyFilter();
         }
     }
@@ -707,8 +751,9 @@ internal class TabServerConfiguration : TabEmpBase
     private void ApplyFilter()
     {
         var query = _search.Trim();
-        var searching = query.Length > 0;
-        ShowAllSubTabs(searching);
+        // (a search runs through the rules' pages, not the server's: on Status, Message... it waits)
+        var searching = query.Length > 0 && SubTab < _rulePages;
+        ShowAllSubTabs(searching, _rulePages);
         var any = false;
         foreach (var g in _groups) {
             var hits = 0;

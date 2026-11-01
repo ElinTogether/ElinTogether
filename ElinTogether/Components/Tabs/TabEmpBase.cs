@@ -69,8 +69,41 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     /// <summary>Chooses the sub-tab a page opens on (before it is built)</summary>
     internal static void SetSubTab(string key, int index) => LastSubTab[key] = index;
 
+    // a sub-tab asked for by its label, for a page whose sub-tabs move (World rules: the advanced groups come and go)
+    private static readonly Dictionary<string, string> WantedLabel = [];
+
+    /// <summary>Chooses the sub-tab a page opens on by its label (used once, when it is built or shown next)</summary>
+    internal static void SetSubTab(string key, string label) => WantedLabel[key] = label;
+
     private readonly List<GameObject> _subPages = [];
+    private readonly List<string> _subLabels = [];
     private string _subKey = "";
+
+    private void TakeWantedLabel()
+    {
+        if (!WantedLabel.TryGetValue(_subKey, out var label)) {
+            return;
+        }
+
+        WantedLabel.Remove(_subKey);
+        var index = _subLabels.IndexOf(label);
+        if (index >= 0) {
+            LastSubTab[_subKey] = index;
+        }
+    }
+
+    /// <summary>
+    ///     A page already built, switched to from a link: shows the sub-tab the link chose (SetSubTab)
+    /// </summary>
+    internal void ShowChosenSubTab()
+    {
+        if (_subPages.Count == 0) {
+            return;
+        }
+
+        TakeWantedLabel();
+        ShowSubTab(SubTab);
+    }
 
     /// <summary>
     ///     The sub-tab shown now (0 when the page has none)
@@ -86,7 +119,8 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     {
         _subKey = key;
         var built = new List<YKVertical>();
-        foreach (var (_, build) in pages) {
+        foreach (var (label, build) in pages) {
+            _subLabels.Add(label);
             var page = Vertical();
             page.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             page.LayoutElement().flexibleWidth = 1f;
@@ -99,6 +133,7 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
             built.Add(page);
         }
 
+        TakeWantedLabel();
         if (pages.Count > 1) {
             BuildPills(pages.Select(p => p.Label).ToList());
         }
@@ -150,10 +185,10 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     /// <summary>
     ///     Every page shown at once (a search runs through all of them), or back to the current one
     /// </summary>
-    protected void ShowAllSubTabs(bool all)
+    protected void ShowAllSubTabs(bool all, int count = int.MaxValue)
     {
         for (var i = 0; i < _subPages.Count; i++) {
-            _subPages[i].SetActive(all || i == SubTab);
+            _subPages[i].SetActive(all && i < count || i == SubTab);
         }
     }
 

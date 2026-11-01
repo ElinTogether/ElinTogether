@@ -14,19 +14,22 @@ namespace ElinTogether.Components;
 ///     writes in place with the pencil, a guest reads), and for the host and the admins a line to everyone and a
 ///     restart warning. The texts reach every game with the world's rules. Friends and Ignored live in My settings
 /// </summary>
-internal class TabServerInfo : TabEmpBase
+internal static class TabServerInfo
 {
+    /// <summary>The old Server info tab's name: its pages are sub-tabs of World rules now (user 2026-11-01)</summary>
+    internal const string OldTabName = "emp_tab_info";
+
     // which note is open for writing (a page rebuild keeps it: the layer is reopened after a change)
     private static string? _writing;
 
     private static readonly string[] InfoIcons = ["icon_book", "icon_policy"];
 
-    public override void OnLayout()
+    /// <summary>
+    ///     The server's pages, after the rules' own on the World rules tab in a game: status, the host's message and
+    ///     rules, the announcements (host and admins) and how it works. The mod's version is on Status, so About went
+    /// </summary>
+    internal static List<(string, System.Action<YKVertical>)> Pages()
     {
-        if (Waits()) {
-            return;
-        }
-
         var pages = new List<(string, System.Action<YKVertical>)> {
             ("emp_info_status".lang(), BuildStatus),
             ("emp_info_motd".lang(), page => BuildNote(page, "motd.txt", "emp_info_motd", ServerInfo.Motd)),
@@ -37,9 +40,8 @@ internal class TabServerInfo : TabEmpBase
             pages.Add(("emp_info_announce".lang(), BuildAnnounce));
         }
 
-        // (the Help pages close the row: the strip has one tab less)
         pages.AddRange(TabHelp.Pages());
-        SubTabs("info", pages);
+        return pages;
     }
 
     /// <summary>
@@ -77,6 +79,7 @@ internal class TabServerInfo : TabEmpBase
         card.Divider();
         card.KeyValue("emp_info_st_mod".lang(), ModInfo.BuildVersion);
         card.KeyValue("emp_info_st_game".lang(), BaseCore.Instance.version.GetText());
+        card.ButtonRow().RowButton("emp_help_github".lang(), () => UnityEngine.Application.OpenURL(TabHelp.Repo));
     }
 
     private static bool IsHost => NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false };
