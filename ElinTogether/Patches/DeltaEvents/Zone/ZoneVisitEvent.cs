@@ -21,8 +21,15 @@ internal static class ZoneVisitEvent
         IsVisiting = true;
         if (ElinDelta.IsApplying || EClass.game.isLoading || NetSession.Instance.Connection is not ElinNetClient client ||
             __instance != EClass._zone) {
+            if (NetSession.Instance.Connection is ElinNetClient) {
+                EmpLog.Debug("Visit of zone {ZoneUid} not told to the host: applying {Applying}, loading {Loading}, current {Current}",
+                    __instance.uid, ElinDelta.IsApplying, EClass.game.isLoading, __instance == EClass._zone);
+            }
+
             return;
         }
+
+        EmpLog.Debug("Telling the host of the visit of zone {ZoneUid}", __instance.uid);
 
         client.Delta.AddRemote(new QuestRerollDelta {
             ZoneUid = __instance.uid,

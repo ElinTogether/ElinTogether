@@ -27,6 +27,7 @@ internal static class QuestCreateEvent
         // request of the visit asks for it (ZoneVisitEvent)
         if (!ElinDelta.IsApplying && session.Connection is ElinNetClient client && __instance == EClass._zone &&
             (force || !ZoneVisitEvent.IsVisiting)) {
+            EmpLog.Debug("Asking the host to draw the quests of zone {ZoneUid} (reroll {Force})", __instance.uid, force);
             client.Delta.AddRemote(new QuestRerollDelta {
                 ZoneUid = __instance.uid,
                 Kind = force ? QuestRerollDelta.Reroll : QuestRerollDelta.Board,

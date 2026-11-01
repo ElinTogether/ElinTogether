@@ -38,8 +38,13 @@ public class QuestRerollDelta : ElinDelta
     protected override void OnApply(ElinNetBase net)
     {
         if (net is not ElinNetHost || _zone is not { } zone || zone.uid != ZoneUid || zone.map is null) {
+            EmpLog.Debug("Quest draw {Kind} for zone {ZoneUid} from peer {Peer} dropped: host on zone {Here}", Kind, ZoneUid,
+                OriginPeer, _zone?.uid);
             return;
         }
+
+        EmpLog.Debug("Quest draw {Kind} for zone {ZoneUid} from peer {Peer}: quests due {Due}, revive due {Revive}", Kind, ZoneUid,
+            OriginPeer, zone.dateQuest <= world.date.GetRaw(), world.date.IsExpired(zone.dateRevive));
 
         switch (Kind) {
             case Reroll: {
