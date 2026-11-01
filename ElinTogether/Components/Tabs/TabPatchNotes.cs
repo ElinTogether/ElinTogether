@@ -11,8 +11,8 @@ namespace ElinTogether.Components;
 
 /// <summary>
 ///     What changed in each version (user 2026-11-01), offline: LangMod/EN/patch_notes.json next to the DLL (CN for
-///     Chinese, else English), made from the release notes by dev/_tools/make_patch_notes.py. The versions on the left
-///     page, newest first; the picked one's short lines on the right page
+///     Chinese, JP for Japanese, else English), made from the release notes by dev/_tools/make_patch_notes.py. The
+///     versions on the left page, newest first; the picked one's short lines on the right page
 /// </summary>
 internal class TabPatchNotes : TabEmpBase
 {
@@ -29,11 +29,11 @@ internal class TabPatchNotes : TabEmpBase
     private static List<Entry>? _notes;
     private static string _notesLang = "";
 
-    /// <summary>The notes in the player's language (Chinese, else English), read once per language</summary>
+    /// <summary>The notes in the player's language (Chinese, Japanese, else English), read once per language</summary>
     internal static List<Entry> Notes
     {
         get {
-            var lang = Lang.langCode == "CN" ? "CN" : "EN";
+            var lang = Lang.langCode is "CN" or "JP" ? Lang.langCode : "EN";
             if (_notes is null || _notesLang != lang) {
                 _notesLang = lang;
                 _notes = Read(lang) ?? (lang != "EN" ? Read("EN") : null) ?? [];
