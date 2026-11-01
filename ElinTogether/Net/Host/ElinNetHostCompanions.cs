@@ -170,6 +170,7 @@ internal partial class ElinNetHost
 
                 ForgetCachedCard(old);
                 game.cards.globalCharas.Remove(old);
+                CompanionHelper.UnlinkWork(old);
 
                 // branches hold object references
                 if (old.homeBranch is { } branch && branch.members.IndexOf(old) is var index and >= 0) {
@@ -303,6 +304,7 @@ internal partial class ElinNetHost
 
                 ForgetCachedCard(old);
                 game.cards.globalCharas.Remove(old);
+                CompanionHelper.UnlinkWork(old);
                 if (old.homeBranch is { } branch && branch.members.IndexOf(old) is var index and >= 0) {
                     branch.members[index] = uploaded;
                     // what it wears counts for the faction (SetOwner, AddMemeber)
@@ -335,6 +337,11 @@ internal partial class ElinNetHost
                 uploaded.currentZone = at;
             } else if (!uploaded.isDead && uploaded.homeZone is { } home) {
                 uploaded.MoveZone(home);
+            }
+
+            // its work counts for its base from this copy, as the old one's did (none in a party: RefreshWorkElements)
+            if (uploaded.homeBranch is { } itsBase && itsBase.members.Contains(uploaded)) {
+                uploaded.RefreshWorkElements(itsBase.elements);
             }
 
             EmpLog.Information("Resident {Uid} made or let go by player {OwnerUid} while alone: now at its base {ZoneUid}",

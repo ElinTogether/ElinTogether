@@ -11,6 +11,18 @@ internal static class CompanionHelper
 {
     internal const string OwnerKey = "emp_owner";
 
+    /// <summary>
+    ///     A copy from another game takes the place of <paramref name="old" /> in its base: what the old one's work and
+    ///     hobbies gave the base (admin points, power, food... linked into the zone's elements by RefreshWorkElements)
+    ///     goes with it. Left linked, every swap added the resident's work once more: admin points 20/78 and power on
+    ///     a level 4 meadow with several players coming and going (issue #54)
+    /// </summary>
+    internal static void UnlinkWork(Chara old)
+    {
+        old.workElements?.SetParent();
+        old.workElements = null;
+    }
+
     extension(Chara chara)
     {
         /// <summary>
