@@ -160,19 +160,6 @@ internal class TabServerConfiguration : TabEmpBase
 
         SubTabs("server", pages);
         ApplyFilter();
-        if (_pendingJump is { } jump) {
-            _pendingJump = null;
-            if (isActiveAndEnabled) {
-                StartCoroutine(JumpLater(jump));
-            }
-        }
-    }
-
-    private System.Collections.IEnumerator JumpLater(string rowId)
-    {
-        // (once the redrawn page has its layout)
-        yield return null;
-        Jump(rowId);
     }
 
     /// <summary>
@@ -789,6 +776,12 @@ internal class TabServerConfiguration : TabEmpBase
     /// </summary>
     internal static void Tick()
     {
+        // a jump to a folded row, once the page drawn again with the fold open is shown (Jump)
+        if (_pendingJump is { } jump && _instance != null && _instance.isActiveAndEnabled) {
+            _pendingJump = null;
+            _instance.Jump(jump);
+        }
+
         if (_restore == 0 || _instance == null || !_instance.isActiveAndEnabled ||
             _instance.GetComponentInParent<ScrollRect>() is not { content: { } content } scroll) {
             return;
