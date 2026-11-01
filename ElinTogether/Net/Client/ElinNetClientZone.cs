@@ -325,6 +325,8 @@ internal partial class ElinNetClient
 
             // as Game.Load does after its own Scene.Init: the windows that were open before the world was replaced
             Helper.OwnSettings.Reopen();
+            // the first time in this world with this character: the three first steps (once, remembered)
+            Helper.FirstSteps.AfterJoin();
 
             // the world copy of a guest walking in from its own world map: Player.MoveZone, which pays the journey on
             // arrival in a town, runs only on the other entries (EnterHostMap), never here (hunt 6 item 3, H603)

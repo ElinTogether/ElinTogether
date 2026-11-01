@@ -1274,5 +1274,12 @@
     "LangGeneral.emp_ui_sv_adv_tip.text": "其余所有规则，按分组显示。大多数世界保持默认即可。",
     "LangGeneral.emp_ui_sv_guest_all_recommended.text": "所有规则均为推荐设置。",
     "LangGeneral.emp_refused_owner.text": "那是{0}的。",
-    "LangGeneral.emp_refused_here.text": "这里不允许这样做。"
+    "LangGeneral.emp_refused_here.text": "这里不允许这样做。",
+    "LangGeneral.emp_first_title.text": "欢迎！三个入门步骤：",
+    "LangGeneral.emp_first_players.text": "1. 玩家：谁在这里",
+    "LangGeneral.emp_first_team.text": "2. 队伍：加入或创建",
+    "LangGeneral.emp_first_land.text": "3. 阅读地契来占领土地",
+    "LangGeneral.emp_first_close.text": "知道了",
+    "LangGeneral.emp_ui_market_post_ad.text": "发布广告",
+    "LangGeneral.emp_ui_chat_write_first.text": "写第一条消息"
 }
