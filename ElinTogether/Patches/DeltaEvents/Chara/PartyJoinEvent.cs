@@ -91,7 +91,11 @@ internal static class PartyJoinEvent
                 // the host takes it for itself: a player's companion sent away keeps its owner (PartyMemberDelta),
                 // whoever takes it again is its owner from then on
                 // (not when a guest is the one recruiting through the host's party: R2 of recruit_suite)
-                if (!session.IsAway && c.CompanionOwnerUid != 0 && CharaMakeAllyEvent.Recruiter(c) is null) {
+                // (nor when "the player" is a guest standing in, RemoteCraft.AsCrafter: a guest's revive of a companion
+                // asked Recruiter, which never names "the player", and handed the companion to the host, GitHub issue 60;
+                // a revived companion keeps its owner, see RemoteRevivePatch)
+                if (!session.IsAway && c.CompanionOwnerUid != 0 && !RemoteCraft.IsStandingIn &&
+                    CharaMakeAllyEvent.Recruiter(c) is null) {
                     c.SetCompanionOwner(null);
                 }
 
