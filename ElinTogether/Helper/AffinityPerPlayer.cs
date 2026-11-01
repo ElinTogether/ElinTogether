@@ -211,4 +211,26 @@ internal static class AffinityPerPlayer
         Set(__instance.uid, player, value);
         return false;
     }
+
+    /// <summary>
+    ///     A companion learns faster the more it likes "the player" (Card.GetExpMtp): on the host, another player's
+    ///     companion was judged by its affinity with the host. Its own player's column
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Card), nameof(Card.GetAffinityExpBonus))]
+    internal static bool OnGetAffinityExpBonus(Card __instance, ref int __result)
+    {
+        if (!On || NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } || __instance is not Chara npc ||
+            npc.IsPC || npc.GetBool("remote_chara") || CompanionHelper.OwnerOf(npc) is not { } owner || owner == EClass.pc ||
+            owner.uid == EClass.player.uidChara) {
+            return true;
+        }
+
+        // the stage of that column's value, as Affinity.Get finds it for Chara._affinity
+        var value = Of(npc, owner.uid);
+        var stages = Affinity.list;
+        var stage = stages.Find(a => value < a.value) ?? stages[stages.Count - 1];
+        __result = UnityEngine.Mathf.Clamp(100 + stage.value / 10, 50, 200);
+        return false;
+    }
 }

@@ -130,12 +130,14 @@ internal static class CodexPatch
 
     private static void Tell(CodexManager codex, CodexKind kind, string id, int num)
     {
-        if (ElinDelta.IsApplying || num == 0 || string.IsNullOrEmpty(id) || !ReferenceEquals(codex, EClass.player?.codex)) {
+        // (the loot of a kill decided here, a guest's blow replayed included: the killer learns it, RemoteKillLootPatch)
+        var killer = TeamKnowledge.On ? RemoteKillLootPatch.Killer : null;
+        if ((ElinDelta.IsApplying && killer is null) || num == 0 || string.IsNullOrEmpty(id) || !ReferenceEquals(codex, EClass.player?.codex)) {
             return;
         }
 
         var session = NetSession.Instance;
-        var learner = EClass.pc.uid;
+        var learner = killer?.uid ?? EClass.pc.uid;
 
         // travelling alone, or keeping a map for visitors: the codex is the world's, the host tells the others
         // (not our visitors again, they hear it from us below)
