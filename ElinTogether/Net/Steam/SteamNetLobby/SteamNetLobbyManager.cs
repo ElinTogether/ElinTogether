@@ -413,11 +413,7 @@ public class SteamNetLobbyManager : EClass
 
                 NetSession.Instance.ResetSession();
 
-                EmpPop.Debug("emp_version_rejected_client".Loc(
-                    ModInfo.BuildVersion.TagColor(Color.green),
-                    mod.TagColor(Color.red),
-                    BuildVersionIntegrity.GameVersion.TagColor(Color.green),
-                    version.TagColor(Color.red)));
+                EmpPop.Debug("emp_version_rejected_client".Loc(BuildVersionIntegrity.Explain(mod, version)));
 
                 return;
             }

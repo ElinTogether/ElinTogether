@@ -128,7 +128,7 @@ internal partial class ElinNetClient
 
     private static string VersionMismatchText(string mod, string version)
     {
-        return "emp_version_rejected_client".Loc(ModInfo.BuildVersion, mod, BuildVersionIntegrity.GameVersion, version);
+        return "emp_version_rejected_client".Loc(BuildVersionIntegrity.Explain(mod, version));
     }
 
     private static void AppendDetails(StringBuilder sb, List<string> details)

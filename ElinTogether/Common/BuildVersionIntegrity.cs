@@ -1,4 +1,5 @@
 using System;
+using ElinTogether.LangMod;
 
 namespace ElinTogether.Common;
 
@@ -73,5 +74,44 @@ public class BuildVersionIntegrity : EClass
         mod = parts[1];
         version = parts[2];
         return true;
+    }
+
+    /// <summary>
+    ///     Two versions that do not match, in plain words (UX audit 2026-11-01): who is older and what to do, one line
+    ///     per part that differs, the numbers on a last grey line for whoever helps. "Theirs" is the other game's
+    /// </summary>
+    public static string Explain(string? theirMod, string? theirGame)
+    {
+        var sb = new System.Text.StringBuilder();
+        if (!string.Equals(theirMod, ModInfo.BuildVersion, StringComparison.Ordinal)) {
+            sb.AppendLine(Compare(ModInfo.BuildVersion, theirMod) switch {
+                < 0 => "emp_ver_mod_older".lang(),
+                > 0 => "emp_ver_mod_newer".lang(),
+                _ => "emp_ver_mod_differs".lang(),
+            });
+        }
+
+        if (!string.IsNullOrEmpty(theirGame) && !SameGame(theirGame)) {
+            sb.AppendLine(Compare(GameVersion, theirGame) switch {
+                < 0 => "emp_ver_game_older".lang(),
+                > 0 => "emp_ver_game_newer".lang(),
+                _ => "emp_ver_game_differs".lang(),
+            });
+        }
+
+        // (the same numbers and still refused: the two mods speak another protocol)
+        if (sb.Length == 0) {
+            sb.AppendLine("emp_ver_mod_differs".lang());
+        }
+
+        sb.Append("emp_ver_numbers".Loc(ModInfo.BuildVersion, theirMod ?? "?", GameVersion, theirGame ?? "?")
+            .TagColor(UnityEngine.Color.gray));
+        return sb.ToString();
+    }
+
+    // below 0: ours is older; 0 when either cannot be read as a version
+    private static int Compare(string ours, string? theirs)
+    {
+        return System.Version.TryParse(ours, out var a) && System.Version.TryParse(theirs, out var b) ? a.CompareTo(b) : 0;
     }
 }
