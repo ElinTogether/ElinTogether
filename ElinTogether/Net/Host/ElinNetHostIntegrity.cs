@@ -134,8 +134,9 @@ internal partial class ElinNetHost
             BuildVersionIntegrity.Ok(response.ClientModVersion, response.ClientGameVersion, response.APIVersion)) {
             EmpLog.Warning("Player {@Peer} runs game {ClientGameVersion}, host {HostGameVersion}: allowed",
                 peer, response.ClientGameVersion, BuildVersionIntegrity.GameVersion);
-            EmpPop.Information("emp_game_version_differs".Loc(peer.User.Name, response.ClientGameVersion,
-                BuildVersionIntegrity.GameVersion));
+            EmpPop.Information("emp_game_version_differs".Loc(peer.User.Name,
+                BuildVersionIntegrity.Display(response.ClientGameVersion),
+                BuildVersionIntegrity.Display(BuildVersionIntegrity.GameVersion)));
         }
 
         if ((otherGame && sameGameOnly) ||

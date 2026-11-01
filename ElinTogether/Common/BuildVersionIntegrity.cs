@@ -48,6 +48,32 @@ public class BuildVersionIntegrity : EClass
                string.Equals(mod, ModInfo.BuildVersion, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    ///     The Elin build this release is compiled and tested against (the Nightly branch). Bump it with each release
+    /// </summary>
+    public const int BuiltForGame = 23357;
+
+    public static string BuiltForGameText => $"EA {BuiltForGame / 1000}.{BuiltForGame % 1000}";
+
+    /// <summary>
+    ///     This game is older than the build the mod was made for (the Stable branch lags behind the Nightly one)
+    /// </summary>
+    public static bool OlderGame => core.version.minor * 1000 + core.version.batch < BuiltForGame;
+
+    /// <summary>
+    ///     "0.23.356.1" -> "EA 23.356 Patch 1", as the game itself names its versions (anything else as it is)
+    /// </summary>
+    public static string Display(string? version)
+    {
+        var parts = version?.Split('.');
+        if (parts is not { Length: 4 } || !int.TryParse(parts[1], out var minor) ||
+            !int.TryParse(parts[2], out var batch) || !int.TryParse(parts[3], out var fix)) {
+            return version ?? "?";
+        }
+
+        return $"EA {minor}.{batch}" + (fix == 0 ? "" : $" Patch {fix}");
+    }
+
     public static bool SameGame(string? version)
     {
         return string.Equals(version, GameVersion, StringComparison.Ordinal);

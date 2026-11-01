@@ -68,8 +68,9 @@ internal partial class ElinNetClient
 
         // not the same version of Elin: the host decides whether that is allowed, this player is told
         if (!BuildVersionIntegrity.SameGame(request.HostGameVersion)) {
-            EmpPop.Information("emp_game_version_differs".Loc(Host.User.Name, request.HostGameVersion,
-                BuildVersionIntegrity.GameVersion));
+            EmpPop.Information("emp_game_version_differs".Loc(Host.User.Name,
+                BuildVersionIntegrity.Display(request.HostGameVersion),
+                BuildVersionIntegrity.Display(BuildVersionIntegrity.GameVersion)));
         }
 
         AdvanceHandshake(NetHandshakePhase.AwaitingIntegrity);
@@ -128,7 +129,8 @@ internal partial class ElinNetClient
 
     private static string VersionMismatchText(string mod, string version)
     {
-        return "emp_version_rejected_client".Loc(ModInfo.BuildVersion, mod, BuildVersionIntegrity.GameVersion, version);
+        return "emp_version_rejected_client".Loc(ModInfo.BuildVersion, mod,
+            BuildVersionIntegrity.Display(BuildVersionIntegrity.GameVersion), BuildVersionIntegrity.Display(version));
     }
 
     private static void AppendDetails(StringBuilder sb, List<string> details)

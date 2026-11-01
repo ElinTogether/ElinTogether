@@ -352,7 +352,7 @@ internal partial class ElinNetClient
         core.actionsNextFrame.Add(() => {
             if (!HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
                 EmpLog.Warning("The patches of the mod were gone when the world arrived, put back");
-                EmpMod.SharedHarmony.PatchAll(EmpMod.Assembly);
+                EmpMod.PatchAll();
             }
         });
 #endif

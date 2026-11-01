@@ -74,7 +74,7 @@
     "LangGeneral.emp_party_gather.text": "出发前必须先集合队伍。",
     "LangGeneral.emp_accept_failed.text": "无法接受连接。",
     "LangGeneral.emp_version_rejected_host.text": "已拒绝 {0} 加入。\n版本不一致。\n主机的模组：{1}\n主机的游戏：{2}",
-    "LangGeneral.emp_version_rejected_client.text": "无法加入：版本不一致。\n模组：你 {0}，主机 {1}\n游戏：你 {2}，主机 {3}\n较旧的一方需要更新，然后重试。",
+    "LangGeneral.emp_version_rejected_client.text": "无法加入：版本不一致。\n模组：你 {0}，主机 {1}\n游戏：你 {2}，主机 {3}\n较旧的一方需要更新，然后重试（Elin 需使用同一个 Steam 分支：Nightly 或 Stable）。",
     "LangGeneral.emp_validation_none.text": "无",
     "LangGeneral.emp_validation_sources.text": "源表",
     "LangGeneral.emp_validation_plugins.text": "插件",
@@ -206,7 +206,7 @@
     "LangGeneral.emp_ui_thing_gone.text": "来晚了，已被其他人拿走。",
     "LangGeneral.emp_base_refused.text": "主机拒绝了：据点或你的钱包付不起。",
     "LangGeneral.emp_base_pending.text": "上一个请求仍在等待主机回应。",
-    "LangGeneral.emp_game_version_differs.text": "{0} 的 Elin 版本不同（{1}，你的是 {2}）。仍可加入。如果出问题，请使用相同版本。",
+    "LangGeneral.emp_game_version_differs.text": "{0} 的 Elin 版本不同（{1}，你的是 {2}）。仍可一起游玩。如果出问题，请双方都使用 Elin 的同一个 Steam 分支（Nightly 或 Stable）并更新。",
     "LangGeneral.emp_ui_sv_cfg_same_game_version.text": "好友需要相同的 Elin 版本",
     "LangGeneral.emp_ui_sv_desc_same_game_version.text": "好友需要与房主相同的 Elin 版本才能加入（Elin Together 版本必须始终一致）。关闭：会带着警告加入。",
     "LangGeneral.emp_ui_depot_held_btn.text": "{0} 正在主持这个世界",
@@ -1316,5 +1316,7 @@
     "LangGeneral.emp_tip_cfg_code_mods.text": "同时下载包含代码（DLL 文件）的游戏模组，仅限你信任的房主。\n模组中的代码以你的全部权限在本机运行：房主可以指定任何创意工坊物品，包括它自己上传的。\n关闭时：缺少的模组含有代码时不下载，会告诉你是哪个模组，本机不做任何更改。\n仅在开启下载选项时有效。",
     "LangGeneral.emp_tip_cfg_depot_path.text": "存档仓库文件夹：小组所有玩家都能访问的文件夹（共享或同步），用于保存世界。留空：不使用仓库。\n第一位玩家从中取得世界并当房主，每次存档都会存回去，下一位玩家可以接手。\n也可以填写 Elin Together Server 的地址（host:55557），或私有 GitHub 仓库：github:owner/repository",
     "LangGeneral.emp_tip_cfg_depot_password.text": "存档仓库的密码（仓库为 Elin Together Server 且设置了密码时）。\nGitHub 仓库：访问密钥（fine-grained token，仅限此仓库，Contents: Read and write）。切勿分享此文件。",
-    "LangGeneral.emp_tip_cfg_record_replay.text": "保留最近 30 秒的画面（每秒一张小图，仅保存在内存中），并随问题报告一起发送"
+    "LangGeneral.emp_tip_cfg_record_replay.text": "保留最近 30 秒的画面（每秒一张小图，仅保存在内存中），并随问题报告一起发送",
+    "LangGeneral.emp_patches_skipped.text": "Elin Together 有 {0} 个部分无法在 Elin {1} 上加载（此版本为 Elin {2} 制作）。部分多人功能可能无法使用：请将 Elin 切换到 Nightly 分支（Steam：Elin → 属性 → 测试版）。",
+    "LangGeneral.emp_title_older_game.text": "为 Elin {0} 制作。你的 Elin 是 {1}：如果出问题，请使用 Elin 的 Nightly 分支（Steam：Elin → 属性 → 测试版）。"
 }
