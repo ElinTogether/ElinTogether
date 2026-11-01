@@ -1317,6 +1317,13 @@
     "LangGeneral.emp_tip_cfg_depot_path.text": "存档仓库文件夹：小组所有玩家都能访问的文件夹（共享或同步），用于保存世界。留空：不使用仓库。\n第一位玩家从中取得世界并当房主，每次存档都会存回去，下一位玩家可以接手。\n也可以填写 Elin Together Server 的地址（host:55557），或私有 GitHub 仓库：github:owner/repository",
     "LangGeneral.emp_tip_cfg_depot_password.text": "存档仓库的密码（仓库为 Elin Together Server 且设置了密码时）。\nGitHub 仓库：访问密钥（fine-grained token，仅限此仓库，Contents: Read and write）。切勿分享此文件。",
     "LangGeneral.emp_tip_cfg_record_replay.text": "保留最近 30 秒的画面（每秒一张小图，仅保存在内存中），并随问题报告一起发送",
+    "LangGeneral.emp_ui_depot_et_taking.text": "正在打开共享世界……",
+    "LangGeneral.emp_ui_depot_et_down.text": "世界服务没有响应。请检查网络和“Depot”中的地址（etworld:https://...），稍后再试。",
+    "LangGeneral.emp_ui_depot_et_big.text": "这个世界对世界服务来说太大了（512 MB）。存档保留在这台电脑上。",
+    "LangGeneral.emp_ui_depot_et_banned.text": "你不能保管共享世界。请在其他人保管时加入。",
+    "LangGeneral.emp_ui_depot_et_not_yet.text": "你还不能保管共享世界：新玩家在世界中被确认后，几天后才能保管。请在其他人保管时加入。",
+    "LangGeneral.emp_ui_depot_et_reserved.text": "世界正在移交给另一位玩家。请几秒后再试。",
+    "LangGeneral.emp_ui_depot_et_key.text": "世界服务记录的这台电脑的密钥属于另一个 Steam 账号。请使用那个账号游玩，或联系管理员。",
     "LangGeneral.emp_ui_official_kept_by.text": "当前由 {0} 维持",
     "LangGeneral.emp_public_server_unverified.text": "这个游戏自称是 Elin Together 公共服务器，但其主机与证明不符。未加入。"
 }
