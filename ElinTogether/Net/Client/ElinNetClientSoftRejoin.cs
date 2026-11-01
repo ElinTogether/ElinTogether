@@ -68,26 +68,47 @@ internal partial class ElinNetClient
     /// </summary>
     private bool CanReturnSoftly(int hostZoneUid)
     {
-        return CanRejoinSoftly() && hostZoneUid != Session.AwayZone!.uid &&
+        // walking out, the map on screen goes: a window on one of its cards would outlive it. Our visitors stay
+        // there, handed to one of them (HandOverZone)
+        return CanRejoinSoftly() && Session.ZoneSession is null && !HasBusyWindow() && hostZoneUid != Session.AwayZone!.uid &&
                game.spatials.Find(hostZoneUid) is not ({ IsRegion: true } or { IsInstance: true }) &&
                pc.held is not { trait.CanOnlyCarry: true } && !pc.things.Any(t => t.trait.CanOnlyCarry);
     }
 
     /// <summary>
-    ///     We hold that map alone, stand on it alive, and nothing else is going on
+    ///     We hold that map (alone, or hosting visitors who stay on it too), stand on it alive, and nothing else is
+    ///     going on. An open window is no reason for the world copy any more (GitHub issue 52): what it shows
+    ///     stays, only a window on a character the switch replaces is closed, after it (CloseWindowsOf). Nothing is
+    ///     done through a window meanwhile (input held, IsInTransfer), and a bag changed anyway ends with the world
+    ///     (BagMix)
     /// </summary>
     private bool CanRejoinSoftly()
     {
-        return Session.Rules.SoftRecall && core.IsGameStarted && Session.IsZoneAuthority && Session.ZoneSession is null &&
+        return Session.Rules.SoftRecall && core.IsGameStarted && Session.IsZoneAuthority &&
+               Session.ZoneSession is null or ElinNetHost &&
                Session.AwayZone is { IsRegion: false, IsInstance: false } away && _zone == away && _map is not null &&
                pc is { isDead: false } && _pendingTravel is null && _pendingGrant is null && !_rejoining &&
-               _handoffDeadline <= 0 && !HasBusyWindow();
+               _handoffDeadline <= 0;
+    }
+
+    /// <summary>
+    ///     We visit that map as the guest of the player holding it, and the host walks onto it (GitHub issue 46): we
+    ///     stay on it as that player does, a client of the host again in place. The zone session may still be open
+    ///     or already closed by its holder (its release goes first): either way our release brings our character
+    /// </summary>
+    private bool CanRejoinSoftlyAsGuest()
+    {
+        return Session.Rules.SoftRecall && core.IsGameStarted && Session.IsGuest &&
+               Session.ZoneSession is null or ElinNetClient &&
+               Session.AwayZone is { IsRegion: false, IsInstance: false } away && _zone == away && _map is not null &&
+               pc is { isDead: false } && _pendingTravel is null && _pendingGrant is null && !_rejoining;
     }
 
     /// <summary>
     ///     A dialogue or a trade holds the character it talks to: the switch replaces our stale copies of the
     ///     world's characters by the host's (AdoptHostCharas), the window would keep the old one, and what is sold
-    ///     or given through it would be gone or exist twice. The world copy closes everything: that path then
+    ///     or given through it would be gone or exist twice. Only when we walk out of the map (CanReturnSoftly): in
+    ///     place such a window is closed after the switch instead (CloseWindowsOf)
     /// </summary>
     private static bool HasBusyWindow()
     {
@@ -135,6 +156,11 @@ internal partial class ElinNetClient
             Session.AwayZone = here;
         }
 
+        // a visitor whose holder handed the map back: that zone session is not the one to listen to any more
+        if (Session.IsGuest && Session.ZoneSession is ElinNetClient) {
+            Session.RemoveZoneSession();
+        }
+
         _rejoining = true;
         StopWorldStateUpdate();
         Delta.ClearOut();
@@ -152,6 +178,12 @@ internal partial class ElinNetClient
     /// </summary>
     private void OnZoneSoftRejoin(ZoneSoftRejoin rejoin)
     {
+        // from the player keeping the map we stay on: its zone session, without its world (ElinNetClientSoftStay)
+        if (IsZoneSession) {
+            OnZoneSoftStay(rejoin);
+            return;
+        }
+
         if (_softRejoinDeadline <= 0) {
             // given up meanwhile: the host was told and sends the world
             EmpLog.Debug("Soft rejoin of {ZoneUid} arrives after we gave it up", rejoin.ZoneUid);
@@ -230,6 +262,12 @@ internal partial class ElinNetClient
             WorldDateAdvanceDelta.SetClientDate(date);
         }
 
+        // a guest of the player that held this map: its zone session is over (that player closed it, or does so
+        // next), the host link is ours again
+        if (Session.IsGuest && Session.ZoneSession is ElinNetClient) {
+            Session.RemoveZoneSession();
+        }
+
         var arrived = AdoptHostCharas(rejoin.Charas);
         if (travel) {
             ForgetAbsentCharas(rejoin.ZoneUid, arrived);
@@ -304,6 +342,9 @@ internal partial class ElinNetClient
         EmpLog.Information("Soft rejoin of {ZoneFullName}: client of the host again in place, no world copy ({Renumbered} card(s) renumbered, {Charas} character(s) taken, map {Sums}, same as the host's {SameMap})",
             zone.ZoneFullName, renumbered.Count, arrived.Count, ZoneLeaseState.TellSums(ours), sameMap);
 
+        // after the switch: only what shows a character that was just replaced (GitHub issue 52)
+        CloseWindowsOf(arrived);
+
         if (!sameMap) {
             // the map alone, loaded under our feet as NetDesync repairs one: still no copy of the world
             EmpLog.Warning("Soft rejoin of {ZoneFullName}: our copy of the map differs, asking for the map alone (here {Local} | host {Host})",
@@ -320,10 +361,56 @@ internal partial class ElinNetClient
                 ],
             });
             MarkResync();
+            // the map goes from under the windows (a chest, a trade): closed, as AdoptHostCopy does before a reload.
+            // Open windows no longer keep this path from being taken (CanRejoinSoftly)
+            ui.RemoveLayers();
             RequestZoneState(MapDataRequest.CurrentRemoteZone);
         }
 
         return null;
+    }
+
+    /// <summary>
+    ///     The windows that show one of these characters by its old card (a dialogue with it, its bag, a trade with
+    ///     it): closed, the game's own way. The others stay open, the switch kept the cards they show (GitHub issue 52)
+    /// </summary>
+    private static void CloseWindowsOf(List<Chara> replaced)
+    {
+        if (replaced.Count == 0) {
+            return;
+        }
+
+        var uids = replaced.Select(c => c.uid).ToHashSet();
+        bool Shows(Card? card) => card is not null && (uids.Contains(card.uid) || uids.Contains(card.GetRootCard()?.uid ?? 0));
+        var closed = 0;
+
+        try {
+            foreach (var drama in ui.layers.OfType<LayerDrama>().ToArray()) {
+                if (drama.drama?.tg is { } person && uids.Contains(person.uidChara)) {
+                    drama.Close();
+                    closed++;
+                }
+            }
+
+            foreach (var inv in LayerInventory.listInv.ToArray()) {
+                if (inv.invs.Count > 0 && inv.invs[0].owner is { } owner && (Shows(owner.owner) || Shows(owner.Container))) {
+                    inv.Close();
+                    closed++;
+                }
+            }
+
+            if (ui.GetLayer<LayerDragGrid>() is { owner: { } given } grid && (Shows(given.owner) || Shows(given.Container))) {
+                grid.Close();
+                closed++;
+            }
+        } catch (Exception ex) {
+            // a window that does not close is no reason to undo the switch
+            EmpLog.Warning(ex, "Closing the windows of the replaced characters failed");
+        }
+
+        if (closed > 0) {
+            EmpLog.Information("{Count} window(s) on a character replaced by the switch closed, the others kept", closed);
+        }
     }
 
     /// <summary>

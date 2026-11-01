@@ -61,7 +61,9 @@ internal partial class ElinNetClient
                 SessionNewPlayerRequest or
                 SessionCharaSelectRequest or
                 NetSessionRules or
-                SaveDataProbe, // ok
+                SaveDataProbe || // ok
+                // the player keeping the map we stay on, in place of its world (GitHub issue 46)
+                (IsZoneSession && packet is ZoneSoftRejoin),
             _ => false,
         };
 

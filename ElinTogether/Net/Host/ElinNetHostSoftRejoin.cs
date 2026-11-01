@@ -41,28 +41,49 @@ internal partial class ElinNetHost
     private readonly Dictionary<int, (int ZoneUid, Dictionary<int, int> Rebinds, float Deadline, bool Entered)> _softRejoins = [];
 
     /// <summary>
-    ///     The player holding that zone may stay on it when the host comes: it holds it alone (no visitor there or
-    ///     on its way), and it is not the zone of a quest (gone once left) nor the world map (never recalled)
+    ///     The player holding that zone may stay on it when the host comes: no visitor on its way there (those
+    ///     standing there stay too, each the same way, GitHub issue 46), and it is not the zone of a quest (gone
+    ///     once left) nor the world map (never recalled)
     /// </summary>
     private bool CanRecallSoftly(Zone zone)
     {
         return Session.Rules.SoftRecall && !IsZoneSession && !zone.IsRegion && !zone.IsInstance &&
                !_questZones.Contains(zone.uid) &&
-               !_guests.Values.Any(g => g.ZoneUid == zone.uid) &&
                !_pendingGuests.Values.Any(g => g.ZoneUid == zone.uid);
     }
 
     /// <summary>
     ///     That release is the answer to a soft recall and everything still stands: the host is on its way to that
-    ///     very map, the player stood on it and came with nobody, and holds nothing else
+    ///     very map, the player stood on it, and holds nothing else. Its visitors come back by their own release
+    ///     (CanRejoinSoftlyAsGuest)
     /// </summary>
     private bool CanRejoinSoftly(ZoneLeaseRelease release, ISteamNetPeer peer)
     {
         return release is { Soft: true, Rejoin: true, Checkpoint: false, Map: not null, Arrival: null } &&
-               release.StoodZoneUid == release.ZoneUid && release.GuestCharas is not { Count: > 0 } &&
+               release.StoodZoneUid == release.ZoneUid &&
                _pendingHostMove is { } move && move.Zone.uid == release.ZoneUid && move.Zone != _zone &&
                CanRecallSoftly(move.Zone) &&
                !(_leases.TryGetValue(peer.Id, out var held) && held.Count > 0);
+    }
+
+    /// <summary>
+    ///     GitHub issue 46: the release of a visitor of the map the host walks onto (called back with it, see
+    ///     HandOverZone), that stays on it as its holder does: the host is on its way there or already stands
+    ///     there, nobody else holds it, and the visitor holds nothing
+    /// </summary>
+    private bool CanRejoinSoftlyAsGuest(ZoneLeaseRelease release, ISteamNetPeer peer)
+    {
+        if (release is not { Soft: true, Rejoin: true, Checkpoint: false, ZoneUid: -1, Arrival: null } ||
+            release.StoodZoneUid <= 0 || game.spatials.Find(release.StoodZoneUid) is not { } zone ||
+            (_leases.TryGetValue(peer.Id, out var held) && held.Count > 0) ||
+            _leases.Values.Any(zones => zones.ContainsKey(zone.uid))) {
+            return false;
+        }
+
+        var coming = _pendingHostMove is { } move && move.Zone == zone && zone != _zone;
+        var there = _pendingHostMove is null && core.IsGameStarted && _zone == zone && zone.map is not null &&
+                    pc.currentZone == zone;
+        return (coming || there) && CanRecallSoftly(zone);
     }
 
     /// <summary>
@@ -162,6 +183,79 @@ internal partial class ElinNetHost
 
         RegisterPlayer(chara, peer);
         _softRejoins[peer.Id] = (zoneUid, rebound, Time.unscaledTime + SoftEnterSeconds, false);
+
+        // a visitor whose release came once we stood there (its holder's release let our move go on): told now
+        if (_pendingHostMove is null && core.IsGameStarted && _zone is { map: not null } here && here.uid == zoneUid &&
+            pc.currentZone == here) {
+            CompleteSoftRejoin(peer, here);
+        }
+    }
+
+    /// <summary>
+    ///     Zone session, GitHub issue 46: visitor -> the map it stays on (it stood there when the map came to us, its
+    ///     tile is fresh), until it joins: it gets <see cref="ZoneSoftRejoin" /> instead of our world, see
+    ///     TrySendSoftStay
+    /// </summary>
+    private readonly Dictionary<ulong, int> _softStays = [];
+
+    /// <summary>
+    ///     Zone session: the visitor announced by the host stands on our map already (the host left it, or the
+    ///     player it visited did, see ElinNetClient.StayAsGuest and HandOverZone)
+    /// </summary>
+    private void NoteSoftStay(ZoneGuestRequest request)
+    {
+        if (Session.Rules.SoftRecall && request is { Stood: not null, StoodStale: false, Arrival: null } &&
+            _zone?.uid == request.ZoneUid) {
+            _softStays[request.GuestUser] = request.ZoneUid;
+        } else {
+            _softStays.Remove(request.GuestUser);
+        }
+    }
+
+    /// <summary>
+    ///     Zone session, in place of SendSaveProbe: a visitor that stood on our map before we ran it keeps its game
+    ///     and its scene. It is registered as one that joins, told what it cannot know (<see cref="ZoneSoftRejoin" />
+    ///     with the numbers of our map), and answers as a player whose map is loaded (ZoneDataReceivedResponse), or
+    ///     says it did not work and gets our world (OnZoneSoftRejoinFailed)
+    /// </summary>
+    /// <returns>false when the world goes as before</returns>
+    private bool TrySendSoftStay(Chara chara, ISteamNetPeer peer)
+    {
+        if (!IsZoneSession || !_softStays.Remove(peer.User, out var zoneUid) || !core.IsGameStarted ||
+            _zone is not { map: not null } zone || zone.uid != zoneUid) {
+            return false;
+        }
+
+        RegisterPlayer(chara, peer);
+        // as long as it may say it did not work: it then gets the world
+        _softRejoins[peer.Id] = (zone.uid, [], Time.unscaledTime + SoftFailSeconds, true);
+
+        try {
+            // what is already done here is in the numbers below: it goes out before them (the visitor, still at
+            // its handshake, takes none of it)
+            Delta.RefreshBuffer();
+            WorldStateDeltaUpdate();
+
+            var stay = CreateSoftRejoin(chara, zone, [], false);
+            // the boxes of the world are the host's: emptied in the game of every player away, ours and the visitor's
+            stay.Boxes = null;
+
+            EmpLog.Information("Visitor {@Peer} stays on {ZoneFullName}: no world copy (uid counter {UidNext}, {Charas} character(s), map {Sums})",
+                peer, zone.ZoneFullName, stay.UidNext, stay.Charas?.Count, ZoneLeaseState.TellSums(stay.MapSums ?? []));
+
+            peer.Send(NetSession.Instance.Rules);
+            if (!peer.Send(stay)) {
+                FallBackToWorldCopy(peer, "not sent");
+                return true;
+            }
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Staying on {ZoneFullName} could not be told to visitor {@Peer}", zone.ZoneFullName, peer);
+            FallBackToWorldCopy(peer, "not told");
+            return true;
+        }
+
+        peer.Send(SessionPlayersSnapshot.Create());
+        return true;
     }
 
     /// <summary>

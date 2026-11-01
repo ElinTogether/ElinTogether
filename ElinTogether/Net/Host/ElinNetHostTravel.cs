@@ -1147,9 +1147,12 @@ internal partial class ElinNetHost
         }
 
         if (_pendingHostMove?.Zone.uid == zoneUid || game.spatials.Find(zoneUid) is not { } zone) {
+            // the host walks in: they may stay on it as its holder does (GitHub issue 46, CanRejoinSoftlyAsGuest)
+            var soft = _pendingHostMove is { } move && move.Zone.uid == zoneUid && CanRecallSoftly(move.Zone);
             foreach (var guest in guests) {
                 guest.Send(new ZoneLeaseRecall {
                     ZoneUid = zoneUid,
+                    Soft = soft,
                 });
             }
 
@@ -1385,6 +1388,8 @@ internal partial class ElinNetHost
         var soft = handedBack && CanRejoinSoftly(release, peer);
         // slice 2: it walks into the map we stand on, see SendSoftReturn
         var softReturn = handedBack && !soft && CanReturnSoftly(release, peer);
+        // GitHub issue 46: a visitor of that map, staying on it with its holder
+        var softGuest = !handedBack && CanRejoinSoftlyAsGuest(release, peer);
 
         // the numbers given to its cards that waited for one, see ZoneSoftRejoin.Rebinds
         var rebound = new Dictionary<int, int>();
@@ -1432,6 +1437,9 @@ internal partial class ElinNetHost
             if (chara is { isDead: false } && soft) {
                 // no copy of the world: it stays on the map it handed back, see CompleteSoftRejoin
                 RegisterSoftRejoin(chara, peer, release.ZoneUid, rebound);
+            } else if (chara is { isDead: false } && softGuest) {
+                // nor for a visitor of that map: it stays where it stood
+                RegisterSoftRejoin(chara, peer, release.StoodZoneUid, rebound);
             } else if (chara is { isDead: false } && softReturn) {
                 // no copy of the world either: what it cannot know, then this one map
                 SendSoftReturn(chara, peer, rebound);
