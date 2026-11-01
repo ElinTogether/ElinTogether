@@ -1299,5 +1299,12 @@
     "LangGeneral.emp_first_land.text": "3. 阅读地契来占领土地",
     "LangGeneral.emp_first_close.text": "知道了",
     "LangGeneral.emp_ui_market_post_ad.text": "发布广告",
-    "LangGeneral.emp_ui_chat_write_first.text": "写第一条消息"
+    "LangGeneral.emp_ui_chat_write_first.text": "写第一条消息",
+    "LangGeneral.emp_update_toast.text": "Elin Together {0} 已发布。",
+    "LangGeneral.emp_update_tooltip.text": "有可用更新：{0}",
+    "LangGeneral.emp_update_card.text": "有新版本可用（{0}）",
+    "LangGeneral.emp_update_download.text": "下载",
+    "LangGeneral.emp_update_newer.text": "更新版本：{0}",
+    "LangGeneral.emp_ui_cl_check_updates.text": "检查更新",
+    "LangGeneral.emp_ui_cl_desc_check_updates.text": "有新版本时提示你。"
 }

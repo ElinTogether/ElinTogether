@@ -1,4 +1,6 @@
 using ElinTogether.Components;
+using ElinTogether.Helper;
+using ElinTogether.LangMod;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -7,6 +9,11 @@ namespace ElinTogether.Patches;
 
 internal class TitleButtonPatch
 {
+    private const string DotName = "EmpUpdateDot";
+
+    // the title's Multiplayer button, while the title screen is up
+    private static UIButton? _button;
+
     [ElinPostSceneInit]
     internal static void RegisterTitleButton(Scene.Mode mode)
     {
@@ -39,6 +46,49 @@ internal class TitleButtonPatch
         empButton.onClick.SetPersistentListenerState(0, UnityEventCallState.Off);
         empButton.onClick.AddListener(() => LayerElinTogether.OpenPanelSesame());
         AddLogo(empButton);
+        _button = empButton;
+        ShowUpdate();
+    }
+
+    /// <summary>
+    ///     A newer release (UpdateCheck): a small dot on the button and a line in its tooltip; nothing otherwise
+    /// </summary>
+    internal static void ShowUpdate()
+    {
+        if (_button == null) {
+            return;
+        }
+
+        var newer = UpdateCheck.Newer;
+        var tip = $"{"emp_ui_title".lang()} {ModInfo.Version}";
+        _button.SetTooltipLang(newer is null ? tip : tip + "\n" + "emp_update_tooltip".Loc(newer));
+        var dot = _button.transform.Find(DotName);
+        if (newer is null) {
+            if (dot != null) {
+                dot.gameObject.SetActive(false);
+            }
+
+            return;
+        }
+
+        if (dot == null) {
+            var go = new GameObject(DotName, typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            go.GetComponent<LayoutElement>().ignoreLayout = true;
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(_button.transform, false);
+            rt.anchorMin = rt.anchorMax = new(1f, 1f);
+            rt.pivot = new(1f, 1f);
+            rt.sizeDelta = new(10f, 10f);
+            rt.anchoredPosition = new(-4f, -4f);
+            var image = go.GetComponent<Image>();
+            // (the round sprite and colour of the HUD button's dot, HubDot)
+            image.sprite = UIHelper.FindSprite("Knob");
+            image.color = new(0.85f, 0.25f, 0.15f);
+            image.raycastTarget = false;
+            dot = rt;
+        }
+
+        dot.gameObject.SetActive(true);
     }
 
     /// <summary>

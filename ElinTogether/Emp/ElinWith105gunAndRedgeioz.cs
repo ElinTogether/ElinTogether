@@ -80,6 +80,8 @@ internal sealed class EmpMod : BaseUnityPlugin
         NetSession.Instance.Lobby.TryParseLobbyCommand();
 
         TitleButtonPatch.RegisterTitleButton(Scene.Mode.Title);
+        // (in the background, once per game start: a newer release shows on that button)
+        UpdateCheck.Begin();
 
         StartCoroutine(Helper.ReplayBuffer.Run());
     }

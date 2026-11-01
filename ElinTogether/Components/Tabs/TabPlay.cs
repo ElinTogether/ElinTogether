@@ -45,6 +45,12 @@ internal class TabPlay : TabEmpBase
 
     private void BuildPlay(YKVertical page)
     {
+        // a newer release (UpdateCheck): one short card above the rest
+        if (UpdateCheck.Newer is { } newer) {
+            page.Card("emp_update_card".Loc(newer)).ButtonRow()
+                .RowButton("emp_update_download".lang(), () => Application.OpenURL(UpdateCheck.Url));
+        }
+
         if (EClass.core.IsGameStarted && NetSession.Instance.Transport != null) {
             BuildConnected(page);
         } else if (NetSession.Instance is { HasActiveConnection: true, Transport: ElinNetClient }) {
