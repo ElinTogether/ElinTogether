@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,13 +10,20 @@ namespace ElinTogether.Helper;
 ///     text (LRU of 256) so every view shares the sprite. The emblem's canvas is the 64 grid: a layer may reach past
 ///     the bottom shape (unless the emblem is cut to it) up to the canvas' edge, so a 16-24 px chip shows the same
 ///     square as before. An emblem an old form holds (<see cref="TeamEmblem.ToLegacy" />) is drawn by the old drawing,
-///     pixel for pixel; any other by the layer drawing: each layer from the cropped sprite of its thing or from its
-///     shape's formula, nearest inverse map (size, rotation, flips), tinted, its border, alpha over
+///     pixel for pixel; any other by the layer drawing: each layer (and its live mirrored copies) from the cropped
+///     sprite of its picture, its shape's formula or its text's raster (<see cref="EmblemText" />), nearest inverse
+///     map (size, rotation, flips), tinted or filled (flat, gradient, tiled texture), cut to the layer below when
+///     asked, its shadow and border, then blended (normal, multiply, add) over. The editor's previews are baked into
+///     its own textures (<see cref="Into" />), never into the shared cache, so a team's chip never loses its sprite
 /// </summary>
 internal static class TeamEmblemBaker
 {
     private const int N = TeamEmblem.Grid;
     private const int Capacity = 256;
+
+    // a picture's pixels at most this many on their longer side (a portrait, a place's picture), and how many are kept
+    private const int SourceSide = 256;
+    private const int SourceCapacity = 128;
 
     private static readonly Dictionary<string, LinkedListNode<(string Key, Sprite Sprite)>> _baked = [];
     private static readonly LinkedList<(string Key, Sprite Sprite)> _order = new();
@@ -26,10 +34,40 @@ internal static class TeamEmblemBaker
     internal static Sprite Get(Emblem emblem)
     {
         var key = TeamEmblem.Format(emblem);
-        if (_baked.TryGetValue(key, out var node)) {
+        if (_baked.TryGetValue(key, out var node) && node.Value.Sprite != null) {
             _order.Remove(node);
             _order.AddFirst(node);
             return node.Value.Sprite;
+        }
+
+        if (node != null) {
+            _order.Remove(node);
+            _baked.Remove(key);
+        }
+
+        var sprite = Into(null, emblem);
+        _baked[key] = _order.AddFirst((key, sprite));
+        while (_order.Count > Capacity) {
+            var last = _order.Last!.Value;
+            _order.RemoveLast();
+            _baked.Remove(last.Key);
+            Free(last.Sprite);
+        }
+
+        return sprite;
+    }
+
+    /// <summary>
+    ///     The emblem baked into <paramref name="reuse" />'s texture (rewritten in place: every image showing it
+    ///     follows), or into a new sprite of its own when there is none. Not cached: the caller owns it
+    /// </summary>
+    internal static Sprite Into(Sprite? reuse, Emblem emblem)
+    {
+        var pixels = Bake(emblem);
+        if (reuse != null && reuse.texture != null) {
+            reuse.texture.SetPixels32(pixels);
+            reuse.texture.Apply(false, false);
+            return reuse;
         }
 
         var tex = new Texture2D(N, N, TextureFormat.RGBA32, false) {
@@ -37,19 +75,23 @@ internal static class TeamEmblemBaker
             wrapMode = TextureWrapMode.Clamp,
             name = "emp_emblem",
         };
-        tex.SetPixels32(Bake(emblem));
+        tex.SetPixels32(pixels);
         tex.Apply(false, false);
-        var sprite = Sprite.Create(tex, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
-        _baked[key] = _order.AddFirst((key, sprite));
-        while (_order.Count > Capacity) {
-            var last = _order.Last!.Value;
-            _order.RemoveLast();
-            _baked.Remove(last.Key);
-            Object.Destroy(last.Sprite.texture);
-            Object.Destroy(last.Sprite);
+        return Sprite.Create(tex, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+    }
+
+    /// <summary>A sprite of <see cref="Into" /> destroyed with its texture</summary>
+    internal static void Free(Sprite? sprite)
+    {
+        if (sprite == null) {
+            return;
         }
 
-        return sprite;
+        if (sprite.texture != null) {
+            Object.Destroy(sprite.texture);
+        }
+
+        Object.Destroy(sprite);
     }
 
     /// <summary>A short hash of the baked pixels of a stored text (the bench compares it between games)</summary>
@@ -74,13 +116,13 @@ internal static class TeamEmblemBaker
     internal static void Clear()
     {
         foreach (var (_, sprite) in _order) {
-            Object.Destroy(sprite.texture);
-            Object.Destroy(sprite);
+            Free(sprite);
         }
 
         _order.Clear();
         _baked.Clear();
         _sources.Clear();
+        EmblemText.Clear();
     }
 
     /// <summary>The baked sprite as an image of <paramref name="size" /> in a layout row</summary>
@@ -105,6 +147,51 @@ internal static class TeamEmblemBaker
 
     // ---------------------------------------------------------------- the layer drawing (e3)
 
+    /// <summary>
+    ///     Every field in its range again (review 2026-11-01: the bake is the second guard after Validate, an outline
+    ///     of two billion pixels froze the game)
+    /// </summary>
+    private static EmblemLayer Safe(EmblemLayer l) => l with {
+        X = Mathf.Clamp(l.X, TeamEmblem.MinPos, TeamEmblem.MaxPos),
+        Y = Mathf.Clamp(l.Y, TeamEmblem.MinPos, TeamEmblem.MaxPos),
+        Size = Mathf.Clamp(l.Size, TeamEmblem.MinSize, TeamEmblem.MaxSize),
+        Rotation = ((l.Rotation % 360) + 360) % 360,
+        Flip = l.Flip & 3,
+        Opacity = Mathf.Clamp(l.Opacity, TeamEmblem.MinOpacity, 100),
+        Outline = Mathf.Clamp(l.Outline, 0, TeamEmblem.MaxOutline),
+        Pattern = Mathf.Clamp(l.Pattern, 0, TeamEmblem.PatternCount - 1),
+        Sides = Mathf.Clamp(l.Sides, 3, 12),
+        Aspect = Mathf.Clamp(l.Aspect, 10, 100),
+        Thick = Mathf.Clamp(l.Thick, 5, 90),
+        Spacing = Mathf.Clamp(l.Spacing, -8, 16),
+        Curve = Mathf.Clamp(l.Curve, -180, 180),
+        Align = Mathf.Clamp(l.Align, 0, 2),
+        Shadow = Mathf.Clamp(l.Shadow, 0, TeamEmblem.MaxShadow),
+        Gradient = Mathf.Clamp(l.Gradient, 0, 2),
+        GradAngle = ((l.GradAngle % 360) + 360) % 360,
+        Blend = Mathf.Clamp(l.Blend, 0, 2),
+        Sym = l.Sym & 3,
+    };
+
+    /// <summary>The layer and its live mirrored copies (left-right, top-bottom, or both: four)</summary>
+    private static IEnumerable<EmblemLayer> Copies(EmblemLayer l)
+    {
+        yield return l;
+        var h = l with { X = N - l.X, Flip = l.Flip ^ 1, Rotation = (360 - l.Rotation) % 360 };
+        var v = l with { Y = N - l.Y, Flip = l.Flip ^ 2, Rotation = (360 - l.Rotation) % 360 };
+        if ((l.Sym & 1) != 0) {
+            yield return h;
+        }
+
+        if ((l.Sym & 2) != 0) {
+            yield return v;
+        }
+
+        if (l.Sym == 3) {
+            yield return h with { Y = N - l.Y, Flip = l.Flip ^ 3, Rotation = l.Rotation };
+        }
+    }
+
     private static Color32[] BakeLayers(Emblem emblem)
     {
         // (top-down while drawing) a clear canvas, each layer over it
@@ -113,33 +200,71 @@ internal static class TeamEmblemBaker
         var colour = new Color[N * N];
         var mask = new bool[N * N];
         bool[]? clip = null;
-        for (var index = 0; index < emblem.Layers.Count; index++) {
-            var layer = emblem.Layers[index];
+        bool[]? below = null;
+        foreach (var (raw, index) in emblem.Layers.Take(TeamEmblem.MaxLayers).Select((l, i) => (l, i))) {
+            var layer = Safe(raw);
             System.Array.Clear(cover, 0, cover.Length);
             System.Array.Clear(mask, 0, mask.Length);
-            var drawn = layer.IsShape ? CoverShape(layer, cover, colour, mask) : CoverSprite(layer, cover, colour, mask);
+            var drawn = false;
+            foreach (var copy in Copies(layer)) {
+                drawn |= copy.IsShape ? CoverShape(copy, cover, colour, mask) : copy.IsText ? CoverText(copy, cover, colour, mask) : CoverSprite(copy, cover, colour, mask);
+            }
+
             var ring = drawn && layer.Outline > 0 ? Ring(mask, layer.Outline) : null;
             if (index == 0 && emblem.Clip) {
-                // (what the bottom layer covers, its border included, is the emblem's outline)
+                // (what the bottom layer covers, its border included, is the emblem's outline; hidden or not)
                 clip = new bool[N * N];
                 for (var i = 0; i < clip.Length; i++) {
                     clip[i] = mask[i] || cover[i] > 0f || (ring != null && ring[i]);
                 }
             }
 
-            if (!drawn) {
+            if (!drawn || layer.Hidden != 0) {
                 continue;
             }
 
-            var opacity = Mathf.Clamp(layer.Opacity, TeamEmblem.MinOpacity, 100) / 100f;
-            var ink = layer.OutlineColor == TeamEmblem.Ink ? Ink : ToColor(layer.OutlineColor);
-            for (var i = 0; i < px.Length; i++) {
-                if (cover[i] > 0f) {
-                    Over(ref px[i], colour[i], cover[i] * opacity);
-                } else if (ring != null && ring[i]) {
-                    Over(ref px[i], ink, ink.a * opacity);
+            if (layer.ClipBelow != 0 && below != null) {
+                // (masked by the layer below: only where it is drawn)
+                for (var i = 0; i < cover.Length; i++) {
+                    if (!below[i]) {
+                        cover[i] = 0f;
+                        mask[i] = false;
+                        if (ring != null) {
+                            ring[i] = false;
+                        }
+                    }
                 }
             }
+
+            var opacity = layer.Opacity / 100f;
+            var ink = layer.OutlineColor == TeamEmblem.Ink ? Ink : ToColor(layer.OutlineColor);
+            if (layer.Shadow > 0) {
+                // the shadow first: what the layer covers, moved down and right
+                var shade = ToColor(layer.ShadowColor);
+                var s = layer.Shadow;
+                for (var y = s; y < N; y++) {
+                    for (var x = s; x < N; x++) {
+                        var j = (y - s) * N + x - s;
+                        var a = Mathf.Max(cover[j], ring != null && ring[j] ? 1f : 0f);
+                        if (a > 0f && (layer.ClipBelow == 0 || below == null || below[y * N + x])) {
+                            Over(ref px[y * N + x], shade, shade.a * a * opacity);
+                        }
+                    }
+                }
+            }
+
+            var mine = new bool[N * N];
+            for (var i = 0; i < px.Length; i++) {
+                if (cover[i] > 0f) {
+                    Over(ref px[i], Blend(px[i], colour[i], layer.Blend), cover[i] * opacity);
+                    mine[i] = true;
+                } else if (ring != null && ring[i]) {
+                    Over(ref px[i], ink, ink.a * opacity);
+                    mine[i] = true;
+                }
+            }
+
+            below = mine;
         }
 
         var output = new Color32[N * N];
@@ -156,6 +281,21 @@ internal static class TeamEmblemBaker
         }
 
         return output;
+    }
+
+    /// <summary>The colour a layer gives over a pixel: its own (normal), multiplied, or added (only where something is drawn)</summary>
+    private static Color Blend(Color dst, Color src, int mode)
+    {
+        if (mode == 0 || dst.a <= 0f) {
+            return src;
+        }
+
+        var mixed = mode == 1
+            ? new Color(src.r * dst.r, src.g * dst.g, src.b * dst.b, src.a)
+            : new Color(Mathf.Min(1f, src.r + dst.r), Mathf.Min(1f, src.g + dst.g), Mathf.Min(1f, src.b + dst.b), src.a);
+        var c = Color.Lerp(src, mixed, dst.a);
+        c.a = src.a;
+        return c;
     }
 
     /// <summary>The colour over the pixel with that alpha (an opaque pixel blends as the old drawing did)</summary>
@@ -177,6 +317,27 @@ internal static class TeamEmblemBaker
 
     private static Color ToColor(uint rgba) =>
         new Color32((byte)(rgba >> 24), (byte)(rgba >> 16), (byte)(rgba >> 8), (byte)rgba);
+
+    /// <summary>
+    ///     The fill at a point of the layer's own 64 square: flat, or the gradient from the fill to its end colour
+    ///     (linear along its angle, 90 top to bottom; radial from the centre)
+    /// </summary>
+    private static Color FillAt(EmblemLayer l, Color fill, Color end, float lx, float ly)
+    {
+        if (l.Gradient == 0) {
+            return fill;
+        }
+
+        float t;
+        if (l.Gradient == 1) {
+            var a = l.GradAngle * Mathf.Deg2Rad;
+            t = ((lx - N / 2f) * Mathf.Cos(a) + (ly - N / 2f) * Mathf.Sin(a)) / N + 0.5f;
+        } else {
+            t = Mathf.Sqrt((lx - N / 2f) * (lx - N / 2f) + (ly - N / 2f) * (ly - N / 2f)) / (N / 2f);
+        }
+
+        return Color.Lerp(fill, end, Mathf.Clamp01(t));
+    }
 
     /// <summary>
     ///     The inverse of the layer's place: the canvas pixel's centre in the layer's own 64 square (rotation undone,
@@ -223,12 +384,26 @@ internal static class TeamEmblemBaker
         }
     }
 
-    private static bool CoverSprite(EmblemLayer layer, float[] cover, Color[] colour, bool[] mask)
+    // a picture this game does not have: a neutral grey tile with a darker edge
+    private static readonly (Color32[] Pixels, int W, int H) Placeholder = MakePlaceholder();
+
+    private static (Color32[] Pixels, int W, int H) MakePlaceholder()
     {
-        if (Source(layer.Thing) is not { } src) {
-            return false;
+        const int n = 16;
+        var px = new Color32[n * n];
+        for (var y = 0; y < n; y++) {
+            for (var x = 0; x < n; x++) {
+                var edge = x == 0 || y == 0 || x == n - 1 || y == n - 1;
+                px[y * n + x] = edge ? new Color32(70, 70, 70, 255) : new Color32(128, 128, 128, 255);
+            }
         }
 
+        return (px, n, n);
+    }
+
+    private static bool CoverSprite(EmblemLayer layer, float[] cover, Color[] colour, bool[] mask)
+    {
+        var src = Source(layer.Thing) ?? Placeholder;
         Color? tint = layer.Color != TeamEmblem.Own ? ToColor(layer.Color) : null;
         var map = new Inverse(layer, N * layer.Size / 100f / Mathf.Max(src.W, src.H, 1));
         for (var dy = 0; dy < N; dy++) {
@@ -260,10 +435,58 @@ internal static class TeamEmblemBaker
         return true;
     }
 
+    /// <summary>
+    ///     A text layer: its raster (<see cref="EmblemText" />) placed like a sprite (its longer side the layer's size,
+    ///     its height squeezed by the aspect), anchored by its middle, left or right end, filled with its colour or
+    ///     gradient. Nothing on a game that cannot draw text
+    /// </summary>
+    private static bool CoverText(EmblemLayer layer, float[] cover, Color[] colour, bool[] mask)
+    {
+        if (EmblemText.Render(layer) is not { } src) {
+            return false;
+        }
+
+        var fill = ToColor(layer.Color);
+        var end = ToColor(layer.GradColor);
+        var aspect = layer.Aspect / 100f;
+        var map = new Inverse(layer, N * layer.Size / 100f / Mathf.Max(src.W, src.H, 1));
+        var anchor = layer.Align switch {
+            1 => 0f,
+            2 => src.W,
+            _ => src.W / 2f,
+        };
+        for (var dy = 0; dy < N; dy++) {
+            for (var dx = 0; dx < N; dx++) {
+                var p = map.At(dx, dy);
+                var sx = Mathf.FloorToInt(p.x + anchor);
+                var syTop = Mathf.FloorToInt(p.y / aspect + src.H / 2f);
+                if (sx < 0 || sx >= src.W || syTop < 0 || syTop >= src.H) {
+                    continue;
+                }
+
+                var a = src.Alpha[syTop * src.W + sx];
+                if (a <= 0f) {
+                    continue;
+                }
+
+                var c = FillAt(layer, fill, end, (sx + 0.5f) * N / src.W, (syTop + 0.5f) * N / src.H);
+                c.a *= a;
+                var i = dy * N + dx;
+                cover[i] = c.a;
+                colour[i] = c;
+                mask[i] = a >= 0.5f;
+            }
+        }
+
+        return true;
+    }
+
     private static bool CoverShape(EmblemLayer layer, float[] cover, Color[] colour, bool[] mask)
     {
         var fill = ToColor(layer.Color);
         var second = ToColor(layer.Color2);
+        var end = ToColor(layer.GradColor);
+        var texture = layer.Texture.Length > 0 ? Source(layer.Texture) ?? Placeholder : ((Color32[] Pixels, int W, int H)?)null;
         var map = new Inverse(layer, layer.Size / 100f);
         for (var dy = 0; dy < N; dy++) {
             for (var dx = 0; dx < N; dx++) {
@@ -274,7 +497,20 @@ internal static class TeamEmblemBaker
                 }
 
                 var i = dy * N + dx;
-                var c = layer.Pattern != 0 && Second(layer, lx, ly) ? second : fill;
+                Color c;
+                if (layer.Pattern != 0 && Second(layer, lx, ly)) {
+                    c = second;
+                } else {
+                    c = FillAt(layer, fill, end, lx, ly);
+                    if (texture is { } t) {
+                        // (the picture tiled at its own size across the shape, tinted by the fill: white keeps it)
+                        var tx = ((Mathf.FloorToInt(lx) % t.W) + t.W) % t.W;
+                        var ty = ((Mathf.FloorToInt(ly) % t.H) + t.H) % t.H;
+                        var tc = (Color)t.Pixels[(t.H - 1 - ty) * t.W + tx];
+                        c = new(tc.r * c.r, tc.g * c.g, tc.b * c.b, tc.a * c.a);
+                    }
+                }
+
                 mask[i] = true;
                 cover[i] = c.a;
                 colour[i] = c;
@@ -287,6 +523,7 @@ internal static class TeamEmblemBaker
     /// <summary>The bare pixels within <paramref name="width" /> of the covered ones (one: their four neighbours)</summary>
     private static bool[] Ring(bool[] mask, int width)
     {
+        width = Mathf.Clamp(width, 0, TeamEmblem.MaxOutline);
         var ring = new bool[N * N];
         var r2 = width * width;
         for (var y = 0; y < N; y++) {
@@ -446,9 +683,8 @@ internal static class TeamEmblemBaker
         var cover = new float[N * N];
         var colour = new Color[N * N];
         foreach (var layer in emblem.Layers) {
-            if (Source(layer.Thing) is not { } src) {
-                continue;
-            }
+            // (a thing this game lacks: the placeholder, review 2026-11-01)
+            var src = Source(layer.Thing) ?? Placeholder;
 
             System.Array.Clear(cover, 0, cover.Length);
             Color? tint = layer.Tint < TeamEmblem.OwnColours ? TeamBanner.ColorOf(layer.Tint) : null;
@@ -615,13 +851,14 @@ internal static class TeamEmblemBaker
                     System.Array.Copy(src.Pixels, (box.y + y) * src.W + box.x, cut, y * box.width, box.width);
                 }
 
-                result = (cut, box.width, box.height);
+                // (a portrait or a place's picture kept at most 256 pixels: the 64 grid at 200 % needs 128)
+                result = EmblemSprites.Fit(cut, box.width, box.height, SourceSide);
             }
         } catch (System.Exception e) {
             EmpLog.Debug(e, "Team emblem: the sprite of {Thing} could not be read", thing);
         }
 
-        if (_sources.Count > 1024) {
+        if (_sources.Count > SourceCapacity) {
             _sources.Clear();
         }
 

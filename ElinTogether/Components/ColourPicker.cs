@@ -266,7 +266,10 @@ internal static class ColourPicker
     private static Texture2D SvTexture(float hue)
     {
         const int n = 32;
-        _sv ??= New(n, n, FilterMode.Bilinear);
+        if (_sv == null) {
+            _sv = New(n, n, FilterMode.Bilinear);
+        }
+
         var px = new Color32[n * n];
         for (var y = 0; y < n; y++) {
             for (var x = 0; x < n; x++) {
@@ -300,7 +303,10 @@ internal static class ColourPicker
     private static Texture2D AlphaTexture(uint rgba)
     {
         const int n = 32;
-        _alpha ??= New(n, 1, FilterMode.Bilinear);
+        if (_alpha == null) {
+            _alpha = New(n, 1, FilterMode.Bilinear);
+        }
+
         var c = (Color32)ToColor(rgba);
         var px = new Color32[n];
         for (var x = 0; x < n; x++) {

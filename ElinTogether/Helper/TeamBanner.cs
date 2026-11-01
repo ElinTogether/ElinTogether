@@ -106,49 +106,35 @@ internal static class TeamBanner
     internal static Emblem? EmblemOf(int teamId) =>
         On && Things.TryGetValue(teamId, out var stored) ? EmblemOf(teamId, stored) : null;
 
+    // stored text -> the emblem it reads as here (validated once; a team's emblem is read by every view each frame it is built)
+    private static readonly Dictionary<string, Emblem?> _read = [];
+
     private static Emblem? EmblemOf(int teamId, string stored)
     {
         var bg = Book.TryGetValue(teamId, out var banner) ? banner.Color : 0;
-        if (TeamEmblem.Parse(stored, bg) is not { } emblem) {
-            return null;
+        var key = bg + "/" + stored;
+        if (_read.TryGetValue(key, out var known)) {
+            return known;
         }
 
-        // (a guest without a mod's thing still draws the rest)
-        var layers = emblem.Layers.Where(l => l.IsShape || Normalize(l.Thing) != null).ToList();
-        return layers.Count == 0 ? null : emblem with { Layers = layers };
+        // every field checked in this game too (review 2026-11-01: a host's or a save's text may hold anything);
+        // an id this game lacks (a mod's thing of the host's) stays, drawn as a placeholder
+        var emblem = stored.Length <= TeamEmblem.MaxText ? TeamEmblem.Validate(TeamEmblem.Parse(stored, bg), EmblemSprites.NormalizeOrKeep) : null;
+        if (_read.Count > 256) {
+            _read.Clear();
+        }
+
+        return _read[key] = emblem;
     }
 
     /// <summary>
-    ///     The typed form of a stored emblem id: "t:sword" (a thing) or "c:putty" (a monster). An old untyped value is a
-    ///     thing. Null when the game has no such source row
+    ///     The typed form of a stored emblem id (<see cref="EmblemSprites" />: "t:sword", "c:putty", "e:ele_STR"...).
+    ///     An old untyped value is a thing. Null when the game has no such picture
     /// </summary>
-    internal static string? Normalize(string value)
-    {
-        if (string.IsNullOrEmpty(value)) {
-            return null;
-        }
+    internal static string? Normalize(string value) => EmblemSprites.Normalize(value);
 
-        var monster = value.StartsWith("c:");
-        var id = value.StartsWith("t:") || monster ? value.Substring(2) : value;
-        if (monster) {
-            return EClass.sources.charas.map.ContainsKey(id) ? "c:" + id : null;
-        }
-
-        return EClass.sources.things.map.ContainsKey(id) ? "t:" + id : null;
-    }
-
-    /// <summary>
-    ///     The sprite of a typed emblem id: the thing's, or the monster's own pixel sprite
-    /// </summary>
-    internal static Sprite? SpriteOf(string typed)
-    {
-        if (Normalize(typed) is not { } value) {
-            return null;
-        }
-
-        var id = value.Substring(2);
-        return value[0] == 'c' ? EClass.sources.charas.map[id].GetSprite() : EClass.sources.things.map[id].GetSprite();
-    }
+    /// <summary>The picture of a typed emblem id</summary>
+    internal static Sprite? SpriteOf(string typed) => EmblemSprites.SpriteOf(typed);
 
     internal static (int Icon, int Color)? Of(int teamId) => On && Book.TryGetValue(teamId, out var banner) ? banner : null;
 
@@ -253,7 +239,9 @@ internal static class TeamBanner
         _told = [];
         _toldThings = [];
         _asks.Clear();
+        _read.Clear();
         TeamEmblemBaker.Clear();
+        ForgetCropped();
     }
 
     /// <summary>
@@ -309,18 +297,77 @@ internal static class TeamBanner
         image.raycastTarget = false;
     }
 
-    private static readonly Dictionary<Sprite, Sprite> _cropped = [];
+    // the cut sprites: the grid's (scrolled past by the hundred) in an LRU whose evicted textures are destroyed; the
+    // window's own few icons (pinned) kept apart, never evicted (review 2026-11-01)
+    private const int CroppedCapacity = 384;
+    private static readonly Dictionary<Sprite, LinkedListNode<(Sprite Key, Sprite Cut)>> _cropped = [];
+    private static readonly LinkedList<(Sprite Key, Sprite Cut)> _croppedOrder = new();
+    private static readonly Dictionary<Sprite, Sprite> _pinned = [];
 
-    /// <summary>The sprite cut to its opaque pixels, point filtered (cached per sprite); itself when it cannot be read</summary>
-    internal static Sprite? Cropped(Sprite? sprite)
+    /// <summary>
+    ///     The sprite cut to its opaque pixels, point filtered (cached per sprite); itself when it cannot be read.
+    ///     <paramref name="pin" /> for a sprite kept on screen for long (the window's tab icons): never evicted
+    /// </summary>
+    internal static Sprite? Cropped(Sprite? sprite, bool pin = false)
     {
         if (sprite == null) {
             return null;
         }
 
-        if (_cropped.TryGetValue(sprite, out var done)) {
-            return done;
+        if (_pinned.TryGetValue(sprite, out var kept) && kept != null) {
+            return kept;
         }
+
+        if (_cropped.TryGetValue(sprite, out var node)) {
+            if (node.Value.Cut != null) {
+                _croppedOrder.Remove(node);
+                _croppedOrder.AddFirst(node);
+                return node.Value.Cut;
+            }
+
+            _croppedOrder.Remove(node);
+            _cropped.Remove(sprite);
+        }
+
+        var done = Cut(sprite);
+        if (pin) {
+            return _pinned[sprite] = done;
+        }
+
+        _cropped[sprite] = _croppedOrder.AddFirst((sprite, done));
+        while (_croppedOrder.Count > CroppedCapacity) {
+            var last = _croppedOrder.Last!.Value;
+            _croppedOrder.RemoveLast();
+            _cropped.Remove(last.Key);
+            Destroy(last.Key, last.Cut);
+        }
+
+        return done;
+    }
+
+    // a cut sprite of the cache made its own texture (not when the sprite itself was kept)
+    private static void Destroy(Sprite key, Sprite cut)
+    {
+        if (cut != null && cut != key) {
+            Object.Destroy(cut.texture);
+            Object.Destroy(cut);
+        }
+    }
+
+    /// <summary>The grid's cut sprites dropped and destroyed (the pinned icons stay)</summary>
+    internal static void ForgetCropped()
+    {
+        foreach (var (key, cut) in _croppedOrder) {
+            Destroy(key, cut);
+        }
+
+        _croppedOrder.Clear();
+        _cropped.Clear();
+    }
+
+    private static Sprite Cut(Sprite sprite)
+    {
+        Sprite done;
 
         try {
             var src = Patches.MultiplayerHubPatch.Read(sprite);
@@ -330,44 +377,48 @@ internal static class TeamBanner
                 System.Array.Copy(src.Pixels, (box.y + y) * src.W + box.x, px, y * box.width, box.width);
             }
 
-            var tex = new Texture2D(box.width, box.height, TextureFormat.RGBA32, false) {
+            // (a portrait or a place's picture: at most 128 pixels, a grid cell or a frame is far smaller)
+            var (fit, w, h) = EmblemSprites.Fit(px, box.width, box.height, 128);
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
+                name = "emp_cropped",
             };
-            tex.SetPixels32(px);
+            tex.SetPixels32(fit);
             tex.Apply(false, false);
-            done = Sprite.Create(tex, new Rect(0, 0, box.width, box.height), new Vector2(0.5f, 0.5f), 100f);
+            done = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
         } catch (System.Exception) {
             done = sprite;
         }
 
-        _cropped[sprite] = done;
         return done;
     }
 
     private static string _query = "";
 
-    // 0 items, 1 monsters
+    // the source pill picked (EmblemSprites.Pills: 0 items, 1 monsters, then icons, gods, UI, tiles, portraits, places)
     private static int _kind;
 
     /// <summary>
-    ///     Two pills (Items / Monsters) over a search field over one scrolled grid of every thing or monster of the
-    ///     game (<see cref="SpriteGrid" />: name in the player's language, English name or id, filtered as it is typed);
-    ///     a click gives the typed id to <paramref name="onPick" />
+    ///     The source pills (items, monsters, the game's icons, gods, UI icons, tiles, portraits, places) over a search
+    ///     field over one scrolled grid of every picture of that source (<see cref="SpriteGrid" />: name in the
+    ///     player's language, English name or id, filtered as it is typed); a click gives the typed id to
+    ///     <paramref name="onPick" />
     /// </summary>
     internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick, bool itemsOnly = false)
     {
         SpriteGridView? grid = null;
-        void Show() => grid?.Show(SpriteGrid.Filter(SpriteGrid.All(_kind == 1), _query));
+        void Show() => grid?.Show(SpriteGrid.Filter(SpriteGrid.All(_kind), _query));
 
         if (itemsOnly) {
-            // (the Market: things only, no Items / Monsters pills)
+            // (the Market: things only, no pills)
             _kind = 0;
         } else {
-            Pills(card, ["emp_ui_team_banner_items".lang(), "emp_ui_team_banner_monsters".lang()], _kind, i => {
+            _kind = Mathf.Clamp(_kind, 0, EmblemSprites.Pills.Length - 1);
+            Pills(card, EmblemSprites.Pills.Select(p => p.Label.lang()), _kind, i => {
                 _kind = i;
                 Show();
-            });
+            }, 4);
         }
 
         var search = card.InputText(_query);
@@ -382,24 +433,37 @@ internal static class TeamBanner
     }
 
     /// <summary>
-    ///     The game's tab pills in a row of the card, in a selectable group like the page pills
+    ///     The game's tab pills in a row of the card (<paramref name="perRow" /> to a line, all in one selectable
+    ///     group), like the page pills
     /// </summary>
-    internal static void Pills(YKLayout card, IEnumerable<string> labels, int selected, System.Action<int> onPick)
+    internal static void Pills(YKLayout card, IEnumerable<string> labels, int selected, System.Action<int> onPick, int perRow = 0)
     {
         if (EmpUiParts.Pill is not { } mold) {
             return;
         }
 
-        var row = card.Row();
-        var group = row.gameObject.AddComponent<UISelectableGroup>();
+        var all = labels.ToList();
+        var holder = perRow > 0 && all.Count > perRow ? card.Vertical() : null;
+        if (holder != null) {
+            holder.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            holder.Layout.spacing = 2f;
+        }
+
+        var rowOf = holder != null ? (YKLayout)holder : card;
+        var row = rowOf.Row();
+        var group = (holder != null ? holder.gameObject : row.gameObject).AddComponent<UISelectableGroup>();
         group.autoInitialize = false;
         group.colorType = UISelectableGroup.ColorType.Tab;
         group.colorWhenSelected = true;
         group.useTransition = true;
         group.fixRefreshButtons = true;
-        foreach (var label in labels) {
+        for (var i = 0; i < all.Count; i++) {
+            if (holder != null && i > 0 && i % perRow == 0) {
+                row = holder.Row();
+            }
+
             var pill = Util.Instantiate(mold, row.transform);
-            pill.mainText.SetText(label);
+            pill.mainText.SetText(all[i]);
             if (pill.icon != null) {
                 pill.icon.gameObject.SetActive(false);
             }

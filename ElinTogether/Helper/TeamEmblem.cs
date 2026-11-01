@@ -24,6 +24,22 @@ namespace ElinTogether.Helper;
 /// <param name="Sides">A star's points or a polygon's sides, 3..12</param>
 /// <param name="Aspect">The shorter side in % of the longer one, 10..100</param>
 /// <param name="Thick">A ring's, a line's or a cross's width, a star's inner radius, a rounded square's corner, 5..90 %</param>
+/// <param name="Font">A text layer's font: the name of one of the game's own fonts, "" for the first</param>
+/// <param name="Spacing">A text layer's letter spacing, -8..16 pixels of its raster</param>
+/// <param name="Curve">A text layer bent along an arc of that many degrees, -180..180 (0 straight, above 0 an arch)</param>
+/// <param name="Align">A text layer's anchor at its centre point: 0 the middle, 1 its left end, 2 its right end</param>
+/// <param name="Shadow">A drop shadow, 0..4 pixels down and right</param>
+/// <param name="ShadowColor">The shadow's colour, 0xRRGGBBAA</param>
+/// <param name="Gradient">A shape's or a text's fill: 0 flat, 1 linear, 2 radial, from <c>Color</c> to <c>GradColor</c></param>
+/// <param name="GradColor">The gradient's end colour</param>
+/// <param name="GradAngle">A linear gradient's direction, degrees 0..359 (90: top to bottom)</param>
+/// <param name="Blend">0 normal, 1 multiply, 2 add</param>
+/// <param name="ClipBelow">1: drawn only where the layer below is</param>
+/// <param name="Texture">A shape's fill tiled from a sprite (a typed sprite id), "" for none</param>
+/// <param name="Name">The layer's name in the editor, up to 12 characters, "" for its default name</param>
+/// <param name="Lock">1: the editor does not move or change it</param>
+/// <param name="Hidden">1: not drawn</param>
+/// <param name="Sym">A live mirrored copy: 1 left-right, 2 top-bottom, 3 both (four copies)</param>
 internal readonly record struct EmblemLayer(
     string Thing,
     int X,
@@ -39,9 +55,43 @@ internal readonly record struct EmblemLayer(
     uint Color2 = 0,
     int Sides = 5,
     int Aspect = 100,
-    int Thick = 30)
+    int Thick = 30,
+    string Font = "",
+    int Spacing = 0,
+    int Curve = 0,
+    int Align = 0,
+    int Shadow = 0,
+    uint ShadowColor = TeamEmblem.ShadowInk,
+    int Gradient = 0,
+    uint GradColor = 0xFFFFFFFFu,
+    int GradAngle = 90,
+    int Blend = 0,
+    int ClipBelow = 0,
+    string Texture = "",
+    string Name = "",
+    int Lock = 0,
+    int Hidden = 0,
+    int Sym = 0)
 {
     internal bool IsShape => Thing.StartsWith("g:");
+
+    /// <summary>A text layer: <c>x:</c> and the text's UTF-8 bytes in hex</summary>
+    internal bool IsText => Thing.StartsWith("x:");
+
+    /// <summary>A picture of the game (a thing, a monster, an icon, a tile, a portrait...)</summary>
+    internal bool IsSprite => !IsShape && !IsText;
+
+    /// <summary>A text layer's text</summary>
+    internal string Text => IsText ? TeamEmblem.Unhex(Thing.Substring(2)) ?? "" : "";
+
+    /// <summary>
+    ///     Only the fields the e3 form had before text layers: an emblem of such layers (and of the first sprite
+    ///     kinds and shapes) is read by older games too
+    /// </summary>
+    internal bool Classic =>
+        Font == "" && Spacing == 0 && Curve == 0 && Align == 0 && Shadow == 0 && ShadowColor == TeamEmblem.ShadowInk &&
+        Gradient == 0 && GradColor == 0xFFFFFFFFu && GradAngle == 90 && Blend == 0 && ClipBelow == 0 && Texture == "" &&
+        Name == "" && Lock == 0 && Hidden == 0 && Sym == 0;
 
     /// <summary>The shape's name ("star"), empty for a sprite</summary>
     internal string Kind => IsShape ? Thing.Substring(2) : "";
@@ -60,14 +110,31 @@ internal sealed record Emblem(IReadOnlyList<EmblemLayer> Layers, bool Clip = fal
 ///     own colours, o opacity %, e outline 0/1): both a background shape of the palette, cut to it, under sprites;
 ///     <c>e3|clip|L;L;...</c>, L = <c>kind:id,x,y,s,r,f,RRGGBBAA[,o,w,RRGGBBAA,p,RRGGBBAA,n,a,t]</c> (r degrees, the
 ///     fields after the colour left out when they are the defaults). An e1/e2 text reads as e3 with its background as
-///     the bottom shape layer and clip on (<see cref="FromLegacy" />), and draws exactly as before
+///     the bottom shape layer and clip on (<see cref="FromLegacy" />), and draws exactly as before.
+///     e3 grew by appending only (lead dev 2026-11-01): text layers (<c>x:</c> + hex), more sprite sources
+///     (<see cref="TeamBanner.Normalize" />) and the fields after <c>t</c> (font, spacing, curve, align, shadow and its
+///     colour, gradient, its colour and angle, blend, clip-to-below, texture, name in hex, lock, hidden, symmetry).
+///     An emblem that uses none of them writes exactly the text it wrote before; one that does is refused by an older
+///     game's reader, which then draws the team's fallback mark
 /// </summary>
 internal static class TeamEmblem
 {
     internal const string Prefix = "e1|";
     internal const string Prefix2 = "e2|";
     internal const string Prefix3 = "e3|";
-    internal const int MaxText = 2400;
+
+    /// <summary>The longest emblem text the host keeps (the editor says so before Save)</summary>
+    internal const int MaxText = 4000;
+
+    /// <summary>A text layer's characters, a layer name's characters</summary>
+    internal const int MaxChars = 16;
+
+    internal const int MaxName = 12;
+
+    /// <summary>The default shadow: black at half alpha</summary>
+    internal const uint ShadowInk = 0x00000080u;
+
+    internal const int MaxShadow = 4;
     internal const int MaxLayers = 16;
     internal const int Grid = 64;
     internal const int MinSize = 10;
@@ -173,7 +240,7 @@ internal static class TeamEmblem
     /// </summary>
     internal static Legacy? ToLegacy(Emblem e)
     {
-        if (!e.Clip || e.Layers.Count is < 1 or > SecondLayers + 1) {
+        if (!e.Clip || e.Layers.Count is < 1 or > SecondLayers + 1 || e.Layers.Any(l => !l.Classic)) {
             return null;
         }
 
@@ -190,7 +257,7 @@ internal static class TeamEmblem
         var old = new List<OldLayer>();
         foreach (var l in e.Layers.Skip(1)) {
             var tint = l.Color == Own ? OwnColours : PaletteIndex(l.Color);
-            if (l.IsShape || tint < 0 || l.X is < 0 or > Grid || l.Y is < 0 or > Grid || l.Rotation % 45 != 0 ||
+            if (!Sprite(l.Thing) || tint < 0 || l.X is < 0 or > Grid || l.Y is < 0 or > Grid || l.Rotation % 45 != 0 ||
                 l.Outline > 1 || (l.Outline == 1 && l.OutlineColor != Ink) || !Plain(l)) {
                 return null;
             }
@@ -277,6 +344,25 @@ internal static class TeamEmblem
 
     private static bool Sprite(string thing) => thing.Length >= 3 && (thing.StartsWith("t:") || thing.StartsWith("c:"));
 
+    // the e3 fields after the typed id, in order: i an int, h a colour in hex, s a plain word, n a name in hex
+    private const string Kinds = "iiiiihiihihiiisiiiihihiiisniii";
+
+    // the fields always written (x, y, size, rotation, flip, colour); the others only up to the last one not at its default
+    private const int Head = 6;
+
+    private static readonly string[] Plain3 = Fields(new("", 0, 0, 0, 0, 0, 0));
+
+    private static string[] Fields(EmblemLayer l) => [
+        S(l.X), S(l.Y), S(l.Size), S(l.Rotation), S(l.Flip), H(l.Color),
+        S(l.Opacity), S(l.Outline), H(l.OutlineColor), S(l.Pattern), H(l.Color2), S(l.Sides), S(l.Aspect), S(l.Thick),
+        l.Font, S(l.Spacing), S(l.Curve), S(l.Align), S(l.Shadow), H(l.ShadowColor), S(l.Gradient), H(l.GradColor), S(l.GradAngle),
+        S(l.Blend), S(l.ClipBelow), l.Texture, Hex(l.Name), S(l.Lock), S(l.Hidden), S(l.Sym),
+    ];
+
+    // a typed id of the e3 form: a sprite of a known source, a shape or a text (the ids themselves are checked later)
+    private static bool Typed(string thing) =>
+        thing.Length >= 3 && thing[1] == ':' && (thing[0] is 'g' or 'x' || EmblemSprites.Codes.IndexOf(thing[0]) >= 0);
+
     private static Emblem? ParseThird(string text)
     {
         var parts = text.Split('|');
@@ -288,38 +374,34 @@ internal static class TeamEmblem
         if (parts[2].Length > 0) {
             foreach (var chunk in parts[2].Split(';')) {
                 var f = chunk.Split(',');
-                if (f.Length is < 7 or > 15 || f[0].Length < 3 || (!Sprite(f[0]) && !f[0].StartsWith("g:"))) {
+                if (f.Length < Head + 1 || f.Length > Kinds.Length + 1 || !Typed(f[0])) {
                     return null;
                 }
 
-                // x, y, s, r, f, colour, then the optional fields in order (two of them colours)
-                var n = new long[15];
-                var defaults = new EmblemLayer("", 0, 0, 0, 0, 0, 0);
-                n[6] = defaults.Opacity;
-                n[7] = defaults.Outline;
-                n[8] = defaults.OutlineColor;
-                n[9] = defaults.Pattern;
-                n[10] = defaults.Color2;
-                n[11] = defaults.Sides;
-                n[12] = defaults.Aspect;
-                n[13] = defaults.Thick;
-                for (var i = 1; i < f.Length; i++) {
-                    // (the fill, the outline's and the pattern's second colour are hex)
-                    if (i is 6 or 9 or 11) {
-                        if (!Hex(f[i], out var c)) {
-                            return null;
-                        }
+                // the fields given, the defaults after them
+                var v = new string[Kinds.Length];
+                for (var i = 0; i < v.Length; i++) {
+                    v[i] = i + 1 < f.Length ? f[i + 1] : Plain3[i];
+                }
 
-                        n[i - 1] = c;
-                    } else if (Int(f[i], out var v)) {
-                        n[i - 1] = v;
-                    } else {
-                        return null;
+                var ints = new int[v.Length];
+                var hexes = new uint[v.Length];
+                for (var i = 0; i < v.Length; i++) {
+                    switch (Kinds[i]) {
+                        case 'i' when Int(v[i], out ints[i]):
+                        case 'h' when Hex(v[i], out hexes[i]):
+                        case 's' when v[i].Length <= 40:
+                            continue;
+                        case 'n' when v[i].Length <= MaxName * 8 && Unhex(v[i]) != null:
+                            continue;
+                        default:
+                            return null;
                     }
                 }
 
-                layers.Add(new(f[0], (int)n[0], (int)n[1], (int)n[2], (int)n[3], (int)n[4], (uint)n[5], (int)n[6], (int)n[7],
-                    (uint)n[8], (int)n[9], (uint)n[10], (int)n[11], (int)n[12], (int)n[13]));
+                layers.Add(new(f[0], ints[0], ints[1], ints[2], ints[3], ints[4], hexes[5], ints[6], ints[7], hexes[8], ints[9], hexes[10],
+                    ints[11], ints[12], ints[13], v[14], ints[15], ints[16], ints[17], ints[18], hexes[19], ints[20], hexes[21], ints[22],
+                    ints[23], ints[24], v[25], Unhex(v[26])!, ints[27], ints[28], ints[29]));
             }
         }
 
@@ -330,6 +412,43 @@ internal static class TeamEmblem
 
     private static string H(uint rgba) => rgba.ToString("X8", CultureInfo.InvariantCulture);
 
+    /// <summary>A text as the hex of its UTF-8 bytes (no separator of the emblem text can be in it)</summary>
+    internal static string Hex(string text)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(text);
+        var sb = new System.Text.StringBuilder(bytes.Length * 2);
+        foreach (var b in bytes) {
+            sb.Append(b.ToString("X2", CultureInfo.InvariantCulture));
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>The text of <see cref="Hex(string)" />, null when it is not one</summary>
+    internal static string? Unhex(string hex)
+    {
+        if (hex.Length % 2 != 0) {
+            return null;
+        }
+
+        var bytes = new byte[hex.Length / 2];
+        for (var i = 0; i < bytes.Length; i++) {
+            if (!byte.TryParse(hex.Substring(i * 2, 2), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out bytes[i])) {
+                return null;
+            }
+        }
+
+        try {
+            return new System.Text.UTF8Encoding(false, true).GetString(bytes);
+        } catch (ArgumentException) {
+            return null;
+        }
+    }
+
+    /// <summary>A text layer of that text, centred, in that colour</summary>
+    internal static EmblemLayer TextLayer(string text, uint colour) =>
+        new("x:" + Hex(text), Grid / 2, Grid / 2, 80, 0, 0, colour, Outline: 1);
+
     /// <summary>The canonical text of an emblem (what the host stores and tells), in the oldest form that holds it</summary>
     internal static string Format(Emblem emblem)
     {
@@ -338,21 +457,16 @@ internal static class TeamEmblem
         }
 
         var layers = emblem.Layers.Select(l => {
-            var head = new List<string> { l.Thing, S(l.X), S(l.Y), S(l.Size), S(l.Rotation), S(l.Flip), H(l.Color) };
-            var tail = new[] { S(l.Opacity), S(l.Outline), H(l.OutlineColor), S(l.Pattern), H(l.Color2), S(l.Sides), S(l.Aspect), S(l.Thick) };
-            var d = new EmblemLayer("", 0, 0, 0, 0, 0, 0);
-            var plain = new[] { S(d.Opacity), S(d.Outline), H(d.OutlineColor), S(d.Pattern), H(d.Color2), S(d.Sides), S(d.Aspect), S(d.Thick) };
-            var keep = tail.Length;
-            while (keep > 0 && tail[keep - 1] == plain[keep - 1]) {
+            var fields = Fields(l);
+            var keep = fields.Length;
+            while (keep > Head && fields[keep - 1] == Plain3[keep - 1]) {
                 keep--;
             }
 
-            head.AddRange(tail.Take(keep));
-            return string.Join(",", head);
+            return l.Thing + "," + string.Join(",", fields.Take(keep));
         });
         return Prefix3 + (emblem.Clip ? "1" : "0") + "|" + string.Join(";", layers);
     }
-
     private static string FormatLegacy(Legacy emblem)
     {
         if (FitsFirstForm(emblem)) {
@@ -371,7 +485,10 @@ internal static class TeamEmblem
     ///     The emblem with every field in range and every id typed and known (<paramref name="normalize" /> gives the
     ///     typed id or null), or null: 1..16 layers, x/y -32..96, size 10..200, rotation 0..359, flip 0..3, opacity
     ///     10..100, outline 0..6, pattern 0..7, sides 3..12, aspect 10..100, thickness 5..90, shapes of
-    ///     <see cref="ShapeKinds" />. A sprite's shape fields are set to their defaults (one text per emblem)
+    ///     <see cref="ShapeKinds" />; a text of 1..16 characters, a name of 12 at most, a font name of plain letters,
+    ///     spacing -8..16, curve -180..180, align 0..2, shadow 0..4, gradient 0..2 at 0..359 degrees, blend 0..2,
+    ///     clip-to-below, lock and hidden 0..1, symmetry 0..3, a texture of a known sprite. The fields that mean
+    ///     nothing for the layer's kind are set to their defaults (one text per emblem)
     /// </summary>
     internal static Emblem? Validate(Emblem? emblem, Func<string, string?> normalize)
     {
@@ -380,12 +497,30 @@ internal static class TeamEmblem
         }
 
         var layers = new List<EmblemLayer>();
-        foreach (var l in emblem.Layers) {
+        var d = new EmblemLayer("", 0, 0, 0, 0, 0, 0);
+        foreach (var raw in emblem.Layers) {
+            var l = raw;
             if (l.X is < MinPos or > MaxPos || l.Y is < MinPos or > MaxPos || l.Size is < MinSize or > MaxSize ||
                 l.Rotation is < 0 or > 359 || l.Flip is < 0 or > 3 || l.Opacity is < MinOpacity or > 100 ||
                 l.Outline is < 0 or > MaxOutline || l.Pattern is < 0 or >= PatternCount || l.Sides is < 3 or > 12 ||
-                l.Aspect is < 10 or > 100 || l.Thick is < 5 or > 90) {
+                l.Aspect is < 10 or > 100 || l.Thick is < 5 or > 90 || l.Spacing is < -8 or > 16 || l.Curve is < -180 or > 180 ||
+                l.Align is < 0 or > 2 || l.Shadow is < 0 or > MaxShadow || l.Gradient is < 0 or > 2 || l.GradAngle is < 0 or > 359 ||
+                l.Blend is < 0 or > 2 || l.ClipBelow is < 0 or > 1 || l.Lock is < 0 or > 1 || l.Hidden is < 0 or > 1 ||
+                l.Sym is < 0 or > 3 || !PlainText(l.Name, MaxName, true) || !FontName(l.Font)) {
                 return null;
+            }
+
+            // (the defaults of the fields left unused, so the same look has one text)
+            if (l.Outline == 0) {
+                l = l with { OutlineColor = Ink };
+            }
+
+            if (l.Shadow == 0) {
+                l = l with { ShadowColor = d.ShadowColor };
+            }
+
+            if (l.Gradient == 0) {
+                l = l with { GradColor = d.GradColor, GradAngle = d.GradAngle };
             }
 
             if (l.IsShape) {
@@ -393,7 +528,25 @@ internal static class TeamEmblem
                     return null;
                 }
 
-                layers.Add(l.Outline == 0 ? l with { OutlineColor = Ink } : l);
+                if (l.Texture.Length > 0) {
+                    if (normalize(l.Texture) is not { } tex || tex[0] is 'g' or 'x') {
+                        return null;
+                    }
+
+                    l = l with { Texture = tex };
+                }
+
+                layers.Add(l with { Font = "", Spacing = 0, Curve = 0, Align = 0 });
+                continue;
+            }
+
+            if (l.IsText) {
+                if (!PlainText(l.Text, MaxChars, false)) {
+                    return null;
+                }
+
+                // (one hex per text: upper case, as Hex writes it)
+                layers.Add(l with { Thing = "x:" + Hex(l.Text), Pattern = 0, Color2 = 0, Sides = 5, Thick = 30, Texture = "" });
                 continue;
             }
 
@@ -402,17 +555,25 @@ internal static class TeamEmblem
             }
 
             layers.Add(l with {
-                Thing = typed, Pattern = 0, Color2 = 0, Sides = 5, Aspect = 100, Thick = 30,
-                OutlineColor = l.Outline == 0 ? Ink : l.OutlineColor,
+                Thing = typed, Pattern = 0, Color2 = 0, Sides = 5, Aspect = 100, Thick = 30, Font = "", Spacing = 0, Curve = 0,
+                Align = 0, Gradient = 0, GradColor = d.GradColor, GradAngle = d.GradAngle, Texture = "",
             });
         }
 
         return emblem with { Layers = layers };
     }
 
+    /// <summary>A text of 1..<paramref name="max" /> characters (none when <paramref name="empty" />), no control character</summary>
+    private static bool PlainText(string? text, int max, bool empty) =>
+        text != null && text.Length <= max && (empty || text.Length > 0) && !text.Any(char.IsControl);
+
+    /// <summary>A font's name: letters, digits, spaces, "_", "-" and "." (the text's separators can never be in it)</summary>
+    private static bool FontName(string? name) =>
+        name != null && name.Length <= 40 && name.All(c => c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or ' ' or '_' or '-' or '.');
+
     /// <summary>
     ///     What the host keeps for a leader's text: the canonical string of a valid emblem (an old single thing
-    ///     upgraded on <paramref name="background" />), else null
+    ///     upgraded on <paramref name="background" />), else null. The editor checks <see cref="MaxText" /> before Save
     /// </summary>
     internal static string? Canonical(string text, int background, Func<string, string?> normalize)
     {
@@ -420,7 +581,7 @@ internal static class TeamEmblem
             return null;
         }
 
-        return Validate(Parse(text, background), normalize) is { } emblem ? Format(emblem) : null;
+        return Validate(Parse(text, background), normalize) is { } emblem && Format(emblem) is { Length: <= MaxText } canonical ? canonical : null;
     }
 
     /// <summary>

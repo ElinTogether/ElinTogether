@@ -433,7 +433,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             rt.anchoredPosition = new(-(TabIconLeft + TabIconSize / 2f), 0f);
             rt.localScale = new(-1f, 1f, 1f);
             // (cut to its drawn pixels: the game's icons sit in squares of different empty margins)
-            icon.sprite = TeamBanner.Cropped(icon.sprite) ?? icon.sprite;
+            icon.sprite = TeamBanner.Cropped(icon.sprite, true) ?? icon.sprite;
             icon.preserveAspect = true;
         }
 
@@ -515,7 +515,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
     private void DecorateLastTab(string spriteId, string tipId)
     {
         var tab = Window.setting.tabs[^1];
-        tab.sprite = TeamBanner.Cropped(SpriteSheet.Get(spriteId));
+        tab.sprite = TeamBanner.Cropped(SpriteSheet.Get(spriteId), true);
         tab.langTooltip = tipId;
     }
 

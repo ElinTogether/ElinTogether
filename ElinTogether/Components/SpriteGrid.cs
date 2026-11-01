@@ -10,7 +10,8 @@ using YKF;
 namespace ElinTogether.Components;
 
 /// <summary>
-///     Every thing or every monster of the game in one scrolled grid (lead dev 2026-11-01: no pages), filtered as the
+///     Every picture of one source (things, monsters, the game's icons, gods, UI icons, tiles, portraits, places:
+///     <see cref="EmblemSprites" />) in one scrolled grid (lead dev 2026-11-01: no pages), filtered as the
 ///     player types (the name in the player's language, the English name or the id). Only the rows in view have cells:
 ///     a pool of them is moved and given its sprites as the grid scrolls, so thousands of entries stay quick. The name
 ///     of the entry under the pointer shows on the line under the grid
@@ -21,26 +22,63 @@ internal static class SpriteGrid
     private const int PerRow = 8;
     private const int Rows = 6;
 
-    internal sealed record Entry(string Value, string Name, string Search, Sprite Sprite);
+    /// <summary>
+    ///     An entry: its typed id, name, search text, and its sprite (things and monsters, read at once) or how to read
+    ///     it when it scrolls into view (the other sources: portraits and pictures are files)
+    /// </summary>
+    internal sealed record Entry(string Value, string Name, string Search, Sprite? Sprite, System.Func<Sprite?>? Get = null)
+    {
+        internal Sprite? Picture()
+        {
+            if (Sprite != null || Get == null) {
+                return Sprite;
+            }
 
-    private static List<Entry>? _things;
-    private static List<Entry>? _charas;
+            try {
+                return Get();
+            } catch (System.Exception e) {
+                EmpLog.Debug(e, "Emblem grid: the picture of {Id} could not be read", Value);
+                return null;
+            }
+        }
+    }
+
+    // a pill's entries, read once per language
+    private static readonly Dictionary<int, List<Entry>> _lists = [];
     private static string _lang = "";
 
-    /// <summary>The entries of one kind, read once per language (the game's own sprites, those it has)</summary>
-    internal static List<Entry> All(bool monsters)
+    /// <summary>The entries of one source pill (<see cref="EmblemSprites.Pills" />), read once per language</summary>
+    internal static List<Entry> All(int pill)
     {
         var lang = Lang.langCode ?? "";
         if (_lang != lang) {
-            (_things, _charas, _lang) = (null, null, lang);
+            _lists.Clear();
+            _lang = lang;
         }
 
-        if (monsters) {
-            return _charas ??= Read(EClass.sources.charas.rows.Cast<CardRow>(), "c:");
+        pill = Mathf.Clamp(pill, 0, EmblemSprites.Pills.Length - 1);
+        if (_lists.TryGetValue(pill, out var known)) {
+            return known;
         }
 
-        return _things ??= Read(EClass.sources.things.rows.Cast<CardRow>(), "t:");
+        var list = new List<Entry>();
+        foreach (var code in EmblemSprites.Pills[pill].Codes) {
+            try {
+                list.AddRange(code switch {
+                    't' => Read(EClass.sources.things.rows.Cast<CardRow>(), "t:"),
+                    'c' => Read(EClass.sources.charas.rows.Cast<CardRow>(), "c:"),
+                    _ => EmblemSprites.List(code).ToList(),
+                });
+            } catch (System.Exception e) {
+                EmpLog.Debug(e, "Emblem grid: the source {Code} could not be listed", code);
+            }
+        }
+
+        return _lists[pill] = list.OrderBy(e => e.Name).ToList();
     }
+
+    /// <summary>The entries of one kind (things, or monsters)</summary>
+    internal static List<Entry> All(bool monsters) => All(monsters ? 1 : 0);
 
     private static List<Entry> Read(IEnumerable<CardRow> rows, string type)
     {
@@ -209,8 +247,10 @@ internal sealed class SpriteGridView : MonoBehaviour
             var col = index % SpriteGrid.Columns;
             rt.anchoredPosition = new(col * SpriteGrid.CellSize + 2f, -row * SpriteGrid.CellSize - 2f);
             // (cut to its drawn part, cached: only the entries scrolled into view are read)
-            var sprite = TeamBanner.Cropped(_list[index].Sprite);
+            var sprite = TeamBanner.Cropped(_list[index].Picture());
             picture.sprite = sprite;
+            // (a picture that does not read: an empty cell, not the white square of an image without sprite)
+            picture.enabled = sprite != null;
             if (sprite != null) {
                 var inner = SpriteGrid.CellSize - 8f;
                 var scale = inner / Mathf.Max(sprite.rect.width, sprite.rect.height, 1f);
