@@ -251,6 +251,14 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Every player character of this world: the last played of each account and the others of its roster
+    /// </summary>
+    internal static HashSet<int> RosterCharaUids()
+    {
+        return PlayerCharaUids().Concat(PlayerRosters.Values.SelectMany(roster => roster)).Where(uid => !ServerAvatar.IsUid(uid)).ToHashSet();
+    }
+
+    /// <summary>
     ///     The fame of that player: the host's own, another's as its game last told it
     /// </summary>
     internal static int FameOfPlayer(int charaUid)

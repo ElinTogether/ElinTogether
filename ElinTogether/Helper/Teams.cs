@@ -1204,17 +1204,29 @@ internal static class Teams
     private static void AdoptSoloLands()
     {
         var changed = false;
+        HashSet<int>? players = null;
         foreach (var zone in EClass.pc.faction.GetChildren().Select(b => b.owner).ToArray()) {
             if (zone is null || zone.GetInt(SoloCheckedKey) != 0 || Commons.Is(zone)) {
                 continue;
             }
 
-            zone.SetInt(SoloCheckedKey, 1);
-            if (Zones.ContainsKey(zone.uid) || zone.GetInt(BaseIncome.ClaimerKey) is not (> 0 and var claimer) ||
-                !ElinNetHost.PlayerCharaUids().Contains(claimer) || TeamOf(claimer) != Wanderers) {
+            if (Zones.ContainsKey(zone.uid) || zone.GetInt(BaseIncome.ClaimerKey) is not (> 0 and var claimer) || TeamOf(claimer) != Wanderers) {
+                zone.SetInt(SoloCheckedKey, 1);
                 continue;
             }
 
+            // any character of a player's roster, not only the one it played last; a claimer not among them waits
+            // (asked again next time) unless it is gone from the world
+            players ??= ElinNetHost.RosterCharaUids();
+            if (!players.Contains(claimer)) {
+                if (EClass.game.cards.globalCharas.Find(claimer) is null) {
+                    zone.SetInt(SoloCheckedKey, 1);
+                }
+
+                continue;
+            }
+
+            zone.SetInt(SoloCheckedKey, 1);
             Zones[zone.uid] = -claimer;
             changed = true;
             EmpLog.Information("Land {ZoneUid} of no team is its claimer {CharaUid}'s own", zone.uid, claimer);
