@@ -411,7 +411,40 @@ internal partial class ElinNetClient
 
         ArrivedAt = Time.realtimeSinceStartup;
         CloseDramas();
+        KeepOtherPlayersOff(zone);
         pc.MoveZone(zone, transition);
+    }
+
+    /// <summary>
+    ///     GitHub issue 57: our world still puts the other players (and their companions) where we last saw them.
+    ///     Coming back alone to that map, the game placed them on it (Zone.AddGlobalCharasOnActivate) and, as nobody
+    ///     plays them in this game while away, ran them as characters of the map: the host stood, played music and
+    ///     opened doors on the guest's screen while it was in another zone. Nobody else is on a map we simulate
+    ///     alone: they come back with the world, or the host lists them (AdoptHostCharas), when we return
+    /// </summary>
+    private void KeepOtherPlayersOff(Zone zone)
+    {
+        var players = Session.CurrentPlayers.Where(p => p is not null).Select(p => p.CharaUid).ToHashSet();
+        foreach (var chara in game.cards.globalCharas.Values.ToList()) {
+            if (chara == pc || chara.currentZone != zone || chara.IsCompanionOf(pc) || chara.CompanionOwnerUid == pc.uid) {
+                continue;
+            }
+
+            // a companion of the party leader (the host) has no owner written
+            var hostsCompanion = chara.CompanionOwnerUid == 0 && chara.party is { } party && party == pc.party &&
+                                 party.members.Contains(chara) && party.leader != pc;
+            if (!players.Contains(chara.uid) && !chara.GetBool("remote_chara") && chara.CompanionOwnerUid == 0 && !hostsCompanion) {
+                continue;
+            }
+
+            if (chara.parent is Zone) {
+                chara.parent = null;
+            }
+
+            chara.currentZone = null;
+            EmpLog.Debug("Character {Uid} of another player kept off {ZoneFullName}, which we hold alone",
+                chara.uid, zone.ZoneFullName);
+        }
     }
 
     /// <summary>
