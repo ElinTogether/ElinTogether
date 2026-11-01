@@ -32,6 +32,14 @@ internal static class CharaPickThingEvent
             return false;
         }
 
+        // the team bank, for a rank that may not take from it (TeamRanks; the host checks a guest's take again)
+        if (!ElinDelta.IsApplying && TeamRanks.RefusesTake(__instance, t)) {
+            SE.Beep();
+            Msg.Say("emp_rank_denied".lang());
+            __result = t;
+            return false;
+        }
+
         if (NetSession.Instance.Connection is not { } connection) {
             return true;
         }

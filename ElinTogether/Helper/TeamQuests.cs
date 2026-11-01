@@ -72,7 +72,8 @@ internal static class TeamQuests
     /// </summary>
     internal static bool SetSharing(Chara chara, bool on)
     {
-        if (!KeepsBook || !On || (on && Teams.TeamOf(chara.uid) == Teams.Wanderers) || Shares(chara.uid) == on) {
+        // (starting needs a team whose rank shares quests, TeamRanks; stopping is always one's own choice)
+        if (!KeepsBook || !On || (on && !TeamRanks.Can(chara.uid, TeamPerm.Quests)) || Shares(chara.uid) == on) {
             return false;
         }
 

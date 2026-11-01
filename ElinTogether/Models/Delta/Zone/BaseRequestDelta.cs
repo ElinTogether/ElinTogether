@@ -149,7 +149,7 @@ public class BaseRequestDelta : ElinDelta
         // all of it is read again from this game's state, whatever the sender believed: a request that comes twice
         // or late finds the plan, the knowledge or the platinum as they are now, it cannot pay for nothing
         var done = !NetSession.Instance.Rules.HostManagesBase && host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) &&
-                   !host.IsAwayPeer(OriginPeer) && Teams.CanTouch(sender, _zone) && _zone.branch is { } branch && Execute(host, branch, sender);
+                   !host.IsAwayPeer(OriginPeer) && Teams.CanTouch(sender, _zone) && TeamRanks.MayManageBase(sender, _zone) && _zone.branch is { } branch && Execute(host, branch, sender);
 
         host.SendDeltaTo(OriginPeer, new BaseRequestDelta {
             Kind = Kind,

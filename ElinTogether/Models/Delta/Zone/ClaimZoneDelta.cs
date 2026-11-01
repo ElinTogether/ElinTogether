@@ -75,7 +75,7 @@ public class ClaimZoneDelta : ElinDelta
 
         if (NetSession.Instance.Rules.HostManagesBase || !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) ||
             _zone.uid != ZoneUid || _zone.mainFaction == pc.faction || !_zone.isClaimable ||
-            _zone.instance is not null || Teams.LandCapReached(sender) || sender.things.List(t => t.trait is TraitDeed, true).FirstOrDefault() is not { } deed) {
+            _zone.instance is not null || Teams.LandCapReached(sender) || !TeamRanks.MayClaim(sender) || sender.things.List(t => t.trait is TraitDeed, true).FirstOrDefault() is not { } deed) {
             EmpLog.Information("Land {ZoneUid} not claimed for peer {Peer}", ZoneUid, OriginPeer);
             host.SendDeltaTo(OriginPeer, new ClaimZoneDelta { ZoneUid = ZoneUid, Refused = true });
             return;
@@ -122,7 +122,7 @@ public class ClaimZoneDelta : ElinDelta
         var deed = sender?.things.List(t => t.trait is TraitDeed, true).FirstOrDefault();
         if (NetSession.Instance.Rules.HostManagesBase || zone is null || sender is null || deed is null || zone == _zone ||
             !host.LeasedZones(OriginPeer).Contains(zone) || zone.mainFaction == pc.faction || !zone.isClaimable ||
-            zone.instance is not null || zone.branch is not null || Teams.LandCapReached(sender) || PendingAway.ContainsKey(OriginPeer)) {
+            zone.instance is not null || zone.branch is not null || Teams.LandCapReached(sender) || !TeamRanks.MayClaim(sender) || PendingAway.ContainsKey(OriginPeer)) {
             EmpLog.Information("Land {ZoneUid} not claimed for away peer {Peer} (deed {Deed}, held {Held})", ZoneUid, OriginPeer,
                 deed is not null, zone is not null && host.LeasedZones(OriginPeer).Contains(zone));
             host.SendDeltaTo(OriginPeer, new ClaimZoneDelta { ZoneUid = ZoneUid, Refused = true });

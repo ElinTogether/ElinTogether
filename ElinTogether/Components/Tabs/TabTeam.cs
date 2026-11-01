@@ -124,8 +124,13 @@ internal class TabTeam : TabEmpBase
         if (mine != Teams.Wanderers && TeamBanner.On) {
             pages.Add(("emp_ui_team_tab_emblem".lang(), page => {
                 var (left, right) = page.Book();
-                EmblemEditor.Build(left, right, mine, Teams.LeaderOf(mine) == me);
+                EmblemEditor.Build(left, right, mine, TeamRanks.Can(me, TeamPerm.Emblem, mine));
             }));
+        }
+
+        // the team's ranks and their permissions (TeamRanks), while the leaders manage their team
+        if (mine != Teams.Wanderers && TeamRanks.On) {
+            pages.Add(("emp_ui_team_tab_ranks".lang(), page => TabTeamRanks.Build(page, mine, me)));
         }
 
         // a member's page holds the team and its tools: the other teams, and the team's map and journal, have their
@@ -256,6 +261,8 @@ internal class TabTeam : TabEmpBase
             }
             if (manages && member != me) {
                 actions.Add(("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, target)));
+            }
+            if (MayKick(me, member, mine)) {
                 actions.Add(("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, target)));
             }
             var row = list.PickRow(new PlayerRowInfo(Teams.PlayerName(member), MemberLine(chara, member), chara), member == picked, () => {
@@ -270,13 +277,15 @@ internal class TabTeam : TabEmpBase
         // host box "Teammates share quests": each player's own choice, kept by the host
         if (TeamQuests.On) {
             card2.ToggleRow("emp_ui_team_share_quests".lang(), "emp_ui_team_share_quests_desc".lang(), TeamQuests.Shares(me),
-                TeamQuests.Ask, ownLines: true);
+                TeamQuests.Ask, ownLines: true, readOnly: !TeamQuests.Shares(me) && !TeamRanks.Can(me, TeamPerm.Quests, mine),
+                setByHostText: "emp_rank_no_perm".lang());
         }
 
         card2.ButtonRow().RowButton("emp_team_leave".Loc(Teams.NameOf(mine)), () => Teams.Ask(TeamAsk.Leave));
 
-        // the leader answers who asks (the choices of the player list moved here), at the top of the right page
-        if (leads) {
+        // the leader answers who asks (the choices of the player list moved here), at the top of the right page (or a
+        // rank that recruits)
+        if (TeamRanks.Can(me, TeamPerm.Recruit, mine)) {
             var asking = Teams.Asking(mine).ToList();
             if (asking.Count > 0) {
                 var requests = right.Card("emp_ui_team_requests".lang());
@@ -342,7 +351,8 @@ internal class TabTeam : TabEmpBase
         facts.KeyValue("emp_ui_kv_character".lang(), chara?.Name);
         facts.KeyValue("emp_ui_kv_level".lang(), chara?.LV.ToString());
         facts.KeyValue("emp_ui_kv_state".lang(), Cap((Teams.IsOnline(member) ? "emp_ui_team_online" : "emp_ui_team_offline").lang()));
-        facts.KeyValue("emp_ui_kv_role".lang(), member == leader ? "emp_ui_team_crown".lang() : "emp_ui_role_player".lang());
+        facts.KeyValue("emp_ui_kv_role".lang(), member == leader ? "emp_ui_team_crown".lang()
+            : TeamRanks.On ? TeamRanks.NameOf(TeamRanks.RankOf(member, Teams.TeamOf(member))) : "emp_ui_role_player".lang());
 
         // what can be done, as wide as the labels, side by side
         var actions = new List<(string, System.Action)>();
@@ -351,10 +361,16 @@ internal class TabTeam : TabEmpBase
         }
         if (manages && member != me) {
             actions.Add(("emp_ui_team_promote".lang(), () => Teams.Ask(TeamAsk.Promote, member)));
+        }
+        if (MayKick(me, member, Teams.TeamOf(member))) {
             actions.Add(("emp_ui_team_kick".lang(), () => Teams.Ask(TeamAsk.Kick, member)));
         }
         card.ButtonFlow(actions);
     }
+
+    // a member of a lower rank, put out by a rank that kicks (the host checks the same again)
+    private static bool MayKick(int me, int member, int team) =>
+        member != me && team != Teams.Wanderers && TeamRanks.Manages(me, TeamPerm.Kick) == team && TeamRanks.Outranks(me, member, team);
 
     private static string MemberLine(Chara? chara, int member)
     {
@@ -385,20 +401,24 @@ internal class TabTeam : TabEmpBase
     private static void BuildTools(YKLayout page, int mine, bool leads, bool manages)
     {
         var card = page.Card("emp_ui_team_manage".lang());
-        if (!manages) {
+        // (each tool by its own permission, TeamRanks: the leader has them all)
+        var me = EClass.pc.uid;
+        var recruits = TeamRanks.Manages(me, TeamPerm.Recruit) == mine;
+        var renames = TeamRanks.Manages(me, TeamPerm.Rename) == mine;
+        if (!manages && !recruits && !renames) {
             card.TextSmall((leads ? "emp_ui_team_tools_host_off" : "emp_ui_team_tools_leader_only").lang(), FontColor.Gray);
         }
 
         card.ToggleRow("emp_ui_team_joining".lang(), "emp_ui_team_joining_desc".lang(), Teams.IsOpen(mine),
-            on => Teams.Ask(TeamAsk.SetOpen, on ? 1 : 0), readOnly: !manages, setByHostText: "emp_ui_team_leader_only_chip".lang(), ownLines: true);
+            on => Teams.Ask(TeamAsk.SetOpen, on ? 1 : 0), readOnly: !recruits, setByHostText: "emp_ui_team_leader_only_chip".lang(), ownLines: true);
 
         // (a player in the game, in no team and not yet asked: the host checks the same again)
-        var open = manages
+        var open = recruits
             ? NetSession.Instance.CurrentPlayers.Select(p => p.CharaUid).Distinct()
                 .Where(uid => Teams.TeamOf(uid) != mine && Teams.InviteOf(uid) == Teams.Wanderers).ToList()
             : [];
         // the invitations not yet answered, on one line
-        var invited = manages ? Teams.InvitedBy(mine).ToList() : [];
+        var invited = recruits ? Teams.InvitedBy(mine).ToList() : [];
         if (invited.Count > 0) {
             card.TextSmall("emp_ui_team_invited_line".Loc(string.Join(", ", invited.Select(Teams.PlayerName))), FontColor.Gray);
         }
@@ -411,12 +431,14 @@ internal class TabTeam : TabEmpBase
                     Teams.Ask(TeamAsk.Rename, text: text);
                 }
             }).input.field.characterLimit = Teams.NameMax;
-        }).interactable = manages;
+        }).interactable = renames;
         UIButton? invite = null;
         invite = buttons.RowButton("emp_ui_team_invite_any".lang(), () => InvitePicker(invite, open));
-        invite.interactable = manages && open.Count > 0;
-        if (manages && open.Count == 0) {
+        invite.interactable = recruits && open.Count > 0;
+        if (recruits && open.Count == 0) {
             invite.SetTooltipLang("emp_ui_team_invite_none");
+        } else if (!recruits && Teams.LeadersManage) {
+            invite.SetTooltipLang("emp_rank_no_perm");
         }
 
         card.ButtonRow().RowButton("emp_ui_team_disband".lang(), () => {

@@ -67,7 +67,7 @@ internal static class TabLands
 
         BuildBoxes(left, mine);
         BuildCommons(left);
-        BuildLand(right, picked, mine == Teams.Wanderers || Teams.LeaderOf(mine) == me);
+        BuildLand(right, picked, mine == Teams.Wanderers || TeamRanks.Can(me, TeamPerm.LandRules, mine));
     }
 
     // the land whose rules are open on the right, kept over reopenings

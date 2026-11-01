@@ -458,7 +458,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
                 var me = EClass.pc.uid;
                 var team = Teams.TeamOf(me);
                 return team == Teams.Wanderers ? (Teams.InviteOf(me) != 0 ? 1 : 0)
-                    : Teams.LeaderOf(team) == me ? Teams.Asking(team).Count() : 0;
+                    : TeamRanks.Can(me, TeamPerm.Recruit, team) ? Teams.Asking(team).Count() : 0;
             default:
                 return 0;
         }

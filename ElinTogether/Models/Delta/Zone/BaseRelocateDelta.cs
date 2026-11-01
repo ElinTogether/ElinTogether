@@ -139,6 +139,10 @@ public class BaseRelocateDelta : ElinDelta
             return $"base {ZoneUid} is not the land of the sender's team";
         }
 
+        if (!TeamRanks.MayManageBase(sender, found)) {
+            return $"the sender's rank does not manage base {ZoneUid}";
+        }
+
         var map = world.region.elomap;
         if (world.region.GetZoneAt(X, Y) is { } there && there != found && (there is not Zone_Field || there.IsPCFaction) ||
             SiblingLands.LandsAt(X, Y).Any(land => land != found) || map.w > 0 && map.GetCell(X, Y) is null) {

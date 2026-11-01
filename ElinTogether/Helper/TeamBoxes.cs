@@ -268,7 +268,8 @@ internal static class TeamBoxes
         }
 
         if (OwnerOf(parent.GetRootCard(), out _) is { } owner) {
-            return Owns(sender.uid, owner) ? parent : null;
+            // (a team's box: the sender's rank puts things in it, TeamRanks)
+            return Owns(sender.uid, owner) && TeamRanks.MayDeposit(sender.uid, owner) ? parent : null;
         }
 
         return IsWorldBox(parent, out var slot) ? Own(sender.uid, slot) : parent;
@@ -279,7 +280,8 @@ internal static class TeamBoxes
     /// </summary>
     internal static bool CanTake(Chara taker, Thing thing)
     {
-        return !On || OwnerOf(thing.GetRootCard(), out _) is not { } owner || Owns(taker.uid, owner);
+        // (a team's box: the taker's rank takes from it, up to its daily limit, TeamRanks)
+        return !On || OwnerOf(thing.GetRootCard(), out _) is not { } owner || Owns(taker.uid, owner) && TeamRanks.MayWithdraw(taker.uid, owner);
     }
 
     /// <summary>

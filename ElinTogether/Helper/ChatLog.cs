@@ -80,6 +80,12 @@ internal static class ChatLog
             return false;
         }
 
+        // (a rank without the team chat: the host refuses the line too, TeamRanks)
+        if (!TeamRanks.Can(EClass.pc.uid, TeamPerm.Chat, team)) {
+            Msg.Say("emp_rank_denied".lang());
+            return false;
+        }
+
         if (ModerationDelta.IsMuted(NetSession.Instance.Self?.User ?? HeathenEngineering.SteamworksIntegration.UserData.Me)) {
             Msg.Say("emp_ui_muted".lang());
             return false;

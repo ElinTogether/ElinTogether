@@ -160,7 +160,7 @@ internal static class TeamBanner
     internal static bool Set(Chara chara, int icon, int color, string thing = "")
     {
         var team = Teams.TeamOf(chara.uid);
-        if (!KeepsBook || !On || team == Teams.Wanderers || Teams.LeaderOf(team) != chara.uid) {
+        if (!KeepsBook || !On || team == Teams.Wanderers || !TeamRanks.Can(chara.uid, TeamPerm.Emblem, team)) {
             return false;
         }
 

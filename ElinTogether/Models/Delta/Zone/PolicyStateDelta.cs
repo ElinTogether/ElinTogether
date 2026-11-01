@@ -63,7 +63,7 @@ public class PolicyStateDelta : ElinDelta
             }
 
             // another team's land: its laws stay, the sender gets them back (independence audit, base management 1)
-            if (!Teams.CanTouch(sender, _zone)) {
+            if (!Teams.CanTouch(sender, _zone) || !TeamRanks.MayManageBase(sender, _zone)) {
                 host.SendDeltaTo(OriginPeer, new PolicyStateDelta { Active = Read(branch) });
                 return;
             }

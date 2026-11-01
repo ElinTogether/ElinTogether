@@ -92,6 +92,7 @@ internal static class Teams
         _bills = new(delta.Bills ?? []);
         _story = new(delta.Story ?? []);
         TeamQuests.Learn(delta.QuestSharers);
+        TeamRanks.Learn(delta.Ranks);
         TeamBanner.Learn(delta.Banners, delta.Things);
         // (not the book told on joining: nothing changed then)
         if (known) {
@@ -114,7 +115,7 @@ internal static class Teams
         }
 
         foreach (var (uid, id) in Requests) {
-            if (!askedBefore.Contains(uid) && LeaderOf(id) == pc.uid) {
+            if (!askedBefore.Contains(uid) && TeamRanks.Can(pc.uid, TeamPerm.Recruit, id)) {
                 Msg.Say("emp_team_asks".Loc(PlayerName(uid), NameOf(id)));
             }
         }
@@ -407,13 +408,13 @@ internal static class Teams
 
         var own = owner == StoryOwner.Of(chara.uid);
         if (!LandRulesOn) {
-            // the game as it was: a team's land is its own to build, others visit
-            return own ? Build : Visit;
+            // the game as it was: a team's land is its own to build, others visit (a member as far as its rank allows)
+            return own ? TeamRanks.LandCap(chara.uid, owner) : Visit;
         }
 
         var rule = RuleOf(zone!.uid);
         if (own) {
-            return MineLevel(rule);
+            return System.Math.Min(MineLevel(rule), TeamRanks.LandCap(chara.uid, owner));
         }
 
         // (closed to others while the team is away: the team's own level is never touched)
@@ -700,7 +701,7 @@ internal static class Teams
     [HarmonyPatch(typeof(TraitHomeBoard), nameof(TraitHomeBoard.TrySetAct))]
     private static bool OnHomeBoardAct(TraitHomeBoard __instance, ActPlan p)
     {
-        if (!EClass._zone.IsPCFaction || CanTouch(EClass.pc, EClass._zone)) {
+        if (!EClass._zone.IsPCFaction || CanTouch(EClass.pc, EClass._zone) && TeamRanks.MayManageBase(EClass.pc, EClass._zone)) {
             return true;
         }
 
@@ -718,7 +719,7 @@ internal static class Teams
     [HarmonyPatch(typeof(TraitCoreZone), nameof(TraitCoreZone.TrySetAct))]
     private static bool OnCoreZoneAct(TraitCoreZone __instance, ActPlan p)
     {
-        if (!EClass._zone.IsPCFaction || CanTouch(EClass.pc, EClass._zone)) {
+        if (!EClass._zone.IsPCFaction || CanTouch(EClass.pc, EClass._zone) && TeamRanks.MayManageBase(EClass.pc, EClass._zone)) {
             return true;
         }
 
@@ -736,7 +737,7 @@ internal static class Teams
     [HarmonyPatch(typeof(Zone), nameof(Zone.AbandonZone))]
     private static bool OnAbandonZone(Zone __instance)
     {
-        return !EClass.pc.IsPC || !BasesOwned || __instance != EClass._zone || CanTouch(EClass.pc, __instance);
+        return !EClass.pc.IsPC || !BasesOwned || __instance != EClass._zone || CanTouch(EClass.pc, __instance) && TeamRanks.MayClaim(EClass.pc);
     }
 
     /// <summary>
@@ -986,16 +987,18 @@ internal static class Teams
             case TeamAsk.Leave:
                 Leave(chara);
                 break;
-            case TeamAsk.Rename when LedBy(chara.uid) is var renamed and not Wanderers && CleanName(text) is { Length: > 0 } newName:
+            case TeamAsk.Rename when TeamRanks.Manages(chara.uid, TeamPerm.Rename) is var renamed and not Wanderers && CleanName(text) is { Length: > 0 } newName:
                 Names[renamed] = newName;
                 EmpLog.Information("Team {TeamId} renamed {TeamName} by its leader", renamed, newName);
                 Tell();
                 break;
-            case TeamAsk.Kick when LedBy(chara.uid) is var kicker and not Wanderers && id != chara.uid && TeamOf(id) == kicker:
+            case TeamAsk.Kick when TeamRanks.Manages(chara.uid, TeamPerm.Kick) is var kicker and not Wanderers && id != chara.uid && TeamOf(id) == kicker &&
+                                   TeamRanks.Outranks(chara.uid, id, kicker):
                 Put(id, "emp_team_kicked", NameOf(kicker));
                 break;
             case TeamAsk.Promote when LedBy(chara.uid) is var promoter and not Wanderers && id != chara.uid && TeamOf(id) == promoter:
                 TeamList[promoter][0] = id;
+                TeamRanks.Promoted(promoter, chara.uid, id);
                 EmpLog.Information("Team {TeamId} handed to {CharaUid}", promoter, id);
                 Say(id, "emp_team_promoted", NameOf(promoter));
                 Tell();
@@ -1003,12 +1006,12 @@ internal static class Teams
             case TeamAsk.Disband when LedBy(chara.uid) is var ended and not Wanderers:
                 Disband(ended);
                 break;
-            case TeamAsk.Invite when LedBy(chara.uid) is var inviter and not Wanderers:
+            case TeamAsk.Invite when TeamRanks.Manages(chara.uid, TeamPerm.Recruit) is var inviter and not Wanderers:
                 Invite(chara, inviter, id);
                 break;
             // (the leader of the land's team, or the player in no team whose own land it is)
             case TeamAsk.LandRule when LandRulesOn && Zones.TryGetValue(zoneUid, out var landTeam) &&
-                                       (landTeam > 0 ? LeaderOf(landTeam) == chara.uid : landTeam == -chara.uid) &&
+                                       (landTeam > 0 ? TeamRanks.Can(chara.uid, TeamPerm.LandRules, landTeam) : landTeam == -chara.uid) &&
                                        id is >= 0 and < 32 && MineLevel(id) != Closed:
                 if (id == DefaultRule) {
                     ZoneRules.Remove(zoneUid);
@@ -1019,7 +1022,7 @@ internal static class Teams
                 EmpLog.Information("Land {ZoneUid} of team {TeamId}: rule {Rule}", zoneUid, landTeam, id);
                 Tell();
                 break;
-            case TeamAsk.SetOpen when LedBy(chara.uid) is var opener and not Wanderers && id is 0 or 1:
+            case TeamAsk.SetOpen when TeamRanks.Manages(chara.uid, TeamPerm.Recruit) is var opener and not Wanderers && id is 0 or 1:
                 TeamList[opener][1] = id;
                 EmpLog.Information("Team {TeamId} joining is now {Open}", opener, id == 1 ? "open" : "closed");
                 Tell();
@@ -1048,8 +1051,8 @@ internal static class Teams
                 EmpLog.Information("Card {CardUid} is shared with the team again", id);
                 Tell();
                 break;
-            // only the leader of the team asked answers
-            case TeamAsk.Accept or TeamAsk.Refuse when Requests.TryGetValue(id, out var to) && LeaderOf(to) == chara.uid:
+            // only the leader of the team asked answers (or a rank that recruits)
+            case TeamAsk.Accept or TeamAsk.Refuse when Requests.TryGetValue(id, out var to) && TeamRanks.Can(chara.uid, TeamPerm.Recruit, to):
                 Requests.Remove(id);
                 if (kind == TeamAsk.Accept && EClass.game.cards.globalCharas.Find(id) is { } joiner) {
                     Join(joiner, to);
@@ -1090,7 +1093,7 @@ internal static class Teams
             yield return ("emp_team_join".Loc(NameOf(id)), () => Ask(TeamAsk.Join, id));
         }
 
-        if (mine != Wanderers && LeaderOf(mine) == EClass.pc.uid) {
+        if (mine != Wanderers && TeamRanks.Can(EClass.pc.uid, TeamPerm.Recruit, mine)) {
             foreach (var uid in Requests.Where(r => r.Value == mine).Select(r => r.Key).ToArray()) {
                 yield return ("emp_team_accept".Loc(PlayerName(uid)), () => Ask(TeamAsk.Accept, uid));
                 yield return ("emp_team_refuse".Loc(PlayerName(uid)), () => Ask(TeamAsk.Refuse, uid));
@@ -1363,7 +1366,7 @@ internal static class Teams
         return true;
     }
 
-    private static void Tell()
+    internal static void Tell()
     {
         (NetSession.Instance.Transport as ElinNetHost)?.TellTeams();
         Redraw();

@@ -92,6 +92,11 @@ public class ThingRequest : ElinDelta
         if (net is ElinNetHost boxKeeper && boxKeeper.ActiveRemoteCharas.TryGetValue(OriginPeer, out var owner) && !TeamBoxes.CanTake(owner, thing)) {
             EmpLog.Warning("Rejecting ThingRequest {RequestId} from peer {PeerIndex}, uid {Uid} is in another team's box",
                 Id, OriginPeer, thing.uid);
+            // (its own team's box, which its rank may not take from: it is told why)
+            if (TeamBoxes.OwnerOf(thing.GetRootCard(), out _) is > 0 and var team && team == Teams.TeamOf(owner.uid)) {
+                TeamRanks.Denied(owner.uid);
+            }
+
             Respond(net, null);
             return;
         }
@@ -101,6 +106,8 @@ public class ThingRequest : ElinDelta
         var num = Math.Min(Num, thing.Num);
         if (net is ElinNetHost shop && shop.ActiveRemoteCharas.TryGetValue(OriginPeer, out var asker)) {
             num = LimitedStockPatch.Left(thing, asker, num);
+            // (a team's box: no more than the taker's rank may still take today)
+            num = TeamRanks.ClampWithdraw(asker, thing, num);
         }
 
         if (num <= 0) {

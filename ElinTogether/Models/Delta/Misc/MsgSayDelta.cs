@@ -133,7 +133,9 @@ public class MsgSayDelta : ElinDelta
         if (Team != 0) {
             // (the host checks the speaker is in that team, and hands the line to that team's members only)
             if (net is ElinNetHost relay && FromPeer) {
-                if (relay.PlayerChara(OriginPeer) is not { } speaker || Teams.TeamOf(speaker.uid) != Team) {
+                // (and its rank speaks in the team chat, TeamRanks)
+                if (relay.PlayerChara(OriginPeer) is not { } speaker || Teams.TeamOf(speaker.uid) != Team ||
+                    !TeamRanks.Can(speaker.uid, TeamPerm.Chat, Team)) {
                     return;
                 }
 

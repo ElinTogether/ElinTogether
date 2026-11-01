@@ -560,7 +560,7 @@ internal class TabPlayers : TabEmpBase
             }));
 
             // a leader's invitation, as the Team page offers it (the host checks the same again)
-            if (!away && EClass.pc is { } pc && Teams.LedBy(pc.uid) != Teams.Wanderers && Teams.TeamOf(uid) != Teams.TeamOf(pc.uid) &&
+            if (!away && EClass.pc is { } pc && TeamRanks.Manages(pc.uid, TeamPerm.Recruit) != Teams.Wanderers && Teams.TeamOf(uid) != Teams.TeamOf(pc.uid) &&
                 Teams.InviteOf(uid) == Teams.Wanderers) {
                 actions.Add(("emp_ui_team_invite".Loc(Teams.PlayerName(uid)), () => Teams.Ask(TeamAsk.Invite, uid)));
             }
