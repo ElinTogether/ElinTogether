@@ -229,6 +229,8 @@ namespace ElinTogether.Models;
 [Union(1265, typeof(GodGiftDelta))]
 // A refused action says why on the player's game (user 2026-11-01)
 [Union(1263, typeof(RefusedDelta))]
+// Farris made on Nymelle B2F by the player holding it, for the host's world (GitHub issue 55)
+[Union(1272, typeof(NymelleFarrisDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
