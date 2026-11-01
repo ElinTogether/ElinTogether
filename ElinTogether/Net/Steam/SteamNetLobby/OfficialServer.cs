@@ -13,11 +13,20 @@ namespace ElinTogether.Net.Steam;
 ///     can join, shown first in the list of games as the official server. A lobby's name and data are whatever its
 ///     host writes, and Steam tells a lobby's owner only to its members: the official game signs its lobby id with a
 ///     key kept on the PC that hosts it (ElinMP/official_server.key, never published), every game checks the
-///     signature with the public half below. A game calling itself "Elin Together" is not shown as official
+///     signature with the public half below. A game calling itself "Elin Together" is not shown as official.
+///     Plan P3 (peer-hosted public server): the lobby of whichever player keeps the world carries a host certificate
+///     from the ETWorld service instead (PublicServerCertificate); both are accepted until the dedicated PC retires (P9)
 /// </summary>
 internal static class OfficialServer
 {
     internal const string SignatureKey = "EmpOfficial";
+
+    // THE SWITCH between the two ways a lobby proves it is the public server. Legacy: the dedicated PC's RSA
+    // signature of its lobby id, owner = the Elin Together account. Certificate: the ETWorld service's Ed25519
+    // certificate naming the lobby, owner = the keeper it names. Turn the legacy one off at P9, when the dedicated
+    // PC stops keeping the world (plan section 6)
+    internal const bool AcceptLegacySignature = true;
+    internal const bool AcceptHostCertificate = true;
 
     // the "Elin Together" Steam account: only it signs, so that the key alone, copied elsewhere, makes no official game
     internal const ulong Account = 76561198768728915;
@@ -96,7 +105,25 @@ internal static class OfficialServer
 
     internal static bool IsOfficial(LobbyData lobby)
     {
-        return Verify(lobby.SteamId.m_SteamID, lobby[SignatureKey], OwnerOf(lobby));
+        var owner = OwnerOf(lobby);
+        return AcceptLegacySignature && Verify(lobby.SteamId.m_SteamID, lobby[SignatureKey], owner) ||
+               AcceptHostCertificate && PublicServerCertificate.Of(lobby, owner) is not null;
+    }
+
+    /// <returns>the name of the player keeping the public world in that lobby, null for the dedicated PC or another game</returns>
+    internal static string? KeeperName(LobbyData lobby)
+    {
+        return AcceptHostCertificate && PublicServerCertificate.Of(lobby, OwnerOf(lobby)) is { } cert
+            ? cert.KeeperName.Replace("<", "").Replace(">", "")
+            : null;
+    }
+
+    /// <summary>
+    ///     The lobby says it is the public server (a signature or a certificate, good or not)
+    /// </summary>
+    internal static bool Claims(LobbyData lobby)
+    {
+        return !string.IsNullOrEmpty(lobby[SignatureKey]) || PublicServerCertificate.Claims(lobby);
     }
 
     private static ulong OwnerOf(LobbyData lobby)

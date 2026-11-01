@@ -1344,5 +1344,7 @@
     "LangGeneral.emp_ui_admin_menu.text": "管理…",
     "LangGeneral.emp_ui_sv_start_needs_land.text": "请先获得一块土地：在野外阅读土地契约。",
     "LangGeneral.emp_patches_skipped.text": "Elin Together 有 {0} 个部分无法在 Elin {1} 上加载（此版本为 Elin {2} 制作）。部分多人功能可能无法使用：请将 Elin 切换到 Nightly 分支（Steam：Elin → 属性 → 测试版）。",
-    "LangGeneral.emp_title_older_game.text": "为 Elin {0} 制作。你的 Elin 是 {1}：如果出问题，请使用 Elin 的 Nightly 分支（Steam：Elin → 属性 → 测试版）。"
+    "LangGeneral.emp_title_older_game.text": "为 Elin {0} 制作。你的 Elin 是 {1}：如果出问题，请使用 Elin 的 Nightly 分支（Steam：Elin → 属性 → 测试版）。",
+    "LangGeneral.emp_ui_official_kept_by.text": "当前由 {0} 维持",
+    "LangGeneral.emp_public_server_unverified.text": "这个游戏自称是 Elin Together 公共服务器，但其主机与证明不符。未加入。"
 }

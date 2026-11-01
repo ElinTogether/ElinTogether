@@ -1109,6 +1109,57 @@ internal static class SaveDepot
         });
     }
 
+    /// <summary>
+    ///     This game keeps the public world of the world service (its lease): its lobby is the public server
+    /// </summary>
+    internal static bool KeepsEtWorld => EtWorld && Holding && EtWorldDepot.WorldName == "public";
+
+    /// <summary>
+    ///     Asks the world service a host certificate naming that lobby (plan P3), written in it on the answer
+    /// </summary>
+    internal static void AskCertificate(ulong lobby)
+    {
+        if (!KeepsEtWorld || lobby == 0) {
+            return;
+        }
+
+        _nextCertAsk = Time.unscaledTime + 60f;
+        _certLobby = lobby;
+        Later($"CERT {lobby}", null, reply => {
+            if (!reply.Ok) {
+                EmpLog.Warning("The world service gave no host certificate for lobby {LobbyId}: {Why}", lobby, reply.Text);
+            }
+
+            Certify();
+        });
+    }
+
+    // after a beat or a certificate: the lobby carries the last certificate, none once the lease is gone, and a
+    // keeper whose lobby has none yet (opened before the world was taken, or a new lobby since) asks one
+    private static void Certify()
+    {
+        if (!EtWorld) {
+            return;
+        }
+
+        var cert = KeepsEtWorld ? EtWorldDepot.Certificate : null;
+        if (cert != Net.Steam.PublicServerCertificate.Current) {
+            Net.Steam.PublicServerCertificate.Set(cert);
+        }
+
+        if (KeepsEtWorld && Time.unscaledTime >= _nextCertAsk &&
+            Net.Steam.PublicServerCertificate.OwnLobby() is var lobby and not 0 &&
+            (cert is null || lobby != _certLobby)) {
+            AskCertificate(lobby);
+        }
+    }
+
+    // (a certificate asked once a minute at most while the service gives none, not at every beat)
+    private static float _nextCertAsk;
+
+    // the lobby the last certificate was asked for
+    private static ulong _certLobby;
+
     private static void Beat()
     {
         // (the world service's lease lives 45 s)
@@ -1122,6 +1173,7 @@ internal static class SaveDepot
             Later("BEAT", null, reply => {
                 _beating = false;
                 Lost(reply.Text);
+                Certify();
             });
         } else {
             File.WriteAllLines(LockFile, [Me, MyName, MyJoin]);
