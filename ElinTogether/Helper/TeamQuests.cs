@@ -367,7 +367,8 @@ internal static class TeamQuests
         }
     }
 
-    [HarmonyPostfix]
+    // a finalizer: a save that throws (in the game or in another mod's prefix) does not lose the copies
+    [HarmonyFinalizer]
     [HarmonyPatch(typeof(Game), nameof(Game.Save))]
     private static void AfterSave()
     {

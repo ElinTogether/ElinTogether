@@ -200,7 +200,8 @@ internal static class QuestZoneSavePatch
         __state = host.HideAccompaniedQuest();
     }
 
-    [HarmonyPostfix]
+    // a finalizer: a save that throws still gives the zone its quest back
+    [HarmonyFinalizer]
     internal static void OnSaved(System.Action? __state)
     {
         __state?.Invoke();
