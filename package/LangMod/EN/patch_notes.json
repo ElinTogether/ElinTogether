@@ -1,0 +1,336 @@
+[
+  {
+    "version": "0.26.1597",
+    "date": "2026-10-31",
+    "title": "Elin EA 23.357, issues #46 and #47",
+    "bullets": [
+      "#46: a player who stays on a map (the host leaves and another player keeps it, or the host walks back onto a map a player holds) no longer has its screen fade in from black over 4 seconds while the world is replaced.",
+      "#47: two players recruiting the lost puppy Poppy at the same time no longer break the quest: only the first recruit counts.",
+      "The Elin Together public server runs Elin EA 23.357."
+    ]
+  },
+  {
+    "version": "0.26.1596",
+    "date": "2026-10-31",
+    "title": "a safer public server",
+    "bullets": [
+      "A world can no longer be stuck at loading because of a party left without its leader: when the dedicated server stopped, a guest's party could keep pointing at the server's removed stand-in, and the next start failed.",
+      "#45: while you wait for a revive in permadeath, Escape opens (and closes) the system menu: Save and Quit, mods > Multiplayer and Report a bug are reachable.",
+      "A dedicated server started without graphics no longer fills its log with drawing errors."
+    ]
+  },
+  {
+    "version": "0.26.1592",
+    "date": "2026-10-30",
+    "title": "the public server, fixed from its first players",
+    "bullets": [
+      "Players list: shows every player of the server, also those away on a map of their own, with where each one is.",
+      "No more \"Wanderers\": a player without a team is on its own.",
+      "Your first deed is never dropped on the ground: it goes into your bag, or into your letters (Mail tab) when you are away or your bag is full.",
+      "Respawn point: a guest wakes up after death at its own respawn point (the first land it claims becomes it.",
+      "No more tax bills and salaries appearing on claims and deaths: each bill goes to its owner's delivery box, in its name.",
+      "The dedicated server is no longer a player: its own character no longer receives parcels or story rewards and is not listed.",
+      "Vernis belongs to everyone with the start land box (on in the \"Elin Together public server\" preset): every player can build there, its people and shops stay, and nobody can build, dig or move things within 5 cells of the way down to the mine.",
+      "Character choice on join: the list of your characters (play, delete, new) is shown on every join, also the first one, with portraits.",
+      "Mods each player may have or not: new World rules box.",
+      "Report a bug: the Send button is always visible, also at 1280x720.",
+      "Teams and the Multiplayer menu from away: founding a team, the market, the boards, a player's sheet and team quests work while you are on a map of your own."
+    ]
+  },
+  {
+    "version": "0.26.1576",
+    "date": "2026-10-30",
+    "title": "the Elin Together public server becomes playable",
+    "bullets": [
+      "Your first land deed works on any free field, also when the host is not with you (and on a dedicated server, which never leaves its map): read it on a field you are on, answer yes, the land is yours (or your team's).",
+      "The start land can belong to everyone: new World rules box \"The start land belongs to everyone\" (off by default, on with the \"Elin Together public server\" preset).",
+      "Riding and symbiosis work for guests on a server that checks permissions (the public server): your mount is shown as ridden in every game.",
+      "The dedicated server itself (\"Elin Together\") is no longer listed among the players."
+    ]
+  },
+  {
+    "version": "0.26.1572",
+    "date": "2026-10-30",
+    "title": "a Report a bug tab, and issue #43",
+    "bullets": [
+      "Report a bug now has its own tab in the Multiplayer menu, laid out like the game's own Report Bugs window: a category, a one-line summary, a detail box, \"does it happen again?\", and boxes for the 30-second video (taken before the report was opened), a picture of the game screen and your logs.",
+      "#43: party members (a ridden horse, a symbiotic companion) no longer drop out of the party when a guest comes back to the host's map."
+    ]
+  },
+  {
+    "version": "0.26.1566",
+    "date": "2026-10-30",
+    "title": "joining the Elin Together public server",
+    "bullets": [
+      "Players coming from the internet can now join the Elin Together public server (and any dedicated server)."
+    ]
+  },
+  {
+    "version": "0.26.1565",
+    "date": "2026-10-30",
+    "title": "fix for an error at the title screen",
+    "bullets": [
+      "Opening the Multiplayer menu at the title screen no longer shows a red \"NullReferenceException\" error every half second (the tabs' badges looked for your team before a game was loaded)."
+    ]
+  },
+  {
+    "version": "0.26.1564",
+    "date": "2026-10-30",
+    "title": "the Elin Together public server, mods and better bug videos",
+    "bullets": [
+      "Elin Together public server: it is run by the Elin Together mod team.",
+      "Your mods and the public server: look-only mods (portraits, pictures, sounds, translations) are kept.",
+      "Bug report video: the 30-second video now stops when you open the bug report page, so it shows what happened, not you typing the report."
+    ]
+  },
+  {
+    "version": "0.26.1560",
+    "date": "2026-10-30",
+    "title": "ready for the official public server",
+    "bullets": [
+      "For the official public server: when it starts, it applies the whole \"Public server (official)\" preset, its admins and moderators lists, and writes the welcome message and the rules if there are none.",
+      "The server program (ElinTogetherServer.exe) gets an official mode: starts with Windows, restarts by itself, a daily restart at 06:00 with a 10-minute warning, and a nightly copy of the world kept 14 days, with a restore button.",
+      "No change for players' games: this version is the one the official server runs, so players need it to join."
+    ]
+  },
+  {
+    "version": "0.26.1559",
+    "date": "2026-10-30",
+    "title": "fixes for issues #41 and #42",
+    "bullets": [
+      "#41: an investment in a merchant (Kettle, any shop) is no longer lost when a guest has held the base alone and gives it back.",
+      "A guest's investment in a merchant now works on a server that checks payments (the public server): it was always refused.",
+      "#42: a guest travelling alone who enters a zone at the moment another guest leaves it is no longer sent back to the host: it goes back into that zone."
+    ]
+  },
+  {
+    "version": "0.26.1556",
+    "date": "2026-10-30",
+    "title": "better bug reports",
+    "bullets": [
+      "Three questions, each answered in a box of several lines: What were you doing?",
+      "The report adds, on its own, what you did just before (the last actions: items used, eaten, crafted, people talked to, maps changed), the windows open and what was under the mouse.",
+      "A guest's report now also carries the host's log of the last minutes, when the host allows it: new World rules box \"Share my log with bug reports\" (off by default, on with the \"Public server (official)\" preset).",
+      "Privacy: Steam ids, IP addresses and Windows user names are removed from every log of a report before it is sent (the report is public on GitHub)."
+    ]
+  },
+  {
+    "version": "0.26.1555",
+    "date": "2026-10-30",
+    "title": "a real text box for bug reports",
+    "bullets": [
+      "Report a bug (Server info > Report a bug): the text is now written in a real box of several lines, wrapped, with Enter for a new line."
+    ]
+  },
+  {
+    "version": "0.26.1554",
+    "date": "2026-10-30",
+    "title": "Chat, Market, Mailbox, team quest sharing, a richer Multiplayer menu, and fixes for issues #35-#40",
+    "bullets": [
+      "#35: an offering made with a right click on a bag stack no longer comes back to the bag 10 seconds later.",
+      "#36: a guest playing alone on its own map no longer sees the host's companions in its party bar.",
+      "#37: no more hallucination screen after going back to the title and joining again, when you do not have the condition.",
+      "#38: gear given to a companion by a guest is now worn in every game (the host's game left it in the bag, and the companion put it away in the shared chest).",
+      "#39: the fortune drum's prizes of a zone a guest held alone are kept when it gives the zone back.",
+      "#40: opening a shop no longer resets the guest's \"days till next restock\" (every merchant, not only Kettle).",
+      "Emblems are for teams only again (a player alone can found a team of one).",
+      "Chat: every line you were shown (everyone, team, private, server), filters, and a box to write to everyone, your team or one player.",
+      "Market: classified ads, \"Selling\" or \"Looking for\", any item of the game, quantity, price and a note.",
+      "Mail (Players tab): letters with a text, up to 5 stacks of items and gold, also to a player who is offline.",
+      "Share my quests with my team (Team page): your teammates see your quests, can advance them and turn them in, and every connected member gets the reward.",
+      "Badges on the tabs: unread chat lines, players asking to join your team, an invitation.",
+      "Player card: race and job, time here, deepest floor, duels won, recent deeds.",
+      "Team emblem everywhere: team header, lands, team leaderboard, a colour square until the team makes one.",
+      "Server info > Status: host, players online, teams, world date, session time, ping, restart countdown, versions.",
+      "Lands: the game's icons for the team bank and the delivery box.",
+      "Every fix and every new page has its own test on the test bench (one PC, several game windows), all green, with screenshots of every page."
+    ]
+  },
+  {
+    "version": "0.26.1528",
+    "date": "2026-10-30",
+    "title": "the public server preset turns everything on, solo emblems, a faster Multiplayer menu",
+    "bullets": [
+      "\"Public server (official)\" now also turns on the team emblem editor, the teammate sheet, the activity journal and the leaderboards.",
+      "A server that is running with nobody connected yet can use all of them (the emblem editor, the journal and the leaderboards waited for a first guest).",
+      "A player in no team has its own emblem (Team tab, Emblem page), shown next to its name in the player list. A team it founds takes it.",
+      "Opens much faster: only the page you open is built, the others when you first click them.",
+      "No more freeze when many players change teams while the menu is open (the host froze with 50 players being sorted into teams).",
+      "Tab icons are clearer, the same size and aligned; labels line up.",
+      "My settings: the Workshop mod lines no longer overlap.",
+      "Checked on the test bench (one PC, several game windows) on an existing world and on a world without any data from this mod: emblem editor (team and solo), teammate sheet, journal, leaderboards, the public preset with a host alone, 50 players sorted into teams with the menu open."
+    ]
+  },
+  {
+    "version": "0.26.1525",
+    "date": "2026-10-29",
+    "title": "fix for a server with no guest yet, team emblem editor, a cleaner Multiplayer menu",
+    "bullets": [
+      "A server just started, before anyone joins, no longer locks the Team, Journal and Leaderboards pages with \"Host or join a game\".",
+      "The Multiplayer button shows in the main menu widget even when that widget is set to a fixed number of slots (it was hidden past the 4th slot).",
+      "The team leader builds the emblem from up to 12 layers: any item or monster of the game, moved by dragging, resized, turned by 45 degrees, flipped, tinted (24 colours), with opacity and outline, on a background shape with a pattern and two colours.",
+      "Every player sees the same emblem (it is drawn the same way on each PC).",
+      "Emblems from the previous version are kept (shown as one centred picture).",
+      "Before downloading the host's Workshop mods, the game now asks the player, with the list of mods.",
+      "The tabs are on the left side of the window, all the same size, drawn like the game's Journal bookmarks.",
+      "Smaller buttons everywhere (no more one big button per player to invite), pages that fit the window.",
+      "Team tab: sub-pages Team, Emblem, Other teams, Team journal.",
+      "World rules and My settings: each group of settings now uses the full width; titles and descriptions no longer overlap.",
+      "The Multiplayer button is also added to the main menu bar when loading a game saved before it existed.",
+      "The emblem editor, the team sheet, the mod prompt, the rules pages and the button on old saves were checked on the test bench (one PC, several game windows), with screenshots of every settings page.",
+      "A load test of the dedicated server (no window) held 110 players at about 30 frames per second with no failed join."
+    ]
+  },
+  {
+    "version": "0.26.1524",
+    "date": "2026-10-29",
+    "title": "team emblem editor, a cleaner Multiplayer menu, safer mod downloads",
+    "bullets": [
+      "The team leader builds the emblem from up to 12 layers: any item or monster of the game, moved by dragging, resized, turned by 45 degrees, flipped, tinted (24 colours), with opacity and outline, on a background shape with a pattern and two colours.",
+      "Every player sees the same emblem (it is drawn the same way on each PC).",
+      "Emblems from the previous version are kept (shown as one centred picture).",
+      "Before downloading the host's Workshop mods, the game now asks the player, with the list of mods.",
+      "The tabs are on the left side of the window, all the same size, drawn like the game's Journal bookmarks.",
+      "Smaller buttons everywhere (no more one big button per player to invite), pages that fit the window.",
+      "Team tab: sub-pages Team, Emblem, Other teams, Team journal.",
+      "World rules and My settings: each group of settings now uses the full width; titles and descriptions no longer overlap.",
+      "The Multiplayer button is also added to the main menu bar when loading a game saved before it existed.",
+      "The emblem editor, the team sheet, the mod prompt, the rules pages and the button on old saves were checked on the test bench (one PC, several game windows), with screenshots of every settings page.",
+      "A load test of the dedicated server (no window) held 110 players at about 30 frames per second with no failed join."
+    ]
+  },
+  {
+    "version": "0.26.1509",
+    "date": "2026-10-29",
+    "title": "safer joining over Steam, a security pass, a Journal and Leaderboards in the Multiplayer menu",
+    "bullets": [
+      "A Steam lobby that takes long to enter (15-40 s on some PCs) no longer ends with \"The game does not answer\": the lobby join has its own 60 s wait (follow-up of issue #24).",
+      "A reconnect on a slow PC no longer loops for ever.",
+      "The \"continue despite different mods?\" question no longer gets the guest cut after 15 s while reading it.",
+      "A guest refused by the host's friends/invited filter is now told so instead of nothing happening; a lobby entered too late is left cleanly.",
+      "A player who reconnects no longer gets its new connection closed by the old one a moment later.",
+      "After the host lost its connection, a guest at the character choice is no longer sent back to the title after 45 s.",
+      "A guest's character missing from its list (after a host connection loss) comes back to its player on the next join.",
+      "Deleting a character really removes it from the world.",
+      "Player characters no longer count as residents of a base.",
+      "A guest who dies in the host's dungeon now goes where it picked on the death screen (its home or the last town), as the host does.",
+      "Leaving a team keeps the better of your own story and the team's (you never go back a phase you played), both key items, the higher debt (no more escaping a debt by joining a team and leaving), and both recipe books.",
+      "A companion the host takes back into its party becomes the host's again.",
+      "The Team page shows teammates who are online on the same map (they showed as \"? offline\").",
+      "Butchered livestock and dismissed residents no longer come back when a player who held its base alone returns (#26, #27).",
+      "The bug report text box accepts spaces (#29). Return scrolls log their destination (#30, could not be reproduced).",
+      "A plant's seed level now reaches every player, and seeds reaped with a sickle go to the reaper's bag (#31).",
+      "Riding speed no longer drops to 0 after a map change (#32).",
+      "God relics: a companion only counts for its own player, so the host's Golden Knight no longer loses its relic when a guest's knight gets one (#34).",
+      "Everything done there now comes back to the host: residents' equipment and food, expeditions, research, policies, the base's name, and the base income (paid once).",
+      "When the host leaves the base to a guest, chests are no longer doubled or lost.",
+      "A guest's music tape, key items, feat books, peace whistle, fishing and cat-treat counters no longer act on the host.",
+      "A disbanded team's number is never reused (a new team no longer inherits the old one's bank and story).",
+      "With shared quests, a guest's delivery parcel and escort go to the guest, and the quest's affinity too.",
+      "Dyed plants, fire and puddles, broken generators and hidden medals are the same for everybody.",
+      "A host can no longer make a guest download mods that contain code (DLL or scripts) unless the guest ticks the new box \"Also code mods (DLL): only for hosts you trust\" (off by default).",
+      "A host can no longer make a guest's game hash files outside the mods' folders.",
+      "Worlds, maps and characters from another player's game are read with the mod's strict type filter, even outside a session (a crafted world could make the game run code).",
+      "Size limits on received maps, world copies, depot archives and pictures (no \"zip bomb\" or huge image).",
+      "A world copy is bound to the host that sent it; a host's moongate map stays in the session's temporary folder.",
+      "Community tab with a Journal: the server's recent events (teams founded, joined, left, lands, duels, deaths, boss kills, record depths), filters All / Team / Mine.",
+      "Leaderboards: level, deepest floor, duels won, team wealth (team bank + lands), top 10 and your own rank, all counted by the host.",
+      "Team sheet: open a teammate's character sheet, read-only (same team only, checked by the host).",
+      "Team logo: the leader picks any item or monster of the game and a colour; the team's lands on a small map; the team journal.",
+      "Polish: player search, sort, team filter and pages (made for 100 players), clearer Team, Lands, World rules and Play pages, tabs that fit the window.",
+      "The world state sent to each player is built once and shared, not once per player (it was close to half of the host's time with 100 players).",
+      "The shared sight of all players is counted per cell instead of being rebuilt for every step of every player (it was most of the host's frame with 100 players).",
+      "Every fix above has its own test on the test bench (one PC, several game windows)."
+    ]
+  },
+  {
+    "version": "0.26.1460",
+    "date": "2026-10-29",
+    "title": "safer joining over Steam, a security pass, a Journal and Leaderboards in the Multiplayer menu",
+    "bullets": [
+      "A Steam lobby that takes long to enter (15-40 s on some PCs) no longer ends with \"The game does not answer\": the lobby join has its own 60 s wait (follow-up of issue #24).",
+      "A reconnect on a slow PC no longer loops for ever.",
+      "The \"continue despite different mods?\" question no longer gets the guest cut after 15 s while reading it.",
+      "A guest refused by the host's friends/invited filter is now told so instead of nothing happening; a lobby entered too late is left cleanly.",
+      "A player who reconnects no longer gets its new connection closed by the old one a moment later.",
+      "After the host lost its connection, a guest at the character choice is no longer sent back to the title after 45 s.",
+      "A guest's character missing from its list (after a host connection loss) comes back to its player on the next join.",
+      "Deleting a character really removes it from the world.",
+      "Player characters no longer count as residents of a base.",
+      "A guest who dies in the host's dungeon now goes where it picked on the death screen (its home or the last town), as the host does.",
+      "Leaving a team keeps the better of your own story and the team's (you never go back a phase you played), both key items, the higher debt (no more escaping a debt by joining a team and leaving), and both recipe books.",
+      "A companion the host takes back into its party becomes the host's again.",
+      "The Team page shows teammates who are online on the same map (they showed as \"? offline\").",
+      "A host can no longer make a guest download mods that contain code (DLL or scripts) unless the guest ticks the new box \"Also code mods (DLL): only for hosts you trust\" (off by default).",
+      "A host can no longer make a guest's game hash files outside the mods' folders.",
+      "Worlds, maps and characters from another player's game are read with the mod's strict type filter, even outside a session (a crafted world could make the game run code).",
+      "Size limits on received maps, world copies, depot archives and pictures (no \"zip bomb\" or huge image).",
+      "A world copy is bound to the host that sent it; a host's moongate map stays in the session's temporary folder.",
+      "Journal: the server's recent events (teams founded, joined, left, lands, duels, deaths, boss kills, record depths), filters All / Team / Mine.",
+      "Leaderboards: level, deepest floor, duels won, team wealth (team bank + lands), top 10 and your own rank, all counted by the host.",
+      "Team sheet: open a teammate's character sheet, read-only (same team only, checked by the host).",
+      "Team banner: the leader picks an emblem and a colour; the team's lands on a small map; the team journal.",
+      "Polish: player search, sort, team filter and pages (made for 100 players), clearer Team, Lands, World rules and Play pages, tabs that fit the window.",
+      "The shared sight of all players is counted per cell instead of being rebuilt for every step of every player (it was most of the host's frame with 100 players).",
+      "Every fix above has its own test on the test bench (one PC, several game windows); the full test series ran on this version."
+    ]
+  },
+  {
+    "version": "0.26.1405",
+    "date": "2026-10-28",
+    "title": "guests can connect again on slow PCs, the Multiplayer menu, settings for the official server and big crowds",
+    "bullets": [
+      "A guest could not connect (issue #24).",
+      "A new character the host cannot take no longer leaves the player waiting for ever: the player is sent back to the character choice with a message.",
+      "Character sprites in the menus are no longer drawn too dark.",
+      "A Multiplayer button in the bottom bar (the two-putit logo) opens everything of Elin Together in one window, in the game's own style: Play, Players, Team, Lands, World rules, Server info, My settings, Help, with sub-tabs.",
+      "Players: portrait and sprite side by side, level, ping, actions.",
+      "An Official preset with its fixed rules (greyed boxes), a restart warning that really stops the server.",
+      "Host box \"Strangers may visit a player's map\" (on in the Official preset): players of other teams may visit, land rules first, at most 10 visitors per map.",
+      "A chat flood limit (8 lines in 10 s gives a 30 s mute, admins exempt) and other council decisions for the official server.",
+      "\"Large crowds\": each player is sent the characters near them, full checks less often, the player list only when it changes.",
+      "\"Fast joins and saves for big worlds\": the world copy for joining players and the autosave's files are compressed and written beside the game, so the game freezes less.",
+      "Every fix above has its own test on the test bench (one PC, several game windows), failing before the fix and passing after it.",
+      "Up to 113 fake players were run on one map on the test bench.",
+      "The full test series did not run on this version yet. Nothing was played between two real PCs for this version."
+    ]
+  },
+  {
+    "version": "0.26.1325",
+    "date": "2026-10-28",
+    "title": "teams and lands, a story per player or team, banks, server tools, a hidden server (beta)",
+    "bullets": [
+      "Team page in the Elin Together menu: found a team with a typed name, join, leave, accept, refuse, see members and lands.",
+      "Leader actions (host box \"Team leaders manage their team\"): rename, kick, promote, disband, invitations.",
+      "Land rules (host box): per land, one access level for the team and one for others. OFF = today's behaviour.",
+      "Closed lands: entry is refused to others; someone inside is warned, then moved out after 30 seconds (never trapped).",
+      "Offline protection: a land option closes it to others while no member of its team is online.",
+      "Abandoned land (host box, 30 days by default): a team away for that many real days loses its claim. A lands-per-team cap (0 = no limit).",
+      "Several lands on one world-map tile (host box): a second deed read on an occupied tile makes another plot.",
+      "Another team's land: its laws, resources and core acts are refused.",
+      "Key items, the debt to Loytel and the extra tax, every dialog flag, Fiama's story flags and, with \"Guilds per player or team too\", the guilds belong to the story owner (a team, or a player alone).",
+      "Teams learn on their own: recipes and codex belong to the team.",
+      "Untick the box and the story merges back into the world's.",
+      "Laws, resources and core acts, shipping totals and bonus tiers per owner, the hearth of the shipper's own land.",
+      "Salary: the monthly salary is paid per team to its members; guild salary per owner.",
+      "A team bank and delivery box, and a personal bank for every player beside it. Changes inside an owner's box reach that owner's players only.",
+      "Parcels carry a recipient name and the mailbox owner; delivery is per unit.",
+      "Each player has its own affinity column, computed by the one who acts; an away guest's change reaches the world host.",
+      "Message of the day and rules tab, personal friends and ignore lists, admin announcements and restart warnings.",
+      "Container access log, moderator role, freeze and jail (host box \"Moderators, freeze and jail\", OFF by default).",
+      "A dedicated server rests while nobody is connected.",
+      "Host box \"Play as a guest of a hidden server (beta)\": the world starts in a hidden second Elin on your machine and you join it as a guest, so the host is no different from anyone else.",
+      "The server has a reserved identity; only its owner (first handshake with an owner token) is its admin.",
+      "Zone sessions on the owner's seat and Steam virtual port 1, so players can still be hosted on a map.",
+      "Dedicated-server avatar (-empserver): the server holds a stand-in character that is no player anywhere (lists, stories).",
+      "A guest's music is judged at its own song level.",
+      "Away debt payments, investments (checked against the game's price on the host), shop and build spends, and base resources are checked.",
+      "Failed checks refuse.",
+      "Playlist and fish fixes that had broken the mod's loading.",
+      "Green before this release on one PC: quests 60/60, travel 122/122, reconnect 73/73, base 179/179, bank 87/87, build 24/24, shared play 26/26, character export 47/47, security 12/12, 8/8, 11/11, characters per player 11/11, the new team, land, bank, parcel, admin and server-tab suites, the server stand-in 13/13 and 25/25.",
+      "Still red at the last run: a three-player own-story check (20/21), team box routing with three players (3/5), one adventurer bout step (49/51), the guest's world-map icon with several lands per tile (25/26).",
+      "Not proven: zone sessions of the hidden server's owner on virtual port 1 (it needs two PCs or two Steam accounts), and the hidden server's full start after its last fix.",
+      "The hidden server is Windows only and starts a second Elin on your PC."
+    ]
+  }
+]

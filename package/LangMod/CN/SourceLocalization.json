@@ -1271,5 +1271,9 @@
     "LangGeneral.emp_ui_sv_cfg_client_mods.text": "每位玩家可自行决定是否安装的模组",
     "LangGeneral.emp_ui_sv_desc_client_mods.text": "模组 id（或创意工坊编号），用逗号分隔。好友无论是否安装这些模组都不会被拒绝，也不会为此被要求重启，其代码不计入模组校验。仅适用于不添加游戏数据（物品、角色、地图）的模组：它们添加的内容仍会被校验。",
     "LangGeneral.emp_ui_sv_client_mods_hint.text": "例如 maccha_coffee_somewhat_enhanced_display",
-    "LangGeneral.emp_ui_sv_client_mods_none.text": "无"
+    "LangGeneral.emp_ui_sv_client_mods_none.text": "无",
+    "LangGeneral.emp_ui_tab_patchnotes.text": "更新说明",
+    "LangGeneral.emp_tip_tab_patchnotes.text": "每个版本的改动",
+    "LangGeneral.emp_ui_patchnotes_installed.text": "已安装",
+    "LangGeneral.emp_ui_patchnotes_none.text": "未找到更新说明"
 }
