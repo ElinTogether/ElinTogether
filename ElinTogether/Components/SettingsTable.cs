@@ -496,27 +496,78 @@ internal static class SettingsTable
     ];
 
     // presets: computed from the boxes each time a page opens, never stored (an old world with one box of its
-    // own reads as Custom, with what differs listed, and stays as it is)
-    // ("official" comes after "custom" so that the indexes the pages already know (0 recommended, 1 classic, 2 custom) stay)
-    internal static readonly string[] Presets = ["recommended", "classic", "custom", "official"];
+    // own reads as Custom, with what differs listed, and stays as it is). Only names are kept anywhere: every page
+    // finds an index with PresetIndex. Lead dev 2026-11-01: "Classic host-led" has no card any more (its rules stay
+    // under Advanced, a world still on them reads as Custom); Duo, Hardcore and Big group were added
+    internal static readonly string[] Presets = ["recommended", "duo", "hardcore", "community", "official", "custom"];
+
+    internal static int PresetIndex(string name) => Array.IndexOf(Presets, name);
+
+    internal static readonly int CustomPreset = PresetIndex("custom");
+    internal static readonly int OfficialPreset = PresetIndex("official");
 
     /// <summary>
-    ///     Classic host-led: the fallbacks off, turn-based combat, everyone follows the host, only the host
-    ///     builds and manages the base; all else as recommended
+    ///     A preset as the defaults with these values written over them
     /// </summary>
-    internal static RuleSource Classic
+    private static RuleSource Over(IEnumerable<(ConfigEntryBase Entry, object Value)> writes)
     {
-        get {
-            var values = new Dictionary<ConfigEntryBase, object>();
-            foreach (var (entry, value) in CombatPace.WriteFor(1).Concat(OwnEverything.WriteFor(1)).Concat(Building.WriteFor(2))
-                         .Concat(Travel.WriteFor(0))) {
-                values[entry] = value;
-            }
-            return new(e => values.TryGetValue(e, out var v) ? v : e.DefaultValue);
+        var values = new Dictionary<ConfigEntryBase, object>();
+        foreach (var (entry, value) in writes) {
+            values[entry] = value;
         }
+
+        return new(e => values.TryGetValue(e, out var v) ? v : e.DefaultValue);
     }
 
-    internal static RuleSource PresetSource(int preset) => preset switch { 0 => RuleSource.Defaults, 3 => Official, _ => Classic };
+    /// <summary>
+    ///     The old "Classic host-led" set (no card since 2026-11-01): the fallbacks off, turn-based combat, everyone
+    ///     follows the host, only the host builds and manages the base. Kept for the check that such a world reads Custom
+    /// </summary>
+    internal static RuleSource Classic => Over(CombatPace.WriteFor(1).Concat(OwnEverything.WriteFor(1)).Concat(Building.WriteFor(2))
+        .Concat(Travel.WriteFor(0)));
+
+    /// <summary>
+    ///     Duo / small group (2-4 friends): Recommended, but everyone travels together, so a moongate or a landing
+    ///     portal never takes one player away alone. One story, one base and its chests for all, no teams, no PvP
+    /// </summary>
+    internal static RuleSource Duo => Over(Travel.WriteFor(0).Concat([
+        (EmpConfig.Server.GuestMoongate, (object)false), (EmpConfig.Server.GuestLandingPortal, false),
+    ]));
+
+    /// <summary>
+    ///     Hardcore: Recommended with players allowed to kill each other, one character per player, no character
+    ///     brought from a solo save or taken back to one, and a dead player of a permadeath world revived at a bartender
+    ///     (permadeath itself is the world's own setting, chosen when the world is made)
+    /// </summary>
+    internal static RuleSource Hardcore => Over(Fights.WriteFor(2).Concat(Characters.WriteFor(0)).Concat([
+        (EmpConfig.Server.ExportCharacter, (object)false), (EmpConfig.Server.MaxCharacters, 1),
+        (EmpConfig.Server.PermadeathRevive, true),
+    ]));
+
+    /// <summary>
+    ///     Big group / community (10+ players, a friend's host): the public server's chosen values (teams with their
+    ///     lands and leaders, market, mail, journal, leaderboards, ownership enforced, large-crowd optimisations,
+    ///     each player's own pace) without what only the public server fixes or needs: it stays a friends' game (not
+    ///     public, opened by itself), the story stays shared, no host log in reports, no fixed list of display mods
+    /// </summary>
+    internal static RuleSource Community => Over(OfficialChosenValues()
+        .Where(v => v.Entry != EmpConfig.Server.ClientOnlyMods && v.Entry != EmpConfig.Server.ShareLogForReports &&
+                    v.Entry != EmpConfig.Server.TeamOwnGuilds)
+        .Concat([
+            (EmpConfig.Server.Teams, (object)true), (EmpConfig.Server.TeamBases, true), (EmpConfig.Server.TeamBoxes, true),
+            (EmpConfig.Server.ContainerAccessLog, true), (EmpConfig.Server.AdminExtras, true),
+        ]));
+
+    /// <summary>
+    ///     The values a preset writes; Custom (it writes nothing) and an unknown index read as Recommended
+    /// </summary>
+    internal static RuleSource PresetSource(int preset) => (preset >= 0 && preset < Presets.Length ? Presets[preset] : "") switch {
+        "duo" => Duo,
+        "hardcore" => Hardcore,
+        "community" => Community,
+        "official" => Official,
+        _ => RuleSource.Defaults,
+    };
 
     /// <summary>
     ///     Rules the official server fixes whatever its operator ticks (plan_official_server 2026-10-28, section 1):
@@ -542,17 +593,7 @@ internal static class SettingsTable
     ///     The official preset: the recommended rules with the official server's values written over them (also a
     ///     "public server" preset for any host). (C) = still to be decided by the council: the plan's value for now
     /// </summary>
-    internal static RuleSource Official
-    {
-        get {
-            var values = new Dictionary<ConfigEntryBase, object>();
-            foreach (var (entry, value) in OfficialFixedValues().Concat(OfficialChosenValues())) {
-                values[entry] = value;
-            }
-
-            return new(e => values.TryGetValue(e, out var v) ? v : e.DefaultValue);
-        }
-    }
+    internal static RuleSource Official => Over(OfficialFixedValues().Concat(OfficialChosenValues()));
 
     private static IEnumerable<(ConfigEntryBase Entry, object Value)> OfficialChosenValues()
     {
@@ -709,22 +750,37 @@ internal static class SettingsTable
         ];
     }
 
-    internal static int Preset(RuleSource current) =>
-        Differences(current, RuleSource.Defaults).Count == 0 ? 0 : Differences(current, Classic).Count == 0 ? 1
-        : Differences(current, Official).Count == 0 ? 3 : 2;
+    /// <summary>
+    ///     The first preset the rules match, Custom when none
+    /// </summary>
+    internal static int Preset(RuleSource current)
+    {
+        for (var i = 0; i < Presets.Length; i++) {
+            if (i != CustomPreset && Differences(current, PresetSource(i)).Count == 0) {
+                return i;
+            }
+        }
+
+        return CustomPreset;
+    }
 
     /// <summary>
-    ///     Every host rule as the preset has it (Reset to recommended is preset 0); "Custom" writes nothing
+    ///     Every host rule as the preset has it (Reset to recommended is preset 0); "Custom" writes nothing. Never a
+    ///     player's own option (HostRules has none of them, the hidden server is left out), never a rule the public
+    ///     server fixes while this game hosts it (Write), and the list of mods each player may have or not only from
+    ///     the public server preset, which has its own: a host's list of display mods is not a way of playing
     /// </summary>
     internal static void ApplyPreset(int preset)
     {
-        if (preset is 0 or 1 or 3) {
-            var target = PresetSource(preset);
-            Write(HostRules().Select(e => (e, target.Raw(e)!)));
-        } else {
+        if (preset < 0 || preset >= Presets.Length || preset == CustomPreset) {
             // "Custom" writes nothing: redraw so the line shows the real preset again
             MarkDirty();
+            return;
         }
+
+        var target = PresetSource(preset);
+        Write(HostRules().Where(e => e != EmpConfig.Server.HiddenServer && (preset == OfficialPreset || e != EmpConfig.Server.ClientOnlyMods))
+            .Select(e => (e, target.Raw(e)!)));
     }
 
     // what the host's rules were before each change made from a page, for this session only
