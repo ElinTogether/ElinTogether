@@ -16,17 +16,6 @@ internal class GameSaveLoad
         if (NetSession.Instance.IsHost && !NetSession.Instance.IsAway) {
             // a stack split here is held out of any bag (InvSplitThingEvent): in no save either (issue 48)
             Helper.HeldDrag.PutBack("saving");
-
-            // the maps players handed back go in with this save, not before (the game skips an autosave it was told to)
-            if (!(isAutoSave && EClass.debug.ignoreAutoSave)) {
-                try {
-                    ZoneLeaseState.CommitAllStaged();
-                } catch (System.Exception ex) {
-                    // never a reason not to save
-                    EmpLog.Warning(ex, "Maps handed back by players could not all be put in the save");
-                }
-            }
-
             return true;
         }
 
@@ -43,6 +32,28 @@ internal class GameSaveLoad
     }
 
     private static float _saveNoticeAt = float.MinValue;
+
+    /// <summary>
+    ///     The maps players handed back go in with a save that was made, after its game.txt: never on a failed save
+    ///     (false), nor on an autosave the game skipped (it returns true without saving), see
+    ///     ZoneLeaseState.CommitAllAfterSave
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Game), nameof(Game.Save))]
+    internal static void OnSaveDone(bool __result, bool isAutoSave)
+    {
+        if (!__result || (isAutoSave && EClass.debug.ignoreAutoSave) ||
+            !NetSession.Instance.IsHost || NetSession.Instance.IsAway) {
+            return;
+        }
+
+        try {
+            ZoneLeaseState.CommitAllAfterSave();
+        } catch (System.Exception ex) {
+            // kept staged for the next save
+            EmpLog.Warning(ex, "Maps handed back by players could not all be put in the save");
+        }
+    }
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Game), nameof(Game.TryLoad))]

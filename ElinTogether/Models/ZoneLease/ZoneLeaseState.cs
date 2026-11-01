@@ -126,6 +126,8 @@ internal static class ZoneLeaseState
     internal static void StageMap(Zone zone, Dictionary<string, LZ4Bytes> map)
     {
         var folder = StageRoot + zone.uid + "/";
+        // (the save before may still be moving the staged maps in, see CommitAllAfterSave)
+        Helper.SaveWriter.Wait();
         if (Directory.Exists(folder)) {
             Directory.Delete(folder, true);
         }
@@ -137,7 +139,7 @@ internal static class ZoneLeaseState
     /// <summary>
     ///     The map of that zone, if one waits, goes into the save now
     /// </summary>
-    internal static void CommitStaged(int zoneUid)
+    internal static void CommitStaged(int zoneUid, bool saved = false)
     {
         if (!_staged.TryGetValue(zoneUid, out var folder)) {
             return;
@@ -146,7 +148,7 @@ internal static class ZoneLeaseState
         // forgotten only once it is in: a failing swap leaves a half-written map, and the staged one is the whole
         // map to try again with. Never throws: the callers are the game's own Zone.Activate and a map being sent
         try {
-            Commit(zoneUid, folder);
+            Commit(zoneUid, folder, saved);
             _staged.Remove(zoneUid);
         } catch (Exception ex) {
             EmpLog.Warning(ex, "The map of zone {ZoneUid} a player handed back could not be put in the save, kept for the next try", zoneUid);
@@ -157,10 +159,10 @@ internal static class ZoneLeaseState
     ///     The host's game is being saved: every map waiting goes in with it. What is left in the folder (a crash
     ///     before the save it waited for) belongs to no save and goes
     /// </summary>
-    internal static void CommitAllStaged()
+    internal static void CommitAllStaged(bool saved = false)
     {
         foreach (var zoneUid in _staged.Keys.ToList()) {
-            CommitStaged(zoneUid);
+            CommitStaged(zoneUid, saved);
         }
 
         // a map that failed keeps its folder and its entry for the next save
@@ -169,7 +171,74 @@ internal static class ZoneLeaseState
         }
     }
 
-    private static void Commit(int zoneUid, string folder)
+    /// <summary>
+    ///     The host's game was saved (Game.Save returned true): the maps waiting go in now, after game.txt and never
+    ///     before it (robustness audit 2026-11-01: committed in the save's prefix, a save that failed, or one whose
+    ///     files were still being written beside the game (FastJoinsAndSaves) when the game stopped, left maps ahead
+    ///     of the characters). Under the writer beside the game, they go in on its thread right after its files,
+    ///     and only if every one of them was written
+    /// </summary>
+    internal static void CommitAllAfterSave()
+    {
+        // read here, on the game's thread: the writer's thread only moves files
+        var jobs = _staged
+            .Where(kv => kv.Value.StartsWith(GameIO.pathCurrentSave))
+            .Select(kv => (Uid: kv.Key, Folder: kv.Value, PathSave: EClass.game.spatials.Find(kv.Key)?.pathSave))
+            .ToList();
+        var root = StageRoot;
+
+        var queued = Helper.SaveWriter.AfterWrites(() => {
+            foreach (var job in jobs) {
+                try {
+                    MoveIn(job.Uid, job.Folder, job.PathSave, true);
+                } catch (Exception ex) {
+                    // its folder stays, marked: the next save or load puts it in
+                    EmpLog.Error(ex, "The map of zone {ZoneUid} a player handed back could not be put in the save", job.Uid);
+                }
+            }
+
+            if (Directory.Exists(root) && Directory.GetDirectories(root).Length == 0) {
+                Directory.Delete(root, true);
+            }
+        });
+
+        if (!queued) {
+            CommitAllStaged(true);
+        }
+    }
+
+    /// <summary>
+    ///     The save is loaded: a staged map marked as saved (the game stopped while it was being moved in after its
+    ///     save) goes in, it matches game.txt. One never saved belongs to no save and goes, as do the maps staged for
+    ///     the game played before
+    /// </summary>
+    [ElinPostLoad]
+    internal static void OnLoad(GameIOContext context)
+    {
+        _staged.Clear();
+
+        try {
+            if (!Directory.Exists(StageRoot)) {
+                return;
+            }
+
+            foreach (var folder in Directory.GetDirectories(StageRoot)) {
+                if (File.Exists(Path.Combine(folder, SavedMark)) && int.TryParse(Path.GetFileName(folder), out var zoneUid)) {
+                    EmpLog.Warning("Map of zone {ZoneUid} handed back by a player was saved but not moved in, moving it now", zoneUid);
+                    MoveIn(zoneUid, folder, EClass.game.spatials.Find(zoneUid)?.pathSave, true);
+                }
+            }
+
+            Directory.Delete(StageRoot, true);
+        } catch (Exception ex) {
+            EmpLog.Error(ex, "Maps handed back by players and left beside the save could not be sorted out");
+        }
+    }
+
+    // in a staged folder: the save holding that map was written, the map belongs in it
+    private const string SavedMark = "emp_saved.mark";
+
+    private static void Commit(int zoneUid, string folder, bool saved)
     {
         // (a save still being written beside the game would write its older map over this one)
         Helper.SaveWriter.Wait();
@@ -180,10 +249,26 @@ internal static class ZoneLeaseState
         }
 
         // a zone destroyed meanwhile (the zone of a quest) has no map to keep
-        if (EClass.game.spatials.Find(zoneUid) is { } zone) {
-            Directory.CreateDirectory(zone.pathSave);
+        MoveIn(zoneUid, folder, EClass.game.spatials.Find(zoneUid)?.pathSave, saved);
+    }
+
+    // files only, also on the save writer's thread
+    private static void MoveIn(int zoneUid, string folder, string? pathSave, bool saved)
+    {
+        if (!Directory.Exists(folder)) {
+            return;
+        }
+
+        if (saved) {
+            File.WriteAllText(Path.Combine(folder, SavedMark), "");
+        }
+
+        if (pathSave is not null) {
+            Directory.CreateDirectory(pathSave);
             foreach (var file in Directory.GetFiles(folder)) {
-                Swap(file, Path.Combine(zone.pathSave, Path.GetFileName(file)));
+                if (Path.GetFileName(file) != SavedMark) {
+                    Swap(file, Path.Combine(pathSave, Path.GetFileName(file)));
+                }
             }
 
             EmpLog.Debug("Map of zone {ZoneUid} handed back by a player is in the save now", zoneUid);
