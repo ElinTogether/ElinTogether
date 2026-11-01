@@ -25,8 +25,10 @@ internal partial class ElinNetHost
     private const int LeaseUidHeadroom = 50_000;
 
     // what a player alone on a map may allocate at most: a counter it reported beyond (int.MaxValue was tried, security
-    // audit 2026-10-27) would have made the host's uids wrap and collide in the save
-    private const int MaxLeaseUids = 5_000_000;
+    // audit 2026-10-27) would have made the host's uids wrap and collide in the save. Also the size of a range: the
+    // next one starts past its end, so two leases at once never share uids (robustness audit 2026-11-01; was 5M with
+    // ranges spaced by the headroom only, 1M keeps room for thousands of overlapping leases in the int space)
+    private const int MaxLeaseUids = 1_000_000;
 
     /// <summary>
     ///     Same for quest uids: a zone simulated by a client creates the quests of its residents there
@@ -1096,15 +1098,59 @@ internal partial class ElinNetHost
         return null;
     }
 
+    // end (exclusive) of the highest range handed out and still in use, 0 without any
+    private int ActiveLeaseEnd => _leases.Values.SelectMany(z => z.Values).Select(s => s + MaxLeaseUids).DefaultIfEmpty(0).Max();
+
+    /// <summary>
+    ///     The host's own counter reached a range a player allocates in (more than the headroom created on the host
+    ///     during that lease), or the saved range of a player that kept its checkpoint: it jumps past it, the two
+    ///     would hand out the same uids. Called before the game assigns a card uid, see LeaseUidRangePatch
+    /// </summary>
+    internal static void KeepCounterOutOfLeases(CardManager cards)
+    {
+        var host = NetSession.Instance.Transport as ElinNetHost;
+        var saved = LeaseRangeFloor[FloorCards];
+        for (var moved = true; moved;) {
+            moved = false;
+            if (saved > 0 && cards.uidNext >= saved && cards.uidNext < saved + MaxLeaseUids) {
+                moved = Skip(saved);
+            }
+
+            if (host is null) {
+                continue;
+            }
+
+            foreach (var zones in host._leases.Values) {
+                foreach (var start in zones.Values) {
+                    if (cards.uidNext >= start && cards.uidNext < start + MaxLeaseUids) {
+                        moved = Skip(start);
+                    }
+                }
+            }
+        }
+
+        return;
+
+        bool Skip(int start)
+        {
+            EmpLog.Warning("Host card counter {UidNext} reached the leased uid range starting at {Start}, jumping past it",
+                cards.uidNext, start);
+            cards.uidNext = start + MaxLeaseUids;
+            return true;
+        }
+    }
+
     /// <summary>
     ///     Lease the zone to the player, returns the first card uid it may allocate
     /// </summary>
     private int ReserveLease(ISteamNetPeer peer, Zone zone)
     {
-        // above the host counter and above any range handed out and still in use
-        var floor = _leases.Values.SelectMany(z => z.Values).DefaultIfEmpty(0).Max();
-        var rangeStart = Math.Max(Math.Max(game.cards.uidNext, floor), LeaseRangeFloor[FloorCards]) + LeaseUidHeadroom;
-        LeaseRangeFloor[FloorCards] = rangeStart;
+        // above the host counter and past the END of any range handed out and still in use (the saved floor is the
+        // highest range start, as older versions kept it): ranges never overlap each other
+        var saved = LeaseRangeFloor[FloorCards];
+        var floor = Math.Max(ActiveLeaseEnd, saved > 0 ? saved + MaxLeaseUids : 0);
+        var rangeStart = Math.Max(game.cards.uidNext, floor) + LeaseUidHeadroom;
+        LeaseRangeFloor[FloorCards] = Math.Max(saved, rangeStart);
 
         if (!_leases.TryGetValue(peer.Id, out var zones)) {
             zones = _leases[peer.Id] = [];
