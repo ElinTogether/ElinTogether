@@ -97,6 +97,58 @@ public static class UIHelper
         }
     }
 
+    /// <summary>
+    ///     A flexible part of a row (a title column beside its box, a page of the book, a field beside its button)
+    ///     reports a preferred width of 0, so the row gives it what the fixed parts leave and never what its words
+    ///     ask for. Its preferred width was the unwrapped width of its longest text: when the words were longer than
+    ///     the row, Unity's layout shrank every part of the row by the same share, so a column, a button or a card
+    ///     changed width whenever a label or a value changed (lead dev 2026-11-01: "menus change size whenever you
+    ///     touch anything"). Only where the row's own width comes from outside (a stretched column, a flexible part
+    ///     of a row whose width is given): a row sized to its children keeps them as they are
+    /// </summary>
+    public static void StableWidths(Component root)
+    {
+        foreach (var element in root.GetComponentsInChildren<LayoutElement>(true)) {
+            if (element.ignoreLayout || element.flexibleWidth <= 0f || element.preferredWidth >= 0f ||
+                element.transform.parent is not RectTransform parent ||
+                parent.GetComponent<HorizontalLayoutGroup>() is not { enabled: true, childControlWidth: true } ||
+                FitsOwnWidth(element.transform) || !WidthIsGiven(parent)) {
+                continue;
+            }
+
+            element.preferredWidth = 0f;
+        }
+    }
+
+    // a horizontal fitter on the object: its width is its content's, whatever its parent says
+    private static bool FitsOwnWidth(Transform t) =>
+        t.GetComponents<ContentSizeFitter>().Any(f => f.enabled && f.horizontalFit != ContentSizeFitter.FitMode.Unconstrained);
+
+    // the width of this object comes from its parent, not from its children
+    private static bool WidthIsGiven(Transform t, int depth = 0)
+    {
+        if (depth > 40 || FitsOwnWidth(t)) {
+            return false;
+        }
+
+        if (t.parent == null || t.GetComponent<LayoutElement>() is { ignoreLayout: true }) {
+            return true;
+        }
+
+        // (a scroll view's content, or what it holds directly, as a tab's root: as wide as the view)
+        if (t.parent.GetComponentInParent<ScrollRect>() is { } scroll && (scroll.content == t || scroll.content == t.parent)) {
+            return !FitsOwnWidth(scroll.content);
+        }
+
+        var flexible = t.GetComponent<LayoutElement>() is { flexibleWidth: > 0f };
+        return t.parent.GetComponent<HorizontalOrVerticalLayoutGroup>() switch {
+            null or { enabled: false } => true,
+            VerticalLayoutGroup v => v.childControlWidth && (v.childForceExpandWidth || flexible) && WidthIsGiven(t.parent, depth + 1),
+            HorizontalLayoutGroup h => h.childControlWidth && flexible && WidthIsGiven(t.parent, depth + 1),
+            _ => false,
+        };
+    }
+
     public static Sprite FindSprite(string name)
     {
         if (_lookup.TryGetValue(name, out var sprite)) {
@@ -220,7 +272,11 @@ public static class UIHelper
 
             var text = row.Text(label);
             text.SetSize(LabelSize);
+            // (the room the dropdown leaves, at least enough for a short label: never the width of its words, which
+            // made the dropdown narrower or wider with the label's language)
             text.LayoutElement().flexibleWidth = 1f;
+            text.LayoutElement().preferredWidth = 0f;
+            text.LayoutElement().minWidth = 120f;
 
             var dropdown = row.Dropdown(options, onPick, value);
             var element = dropdown.LayoutElement();
