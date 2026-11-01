@@ -45,35 +45,46 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
         // only the tab the window opens on is built now (TabEmpBase.BuildOnly)
         var opening = !string.IsNullOrEmpty(Data.StartingTab) ? Data.StartingTab : _lastOpenedTab;
+        // at the title screen only the tabs that work there (user 2026-11-01: the others are for a game in progress)
+        var inGame = EClass.core.IsGameStarted;
+        if (!inGame && opening is not (null or "" or TabPlay.TabName or "emp_tab_server" or TabReport.TabName or "emp_tab_client")) {
+            opening = TabPlay.TabName;
+        }
+
         TabEmpBase.BuildOnly = string.IsNullOrEmpty(opening) ? TabPlay.TabName : opening;
 
-        // Play and Players: always there, the same for everyone
+        // Play: always there; the tabs of a game in progress only once a game is started (not at the title screen)
         _tabs.Add(CreateTab<TabPlay>("emp_ui_tab_play", TabPlay.TabName));
         DecorateLastTab("icon_LayerGlobalMap", "emp_tip_tab_play");
-        _tabs.Add(CreateTab<TabPlayers>("emp_ui_tab_players", TabPlayers.TabName));
-        DecorateLastTab("icon_LayerPeople", "emp_tip_tab_players");
+        if (inGame) {
+            _tabs.Add(CreateTab<TabPlayers>("emp_ui_tab_players", TabPlayers.TabName));
+            DecorateLastTab("icon_LayerPeople", "emp_tip_tab_players");
 
-        // the teams and their lands (council 2026-10-28): always there, saying so when teams are off
-        _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
-        DecorateLastTab("icon_elements_23", "emp_tip_tab_team");
-        _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
-        DecorateLastTab("icon_LayerHome", "emp_tip_tab_lands");
+            // the teams and their lands (council 2026-10-28): always there, saying so when teams are off
+            _tabs.Add(CreateTab<TabTeam>("emp_ui_tab_team", "emp_tab_team"));
+            DecorateLastTab("icon_elements_23", "emp_tip_tab_team");
+            _tabs.Add(CreateTab<TabLands>("emp_ui_tab_lands", "emp_tab_lands"));
+            DecorateLastTab("icon_LayerHome", "emp_tip_tab_lands");
 
-        // journal and rankings (PLAN_hub_features): one tab with two sub-tabs, so the strip keeps the game's own label size
-        _tabs.Add(CreateTab<TabCommunity>("emp_ui_tab_community", TabCommunity.TabName));
-        DecorateLastTab("icon_medal", "emp_tip_tab_community");
-        _tabs.Add(CreateTab<TabChat>("emp_ui_tab_chat", TabChat.TabName));
-        DecorateLastTab("icon_menu_16", "emp_tip_tab_chat");
-        _tabs.Add(CreateTab<TabMarket>("emp_ui_tab_market", TabMarket.TabName));
-        DecorateLastTab("icon_money", "emp_tip_tab_market");
+            // journal and rankings (PLAN_hub_features): one tab with two sub-tabs, so the strip keeps the game's own label size
+            _tabs.Add(CreateTab<TabCommunity>("emp_ui_tab_community", TabCommunity.TabName));
+            DecorateLastTab("icon_medal", "emp_tip_tab_community");
+            _tabs.Add(CreateTab<TabChat>("emp_ui_tab_chat", TabChat.TabName));
+            DecorateLastTab("icon_menu_16", "emp_tip_tab_chat");
+            _tabs.Add(CreateTab<TabMarket>("emp_ui_tab_market", TabMarket.TabName));
+            DecorateLastTab("icon_money", "emp_tip_tab_market");
+        }
 
         // the world's rules: always there. The host edits them (also at the title screen, before hosting), a guest
         // reads the host's (the tab's own guest view)
         _tabs.Add(CreateTab<TabServerConfiguration>("emp_ui_tab_server", "emp_tab_server"));
         DecorateLastTab("icon_elements_39", "emp_tip_tab_server");
 
-        _tabs.Add(CreateTab<TabServerInfo>("emp_ui_tab_info", "emp_tab_info"));
-        DecorateLastTab("icon_menu_7", "emp_tip_tab_info");
+        if (inGame) {
+            _tabs.Add(CreateTab<TabServerInfo>("emp_ui_tab_info", "emp_tab_info"));
+            DecorateLastTab("icon_menu_7", "emp_tip_tab_info");
+        }
+
         _tabs.Add(CreateTab<TabReport>("emp_help_report", TabReport.TabName));
         DecorateLastTab("icon_Memo", "emp_tip_tab_report");
         _tabs.Add(CreateTab<TabClientConfiguration>("emp_ui_tab_client", "emp_tab_client"));
