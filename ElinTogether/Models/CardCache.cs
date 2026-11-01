@@ -42,19 +42,26 @@ public static class CardCache
             return;
         }
 
-        // reallocate uid
-        if (stored.IsGlobal || !card.IsGlobal) {
-            card.uid++;
-            Add(card);
-            EClass.game.cards.uidNext = Math.Max(card.uid + 1, EClass.game.cards.uidNext);
-            return;
+        // reallocate uid: a fresh one from the game's counter (robustness audit 2026-11-01: uid + 1 again and again
+        // walked onto the next cards' uids, renumbering them in turn). The global one keeps its number
+        var moved = stored.IsGlobal || !card.IsGlobal ? card : stored;
+        if (moved == stored) {
+            Set(card);
         }
 
-        Set(card);
+        var old = moved.uid;
+        // (the counter is above any uid seen, a card from a lease reported above it is the only way to hit one)
+        for (var i = 0; i < 16 && (i == 0 || Find(moved.uid) is { } other && other != moved); i++) {
+            EClass.game.cards.AssignUID(moved);
+        }
 
-        stored.uid++;
-        Add(stored);
-        EClass.game.cards.uidNext = Math.Max(stored.uid + 1, EClass.game.cards.uidNext);
+        Set(moved);
+
+        // the players' games may know this card by its old number: what they send about it now reaches the other one
+        EmpLog.Warning(
+            "Card uid conflict: uid {Uid} held by {StoredId}, {MovedId} renumbered to {NewUid}; a client that knew it by the old " +
+            "uid keeps that number until it is sent the card again",
+            old, (moved == card ? stored : card).id, moved.id, moved.uid);
     }
 
     internal static void Set(Card card)
