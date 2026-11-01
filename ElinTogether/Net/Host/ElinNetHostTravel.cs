@@ -1651,6 +1651,7 @@ internal partial class ElinNetHost
         // a god's gifts given on this map are counted on our copy, those given away on its own: both kept, and its
         // game hears of ours (GitHub issue 51, see RemoteGodGiftPatch.Merge)
         var behind = Patches.RemoteGodGiftPatch.Merge(uploaded, old);
+        Patches.RemoteDaysWithGodPatch.Merge(uploaded, old);
         if (behind.Count > 0 && Socket.Peers.FirstOrDefault(p => Equals(p.User, user)) is { } owner) {
             foreach (var (religion, rank) in behind) {
                 SendDeltaTo(owner.Id, new GodGiftDelta {

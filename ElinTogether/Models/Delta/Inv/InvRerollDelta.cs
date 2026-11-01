@@ -21,8 +21,13 @@ public class InvRerollDelta : ElinDelta
 
         var cost = shopOwner.trait.CostRerollShop;
         var inv = LayerInventory.listInv.Find(l => l.invs[0].owner.owner == shopOwner)?.invs[0];
+        // the Mani statue's reroll is paid with the player's own blue capsule, not the town's influence
+        var capsule = shopOwner.trait.CurrencyRerollShop == CurrencyType.BlueCapsule;
         if (net.IsClient) {
-            EMono._zone.influence -= cost;
+            if (!capsule) {
+                EMono._zone.influence -= cost;
+            }
+
             shopOwner.c_dateStockExpire = world.date.GetRaw(24 * shopOwner.trait.RestockDay);
             if (inv is null) {
                 return;
@@ -36,11 +41,20 @@ public class InvRerollDelta : ElinDelta
             return;
         }
 
-        if (EMono._zone.influence < cost) {
-            return;
+        if (capsule) {
+            // the capsule the sender's game took (InvRerollEvent) must have left its purse here first
+            if (CardModCurrencyDelta.TakeSpent(OriginPeer, 1, currency: "drug_blue") < 1) {
+                EmpLog.Warning("Refused gene reroll of {Uid} from peer {Peer}: no blue capsule paid", shopOwner.uid, OriginPeer);
+                return;
+            }
+        } else {
+            if (EMono._zone.influence < cost) {
+                return;
+            }
+
+            EMono._zone.influence -= cost;
         }
 
-        EMono._zone.influence -= cost;
         shopOwner.c_dateStockExpire = 0;
         using (Simulate())
         using (ShopStock.Opened(Gates, FromPeer && net is ElinNetHost host ? host.PlayerChara(OriginPeer) : null)) {

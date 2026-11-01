@@ -1318,5 +1318,6 @@
     "LangGeneral.emp_tip_cfg_depot_password.text": "存档仓库的密码（仓库为 Elin Together Server 且设置了密码时）。\nGitHub 仓库：访问密钥（fine-grained token，仅限此仓库，Contents: Read and write）。切勿分享此文件。",
     "LangGeneral.emp_tip_cfg_record_replay.text": "保留最近 30 秒的画面（每秒一张小图，仅保存在内存中），并随问题报告一起发送",
     "LangGeneral.emp_ui_play_friends_none.text": "现在没有好友在主持游戏。请让好友点击“邀请好友”。",
-    "LangGeneral.emp_ui_play_more.text": "更多…"
+    "LangGeneral.emp_ui_play_more.text": "更多…",
+    "LangGeneral.emp_gain_capped.text": "已达到本服务器每小时收入上限，其余部分不予支付。"
 }
