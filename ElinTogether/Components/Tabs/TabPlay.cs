@@ -455,6 +455,11 @@ internal class TabPlay : TabEmpBase
         StatusDot(line, new(0.45f, 0.68f, 0.32f));
         line.Chip("emp_ui_lobby_official".lang(), FontColor.Good);
         line.Text("emp_ui_official_open".Loc(found.MemberCount, OfficialServer.MaxPlayers));
+        // the player keeping the world now (peer hosting, plan P3), named by the service's certificate
+        if (OfficialServer.KeeperName(found) is { Length: > 0 } keeper) {
+            card.TextSmall("emp_ui_official_kept_by".Loc(keeper), FontColor.Gray);
+        }
+
         card.TextSmall("emp_ui_lobby_public".lang(), FontColor.Gray);
         if (!EClass.core.IsGameStarted) {
             card.ButtonRow().RowButton("emp_ui_lobby_official_join".lang(), () => {

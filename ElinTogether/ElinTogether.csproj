@@ -54,6 +54,11 @@
             <HintPath>$(ElinGamePath)\Elin_Data\Managed\System.IO.Compression.dll</HintPath>
             <Private>false</Private>
         </Reference>
+        <!-- BigInteger, for the Ed25519 check of the public server's host certificate (Ed25519Verifier.cs): the game ships it -->
+        <Reference Include="System.Numerics">
+            <HintPath>$(ElinGamePath)\Elin_Data\Managed\System.Numerics.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="GitVersion.MsBuild" Version="6.8.2">
