@@ -56,7 +56,7 @@ public abstract partial class ElinNetBase : EMono
 
 #if !DEBUG
         if (!HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
-            EmpMod.SharedHarmony.PatchAll(EmpMod.Assembly);
+            EmpMod.PatchAll();
         }
 #endif
     }

@@ -566,11 +566,28 @@ internal class TabPlayers : TabEmpBase
             }
         }
 
+        // the moderation tools folded under one "Admin" button (UX audit 2026-11-01): a new player sees the few
+        // actions meant for everyone
         if (!away) {
-            AddAdminActions(actions, player);
+            var admin = new List<(string, Action)>();
+            AddAdminActions(admin, player);
+            if (admin.Count > 0) {
+                actions.Add(("emp_ui_admin_menu".lang(), () => ShowMenu(admin)));
+            }
         }
 
         return actions;
+    }
+
+    private static void ShowMenu(List<(string Label, Action Act)> entries)
+    {
+        var menu = EClass.ui.CreateContextMenuInteraction();
+        foreach (var (label, act) in entries) {
+            var action = act;
+            menu.AddButton(label, () => action());
+        }
+
+        menu.Show();
     }
 
     /// <summary>

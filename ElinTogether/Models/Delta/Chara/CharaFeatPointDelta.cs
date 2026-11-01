@@ -18,11 +18,13 @@ public class CharaFeatPointDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (net is not ElinNetHost host) {
+        if (Owner.Find() is not Chara { IsPC: false } chara || Feat < 0) {
             return;
         }
 
-        if (Owner.Find() is not Chara { IsPC: false } chara) {
+        // from the host: a companion it simulates (see CharaFeatPointEvent), or another player's character
+        if (net is not ElinNetHost host) {
+            chara.feat = Feat;
             return;
         }
 
@@ -30,10 +32,7 @@ public class CharaFeatPointDelta : ElinDelta
             return;
         }
 
-        if (Feat < 0) {
-            return;
-        }
-
         chara.feat = Feat;
+        host.SendDeltaToAllExcept(OriginPeer, this);
     }
 }

@@ -126,7 +126,7 @@ public class SteamNetLobbyManager : EClass
         lobbyType = ELobbyType.k_ELobbyTypePrivateUnique;
 #endif
 
-        if (Signs) {
+        if (Signs || PublicServerCertificate.Issuer?.Keeps == true) {
             maxPlayers = Math.Max(maxPlayers, OfficialServer.MaxPlayers);
         }
 
@@ -330,6 +330,9 @@ public class SteamNetLobbyManager : EClass
             EmpLog.Information("Lobby signed as the official Elin Together server");
         }
 
+        // the player keeping the peer-hosted public world: its ETWorld client asks a host certificate for this lobby
+        PublicServerCertificate.LobbyOpened(Current.SteamId.m_SteamID);
+
         // the mods of the game, for who looks at the list of games before joining
         if (EmpConfig.Server.PublishMods.Value) {
             Current[EmpLobbyData.Mods] = ModList.Compact;
@@ -401,6 +404,17 @@ public class SteamNetLobbyManager : EClass
                 Friends.Client.RequestUserInformation(member.user, true);
             }
 
+            // a member learns the lobby's owner: a lobby that says it is the public server must be kept by the
+            // account or the keeper its proof names (Steam gives a lobby to another member when its owner leaves,
+            // with the old data still in it)
+            if (OfficialServer.Claims(Current) && !OfficialServer.IsOfficial(Current)) {
+                EmpLog.Warning("Leaving lobby {LobbyId}: it shows itself as the public server but its owner or proof " +
+                               "does not match", Current);
+                NetSession.Instance.ResetSession();
+                EmpPop.Block("emp_public_server_unverified".lang());
+                return;
+            }
+
             var mod = Current[EmpLobbyData.EmpVersion] ?? "";
             var version = Current[EmpLobbyData.GameBuild] ?? "";
             if (!BuildVersionIntegrity.Ok(mod, version)) {
@@ -413,11 +427,7 @@ public class SteamNetLobbyManager : EClass
 
                 NetSession.Instance.ResetSession();
 
-                EmpPop.Debug("emp_version_rejected_client".Loc(
-                    ModInfo.BuildVersion.TagColor(Color.green),
-                    mod.TagColor(Color.red),
-                    BuildVersionIntegrity.GameVersion.TagColor(Color.green),
-                    version.TagColor(Color.red)));
+                EmpPop.Debug("emp_version_rejected_client".Loc(BuildVersionIntegrity.Explain(mod, version)));
 
                 return;
             }

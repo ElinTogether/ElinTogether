@@ -36,6 +36,7 @@ internal static class SaveDepot
     // in the same minute both get it and the last save wins. The server application has a real lock.
     private static readonly TimeSpan _lockLife = TimeSpan.FromMinutes(3);
     private const float BeatSeconds = 60f;
+    private const float EtBeatSeconds = 15f;
     private const long MaxUnzipped = 2L * 1024 * 1024 * 1024;
 
     // an answer of the server application: a zipped world (a big one is some tens of MB), or a line of text
@@ -63,6 +64,13 @@ internal static class SaveDepot
     private static float _whoAt = -60f;
 
     private static float _nextBeat;
+
+    // the world service: a take or put is on its way (one at a time, the player clicked)
+    private static bool _etBusy;
+    private static string? _etRestore;
+
+    // a beat is on its way: no other one is queued behind it (a long upload holds the line)
+    private static bool _beating;
     private static string _refused = "";
     private static bool _lostTold;
 
@@ -98,9 +106,30 @@ internal static class SaveDepot
     internal static bool GitHub => Root.StartsWith("github:", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    ///     The depot is the append-only world service, "etworld:https://address" (EtWorldDepot)
+    /// </summary>
+    internal static bool EtWorld => Root.StartsWith("etworld:", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    ///     The depot is a web service (GitHub or the world service): asked in the background, sent to at most every
+    ///     five minutes, with a version the local copy descends from
+    /// </summary>
+    private static bool Service => GitHub || EtWorld;
+
+    /// <summary>
+    ///     The version of the depot's world this game plays from (taken, or last sent)
+    /// </summary>
+    private static string? ServiceVersion => EtWorld ? EtWorldDepot.Version : GitHubDepot.WorldSha;
+
+    /// <summary>
+    ///     Where the player who holds the world of a web service is joined, as last read
+    /// </summary>
+    private static string ServiceJoin => EtWorld ? EtWorldDepot.HeldJoin : GitHubDepot.HeldJoin;
+
+    /// <summary>
     ///     The depot is asked (Ask), it is not a folder
     /// </summary>
-    private static bool Asked => Remote || GitHub;
+    private static bool Asked => Remote || Service;
 
     /// <summary>
     ///     This game, among the ones that share the depot (two games of one machine are two)
@@ -108,6 +137,28 @@ internal static class SaveDepot
     private static string Me { get; } = $"{Environment.MachineName}:{Process.GetCurrentProcess().Id}";
 
     private static string MyName => EClass.core.IsGameStarted ? EClass.pc.Name : Environment.UserName;
+
+    /// <summary>
+    ///     This install's key for the world service (EtWorldDepot), made at its first request, never sent
+    /// </summary>
+    private static string KeyFile => Path.Combine(Application.persistentDataPath, "ElinMP",
+#if DEBUG
+        // test instances on one machine share this folder, and are different players
+        EmpConfig.Dev.Identity.Value > 0 ? $"etworld_key_{EmpConfig.Dev.Identity.Value}.txt" :
+#endif
+        "etworld_key.txt");
+
+    private static ulong MySteam
+    {
+        get {
+            try {
+                return Steamworks.SteamUser.GetSteamID().m_SteamID;
+            } catch (Exception) {
+                // Steam is away: registered as 0, refused as a keeper by the guests later (plan 2.1)
+                return 0;
+            }
+        }
+    }
 
     /// <summary>
     ///     The session this game has open, for the others to join: its Steam lobby. Nothing open: none
@@ -153,7 +204,7 @@ internal static class SaveDepot
     /// <summary>
     ///     The lock says where the player who holds the world is joined (HeldBy was asked first)
     /// </summary>
-    internal static bool Joinable => (GitHub ? GitHubDepot.HeldJoin : _heldJoin).Length > 0;
+    internal static bool Joinable => (Service ? ServiceJoin : _heldJoin).Length > 0;
 
     internal static bool Enabled => Root.Length > 0 && (Asked || Directory.Exists(Root));
 
@@ -174,7 +225,7 @@ internal static class SaveDepot
     internal static void OnQuit()
     {
         try {
-            if (GitHub && Holding) {
+            if (Service && Holding) {
                 ReleaseAtTitle(Scene.Mode.Title);
             }
 
@@ -191,7 +242,7 @@ internal static class SaveDepot
     internal static string? HeldBy()
     {
         try {
-            if (GitHub) {
+            if (Service) {
                 // the Lobby tab asks each time it opens: GitHub is asked in the background, the tab redrawn
                 if (Time.unscaledTime - _whoAt > 15f) {
                     _whoAt = Time.unscaledTime;
@@ -237,8 +288,13 @@ internal static class SaveDepot
     /// </summary>
     internal static void Take()
     {
+        if (EtWorld) {
+            TakeEt();
+            return;
+        }
+
         // (GitHub says who hosts when the world is asked for; what was sent in the background arrives first)
-        if (GitHub) {
+        if (Service) {
             Settle();
         } else if (HeldBy() is { } who) {
             if (!Join(who)) {
@@ -252,7 +308,7 @@ internal static class SaveDepot
             // held by another player who can be joined: joined first. The save kept here and its marker stay as
             // they are, for the day the world is free
             try {
-                if (GitHub && Ask("WHO") is { Ok: true, Text.Length: > 0 } held && Join(held.Text)) {
+                if (Service && Ask("WHO") is { Ok: true, Text.Length: > 0 } held && Join(held.Text)) {
                     return;
                 }
             } catch (Exception ex) when (ex is IOException or AggregateException) {
@@ -260,7 +316,7 @@ internal static class SaveDepot
             }
 
             // (GitHub: never without asking, another player may have hosted since)
-            if (EmpServer.Requested && !GitHub) {
+            if (EmpServer.Requested && !Service) {
                 SendUnsent();
             } else {
                 Dialog.YesNo("emp_ui_depot_unsent", SendUnsent, () => {
@@ -298,7 +354,7 @@ internal static class SaveDepot
                 Unzip(reply.Body!, incoming);
                 IO.DeleteDirectory(Local);
                 Directory.Move(incoming, Local);
-                Descends(GitHubDepot.WorldSha);
+                Descends(ServiceVersion);
             } else {
                 if (!File.Exists(Path.Combine(World, "game.txt"))) {
                     Dialog.Ok("emp_ui_depot_empty");
@@ -341,7 +397,7 @@ internal static class SaveDepot
     private static string? WorldMods()
     {
         try {
-            var text = GitHub ? Ask("MODS") is { Ok: true } reply ? reply.Text : "" :
+            var text = Service ? Ask("MODS") is { Ok: true } reply ? reply.Text : "" :
                 !Remote && File.Exists(ModsFile) ? File.ReadAllText(ModsFile) : "";
             return text.Trim().Length > 0 ? text : null;
         } catch (Exception ex) {
@@ -356,7 +412,7 @@ internal static class SaveDepot
     /// </summary>
     private static bool Join(string who)
     {
-        var at = (GitHub ? GitHubDepot.HeldJoin : _heldJoin).Split(' ');
+        var at = (Service ? ServiceJoin : _heldJoin).Split(' ');
         if (at.Length < 2 || !ulong.TryParse(at[1], out var lobby)) {
             return false;
         }
@@ -393,6 +449,12 @@ internal static class SaveDepot
         var depot = EmpConfig.Client.DepotPath;
         var before = depot.Value;
         depot.Value = address;
+        // (the world service is asked in the background: what goes wrong is said there)
+        if (EtWorld) {
+            TakeEt(before);
+            return true;
+        }
+
         string? refusal = null;
         try {
             if (!Asked) {
@@ -400,10 +462,10 @@ internal static class SaveDepot
             }
 
             var reply = Ask("WHO");
-            if (GitHub && !reply.Ok) {
+            if (Service && !reply.Ok) {
                 refusal = Refusal(reply.Text);
             }
-        } catch (Exception) when (!GitHub) {
+        } catch (Exception) when (!Service) {
             depot.Value = before;
             return false;
         } catch (Exception) {
@@ -447,12 +509,17 @@ internal static class SaveDepot
     /// </summary>
     internal static void Put()
     {
-        if (!GitHub && HeldBy() is { } who) {
+        if (!Service && HeldBy() is { } who) {
             Dialog.Ok("emp_ui_depot_held".Loc(who));
             return;
         }
 
         if (!EClass.game.Save(silent: true)) {
+            return;
+        }
+
+        if (EtWorld) {
+            PutEt(CorePath.RootSave + Game.id);
             return;
         }
 
@@ -471,9 +538,192 @@ internal static class SaveDepot
         EClass.core.actionsNextFrame.Add(Take);
     }
 
+    /// <summary>
+    ///     Take, with the world service: every request in the background, one after the other, and each answer goes
+    ///     on from Update. The game never waits on the network (a world is tens of MB)
+    /// </summary>
+    /// <param name="restore">"Join by address": the depot set before, set again when this one cannot be used</param>
+    private static void TakeEt(string? restore = null)
+    {
+        if (_etBusy) {
+            if (restore is not null) {
+                EmpConfig.Client.DepotPath.Value = restore;
+            }
+
+            return;
+        }
+
+        _etBusy = true;
+        _etRestore = restore;
+        EmpPop.Information("emp_ui_depot_et_taking".lang());
+        var unsent = File.Exists(Unsent) && File.Exists(Path.Combine(Local, "game.txt"));
+        Later("WHO", null, who => {
+            _etBusy = false;
+            if (!who.Ok) {
+                Dialog.Ok(Refusal(who.Text));
+                Restore();
+                return;
+            }
+
+            _etRestore = null;
+
+            // held by another player: joined (through Steam, the service does not say where yet). A save kept
+            // here and its marker stay as they are, for the day the world is free
+            if (who.Text.Length > 0) {
+                if (!Join(who.Text)) {
+                    Dialog.Ok("emp_ui_depot_held".Loc(who.Text));
+                }
+
+                return;
+            }
+
+            if (unsent) {
+                Dialog.YesNo("emp_ui_depot_unsent", SendUnsentEt, () => {
+                    File.Delete(Unsent);
+                    TakeEt();
+                });
+                return;
+            }
+
+            _etBusy = true;
+            var incoming = Local + ".new";
+            Later("TAKE", null, TookEt, after: reply => {
+                if (!reply.Ok) {
+                    return reply;
+                }
+
+                // unpacked here too, beside the local copy: an archive cut short leaves it as it was
+                IO.DeleteDirectory(incoming);
+                Unzip(reply.Body!, incoming);
+                return (true, EtWorldDepot.Version ?? "", null);
+            });
+        });
+    }
+
+    private static void Restore()
+    {
+        if (_etRestore is { } before) {
+            EmpConfig.Client.DepotPath.Value = before;
+            _etRestore = null;
+        }
+    }
+
+    private static void TookEt((bool Ok, string Text, byte[]? Body) reply)
+    {
+        _etBusy = false;
+        if (!reply.Ok) {
+            if (!reply.Text.StartsWith("held ")) {
+                // (the world may have been taken and not unpacked: given back now, not in 45 s)
+                Later("RELEASE", null, _ => { });
+                Dialog.Ok(Refusal(reply.Text));
+            } else if (!Join(reply.Text.Substring(5))) {
+                Dialog.Ok(Refusal(reply.Text));
+            }
+
+            return;
+        }
+
+        // the player did something else meanwhile (another world, a join): this one is given back
+        if (EClass.core.IsGameStarted || _joining is not null || NetSession.Instance.HasActiveConnection) {
+            EmpLog.Information("The world taken from the depot {Root} arrived after the player went elsewhere: given back", Root);
+            IO.DeleteDirectory(Local + ".new");
+            Later("RELEASE", null, _ => { });
+            return;
+        }
+
+        try {
+            IO.DeleteDirectory(Local);
+            Directory.Move(Local + ".new", Local);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Could not lay the world taken from the depot {Root}", Root);
+            Dialog.Ok(Refusal(""));
+            Later("RELEASE", null, _ => { });
+            return;
+        }
+
+        Descends(reply.Text);
+        // (a marker left without a save beside it is of no world any more)
+        Marker(null);
+        _lostTold = _unsent = false;
+        _nextSend = 0f;
+        _openTold = default;
+        EmpLog.Information("Took the world from the depot {Root}, version {Version}", Root, reply.Text);
+        Taken = true;
+        // ponytail: the service keeps no list of mods yet (the signed rules will carry it, plan step P4)
+        ModList.World = null;
+        Game.Load(WorldId, false);
+    }
+
+    /// <summary>
+    ///     SendUnsent, with the world service: the save kept here goes over the version it was played from, never
+    ///     over another one ("changed": it stays on this PC)
+    /// </summary>
+    private static void SendUnsentEt()
+    {
+        string? from;
+        try {
+            from = File.ReadAllText(Unsent).Trim();
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            from = null;
+        }
+
+        PutEt(Local, from is not null && EtWorldDepot.IsVersion(from) ? from : null, toTitle: false);
+    }
+
+    /// <summary>
+    ///     Put (or SendUnsent) with the world service: the archive is made here, of the save just written, and sent
+    ///     in the background; then the world is taken from the depot, as with the other depots
+    /// </summary>
+    private static void PutEt(string save, string? descends = null, bool toTitle = true)
+    {
+        if (_etBusy) {
+            return;
+        }
+
+        byte[] world;
+        try {
+            world = Zip(save);
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            EmpLog.Warning("Could not pack the world for the depot {Root}: {Why}", Root, ex.Message);
+            Dialog.Ok(Refusal(""));
+            return;
+        }
+
+        _etBusy = true;
+        Later("PUT", world, reply => {
+            _etBusy = false;
+            if (!reply.Ok) {
+                EmpLog.Warning("The depot {Root} refused the world: {Reason}", Root, reply.Text);
+                Dialog.Ok(Refusal(reply.Text));
+                return;
+            }
+
+            EmpLog.Information("World sent to the depot {Root}", Root);
+            // (an older unsent copy of the depot's world must not come back over the world just put)
+            Marker(null);
+            if (toTitle) {
+                EmpPop.Information("emp_ui_depot_put_done".lang());
+                EClass.scene.Init(Scene.Mode.Title);
+                EClass.core.actionsNextFrame.Add(Take);
+            } else {
+                TakeEt();
+            }
+        }, descends: descends);
+    }
+
     private static string Refusal(string why)
     {
         return why.StartsWith("held ") ? "emp_ui_depot_held".Loc(why.Substring(5)) :
+            EtWorld ? why switch {
+                "changed" => "emp_ui_depot_gh_changed",
+                "too big" => "emp_ui_depot_et_big",
+                "banned" => "emp_ui_depot_et_banned",
+                "too_new" or "not_vouched" or "debug_build" => "emp_ui_depot_et_not_yet",
+                "reserved" => "emp_ui_depot_et_reserved",
+                "steam_mismatch" => "emp_ui_depot_et_key",
+                "empty" => "emp_ui_depot_empty",
+                _ => "emp_ui_depot_et_down",
+            } :
             !GitHub ? why == "password" ? "emp_ui_depot_password_wrong" : "emp_ui_depot_fail" :
             why switch {
                 "password" => "emp_ui_depot_gh_key",
@@ -501,7 +751,7 @@ internal static class SaveDepot
 
     private static void Mark(bool unsent)
     {
-        Marker(!unsent ? null : GitHub ? _descends ?? "" : _refused);
+        Marker(!unsent ? null : Service ? _descends ?? "" : _refused);
     }
 
     /// <param name="text">null: no marker</param>
@@ -536,8 +786,8 @@ internal static class SaveDepot
             if (Asked) {
                 var reply = Ask("PUT", Zip(save), save == Local ? _descends : null);
                 _refused = reply.Text;
-                if (reply.Ok && GitHub) {
-                    Descends(GitHubDepot.WorldSha);
+                if (reply.Ok && Service) {
+                    Descends(ServiceVersion);
                 }
 
                 if (!reply.Ok) {
@@ -652,6 +902,12 @@ internal static class SaveDepot
     // while playing (each save, the beat) goes through Later
     private static (bool Ok, string Text, byte[]? Body) Ask(string command, byte[]? body = null, string? descends = null)
     {
+        if (EtWorld) {
+            // ponytail: every path of the world service goes through Later (TakeEt, PutEt); this is for one left
+            Settle();
+            return AskEt(Root, KeyFile, MySteam, MyName, command, body, Local, descends);
+        }
+
         if (GitHub) {
             // ponytail: here too the game waits (Take, Put, "Join by address": the player just clicked), a few
             // seconds with GitHub, seven for the first request, and up to a minute behind a save still going
@@ -668,6 +924,21 @@ internal static class SaveDepot
         }
 
         return AskServer(Root, EmpConfig.Client.DepotPassword.Value, command, MyName, body);
+    }
+
+    /// <summary>
+    ///     A request to the world service: reads nothing of the game, so that it runs in the background
+    /// </summary>
+    private static (bool Ok, string Text, byte[]? Body) AskEt(string root, string keyFile, ulong steam, string name,
+        string command, byte[]? body, string local, string? descends)
+    {
+#if DEBUG
+        const bool debug = true;
+#else
+        const bool debug = false;
+#endif
+        return EtWorldDepot.Ask(root.Substring(8), keyFile, steam, name, command, body, local, descends, debug,
+            ModInfo.Version);
     }
 
     /// <summary>
@@ -744,18 +1015,32 @@ internal static class SaveDepot
     ///     each save travelled, and up to 5 s each minute with the server away (reliability audit 2026-10-27, #9)
     /// </summary>
     /// <param name="sent">called in the background as soon as the depot accepted (the game may be closing)</param>
+    /// <param name="after">
+    ///     also in the background, on the answer, before it goes to the game's thread (the world service: a world
+    ///     taken is unpacked there)
+    /// </param>
+    /// <param name="descends">the world service: PUT of a save kept from an earlier session (see GitHubDepot.Ask)</param>
     private static void Later(string command, byte[]? body, Action<(bool Ok, string Text, byte[]? Body)> then,
-        Action? sent = null)
+        Action? sent = null, Func<(bool Ok, string Text, byte[]? Body), (bool Ok, string Text, byte[]? Body)>? after = null,
+        string? descends = null)
     {
         var (root, key, name, join, github) = (Root, EmpConfig.Client.DepotPassword.Value, MyName, MyJoin, GitHub);
+        // (read here: Unity's paths and Steam are for the game's thread only)
+        var et = EtWorld ? (KeyFile, Local, MySteam) : default;
         _asking = _asking.ContinueWith(_ => {
             (bool Ok, string Text, byte[]? Body) reply;
             try {
-                if (github) {
+                if (et.KeyFile is not null) {
+                    reply = AskEt(root, et.KeyFile, et.MySteam, name, command, body, et.Local, descends);
+                } else if (github) {
                     GitHubDepot.ModListText ??= () => ModList.Text;
                     reply = GitHubDepot.Ask(root.Substring(7), key, command, Me, name, body, join: join);
                 } else {
                     reply = AskServer(root, key, command, name, body);
+                }
+
+                if (after is not null) {
+                    reply = after(reply);
                 }
 
                 if (reply.Ok) {
@@ -784,8 +1069,10 @@ internal static class SaveDepot
     /// <summary>
     ///     The last save of the depot's world goes to GitHub, in the background
     /// </summary>
-    private static void SendLater()
+    /// <param name="command">the world service: "PUT last-leave" for the save sent when the world is given back</param>
+    private static void SendLater(string command = "PUT")
     {
+        var etworld = EtWorld;
         _unsent = false;
         _nextSend = Time.unscaledTime + SendSeconds;
         var saved = _saves;
@@ -797,7 +1084,7 @@ internal static class SaveDepot
             return;
         }
 
-        Later("PUT", world, reply => {
+        Later(command, world, reply => {
             _refused = reply.Text;
             if (reply.Ok) {
                 EmpLog.Information("World sent to the depot {Root}", Root);
@@ -816,17 +1103,78 @@ internal static class SaveDepot
             // GitHub has this save: no marker, unless the game saved again meanwhile. Done here and not on the
             // game's thread, which no longer runs when the game is closing
             lock (_markGate) {
-                Descends(GitHubDepot.WorldSha);
+                Descends(etworld ? EtWorldDepot.Version : GitHubDepot.WorldSha);
                 Marker(saved == _saves ? null : _descends);
             }
         });
     }
 
+    /// <summary>
+    ///     This game keeps the public world of the world service (its lease): its lobby is the public server
+    /// </summary>
+    internal static bool KeepsEtWorld => EtWorld && Holding && EtWorldDepot.WorldName == "public";
+
+    /// <summary>
+    ///     Asks the world service a host certificate naming that lobby (plan P3), written in it on the answer
+    /// </summary>
+    internal static void AskCertificate(ulong lobby)
+    {
+        if (!KeepsEtWorld || lobby == 0) {
+            return;
+        }
+
+        _nextCertAsk = Time.unscaledTime + 60f;
+        _certLobby = lobby;
+        Later($"CERT {lobby}", null, reply => {
+            if (!reply.Ok) {
+                EmpLog.Warning("The world service gave no host certificate for lobby {LobbyId}: {Why}", lobby, reply.Text);
+            }
+
+            Certify();
+        });
+    }
+
+    // after a beat or a certificate: the lobby carries the last certificate, none once the lease is gone, and a
+    // keeper whose lobby has none yet (opened before the world was taken, or a new lobby since) asks one
+    private static void Certify()
+    {
+        if (!EtWorld) {
+            return;
+        }
+
+        var cert = KeepsEtWorld ? EtWorldDepot.Certificate : null;
+        if (cert != Net.Steam.PublicServerCertificate.Current) {
+            Net.Steam.PublicServerCertificate.Set(cert);
+        }
+
+        if (KeepsEtWorld && Time.unscaledTime >= _nextCertAsk &&
+            Net.Steam.PublicServerCertificate.OwnLobby() is var lobby and not 0 &&
+            (cert is null || lobby != _certLobby)) {
+            AskCertificate(lobby);
+        }
+    }
+
+    // (a certificate asked once a minute at most while the service gives none, not at every beat)
+    private static float _nextCertAsk;
+
+    // the lobby the last certificate was asked for
+    private static ulong _certLobby;
+
     private static void Beat()
     {
-        _nextBeat = Time.unscaledTime + BeatSeconds;
+        // (the world service's lease lives 45 s)
+        _nextBeat = Time.unscaledTime + (EtWorld ? EtBeatSeconds : BeatSeconds);
         if (Asked) {
-            Later("BEAT", null, reply => Lost(reply.Text));
+            if (_beating) {
+                return;
+            }
+
+            _beating = true;
+            Later("BEAT", null, reply => {
+                _beating = false;
+                Lost(reply.Text);
+                Certify();
+            });
         } else {
             File.WriteAllLines(LockFile, [Me, MyName, MyJoin]);
         }
@@ -841,7 +1189,7 @@ internal static class SaveDepot
             return;
         }
 
-        if (GitHub) {
+        if (Service) {
             // the marker first: a game that closes before GitHub has the save offers to send it next time
             lock (_markGate) {
                 _saves++;
@@ -915,13 +1263,14 @@ internal static class SaveDepot
     /// </summary>
     private static bool Lost(string why)
     {
-        if (why != "changed" && !why.StartsWith("held ")) {
+        if (why != "changed" && why != "banned" && !why.StartsWith("held ")) {
             return false;
         }
 
         if (!_lostTold) {
             _lostTold = true;
-            Dialog.Ok(why == "changed" ? "emp_ui_depot_gh_changed" : "emp_ui_depot_lost".Loc(why.Substring(5)));
+            Dialog.Ok(why == "changed" ? "emp_ui_depot_gh_changed" : why == "banned" ? "emp_ui_depot_et_banned" :
+                "emp_ui_depot_lost".Loc(why.Substring(5)));
         }
 
         return true;
@@ -986,9 +1335,9 @@ internal static class SaveDepot
         }
 
         try {
-            if (GitHub) {
+            if (Service) {
                 if (_unsent) {
-                    SendLater();
+                    SendLater(EtWorld ? "PUT last-leave" : "PUT");
                 }
 
                 Later("RELEASE", null, _ => { });

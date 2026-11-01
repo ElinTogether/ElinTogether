@@ -168,6 +168,8 @@ internal partial class ElinNetHost
                     uploaded.c_invest = old.c_invest;
                 }
 
+                KeepLevels(old, uploaded);
+
                 ForgetCachedCard(old);
                 game.cards.globalCharas.Remove(old);
                 CompanionHelper.UnlinkWork(old);
@@ -227,6 +229,24 @@ internal partial class ElinNetHost
         }
 
         RebindRide(ownerUid);
+    }
+
+    /// <summary>
+    ///     Levels only go up: a copy from another game that missed what the character gained here (the host simulated it
+    ///     on its map, the owner went on a trip alone with a stale copy) keeps the host's level and exp, and the feat
+    ///     point each missed level gave (what its owner spent on the way stays spent)
+    /// </summary>
+    private static void KeepLevels(Chara old, Chara uploaded)
+    {
+        if (old.LV < uploaded.LV || (old.LV == uploaded.LV && old.exp <= uploaded.exp)) {
+            return;
+        }
+
+        EmpLog.Information("Character {Uid} came back at Lv {Uploaded} ({UploadedExp} exp), keeping Lv {Old} ({OldExp} exp)",
+            uploaded.uid, uploaded.LV, uploaded.exp, old.LV, old.exp);
+        uploaded.feat += old.LV - uploaded.LV;
+        uploaded.LV = old.LV;
+        uploaded.exp = old.exp;
     }
 
     /// <summary>
@@ -301,6 +321,8 @@ internal partial class ElinNetHost
                 if (old.c_invest > uploaded.c_invest) {
                     uploaded.c_invest = old.c_invest;
                 }
+
+                KeepLevels(old, uploaded);
 
                 ForgetCachedCard(old);
                 game.cards.globalCharas.Remove(old);
