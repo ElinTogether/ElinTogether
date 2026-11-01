@@ -29,7 +29,10 @@ internal static class InvRerollEvent
         var field = AccessTools.Field(__instance.GetType(), "_owner");
         var owner = field.GetValue(__instance) as Card;
         var cost = owner!.trait.CostRerollShop;
-        if (EMono._zone.influence < cost) {
+        // the Mani statue's gene reroll costs a blue capsule of the player's own, the shops' the town's influence
+        // (UIInventory.RefreshMenu): the game's own button beeps when the player cannot pay
+        var capsule = owner.trait.CurrencyRerollShop == CurrencyType.BlueCapsule;
+        if (capsule ? !EMono.debug.enable && EMono.pc.GetCurrency("drug_blue") < cost : EMono._zone.influence < cost) {
             return true;
         }
 
@@ -37,6 +40,11 @@ internal static class InvRerollEvent
             ShopOwner = owner,
             Gates = connection.IsClient ? ShopStock.Local() : null,
         };
+
+        // a guest pays its capsule here, as the button does: the host checks that it left its purse (InvRerollDelta)
+        if (capsule && connection.IsClient) {
+            EMono.pc.ModCurrency(-1, "drug_blue");
+        }
 
         return connection.IsHost;
     }
