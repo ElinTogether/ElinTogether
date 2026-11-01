@@ -76,11 +76,16 @@ internal sealed class HostCertificate
             return null;
         }
 
+        // (the ETWorld client's Ed25519, Helper/Ed25519.cs: one implementation for every signature of the service)
         var signed = false;
         foreach (var key in serviceKeys) {
-            if (Ed25519Verifier.Verify(key, payload, signature)) {
-                signed = true;
-                break;
+            try {
+                if (global::ElinTogether.Helper.Ed25519.Verify(key, payload, signature)) {
+                    signed = true;
+                    break;
+                }
+            } catch (Exception) {
+                // (a malformed key or point: not signed by it)
             }
         }
 

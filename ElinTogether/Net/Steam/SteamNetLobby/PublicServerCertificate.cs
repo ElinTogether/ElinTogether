@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using ElinTogether.Helper;
 using HeathenEngineering.SteamworksIntegration;
 using Steamworks;
 using UnityEngine;
@@ -45,7 +46,13 @@ internal static class PublicServerCertificate
     // the keeper's last certificate, written again in a lobby opened after it came
     private static string? _current;
 
-    internal static IHostCertificateIssuer? Issuer { get; set; }
+    // (the world service's save depot, SaveDepot "etworld:", is the one client today)
+    internal static IHostCertificateIssuer? Issuer { get; set; } = new EtWorldCertificateIssuer();
+
+    /// <summary>
+    ///     The certificate this game was last given to write in its lobby, null: none
+    /// </summary>
+    internal static string? Current => _current;
 
     internal static IReadOnlyList<byte[]> ServiceKeys
     {
@@ -133,23 +140,29 @@ internal static class PublicServerCertificate
         }
     }
 
+    /// <returns>the id of the lobby this game owns, 0: none</returns>
+    internal static ulong OwnLobby()
+    {
+        try {
+            var lobby = NetSession.Instance.Lobby.Current;
+            return lobby.SteamId.m_SteamID != 0 &&
+                   SteamMatchmaking.GetLobbyOwner(lobby.SteamId) == SteamUser.GetSteamID()
+                ? lobby.SteamId.m_SteamID
+                : 0;
+        } catch (Exception) {
+            // (Steam not running)
+            return 0;
+        }
+    }
+
     private static void Write()
     {
-        if (NetSession.Instance is not { } session) {
+        if (OwnLobby() == 0) {
             return;
         }
 
-        var lobby = session.Lobby.Current;
-        ulong me;
-        try {
-            me = SteamUser.GetSteamID().m_SteamID;
-            if (lobby.SteamId.m_SteamID == 0 || SteamMatchmaking.GetLobbyOwner(lobby.SteamId).m_SteamID != me) {
-                return;
-            }
-        } catch (Exception) {
-            // (Steam not running)
-            return;
-        }
+        var lobby = NetSession.Instance.Lobby.Current;
+        var me = SteamUser.GetSteamID().m_SteamID;
 
         if (_current is null) {
             if (Claims(lobby)) {
@@ -178,5 +191,18 @@ internal static class PublicServerCertificate
             EmpLog.Information("Lobby certified as the Elin Together public server, kept by {Name}, handover {Handover}",
                 cert.KeeperName, cert.Handover);
         }
+    }
+}
+
+/// <summary>
+///     The world service's save depot (SaveDepot with an "etworld:" address) gets the certificates of its lease
+/// </summary>
+internal sealed class EtWorldCertificateIssuer : IHostCertificateIssuer
+{
+    public bool Keeps => SaveDepot.KeepsEtWorld;
+
+    public void LobbyOpened(ulong lobbyId)
+    {
+        SaveDepot.AskCertificate(lobbyId);
     }
 }
