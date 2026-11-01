@@ -212,12 +212,18 @@ internal static class TeamBills
 
     /// <summary>
     ///     Who pays for a land: its team, or for a land of no team the player who claimed it (0: not known, and the
-    ///     commons, which is nobody's)
+    ///     commons, which is nobody's). A land of no team whose claimer is in a team now: that team's, as its salary
+    ///     share goes to that team too (StoryOwner)
     /// </summary>
     private static (int Team, int Claimer) Payer(Zone zone)
     {
         var team = Teams.TeamOfZone(zone);
-        return team != Teams.Wanderers || Commons.Is(zone) ? (team, 0) : (team, BaseIncome.ClaimerOf(zone));
+        if (team != Teams.Wanderers || Commons.Is(zone)) {
+            return (team, 0);
+        }
+
+        var claimer = BaseIncome.ClaimerOf(zone);
+        return claimer > 0 && StoryOwner.Of(claimer) is > 0 and var now ? (now, 0) : (team, claimer);
     }
 
     // the player a team's mail is in the name of (the Wanderers: the claimer)
