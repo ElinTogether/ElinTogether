@@ -195,6 +195,8 @@ internal static class TabWorldAdmin
     // the lists as the admin is changing them, by "kind.field", from the signed one of that number
     private static readonly Dictionary<string, List<string>> _draft = [];
     private static readonly Dictionary<string, long> _draftOf = [];
+    // the list each draft started from: a draft the admin changed survives a newer signed list (a refusal "seq")
+    private static readonly Dictionary<string, List<string>> _draftBase = [];
 
     private static readonly (string Kind, string Field, string Label)[] Lists = [
         ("admins", "admins", "emp_wa_list_admins"),
@@ -210,6 +212,7 @@ internal static class TabWorldAdmin
             return;
         }
 
+        card.ButtonRow().RowButton("emp_wa_refresh".lang(), WorldAdmin.Refresh);
         BuildRules(card);
         foreach (var kind in new[] { "admins", "bans" }) {
             BuildDoc(page, kind);
@@ -247,16 +250,22 @@ internal static class TabWorldAdmin
         var seq = WorldAdmin.Seq[kind];
         if (!_draft.TryGetValue(key, out var list) || _draftOf[key] != seq) {
             // a world without a signed list yet starts from the lists this game plays with now
-            list = WorldAdmin.Docs[kind] is { } doc ? WorldAdmin.Ids(doc, field) : key switch {
+            var from = WorldAdmin.Docs[kind] is { } doc ? WorldAdmin.Ids(doc, field) : key switch {
                 "admins.admins" => [..PeerHosting.Current.AdminIds],
                 "bans.world" => [..PeerHosting.Current.BannedIds],
                 _ => [],
             };
-            _draft[key] = list;
+            var edited = list is not null && _draftBase.TryGetValue(key, out var started) && !list.SequenceEqual(started);
+            if (!edited) {
+                list = [..from];
+            }
+
+            _draft[key] = list!;
+            _draftBase[key] = from;
             _draftOf[key] = seq;
         }
 
-        return list;
+        return list!;
     }
 
     private static bool Changed(string kind)
@@ -332,6 +341,7 @@ internal static class TabWorldAdmin
         buttons.RowButton("emp_wa_doc_undo".lang(), () => {
             foreach (var (_, field, _) in Lists.Where(l => l.Kind == kind)) {
                 _draft.Remove(kind + "." + field);
+                _draftBase.Remove(kind + "." + field);
             }
 
             LayerElinTogether.Instance?.Reopen();

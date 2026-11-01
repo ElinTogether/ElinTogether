@@ -275,7 +275,15 @@ internal static class WorldAdmin
 
     // ------------------------------------------------------------------------------------- the work
 
-    private static string World => Address?.World ?? "public";
+    // what the requests need from the game, read on the main thread when a request starts (Unity's paths, Steam and
+    // the session are not read from the worker thread); one request at a time
+    private static string _keyPath = "";
+    private static string _base = "";
+    private static string _world = "public";
+    private static ulong _steam;
+    private static string _name = "";
+
+    private static string World => _world;
 
     /// <summary>
     ///     One piece of work off the main thread, then everything read again; one at a time
@@ -289,6 +297,12 @@ internal static class WorldAdmin
         Busy = true;
         Problem = "";
         try {
+            _keyPath = KeyFile;
+            _base = Address?.Base ?? "";
+            _world = Address?.World ?? "public";
+            _steam = MySteam;
+            var name = UserData.Me.Name;
+            _name = name is { Length: > 0 } ? name.Length > 32 ? name.Substring(0, 32) : name : "admin";
             EmpMod.Instance.StartCoroutine(Wait(done, work));
         } catch (Exception ex) {
             Busy = false;
@@ -365,7 +379,8 @@ internal static class WorldAdmin
     {
         var read = new Read();
         var who = Expect(Send("GET", $"/v1/w/{World}/who", null), 200);
-        read.Keeper = (string?)who["lease"]?["name"] ?? "";
+        // ("lease": null when nobody keeps it)
+        read.Keeper = (string?)(who["lease"] as JObject)?["name"] ?? "";
         foreach (var kind in DocKinds) {
             read.Seq[kind] = (long?)who["docs"]?[kind] ?? 0;
         }
@@ -460,7 +475,7 @@ internal static class WorldAdmin
                     }
 
                     if (attempt < 2 && error == "unregistered") {
-                        var me = new JObject { ["steam"] = MySteam.ToString(), ["name"] = "admin" };
+                        var me = new JObject { ["steam"] = _steam.ToString(), ["name"] = _name };
                         var registered = Once(seed, pub, "POST", "/v1/register", Encoding.UTF8.GetBytes(me.ToString(Formatting.None)));
                         if (registered.Status is not (200 or 201)) {
                             return registered;
@@ -484,7 +499,7 @@ internal static class WorldAdmin
     {
         string text;
         try {
-            text = File.ReadAllText(KeyFile).Trim();
+            text = File.ReadAllText(_keyPath).Trim();
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             throw new Refused("emp_wa_err_key".lang());
         }
@@ -508,7 +523,9 @@ internal static class WorldAdmin
 
     private static (int Status, JObject? Json) Once(byte[] seed, string pub, string method, string path, byte[] body)
     {
-        var address = Address ?? throw new Refused("emp_wa_err_address".lang());
+        if (_base.Length == 0) {
+            throw new Refused("emp_wa_err_address".lang());
+        }
         var time = Now(_skew).ToString();
         var nonce = Nonce();
         using var sha = SHA256.Create();
@@ -517,7 +534,7 @@ internal static class WorldAdmin
         try {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 #pragma warning disable SYSLIB0014 // HttpWebRequest is what was seen working from the game's Mono
-            var request = (HttpWebRequest)WebRequest.Create(address.Base + path);
+            var request = (HttpWebRequest)WebRequest.Create(_base + path);
 #pragma warning restore SYSLIB0014
             request.Method = method;
             request.UserAgent = "ElinTogether";
