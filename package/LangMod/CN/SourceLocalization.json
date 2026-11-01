@@ -1272,5 +1272,7 @@
     "LangGeneral.emp_ui_sv_adv_show.text": "高级规则（{0}） >",
     "LangGeneral.emp_ui_sv_adv_hide.text": "收起高级规则",
     "LangGeneral.emp_ui_sv_adv_tip.text": "其余所有规则，按分组显示。大多数世界保持默认即可。",
-    "LangGeneral.emp_ui_sv_guest_all_recommended.text": "所有规则均为推荐设置。"
+    "LangGeneral.emp_ui_sv_guest_all_recommended.text": "所有规则均为推荐设置。",
+    "LangGeneral.emp_refused_owner.text": "那是{0}的。",
+    "LangGeneral.emp_refused_here.text": "这里不允许这样做。"
 }

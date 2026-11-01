@@ -225,6 +225,8 @@ namespace ElinTogether.Models;
 [Union(1256, typeof(HostLogAnswer))]
 // Every player of the server, away ones too, for the menus (user 2026-10-30)
 [Union(1259, typeof(ServerRosterDelta))]
+// A refused action says why on the player's game (user 2026-11-01)
+[Union(1263, typeof(RefusedDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
@@ -292,10 +294,16 @@ public abstract class ElinDelta : EClass
     /// </summary>
     protected static string? NotOwned(Chara? sender, RemoteCard? card, string what)
     {
-        return sender is not null && card?.Find() is Chara target && !OwnsOrCompanion(sender, target)
-            ? $"{what} {target.uid} is not the sender's"
-            : null;
+        if (sender is null || card?.Find() is not Chara target || OwnsOrCompanion(sender, target)) {
+            return null;
+        }
+
+        _refusedOwner = PlayerKarma.PlayerBehind(target);
+        return $"{what} {target.uid} is not the sender's";
     }
+
+    // the player a refused thing or character belongs to, set by the checks above for the toast (RefusedDelta)
+    private static Chara? _refusedOwner;
 
     /// <summary>
     ///     A thing the sender may move, take, wear or put away (security audit 2026-10-27: other bags, merchants and
@@ -311,7 +319,12 @@ public abstract class ElinDelta : EClass
 
         var root = thing.GetRootCard();
         if (root is Chara holder) {
-            return OwnsOrCompanion(sender, holder) ? null : $"thing {thing.uid} is held by {holder.uid}";
+            if (OwnsOrCompanion(sender, holder)) {
+                return null;
+            }
+
+            _refusedOwner = PlayerKarma.PlayerBehind(holder);
+            return $"thing {thing.uid} is held by {holder.uid}";
         }
 
         if (root?.parent is not Zone || root.pos is not { IsValid: true } at) {
@@ -381,8 +394,10 @@ public abstract class ElinDelta : EClass
     private bool HostPermits(ElinNetHost host)
     {
         string? reason;
+        var senderChara = host.PlayerChara(OriginPeer);
+        _refusedOwner = null;
         try {
-            reason = OnHostPermit(host, host.PlayerChara(OriginPeer));
+            reason = OnHostPermit(host, senderChara);
         } catch (Exception ex) {
             // a check that fails is a refusal like any other: logged, and the delta dropped where strangers come in
             // (security audit 2026-10-27, item 14: a forged delta that made its check throw went through unchecked)
@@ -403,7 +418,31 @@ public abstract class ElinDelta : EClass
                 GetType().Name, OriginPeer, reason);
         }
 
+        if (enforce && senderChara is not null && reason != "not a request") {
+            TellRefused(host, _refusedOwner);
+        }
+
         return !enforce;
+    }
+
+    // peer -> when it was last told a refusal
+    private static readonly Dictionary<int, float> _refusedTold = [];
+
+    /// <summary>
+    ///     The sender's game shows why its action snapped back (RefusedDelta), once every few seconds at most: a
+    ///     lagging game's stream of stale deltas is one toast, not one per delta
+    /// </summary>
+    private void TellRefused(ElinNetHost host, Chara? owner)
+    {
+        var now = UnityEngine.Time.unscaledTime;
+        if (_refusedTold.TryGetValue(OriginPeer, out var last) && now - last < RefusedDelta.Interval && now >= last) {
+            return;
+        }
+
+        _refusedTold[OriginPeer] = now;
+        host.SendDeltaTo(OriginPeer, new RefusedDelta {
+            Owner = owner is null ? null : Teams.PlayerName(owner.uid),
+        });
     }
 
     public void Apply(ElinNetBase net)
