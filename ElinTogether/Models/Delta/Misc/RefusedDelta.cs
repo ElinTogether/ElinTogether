@@ -43,6 +43,12 @@ public class RefusedDelta : ElinDelta
         }
 
         _shownAt = now;
-        WidgetPopText.Say(string.IsNullOrEmpty(Owner) ? "emp_refused_here".lang() : "emp_refused_owner".Loc(Owner!));
+        var text = string.IsNullOrEmpty(Owner) ? "emp_refused_here".lang() : "emp_refused_owner".Loc(Owner!);
+        // (a player who hid the pop-text widget gets it in the message log: WidgetPopText.Say does nothing then)
+        if (WidgetPopText.Instance) {
+            WidgetPopText.Say(text);
+        } else {
+            Msg.Say(text);
+        }
     }
 }
