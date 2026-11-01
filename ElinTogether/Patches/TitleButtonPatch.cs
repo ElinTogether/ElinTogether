@@ -33,7 +33,9 @@ internal class TitleButtonPatch
         empButtonGo.SetSiblingIndex(button.GetSiblingIndex() + 2);
 
         var empButton = empButtonGo.GetComponent<UIButton>();
-        empButton.mainText.text = $"{"emp_ui_title".lang()} {ModInfo.Version}";
+        // "Multiplayer" says what it is to a new player; the mod's name and version are in its tooltip
+        empButton.mainText.text = "LayerElinTogether".lang();
+        empButton.SetTooltipLang($"{"emp_ui_title".lang()} {ModInfo.Version}");
         empButton.onClick.SetPersistentListenerState(0, UnityEventCallState.Off);
         empButton.onClick.AddListener(() => LayerElinTogether.OpenPanelSesame());
         AddLogo(empButton);
