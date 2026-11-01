@@ -80,6 +80,9 @@ internal class TabServerConfiguration : TabEmpBase
         ["team_pvp"] = ["teams"],
         ["team_bills"] = ["teams"],
         ["team_story"] = ["teams"],
+        ["team_sheets"] = ["teams"],
+        ["team_banner"] = ["teams"],
+        ["takeover"] = ["world_copy"],
         ["team_quest_sharing"] = ["teams", "personal_quests"],
         ["team_boxes"] = ["teams"],
         ["land_rules"] = ["teams", "team_bases"],
@@ -718,22 +721,28 @@ internal class TabServerConfiguration : TabEmpBase
             return "emp_ui_sv_needs_official".lang();
         }
 
-        if (!Needs.TryGetValue(row.Id, out var ids)) {
-            return !_guest && row.Requires is not null ? "emp_ui_sv_needs_other".lang() : null;
-        }
-
-        var all = SettingsTable.Rows().ToDictionary(r => r.Id);
-        foreach (var raw in ids) {
-            var (id, off) = raw.StartsWith('!') ? (raw[1..], true) : (raw, false);
-            var met = id == "world_map_choice" ? _src.Raw(EmpConfig.Server.WorldMapTime) is Net.WorldMapTime.PersonalPace
-                : all[id].Entry is not { } e || _src.Get(e) is not { } v || v != off;
-            if (!met) {
-                return (off ? "emp_ui_sv_needs_off" : "emp_ui_sv_needs").Loc(all[id].Label);
+        if (Needs.TryGetValue(row.Id, out var ids)) {
+            var all = SettingsTable.Rows().ToDictionary(r => r.Id);
+            foreach (var raw in ids) {
+                var (id, off) = raw.StartsWith('!') ? (raw[1..], true) : (raw, false);
+                var met = id == "world_map_choice" ? _src.Raw(EmpConfig.Server.WorldMapTime) is Net.WorldMapTime.PersonalPace
+                    : all[id].Entry is not { } e || _src.Get(e) is not { } v || v != off;
+                if (!met) {
+                    return (off ? "emp_ui_sv_needs_off" : "emp_ui_sv_needs").Loc(all[id].Label);
+                }
             }
+        } else if (_guest || row.Requires is null) {
+            return null;
         }
 
         // (a guest is not told what the host's own check says: nothing greyed)
-        return _guest ? null : "emp_ui_sv_needs_other".lang();
+        if (_guest) {
+            return null;
+        }
+
+        // the rows the public server cannot have (import_chara, team_boxes, team_knowledge, team_own_story...): said
+        // so, not "needs another rule" (UX audit 2026-11-01)
+        return OfficialServer.Hosting ? "emp_ui_sv_needs_notofficial".lang() : "emp_ui_sv_needs_other".lang();
     }
 
     private void Revert(SettingRow row)

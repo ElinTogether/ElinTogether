@@ -61,6 +61,13 @@ internal class TitleButtonPatch
 
         var newer = UpdateCheck.Newer;
         var tip = $"{"emp_ui_title".lang()} {ModInfo.Version}";
+        // an Elin older than the one this release was made for (the Stable branch): said here, where a player
+        // looks before hosting or joining
+        if (Common.BuildVersionIntegrity.OlderGame) {
+            tip += "\n" + "emp_title_older_game".Loc(Common.BuildVersionIntegrity.BuiltForGameText,
+                EMono.core.version.GetText());
+        }
+
         _button.SetTooltipLang(newer is null ? tip : tip + "\n" + "emp_update_tooltip".Loc(newer));
         var dot = _button.transform.Find(DotName);
         if (newer is null) {

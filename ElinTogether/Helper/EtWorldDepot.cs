@@ -57,6 +57,9 @@ internal static class EtWorldDepot
     // the world was written by someone else while this game kept it: nothing more goes there until it is taken again
     private static bool _changed;
 
+    // the host certificate of this lease (plan P3, API.md 4.1): from CERT, renewed by every BEAT; null without one
+    private static volatile string? _cert;
+
     /// <summary>
     ///     The version of the depot's world this game plays from, as a text (for SaveDepot's marker). Null: none
     /// </summary>
@@ -72,6 +75,16 @@ internal static class EtWorldDepot
     ///     The public half of this install's key, once a request was made (64 hex)
     /// </summary>
     internal static string PublicKey => _pub;
+
+    /// <summary>
+    ///     The world of the service this game uses ("public" unless the address says "#other")
+    /// </summary>
+    internal static string WorldName => _world;
+
+    /// <summary>
+    ///     The last host certificate the service gave this game's lease for its Steam lobby (plan P3), null: none
+    /// </summary>
+    internal static string? Certificate => _cert;
 
     static EtWorldDepot()
     {
@@ -110,6 +123,7 @@ internal static class EtWorldDepot
                     "PUT" => Put(steam, name, body, descends, words.Length > 1 ? words[1] : "periodic", debug),
                     "BEAT" => Beat(steam, name, debug),
                     "RELEASE" => Release(steam, name),
+                    "CERT" => Cert(steam, name, words.Length > 1 ? words[1] : ""),
                     "MODS" => (true, "", null),
                     _ => throw new No("unknown"),
                 };
@@ -335,7 +349,13 @@ internal static class EtWorldDepot
             if (reply.Json!["rollback"] is { Type: JTokenType.Integer }) {
                 // an admin set the world back: nothing more of this session goes there (plan 4.3)
                 _changed = true;
+                _cert = null;
                 throw new No("rolled back");
+            }
+
+            // (a holder that told its lobby gets a fresh certificate with every beat)
+            if (reply.Json["cert"] is { Type: JTokenType.String } cert) {
+                _cert = (string?)cert;
             }
 
             return (true, "", null);
@@ -347,6 +367,26 @@ internal static class EtWorldDepot
         }
 
         throw error == "banned" ? new No("banned") : Down(reply);
+    }
+
+    /// <summary>
+    ///     A host certificate naming this game's Steam lobby (plan P3): its text, written in the lobby by the game
+    /// </summary>
+    private static (bool, string, byte[]?) Cert(ulong steam, string name, string lobby)
+    {
+        if (_handover == 0) {
+            throw new No("not_holder");
+        }
+
+        var reply = Call("POST", $"/v1/w/{_world}/cert", Bytes(new JObject { ["handover"] = _handover, ["lobby"] = lobby }),
+            steam, name);
+        if (reply.Status == 200 && (string?)reply.Json?["cert"] is { Length: > 0 } cert) {
+            _cert = cert;
+            return (true, cert, null);
+        }
+
+        var error = (string?)reply.Json?["error"];
+        throw error is "not_holder" or "banned" or "no_service_key" or "bad_field" ? new No(error) : Down(reply);
     }
 
     private static (bool, string, byte[]?) Release(ulong steam, string name)
@@ -385,7 +425,13 @@ internal static class EtWorldDepot
         var reply = Call("POST", $"/v1/w/{_world}/take", Bytes(new JObject { ["version"] = _build, ["debug"] = debug }), steam, name);
         var error = (string?)reply.Json?["error"];
         if (reply.Status == 200) {
-            _handover = (long)reply.Json!["lease"]!["handover"]!;
+            var handover = (long)reply.Json!["lease"]!["handover"]!;
+            if (handover != _handover) {
+                // (a new lease: the certificate of the old one names its handover)
+                _cert = null;
+            }
+
+            _handover = handover;
             return reply.Json["head"] as JObject;
         }
 
@@ -409,6 +455,7 @@ internal static class EtWorldDepot
         }
 
         _handover = 0;
+        _cert = null;
     }
 
     private static string Holder(JObject? lease)

@@ -58,7 +58,7 @@ public static class EmpDisconnectInfo
     public static string Describe(string? reason)
     {
         if (BuildVersionIntegrity.GetGtfoReason(reason, out var mod, out var game)) {
-            return "emp_version_rejected_client".Loc(ModInfo.BuildVersion, mod, BuildVersionIntegrity.GameVersion, game);
+            return "emp_version_rejected_client".Loc(BuildVersionIntegrity.Explain(mod, game));
         }
 
         if (reason?.IndexOf('|') is > 0 and var bar && reason.StartsWith("emp_dc_", System.StringComparison.Ordinal)) {

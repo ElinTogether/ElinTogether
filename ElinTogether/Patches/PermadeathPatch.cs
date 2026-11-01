@@ -1,8 +1,104 @@
 using ElinTogether.Helper;
 using ElinTogether.Net;
 using HarmonyLib;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace ElinTogether.Patches;
+
+/// <summary>
+///     The dead player's banner (UX audit 2026-11-01): the wait for a revive said so only in one log line, which
+///     scrolled away. A box at the top of the screen says it for as long as it lasts, with a button to leave (the
+///     game's own "back to the title" question). Not a layer: the windows, the Escape menu and its keys work as before
+///     and open over it
+/// </summary>
+internal static class DeadBanner
+{
+    private static GameObject? _banner;
+
+    internal static void Update(bool show)
+    {
+        if (!show) {
+            if (_banner != null) {
+                UnityEngine.Object.Destroy(_banner);
+            }
+
+            _banner = null;
+            return;
+        }
+
+        if (_banner == null && EClass.ui is { } ui && ui.rectLayers != null) {
+            _banner = Make(ui);
+        }
+    }
+
+    private static GameObject Make(UI ui)
+    {
+        var font = SkinManager.Instance?.fontSet?.ui?.source?.font;
+        var go = new GameObject("EmpDeadBanner", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
+            typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(ui.transform, false);
+        // (under the windows: a dialog or the Escape menu opens over it)
+        if (ui.rectLayers.parent == ui.transform) {
+            rt.SetSiblingIndex(ui.rectLayers.GetSiblingIndex());
+        }
+
+        rt.anchorMin = rt.anchorMax = new(0.5f, 1f);
+        rt.pivot = new(0.5f, 1f);
+        rt.anchoredPosition = new(0f, -100f);
+        go.GetComponent<Image>().color = new(0.1f, 0.06f, 0.05f, 0.88f);
+        var row = go.GetComponent<HorizontalLayoutGroup>();
+        row.padding = new(18, 18, 10, 10);
+        row.spacing = 18f;
+        row.childAlignment = TextAnchor.MiddleCenter;
+        row.childControlWidth = row.childControlHeight = true;
+        row.childForceExpandWidth = row.childForceExpandHeight = false;
+        var fitter = go.GetComponent<ContentSizeFitter>();
+        fitter.horizontalFit = fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        Label(rt, "emp_permadeath_banner".lang(), font, new(1f, 0.92f, 0.82f));
+
+        var leave = new GameObject("Leave", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button),
+            typeof(HorizontalLayoutGroup));
+        var leaveRt = (RectTransform)leave.transform;
+        leaveRt.SetParent(rt, false);
+        var back = leave.GetComponent<Image>();
+        back.color = new(0.5f, 0.24f, 0.16f, 1f);
+        var inner = leave.GetComponent<HorizontalLayoutGroup>();
+        inner.padding = new(16, 16, 6, 6);
+        inner.childAlignment = TextAnchor.MiddleCenter;
+        inner.childControlWidth = inner.childControlHeight = true;
+        inner.childForceExpandWidth = inner.childForceExpandHeight = false;
+        Label(leaveRt, "emp_permadeath_leave".lang(), font, Color.white);
+        var button = leave.GetComponent<Button>();
+        button.targetGraphic = back;
+        // (the same as the Escape menu's "Title": the game asks first and saves)
+        button.onClick.AddListener(() => {
+            SE.ClickGeneral();
+            EClass.game?.GotoTitle();
+        });
+
+        return go;
+    }
+
+    private static void Label(Transform parent, string text, Font? font, Color color)
+    {
+        var go = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        go.transform.SetParent(parent, false);
+        var label = go.GetComponent<Text>();
+        if (font != null) {
+            label.font = font;
+        }
+
+        label.fontSize = 18;
+        label.color = color;
+        label.alignment = TextAnchor.MiddleLeft;
+        label.horizontalOverflow = HorizontalWrapMode.Overflow;
+        label.raycastTarget = false;
+        label.text = text;
+    }
+}
 
 /// <summary>
 ///     Permadeath with PermadeathRevive (council 2026-10-27): the game deleted the save of whoever died, before its
@@ -80,6 +176,8 @@ internal static class PermadeathPatch
     [HarmonyPatch(typeof(Scene), nameof(Scene.OnUpdate))]
     internal static void AfterSceneUpdate(Scene __instance)
     {
+        DeadBanner.Update(IsWaitingForRevive(__instance));
+
         if (_menuWasOpen && EInput.action == EAction.Cancel && EClass.ui.contextMenu.isActive && IsWaitingForRevive(__instance)) {
             EClass.ui.contextMenu.currentMenu?.Hide();
             EInput.Consume();

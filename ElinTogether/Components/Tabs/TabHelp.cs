@@ -139,14 +139,43 @@ internal static class TabHelp
             [.."yes,no,untried".Split(',').Select(o => $"emp_ui_report_again_{o}".lang())], i => _again = i, _again);
 
         // what goes with it (the game's "Attach a screenshot" / "Attach a save data" boxes); the logs always do
-        var recording = EmpConfig.Client.RecordReplay.Value ? null : "emp_ui_report_att_needs_recording".lang();
-        card.ToggleRow("emp_ui_report_att_video".lang(), recording, _video, v => _video = v);
-        card.ToggleRow("emp_ui_report_att_picture".lang(), recording, _picture, v => _picture = v);
+        // the video and the picture come from the screen recording (ReplayBuffer): ticking either turns it on, both
+        // off turns it off (UX audit 2026-11-01: the boxes stayed grey until a box on the other page was ticked)
+        var replay = EmpConfig.Client.RecordReplay;
+        UIButton? videoBox = null;
+        UIButton? pictureBox = null;
+        // (nothing recorded: nothing ticked, so ticking one box does not tick the other too)
+        if (!replay.Value) {
+            _video = _picture = false;
+        }
+
+        void Attach()
+        {
+            var on = _video || _picture;
+            if (replay.Value != on) {
+                replay.Value = on;
+            }
+
+            videoBox?.SetCheck(_video && on);
+            pictureBox?.SetCheck(_picture && on);
+        }
+
+        var recording = replay.Value ? null : "emp_ui_report_att_needs_recording".lang();
+        videoBox = card.ToggleRow("emp_ui_report_att_video".lang(), recording, _video && replay.Value, v => {
+            _video = v;
+            Attach();
+        });
+        videoBox.SetTooltipLang("emp_tip_cfg_record_replay".lang());
+        pictureBox = card.ToggleRow("emp_ui_report_att_picture".lang(), null, _picture && replay.Value, v => {
+            _picture = v;
+            Attach();
+        });
         card.ToggleRow("emp_ui_report_att_logs".lang(), "emp_ui_report_att_logs_desc".lang(), true, _ => { }, readOnly: true);
 
         // the right page: thanks and short tips, as the game's window has them
         var tips = right.Card("emp_ui_report_thanks".lang());
-        foreach (var tip in new[] { "before", "one", "lang", "private", "host" }) {
+        // (what is removed from the logs is said once, under the buttons: emp_ui_report_send_desc)
+        foreach (var tip in new[] { "before", "one", "lang", "host" }) {
             tips.Text(("emp_ui_report_tip_" + tip).lang());
         }
 
@@ -194,11 +223,6 @@ internal static class TabHelp
         });
         hint = tips.TextSmall("", FontColor.Gray);
         Refresh();
-
-        // the recording the video and the picture come from (ReplayBuffer)
-        var replay = EmpConfig.Client.RecordReplay;
-        tips.ToggleRow("emp_ui_cl_record_replay".lang(), null, replay.Value, v => replay.Value = v)
-            .SetTooltipLang("emp_tip_cfg_record_replay".lang());
         UIHelper.WrapTexts(right);
     }
 

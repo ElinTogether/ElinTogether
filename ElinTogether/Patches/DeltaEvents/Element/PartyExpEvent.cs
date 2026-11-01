@@ -18,6 +18,6 @@ internal static class PartyExpEvent
             return;
         }
 
-        connection.Delta.AddRemote(new PartyExpDelta { Element = ele, Amount = a });
+        connection.Delta.AddRemote(new PartyExpDelta { Element = ele, Amount = a, Party = true });
     }
 }

@@ -1,7 +1,9 @@
 using System.Reflection;
 using BepInEx;
+using ElinTogether.Common;
 using ElinTogether.Helper;
 using ElinTogether.Helper.String;
+using ElinTogether.LangMod;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using HarmonyLib;
@@ -28,6 +30,40 @@ internal sealed class EmpMod : BaseUnityPlugin
 
     internal static EmpMod Instance { get; private set; } = null!;
 
+    /// <summary>
+    ///     The patch classes this build of Elin could not take (a target it lacks, e.g. on the stable branch)
+    /// </summary>
+    internal static readonly System.Collections.Generic.List<string> SkippedPatches = [];
+
+    /// <summary>
+    ///     Harmony's PatchAll, one class at a time: Harmony stops at the first class whose target is missing and
+    ///     leaves every class after it unpatched. Here such a class is skipped with a log line and the rest load
+    /// </summary>
+    internal static void PatchAll()
+    {
+        foreach (var type in AccessTools.GetTypesFromAssembly(Assembly)) {
+            try {
+                SharedHarmony.CreateClassProcessor(type).Patch();
+            } catch (System.Exception ex) {
+                if (!SkippedPatches.Contains(type.FullName)) {
+                    SkippedPatches.Add(type.FullName);
+                }
+
+                EmpLog.Warning(ex, "Patch {PatchClass} skipped on Elin {GameVersion}: {Reason}",
+                    type.FullName, EClass.core?.version.GetText(), ex.InnerException?.Message ?? ex.Message);
+            }
+        }
+
+        // the player is told once, in words, rather than finding out by a sync that does not happen
+        if (SkippedPatches.Count > 0 && !_skippedTold && EClass.core is { } core) {
+            _skippedTold = true;
+            core.actionsNextFrame.Add(() => EmpPop.Information("emp_patches_skipped".Loc(SkippedPatches.Count,
+                core.version.GetText(), BuildVersionIntegrity.BuiltForGameText)));
+        }
+    }
+
+    private static bool _skippedTold;
+
     private void Awake()
     {
         Instance = this;
@@ -52,7 +88,7 @@ internal sealed class EmpMod : BaseUnityPlugin
         Patches.RideOffMapPatch.Apply();
 
 #if DEBUG
-        SharedHarmony.PatchAll(Assembly);
+        PatchAll();
 
         if (EmpConfig.Dev.Listener.Value) {
             gameObject.AddComponent<EmpDebugListener>();
