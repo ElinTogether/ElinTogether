@@ -105,10 +105,12 @@ public class MsgSayDelta : ElinDelta
     /// </summary>
     internal static void ShowNotice(string text)
     {
-        ChatLog.Add(ChatLog.Server, "[Server]", text);
-        ChatBubbleEvent.PopChat("[Server]", text);
+        // (the tag in this player's language: the Name sent with a notice is not shown)
+        var tag = "emp_ui_server_tag".lang();
+        ChatLog.Add(ChatLog.Server, tag, text);
+        ChatBubbleEvent.PopChat(tag, text);
         Msg.SetColor(new Color(1f, 0.85f, 0.4f, 1f));
-        Msg.SayRaw("[Server] " + text);
+        Msg.SayRaw(tag + " " + text);
     }
 
     protected override void OnApply(ElinNetBase net)

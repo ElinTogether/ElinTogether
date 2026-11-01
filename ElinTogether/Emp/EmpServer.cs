@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using ElinTogether.Helper;
+using ElinTogether.LangMod;
 using ElinTogether.Net;
 using UnityEngine;
 
@@ -153,7 +154,7 @@ internal static class EmpServer
 
             // without these two the session never opens: say why and stop, instead of trying for ever
             if (EClass.player?.chara?.homeBranch?.owner is null) {
-                Fail("this save has no home base (claim a land in it first)");
+                Fail("emp_server_why_no_base".lang());
                 return;
             }
 
@@ -161,7 +162,7 @@ internal static class EmpServer
             try {
                 session.InitializeComponent<ElinNetHost>().StartServer(true, alsoSteam: true);
             } catch (Exception ex) {
-                Fail($"port {Common.EmpConstants.LocalPort} could not be opened ({ex.Message})");
+                Fail("emp_server_why_port".Loc(Common.EmpConstants.LocalPort, ex.Message));
                 return;
             }
 

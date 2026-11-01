@@ -59,7 +59,7 @@ internal class TabClientConfiguration : TabEmpBase
                     LayerElinTogether.Instance?.Reopen();
                 });
                 EMono.ui.AddLayer(l);
-            }, EmpConfig.Client.PingKeybind.Description.Description);
+            }, "emp_tip_cfg_ping_key".lang());
     }
 
     // the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice
@@ -69,21 +69,21 @@ internal class TabClientConfiguration : TabEmpBase
         var fetch = EmpConfig.Client.FetchMods;
         var fetchBox = card.ToggleRow("emp_ui_cl_fetch_mods".lang(), "emp_ui_cl_desc_fetch_mods".lang(), fetch.Value,
             v => fetch.Value = v);
-        fetchBox.SetTooltipLang(fetch.Description.Description);
+        fetchBox.SetTooltipLang("emp_tip_cfg_fetch_mods".lang());
 
         // ... and kept: subscribed to, so that the next join needs no restart
         // (keeping them means nothing without fetching them: greyed out until then)
         var keep = EmpConfig.Client.KeepMods;
         var keepBox = card.ToggleRow("emp_ui_cl_keep_mods".lang(), "emp_ui_cl_desc_keep_mods".lang(), keep.Value,
             v => keep.Value = v);
-        keepBox.SetTooltipLang(keep.Description.Description);
+        keepBox.SetTooltipLang("emp_tip_cfg_keep_mods".lang());
         keepBox.interactable = fetch.Value;
 
         // security: mods with code (a DLL) are fetched only with this, off (the code runs on this PC)
         var code = EmpConfig.Client.FetchCodeMods;
         var codeBox = card.ToggleRow("emp_ui_cl_code_mods".lang(), "emp_ui_cl_desc_code_mods".lang(), code.Value,
             v => code.Value = v);
-        codeBox.SetTooltipLang(code.Description.Description);
+        codeBox.SetTooltipLang("emp_tip_cfg_code_mods".lang());
         codeBox.interactable = fetch.Value;
     }
 
@@ -102,7 +102,7 @@ internal class TabClientConfiguration : TabEmpBase
                         LayerElinTogether.Instance?.Reopen();
                     }
                 }).input.field.characterLimit = 0;
-            }, depot.Description.Description);
+            }, "emp_tip_cfg_depot_path".lang());
 
         card.Divider();
         var password = EmpConfig.Client.DepotPassword;
@@ -116,7 +116,7 @@ internal class TabClientConfiguration : TabEmpBase
                         LayerElinTogether.Instance?.Reopen();
                     }
                 }).input.field.characterLimit = 0;
-            }, password.Description.Description);
+            }, "emp_tip_cfg_depot_password".lang());
 
         // how a private GitHub repository becomes the depot, where it is set
         // (one text per line: a text with line breaks was measured one line high and drew over the rows above it)

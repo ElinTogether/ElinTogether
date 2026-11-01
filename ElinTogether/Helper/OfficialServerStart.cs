@@ -90,10 +90,12 @@ internal static class OfficialServerStart
         EmpLog.Information("Official server: {File} was missing, the plan's text was written", file);
     }
 
-    // PLAN_official_server section 3: English, then Chinese on the next lines
+    // PLAN_official_server section 3: English, then Chinese and Japanese on the next lines (the files are the
+    // server's, the same for every player whatever its language)
     private const string Motd =
         "Welcome to the Elin Together public server (run by the mod's team, not by the developer of Elin). Beta: the world may roll back. Report bugs with Multiplayer > Report a bug. Be kind.\n" +
-        "欢迎来到 Elin Together 公共服务器（由本模组团队运营，与 Elin 开发者无关）。测试阶段：世界可能回档。遇到问题请用 多人游戏 > 反馈问题。请友善待人。";
+        "欢迎来到 Elin Together 公共服务器（由本模组团队运营，与 Elin 开发者无关）。测试阶段：世界可能回档。遇到问题请用 多人游戏 > 反馈问题。请友善待人。\n" +
+        "Elin Together 公開サーバーへようこそ（MODのチームが運営しており、Elinの開発者とは関係ありません）。ベータ版：ワールドが巻き戻ることがあります。不具合は Multiplayer > バグ報告 から。みんなに優しく。";
 
     private const string Rules =
         "1. No harassment, spam or hate.\n" +
@@ -107,5 +109,11 @@ internal static class OfficialServerStart
         "3. 不得拿取他人领地物品或堵塞城镇。\n" +
         "4. 每位玩家最多 3 个角色。\n" +
         "5. 管理员：见玩家页面。\n" +
-        "违规：禁言、踢出、封禁。";
+        "违规：禁言、踢出、封禁。\n" +
+        "1. 嫌がらせ、スパム、差別的な発言は禁止。\n" +
+        "2. 不具合の悪用、アイテム複製、改造クライアントは禁止。\n" +
+        "3. 他人の土地から持ち出したり、町をふさいだりしないこと。\n" +
+        "4. 1人につきキャラクターは3人まで。\n" +
+        "5. モデレーター：プレイヤー一覧のページを参照。\n" +
+        "違反した場合：ミュート、キック、BANの順。";
 }

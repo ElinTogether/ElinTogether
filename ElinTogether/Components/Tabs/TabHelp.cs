@@ -208,7 +208,7 @@ internal static class TabHelp
         // the recording the video and the picture come from (ReplayBuffer)
         var replay = EmpConfig.Client.RecordReplay;
         tips.ToggleRow("emp_ui_cl_record_replay".lang(), null, replay.Value, v => replay.Value = v)
-            .SetTooltipLang(replay.Description.Description);
+            .SetTooltipLang("emp_tip_cfg_record_replay".lang());
         UIHelper.WrapTexts(right);
     }
 
