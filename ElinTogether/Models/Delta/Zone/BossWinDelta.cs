@@ -26,6 +26,13 @@ public class BossWinDelta : ElinDelta
     public required int DangerLv { get; init; }
 
     /// <summary>
+    ///     The boss did not fall: it left (Zone.Simulate, a floor entered again after its boss fight was left), and the
+    ///     game marked the dungeon conquered. Only that is told: no fanfare, no fame
+    /// </summary>
+    [Key(4)]
+    public bool Left { get; init; }
+
+    /// <summary>
     ///     Security audit 2026-10-27 (item 5): any zone's boss could be declared dead, any dungeon conquered, with a
     ///     depth of the sender's choosing (fame for everyone on that map). Only the game that simulates the zone tells:
     ///     a guest away in its own zones, never one on the host's map (the host's game sees that death itself); the
@@ -54,6 +61,14 @@ public class BossWinDelta : ElinDelta
         }
 
         if (game.spatials.Find(ZoneUid) is not Zone zone) {
+            return;
+        }
+
+        if (Left) {
+            if (Nefia && game.spatials.Find(TopZoneUid) is Zone conquered) {
+                conquered.isConquered = true;
+            }
+
             return;
         }
 
