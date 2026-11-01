@@ -565,6 +565,11 @@ internal static class Mailbox
         return Latest?.Letters.Where(l => l.FromUser == 0 || !PlayerSocial.IsIgnored(l.FromUser)).ToList() ?? [];
     }
 
+    /// <summary>
+    ///     The letters not opened yet, for the badges (the Players tab, the HUD button)
+    /// </summary>
+    internal static int Unread => On ? Letters().Count(l => (l.Flags & (FlagRead | FlagTaken)) == 0) : 0;
+
     internal static bool Unclaimed(MailLetter letter)
     {
         return (letter.Flags & FlagTaken) == 0 && (letter.Items.Count > 0 || letter.Gold > 0 || (letter.Flags & FlagRead) == 0);

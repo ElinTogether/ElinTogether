@@ -90,6 +90,7 @@ internal sealed class EmpMod : BaseUnityPlugin
         ModFetch.Update();
         EmpConfig.UpdateReload();
         Components.SettingsTable.Update();
+        Helper.HubDot.Update();
         // (from the patches during a session; a server has to load its world before any session)
         EmpServer.Update();
         // (-empnewworld: a new world made at the title, before any session)
