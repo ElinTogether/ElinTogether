@@ -294,12 +294,17 @@ internal static class TeamRanks
             teamId = Teams.TeamOf(charaUid);
         }
 
-        if (teamId <= Teams.Wanderers || !Teams.MembersOfTeam(teamId).Contains(charaUid)) {
+        // (the leader first: it is a member, and has everything)
+        if (teamId <= Teams.Wanderers) {
             return false;
         }
 
-        if (Teams.LeaderOf(teamId) == charaUid) {
+        if (charaUid != 0 && Teams.LeaderOf(teamId) == charaUid) {
             return true;
+        }
+
+        if (!Teams.MembersOfTeam(teamId).Contains(charaUid)) {
+            return false;
         }
 
         var perms = On ? (TeamPerm)RankOf(charaUid, teamId).Perms : MemberDefault;
@@ -435,15 +440,24 @@ internal static class TeamRanks
                 return false;
             }
 
+            // (more than is left today: the part that is left is split off and taken, as a guest's take is cut)
             var left = WithdrawLeft(pc.uid, owner);
-            if (left < thing.Num) {
+            if (left <= 0) {
                 return true;
             }
 
-            if (left != int.MaxValue) {
-                NoteTaken(pc.uid, thing.Num);
+            if (left == int.MaxValue) {
+                return false;
             }
 
+            if (thing.Num > left) {
+                var part = thing.Split(left);
+                NoteTaken(pc.uid, left);
+                pc.Pick(part);
+                return true;
+            }
+
+            NoteTaken(pc.uid, thing.Num);
             return false;
         }
 
@@ -522,7 +536,10 @@ internal static class TeamRanks
                 rank.Perms = keep | value & (int)own & (int)TeamPerm.All;
                 done = true;
                 break;
-            case RankOp.SetLimit when rank is not null && MayEdit(chara.uid, team, rankId) && Limits.Contains(value):
+            // (only a rank that withdraws itself, and never a looser limit than its own)
+            case RankOp.SetLimit when rank is not null && MayEdit(chara.uid, team, rankId) && Limits.Contains(value) &&
+                                      (own & TeamPerm.Withdraw) != 0 &&
+                                      (leads || RankOf(chara.uid, team).Limit is var mine && (mine == 0 || value > 0 && value <= mine)):
                 rank.Limit = value;
                 done = true;
                 break;
