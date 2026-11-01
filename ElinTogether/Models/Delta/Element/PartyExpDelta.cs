@@ -1,3 +1,4 @@
+using System.Linq;
 using ElinTogether.Net;
 using MessagePack;
 
@@ -17,6 +18,12 @@ public class PartyExpDelta : ElinDelta
     [Key(1)]
     public required int Amount { get; init; }
 
+    /// <summary>
+    ///     The whole party's (Party.ModExp), not one player's own gain told by the host (stealth, taming, anatomy)
+    /// </summary>
+    [Key(2)]
+    public bool Party { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net is ElinNetHost host) {
@@ -30,5 +37,15 @@ public class PartyExpDelta : ElinDelta
         // as this player's own gain: what it becomes is told as any other growth of its character
         using var own = Simulate();
         pc.ModExp(Element, Amount);
+
+        // the companions on the host map are the host's to simulate: a guest's harvest taught them nothing, where the
+        // host's own taught every member (Party.ModExp). What they learn is told as any change of theirs
+        if (Party && FromPeer && net is ElinNetHost && pc.party is { } party) {
+            foreach (var member in party.members.ToArray()) {
+                if (member is { IsPC: false, isDead: false } && !member.GetBool("remote_chara")) {
+                    member.ModExp(Element, Amount);
+                }
+            }
+        }
     }
 }

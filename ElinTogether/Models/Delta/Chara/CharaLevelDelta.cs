@@ -21,11 +21,18 @@ public class CharaLevelDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (net is not ElinNetHost host) {
+        if (Owner.Find() is not Chara { IsPC: false } chara) {
             return;
         }
 
-        if (Owner.Find() is not Chara { IsPC: false } chara) {
+        if (Level < 1 || Exp < 0) {
+            return;
+        }
+
+        // from the host: a companion it simulates (see CharaLevelEvent), or another player's character
+        if (net is not ElinNetHost host) {
+            chara.LV = Level;
+            chara.exp = Exp;
             return;
         }
 
@@ -35,11 +42,10 @@ public class CharaLevelDelta : ElinDelta
             return;
         }
 
-        if (Level < 1 || Exp < 0) {
-            return;
-        }
-
         chara.LV = Level;
         chara.exp = Exp;
+
+        // the others' copies of that player
+        host.SendDeltaToAllExcept(OriginPeer, this);
     }
 }

@@ -286,6 +286,33 @@ internal static class TeamKnowledge
         };
     }
 
+    // (each team's codex as last read from the ledger, kept while its entry stays the same text)
+    private static readonly Dictionary<int, (string? Text, CodexManager Codex)> _codexes = [];
+
+    /// <summary>
+    ///     In the game that keeps the book: the codex that a blow of that card reads (the weak spot bonus,
+    ///     Card.DamageHP), its player's team's; the local Player object's for the local team or no player. Read only
+    /// </summary>
+    internal static CodexManager CodexOf(Card? origin)
+    {
+        var local = EClass.player.codex;
+        if (LocalTeam is not { } localTeam || PlayerKarma.PlayerBehind(origin) is not { } player ||
+            StoryOwner.Of(player.uid) is var team && team == localTeam) {
+            return local;
+        }
+
+        var text = ElinNetHost.TeamLoreBook.GetValueOrDefault(team);
+        if (_codexes.TryGetValue(team, out var cached) && ReferenceEquals(cached.Text, text)) {
+            return cached.Codex;
+        }
+
+        var codex = new CodexManager {
+            creatures = Book(team).Codex.ToDictionary(c => c.Key, c => new CodexCreature { id = c.Key, _ints = Ints(c.Value) }),
+        };
+        _codexes[team] = (text, codex);
+        return codex;
+    }
+
     // ---- learning
 
     /// <summary>
