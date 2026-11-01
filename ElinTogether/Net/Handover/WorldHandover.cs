@@ -195,7 +195,7 @@ internal static class WorldHandover
 
         // the keeper named the next one (PeerKeeper): that one, then the keeper's order
         _next = named;
-        _ordered = named != 0 || _ordered;
+        _ordered = named != 0 || (Helper.PeerKeeper.Enabled && _ordered);
         if (named != 0 && Array.IndexOf(_guests, named) < 0) {
             _guests = [named, .._guests];
         }

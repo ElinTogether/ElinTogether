@@ -201,6 +201,35 @@ internal sealed class EtWorldPeerStore : IWorldStore
     public StoreReply<long> Put(string folder, long parent, long handover, string reason, string gameDate, string saveTime)
     {
         var root = Path.GetFullPath(folder).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
+        List<Piece>? pieces = null;
+        for (var read = 0; read < 3 && pieces is null; read++) {
+            var before = Stamps(root);
+            var made = Read(root, out var refused);
+            if (refused is not null) {
+                return StoreReply<long>.No(refused);
+            }
+
+            // (a save of the game went through the folder meanwhile: read again)
+            pieces = Stamps(root).SequenceEqual(before) ? made : null;
+        }
+
+        if (pieces is null) {
+            return StoreReply<long>.No("save_changing");
+        }
+
+        return Send(root, pieces, parent, handover, reason, gameDate, saveTime);
+    }
+
+    private static List<(string Path, long Size, DateTime Written)> Stamps(string root)
+    {
+        return Directory.GetFiles(root, "*", SearchOption.AllDirectories)
+            .Where(f => !f.Substring(root.Length).Replace('\\', '/').StartsWith("Temp/")).OrderBy(f => f, StringComparer.Ordinal)
+            .Select(f => new FileInfo(f)).Select(f => (f.FullName, f.Length, f.LastWriteTimeUtc)).ToList();
+    }
+
+    private List<Piece> Read(string root, out string? refused)
+    {
+        refused = null;
         var pieces = new List<Piece>();
         long total = 0;
         lock (_gate) {
@@ -214,7 +243,8 @@ internal sealed class EtWorldPeerStore : IWorldStore
                 var raw = File.ReadAllBytes(file);
                 total += raw.Length;
                 if (total > MaxWorld) {
-                    return StoreReply<long>.No("too_big");
+                    refused = "too_big";
+                    return pieces;
                 }
 
                 var sha = EtWorldDepot.Sha256Hex(raw);
@@ -235,9 +265,15 @@ internal sealed class EtWorldPeerStore : IWorldStore
         }
 
         if (pieces.Count == 0) {
-            return StoreReply<long>.No("bad_field");
+            refused = "bad_field";
         }
 
+        return pieces;
+    }
+
+    private StoreReply<long> Send(string root, List<Piece> pieces, long parent, long handover, string reason, string gameDate,
+        string saveTime)
+    {
         var since = System.Diagnostics.Stopwatch.StartNew();
         for (var attempt = 0; attempt < 3; attempt++) {
             foreach (var piece in pieces.Where(p => p.Stored is not null)) {
@@ -277,7 +313,13 @@ internal sealed class EtWorldPeerStore : IWorldStore
                 var missing = new HashSet<string>((reply.Json?["blobs"] as JArray)?.Select(b => (string?)b ?? "") ?? []);
                 foreach (var piece in pieces.Where(p => missing.Contains((string)p.Entry["blob"]!))) {
                     var path = Path.Combine(root, ((string)piece.Entry["path"]!).Replace('/', Path.DirectorySeparatorChar));
-                    var stored = EtWorldDepot.GzipBytes(File.ReadAllBytes(path));
+                    var raw = File.ReadAllBytes(path);
+                    // (the file changed since it was read: this version is not sent, the next one goes)
+                    if (EtWorldDepot.Sha256Hex(raw) != (string)piece.Entry["sha256"]!) {
+                        return StoreReply<long>.No("save_changing");
+                    }
+
+                    var stored = EtWorldDepot.GzipBytes(raw);
                     piece.Entry = (JObject)piece.Entry.DeepClone();
                     piece.Entry["blob"] = EtWorldDepot.Sha256Hex(stored);
                     piece.Entry["enc"] = "gzip";

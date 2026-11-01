@@ -48,7 +48,7 @@ internal static class PeerKeeper
     private const float SuccessionSeconds = 60f;
     private const float TurnSeconds = 10f;
     private const float ClaimSeconds = 60f;
-    private const float HandoverSeconds = 40f;
+    private const float HandoverSeconds = 90f;
     private const float RollbackSeconds = 60f;
     private const float JoinSeconds = 150f;
     private const int MaxSuccession = 32;
@@ -270,10 +270,27 @@ internal static class PeerKeeper
     {
         var session = NetSession.Instance;
         var until = Time.realtimeSinceStartup + JoinSeconds;
+        var nextAsk = Time.realtimeSinceStartup + 20f;
         try {
             while (Time.realtimeSinceStartup < until) {
                 if (EClass.core.IsGameStarted || session.Transport is not null || _claiming) {
                     yield break;
+                }
+
+                // (no lobby yet 20 s on: the keeper may have crashed with its lease still running; once the store
+                // says the world is free, this game takes it)
+                if (Time.realtimeSinceStartup >= nextAsk) {
+                    nextAsk = Time.realtimeSinceStartup + 20f;
+                    var asking = Off(() => Store.Who());
+                    while (!asking.IsCompleted) {
+                        yield return null;
+                    }
+
+                    if (!asking.IsFaulted && asking.Result is { } who && who.Free && !who.ReservedForOther(Me) && CanKeep(who) is null) {
+                        EmpLog.Information("Peer-hosted world: the keeper {Keeper} is gone and its lease ran out, taking the world", keeper);
+                        Claim(keeper);
+                        yield break;
+                    }
                 }
 
                 if (!session.Lobby.IsListing) {
@@ -579,7 +596,14 @@ internal static class PeerKeeper
 
     private static float _nextLook;
     private static float _freeSince = -1f;
-    private static bool _claimFailed;
+    private static float _claimFailedAt = float.MinValue;
+
+    // a claim that failed (store away, refused) or a game that may not keep: not tried again for a minute
+    private static bool _claimFailed
+    {
+        get => Time.realtimeSinceStartup - _claimFailedAt < 60f;
+        set => _claimFailedAt = value ? Time.realtimeSinceStartup : float.MinValue;
+    }
 
     /// <summary>
     ///     NetReconnect, every few seconds while the keeper is lost without a word: the store says whether its lease
@@ -594,6 +618,11 @@ internal static class PeerKeeper
 
         if (_claiming || Time.realtimeSinceStartup < _nextLook) {
             return true;
+        }
+
+        // (a new loss of the keeper: what an earlier one found is forgotten)
+        if (Time.realtimeSinceStartup - _nextLook > 15f) {
+            _freeSince = -1f;
         }
 
         _nextLook = Time.realtimeSinceStartup + 5f;
@@ -1013,18 +1042,20 @@ internal static class PeerKeeper
     /// </summary>
     private static IEnumerator BeforeLeaving()
     {
+        // (its own time from here: the last save to the guests may have taken a good part of the handover's)
+        var began = Time.unscaledTime;
         if (_rollback == 0 && _lostTo is null) {
             var reason = _succession.Length > 0 && NetSession.Instance.CurrentPlayers.Any(p => p is not null && _succession.Contains((ulong)p.User))
                 ? "handover"
                 : "last-leave";
             var put = false;
             // (a version on its way is waited for: its parent is the one this goes over)
-            while (_putting && Time.unscaledTime - _handoverStarted < HandoverSeconds / 2) {
+            while (_putting && Time.unscaledTime - began < 20f) {
                 yield return null;
             }
 
             Put(reason, () => put = true);
-            while (!put && Time.unscaledTime - _handoverStarted < HandoverSeconds - 5f) {
+            while (!put && Time.unscaledTime - began < 45f) {
                 yield return null;
             }
         }
@@ -1039,7 +1070,7 @@ internal static class PeerKeeper
             released = true;
             EmpLog.Information("Peer-hosted world: lease released, next {Next}: {Result}", next, reply?.Ok == true ? "ok" : reply?.Error ?? "no answer");
         });
-        while (!released && Time.unscaledTime - _handoverStarted < HandoverSeconds - 2f) {
+        while (!released && Time.unscaledTime - began < 55f) {
             yield return null;
         }
 
