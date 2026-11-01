@@ -1446,5 +1446,17 @@
     "LangGeneral.emp_ui_sv_desc_preset_community.text": "适合分成队伍、各自按节奏游玩的10人以上。",
     "LangGeneral.emp_wa_flag.text": "已标记：{1} 名玩家的 {0} 份报告（{2}）",
     "LangGeneral.emp_wa_flag_strong.text": "严重标记：{1} 名独立玩家的 {0} 份报告（{2}）",
-    "LangGeneral.emp_wa_flags_summary.text": "玩家检查标记了 {0} 个版本，其中 {1} 个由两名或以上玩家标记"
+    "LangGeneral.emp_wa_flags_summary.text": "玩家检查标记了 {0} 个版本，其中 {1} 个由两名或以上玩家标记",
+    "LangGeneral.emp_team_offer.text": "{0}接受了你。",
+    "LangGeneral.emp_team_offer_sent.text": "{0}现在在{1}中：已请其选择。",
+    "LangGeneral.emp_team_offer_kept.text": "{0}留在了自己的队伍。",
+    "LangGeneral.emp_team_offer_expired.text": "{0}的接受已过期。",
+    "LangGeneral.emp_team_offer_join.text": "加入{0}",
+    "LangGeneral.emp_team_offer_keep.text": "留在{0}",
+    "LangGeneral.emp_team_offer_later.text": "稍后决定",
+    "LangGeneral.emp_team_offer_leave.text": "你将离开{0}，土地留给{0}。",
+    "LangGeneral.emp_team_offer_leave_lead.text": "你将离开{0}，由{1}担任队长，土地保留。",
+    "LangGeneral.emp_team_offer_leave_empty.text": "你将离开{0}，队伍无成员，土地保留。",
+    "LangGeneral.emp_team_offer_own_lands.text": "你自己的土地（{0}）在上限内归{1}。",
+    "LangGeneral.emp_ui_team_offer_title.text": "已接受"
 }

@@ -27,6 +27,7 @@ internal static class Teams
     private static Dictionary<int, int> _owners = [];
     private static Dictionary<int, int> _requests = [];
     private static Dictionary<int, int> _invites = [];
+    private static Dictionary<int, int> _offers = [];
     private static Dictionary<int, int> _zoneRules = [];
     private static Dictionary<int, int> _bills = [];
     private static Dictionary<int, int> _story = [];
@@ -41,6 +42,7 @@ internal static class Teams
     private static Dictionary<int, int> Owners => KeepsBook ? ElinNetHost.CardOwners : _owners;
     private static Dictionary<int, int> Requests => KeepsBook ? ElinNetHost.TeamRequests : _requests;
     private static Dictionary<int, int> Invites => KeepsBook ? ElinNetHost.TeamInvites : _invites;
+    private static Dictionary<int, int> Offers => KeepsBook ? ElinNetHost.TeamOffers : _offers;
     private static Dictionary<int, int> ZoneRules => KeepsBook ? ElinNetHost.ZoneRules : _zoneRules;
 
     // the host's memory of this session, not saved: when a leader last invited, when a player last founded a team,
@@ -48,6 +50,7 @@ internal static class Teams
     private static readonly Dictionary<int, float> InviteAt = [];
     private static readonly Dictionary<int, float> FoundAt = [];
     private static readonly HashSet<(int Team, int Target)> Refused = [];
+    private static readonly Dictionary<int, float> OfferAt = [];
 
     [ElinPreLoad]
     private static void Forget(GameIOContext context)
@@ -58,8 +61,11 @@ internal static class Teams
         _owners = [];
         _requests = [];
         _invites = [];
+        _offers = [];
         _zoneRules = [];
         InviteAt.Clear();
+        OfferAt.Clear();
+        ElinNetHost.TeamOffers.Clear();
         FoundAt.Clear();
         Refused.Clear();
         ElinNetHost.TeamInvites.Clear();
@@ -75,7 +81,7 @@ internal static class Teams
     /// </summary>
     internal static void Learn(TeamsDelta delta)
     {
-        var (team, asked, known) = (TeamOf(EClass.pc?.uid ?? 0), Requests.Keys.ToArray(), _told);
+        var (team, asked, known, offer) = (TeamOf(EClass.pc?.uid ?? 0), Requests.Keys.ToArray(), _told, OfferOf(EClass.pc?.uid ?? 0));
         _told = true;
         // (a peer-hosted world: lands moved in a way no claim, abandon or team move makes are reported)
         if (known) {
@@ -88,14 +94,17 @@ internal static class Teams
         _owners = new(delta.Owners);
         _requests = new(delta.Requests ?? []);
         _invites = new(delta.Invites ?? []);
+        _offers = new(delta.Offers ?? []);
         _zoneRules = new(delta.ZoneRules ?? []);
         _bills = new(delta.Bills ?? []);
         _story = new(delta.Story ?? []);
         TeamQuests.Learn(delta.QuestSharers);
         TeamBanner.Learn(delta.Banners, delta.Things);
-        // (not the book told on joining: nothing changed then)
+        // (not the book told on joining: nothing changed then; an acceptance waiting for this player is shown all the same)
         if (known) {
-            Notice(team, asked);
+            Notice(team, asked, offer);
+        } else {
+            NoticeOffer(offer);
         }
         Redraw();
     }
@@ -103,7 +112,7 @@ internal static class Teams
     /// <summary>
     ///     Says in the log what changed for the local player: its team, a player who asks to join the team it leads
     /// </summary>
-    private static void Notice(int teamBefore, int[] askedBefore)
+    private static void Notice(int teamBefore, int[] askedBefore, int offerBefore)
     {
         if (!EClass.core.IsGameStarted || EClass.pc is not { } pc) {
             return;
@@ -117,6 +126,20 @@ internal static class Teams
             if (!askedBefore.Contains(uid) && LeaderOf(id) == pc.uid) {
                 Msg.Say("emp_team_asks".Loc(PlayerName(uid), NameOf(id)));
             }
+        }
+
+        NoticeOffer(offerBefore);
+    }
+
+    /// <summary>
+    ///     A team accepted the local player, now in another team: it chooses, in a dialog (user 2026-11-01). Dismissed,
+    ///     the choice stays on the Team page
+    /// </summary>
+    private static void NoticeOffer(int offerBefore)
+    {
+        if (EClass.core.IsGameStarted && EClass.pc is { } pc && OfferOf(pc.uid) is var offered and not Wanderers && offered != offerBefore) {
+            Msg.Say("emp_team_offer".Loc(NameOf(offered)));
+            TeamOfferCard.Show(offered);
         }
     }
 
@@ -140,6 +163,19 @@ internal static class Teams
     internal static int InviteOf(int charaUid) => Invites.GetValueOrDefault(charaUid);
 
     internal static IEnumerable<int> InvitedBy(int teamId) => Invites.Where(i => i.Value == teamId).Select(i => i.Key);
+
+    /// <summary>
+    ///     The team that accepted that player's request while it was in another team, waiting for the player's choice
+    ///     (keep its team or join that one), none when there is none
+    /// </summary>
+    internal static int OfferOf(int charaUid) => Offers.GetValueOrDefault(charaUid);
+
+    /// <summary>
+    ///     An acceptance waits this long (real time, on the host) for the player's choice. Not saved either: a host
+    ///     restart drops it, as it drops the requests and invitations. A disconnect keeps it, so a player who drops chooses
+    ///     on its return
+    /// </summary>
+    internal const float OfferSeconds = 24f * 3600f;
 
     private static bool Full(int teamId)
     {
@@ -845,16 +881,18 @@ internal static class Teams
         }
 
         var from = TeamOf(chara.uid);
+        // (a request to another team stays pending: its leader's yes then asks this player to choose)
         if (from != teamId && Full(teamId)) {
-            Requests.Remove(chara.uid);
+            DropRequest(chara.uid, teamId);
             Say(chara.uid, "emp_team_full", NameOf(teamId));
             Tell();
             return false;
         }
 
         Remove(chara.uid);
-        Requests.Remove(chara.uid);
+        DropRequest(chara.uid, teamId);
         Invites.Remove(chara.uid);
+        DropOffer(chara.uid);
         var team = TeamList[teamId];
         TeamList[teamId] = [team[0] == 0 ? chara.uid : team[0], ..team.Skip(1), chara.uid];
         EmpLog.Information("Chara {CharaUid} joined team {TeamId}", chara.uid, teamId);
@@ -913,7 +951,7 @@ internal static class Teams
 
         var team = TeamList[id];
         TeamList[id] = team.Select((uid, i) => i != 1 && uid == away.uid ? back.uid : uid).ToArray();
-        foreach (var book in new[] { Requests, Invites }) {
+        foreach (var book in new[] { Requests, Invites, Offers }) {
             if (book.TryGetValue(away.uid, out var value)) {
                 book.Remove(away.uid);
                 book[back.uid] = value;
@@ -968,7 +1006,7 @@ internal static class Teams
             return;
         }
 
-        var (team, asked) = (TeamOf(EClass.pc.uid), Requests.Keys.ToArray());
+        var (team, asked, offer) = (TeamOf(EClass.pc.uid), Requests.Keys.ToArray(), OfferOf(EClass.pc.uid));
         switch (kind) {
             case TeamAsk.Found when MayFound(chara):
                 Found(chara, CleanName(text) is { Length: > 0 } name ? name : chara.NameSimple);
@@ -1051,15 +1089,107 @@ internal static class Teams
             // only the leader of the team asked answers
             case TeamAsk.Accept or TeamAsk.Refuse when Requests.TryGetValue(id, out var to) && LeaderOf(to) == chara.uid:
                 Requests.Remove(id);
-                if (kind == TeamAsk.Accept && EClass.game.cards.globalCharas.Find(id) is { } joiner) {
-                    Join(joiner, to);
+                if (kind == TeamAsk.Accept) {
+                    AcceptRequest(chara, id, to);
                 } else {
                     Tell();
                 }
                 break;
+            case TeamAsk.JoinOffered or TeamAsk.KeepTeam when Offers.TryGetValue(chara.uid, out var offering) && offering == id:
+                AnswerOffer(chara, id, kind == TeamAsk.JoinOffered);
+                break;
         }
 
-        Notice(team, asked);
+        Notice(team, asked, offer);
+    }
+
+    /// <summary>
+    ///     A leader's yes to a request: the player joins, unless it is now in another team (founded or joined since it
+    ///     asked). Then it is not moved: the acceptance waits for its choice, keep its team or join this one
+    /// </summary>
+    private static void AcceptRequest(Chara leader, int joinerUid, int teamId)
+    {
+        if (EClass.game.cards.globalCharas.Find(joinerUid) is not { } joiner) {
+            Tell();
+            return;
+        }
+
+        var now = TeamOf(joinerUid);
+        if (now == teamId) {
+            Tell();
+        } else if (now == Wanderers) {
+            Join(joiner, teamId);
+        } else {
+            Offers[joinerUid] = teamId;
+            OfferAt[joinerUid] = UnityEngine.Time.realtimeSinceStartup;
+            EmpLog.Information("Team {TeamId} accepted {CharaUid}, now in team {Other}: the player chooses", teamId, joinerUid, now);
+            Say(leader.uid, "emp_team_offer_sent", PlayerName(joinerUid), NameOf(now));
+            Tell();
+        }
+    }
+
+    /// <summary>
+    ///     The player answers a team's acceptance: join it (the normal join), or keep its team (that leader is told)
+    /// </summary>
+    private static void AnswerOffer(Chara chara, int teamId, bool join)
+    {
+        DropOffer(chara.uid);
+        if (join && TeamList.ContainsKey(teamId)) {
+            if (!Join(chara, teamId)) {
+                Tell();
+            }
+        } else {
+            EmpLog.Information("Chara {CharaUid} kept its team over team {TeamId}", chara.uid, teamId);
+            if (!join && TeamList.ContainsKey(teamId)) {
+                Say(LeaderOf(teamId), "emp_team_offer_kept", PlayerName(chara.uid));
+            }
+            Tell();
+        }
+    }
+
+    private static void DropOffer(int charaUid)
+    {
+        Offers.Remove(charaUid);
+        OfferAt.Remove(charaUid);
+    }
+
+    private static void DropRequest(int charaUid, int teamId)
+    {
+        if (Requests.TryGetValue(charaUid, out var to) && to == teamId) {
+            Requests.Remove(charaUid);
+        }
+    }
+
+    /// <summary>
+    ///     Once a minute in the game that keeps the book: an acceptance not answered within <see cref="OfferSeconds" />
+    ///     is dropped, the player told
+    /// </summary>
+    internal static void ExpireOffers()
+    {
+        if (!KeepsBook || Offers.Count == 0) {
+            return;
+        }
+
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        var expired = false;
+        foreach (var (uid, teamId) in Offers.ToArray()) {
+            // (an offer of a team gone, or one the clock never saw: a seat taken by a returning character)
+            if (!TeamList.ContainsKey(teamId)) {
+                DropOffer(uid);
+                expired = true;
+            } else if (!OfferAt.TryGetValue(uid, out var at)) {
+                OfferAt[uid] = now;
+            } else if (now - at >= OfferSeconds) {
+                DropOffer(uid);
+                Say(uid, "emp_team_offer_expired", NameOf(teamId));
+                EmpLog.Information("The acceptance of {CharaUid} by team {TeamId} expired", uid, teamId);
+                expired = true;
+            }
+        }
+
+        if (expired) {
+            Tell();
+        }
     }
 
     /// <summary>
@@ -1078,6 +1208,11 @@ internal static class Teams
                 yield return ("emp_team_join".Loc(NameOf(theirs)), () => Ask(TeamAsk.Join, theirs));
             }
             yield break;
+        }
+
+        if (OfferOf(EClass.pc.uid) is var offered and not Wanderers) {
+            yield return ("emp_team_offer_join".Loc(NameOf(offered)), () => Ask(TeamAsk.JoinOffered, offered));
+            yield return (TeamOfferCard.KeepLabel(mine), () => Ask(TeamAsk.KeepTeam, offered));
         }
 
         if (mine == Wanderers) {
@@ -1316,6 +1451,9 @@ internal static class Teams
         }
         foreach (var uid in Invites.Where(r => r.Value == teamId).Select(r => r.Key).ToArray()) {
             Invites.Remove(uid);
+        }
+        foreach (var uid in Offers.Where(r => r.Value == teamId).Select(r => r.Key).ToArray()) {
+            DropOffer(uid);
         }
 
         EmpLog.Information("Team {TeamId} {TeamName} disbanded by its leader", teamId, name);
