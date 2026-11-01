@@ -139,6 +139,8 @@ internal partial class ElinNetHost
         }
 
         WorldStateDeltaProcess();
+        // what it was handed and still holds out of any bag goes with its character (issue 48)
+        ThingRequest.ReturnDanglingOf(peer.Id);
         Delta.RefreshBuffer();
         WorldStateDeltaUpdate();
 

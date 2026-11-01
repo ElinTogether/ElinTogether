@@ -1002,6 +1002,8 @@ internal partial class ElinNetHost
         // apply the player's last actions on the host map now and send their results back
         // (stack merges, rebinds...) before it stops listening, see ZoneLeaseDepart
         WorldStateDeltaProcess();
+        // what it was handed and still holds out of any bag goes with its character (issue 48)
+        ThingRequest.ReturnDanglingOf(peer.Id);
         Delta.RefreshBuffer();
         WorldStateDeltaUpdate();
 
