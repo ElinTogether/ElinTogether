@@ -182,7 +182,7 @@ internal partial class ElinNetClient
             return false;
         }
 
-        if (Session.IsAway && zone.uid == _hostZoneUid && !_localZones.Contains(zone)) {
+        if (Session.IsAway && IsHostZoneToRejoin(zone)) {
             EmpLog.Information("Returning from {AwayZone} to host zone {ZoneFullName}",
                 Session.AwayZone!.ZoneFullName, zone.ZoneFullName);
 
@@ -195,6 +195,17 @@ internal partial class ElinNetClient
         StopWalk();
         RequestLease(zone, transition);
         return false;
+    }
+
+    /// <summary>
+    ///     Going where the host stands is coming back to it, except to the world map: everyone walks its own copy of
+    ///     it (OnHostZoneChangedWhileAway, ElinNetHost.GetLeaseDenyReason). Taken for a return, a player leaving its
+    ///     home for the world map while the host was on it came back to the host, and landed wherever the host had
+    ///     walked into meanwhile, a dungeon beside it instead of the world map (GitHub issue 50)
+    /// </summary>
+    private bool IsHostZoneToRejoin(Zone zone)
+    {
+        return zone.uid == _hostZoneUid && !_localZones.Contains(zone) && !zone.IsRegion;
     }
 
     /// <summary>
@@ -485,7 +496,7 @@ internal partial class ElinNetClient
             return;
         }
 
-        if (travel.Zone.uid == _hostZoneUid && !_localZones.Contains(travel.Zone)) {
+        if (IsHostZoneToRejoin(travel.Zone)) {
             _pendingTravel = null;
             SendRejoin(ZoneArrival.Create(travel.Zone.uid, travel.Transition));
             return;
@@ -1423,7 +1434,7 @@ internal partial class ElinNetClient
     {
         // (SpatialGenDelta: a zone the world made, a new nefia on the world map, known to an away player too, 2026-10-28;
         // AchievementDelta: one it earned; BaseRelocateDelta: a base moved on the world map, read there)
-        return delta is MsgSayDelta or WhisperDelta or GateItemAnswer or GateZoneDelta or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or QuestFailDelta or QuestUpdateDelta or PersonalStateDelta or PlayerStandingDelta or WorldDateAdvanceDelta or WorldMapTogetherDelta or PlayerLeadDelta or WeatherDelta or DayDataDelta or QuestFollowDelta or SleepReadyDelta or SleepStartDelta or CharaSleepDelta or BillPayDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or QuestJournalDelta or TentZoneDelta or TeamsDelta or TeamLoreDelta or StoryBundleDelta or ModerationDelta or AdventurerBoutDelta or DuelStateDelta or SpatialGenDelta or AchievementDelta or BaseRelocateDelta or TeamEvictDelta or SiblingLandDelta or ClaimZoneDelta or MailStateDelta or ServerRosterDelta;
+        return delta is MsgSayDelta or WhisperDelta or GateItemAnswer or GateZoneDelta or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or QuestFailDelta or QuestUpdateDelta or PersonalStateDelta or PlayerStandingDelta or WorldDateAdvanceDelta or WorldMapTogetherDelta or PlayerLeadDelta or WeatherDelta or DayDataDelta or QuestFollowDelta or SleepReadyDelta or SleepStartDelta or CharaSleepDelta or BillPayDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or QuestJournalDelta or TentZoneDelta or TeamsDelta or TeamLoreDelta or StoryBundleDelta or ModerationDelta or AdventurerBoutDelta or DuelStateDelta or SpatialGenDelta or AchievementDelta or BaseRelocateDelta or TeamEvictDelta or SiblingLandDelta or ClaimZoneDelta or MailStateDelta or ServerRosterDelta or GodGiftDelta;
     }
 
     /// <summary>

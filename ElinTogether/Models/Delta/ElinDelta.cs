@@ -225,6 +225,8 @@ namespace ElinTogether.Models;
 [Union(1256, typeof(HostLogAnswer))]
 // Every player of the server, away ones too, for the menus (user 2026-10-30)
 [Union(1259, typeof(ServerRosterDelta))]
+// A player's own count of its god's gifts, from the host (GitHub issue 51)
+[Union(1265, typeof(GodGiftDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
