@@ -587,6 +587,12 @@ internal class TabPlayers : TabEmpBase
         var extras = isHost ? ElinNetHost.AdminExtrasOn : NetSession.Instance.Rules.AdminExtras;
         var moderator = !admin && extras && ModerationDelta.ModeratorIds.Contains(me);
         var peerIndex = player.PeerIndex;
+        // the peer-hosted world: this player may no longer keep it (the world service's ban, an admin key on this PC)
+        if (!mine && target != 0 && WorldAdmin.Shown) {
+            var name = player.Name;
+            actions.Add(("emp_wa_ban_keeping".lang(), () => TabWorldAdmin.AskBan(["steam:" + target], name)));
+        }
+
         if (mine && admin) {
             if (extras) {
                 actions.Add(("emp_ui_set_jail".lang(), () => Order("setjail", 0, peerIndex)));

@@ -208,6 +208,9 @@ internal class TabServerConfiguration : TabEmpBase
     {
         if (EClass.core.IsGameStarted) {
             pages.AddRange(TabServerInfo.Pages());
+        } else {
+            // the peer-hosted world's versions and signed lists also at the title (in a game: before Help)
+            pages.AddRange(TabWorldAdmin.Pages());
         }
     }
 

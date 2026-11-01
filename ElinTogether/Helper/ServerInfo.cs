@@ -34,6 +34,14 @@ internal static class ServerInfo
             return signed;
         }
 
+        return ReadLocalFile(name);
+    }
+
+    /// <summary>
+    ///     What this game's own file says, signed texts or not (the world admin page signs these)
+    /// </summary>
+    internal static string ReadLocalFile(string name)
+    {
         try {
             var text = File.Exists(FilePath(name)) ? File.ReadAllText(FilePath(name)).Replace("\r", "").Trim() : "";
             return text.Length > MaxLength ? text.Substring(0, MaxLength) : text;

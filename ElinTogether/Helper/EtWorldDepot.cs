@@ -87,7 +87,7 @@ internal static class EtWorldDepot
     }
 
     /// <summary>
-    ///     One request, answered like SaveDepot.Ask. Refusals: "held name", "empty", "changed", "too big", "banned",
+    ///     One request, answered like SaveDepot.Ask. Refusals: "held name", "empty", "changed", "rolled back", "too big", "banned",
     ///     "too_new", "not_vouched", "debug_build", "reserved", "steam_mismatch", "address". The service not answering
     ///     is an IOException, with what it said
     /// </summary>
@@ -292,7 +292,7 @@ internal static class EtWorldDepot
                         continue;
                     case "rolled_back":
                         _changed = true;
-                        throw new No("changed");
+                        throw new No("rolled back");
                     case "too_big":
                         throw new No("too big");
                     case "banned":
@@ -335,7 +335,7 @@ internal static class EtWorldDepot
             if (reply.Json!["rollback"] is { Type: JTokenType.Integer }) {
                 // an admin set the world back: nothing more of this session goes there (plan 4.3)
                 _changed = true;
-                throw new No("changed");
+                throw new No("rolled back");
             }
 
             return (true, "", null);

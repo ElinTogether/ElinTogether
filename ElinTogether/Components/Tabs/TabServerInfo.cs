@@ -40,6 +40,8 @@ internal static class TabServerInfo
             pages.Add(("emp_info_announce".lang(), BuildAnnounce));
         }
 
+        // the peer-hosted world's versions and signed lists: an admin with the admin key on this PC (P6)
+        pages.AddRange(TabWorldAdmin.Pages());
         pages.AddRange(TabHelp.Pages());
         return pages;
     }

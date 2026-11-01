@@ -716,6 +716,7 @@ internal static class SaveDepot
         return why.StartsWith("held ") ? "emp_ui_depot_held".Loc(why.Substring(5)) :
             EtWorld ? why switch {
                 "changed" => "emp_ui_depot_gh_changed",
+                "rolled back" => "emp_wa_rolled_back_keeper",
                 "too big" => "emp_ui_depot_et_big",
                 "banned" => "emp_ui_depot_et_banned",
                 "too_new" or "not_vouched" or "debug_build" => "emp_ui_depot_et_not_yet",
@@ -1211,6 +1212,11 @@ internal static class SaveDepot
     /// </summary>
     private static bool Lost(string why)
     {
+        if (why == "rolled back") {
+            RolledBack();
+            return true;
+        }
+
         if (why != "changed" && why != "banned" && !why.StartsWith("held ")) {
             return false;
         }
@@ -1222,6 +1228,29 @@ internal static class SaveDepot
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     An admin rolled the world back while this game kept it (PLAN_peer_hosted_server 4.3): nothing more of this
+    ///     session goes to the service (EtWorldDepot refuses it), the players are told, and a hidden or headless server
+    ///     stops after 60 seconds (the restart warning); the next keeper opens the version the admin chose. Once
+    /// </summary>
+    private static void RolledBack()
+    {
+        if (_lostTold) {
+            return;
+        }
+
+        _lostTold = true;
+        EmpLog.Warning("World service: an admin rolled the world back; this session is no longer saved there");
+        if (NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false } host) {
+            host.Announce("emp_wa_rolled_back_all".lang());
+            host.WarnRestart(1);
+        }
+
+        if (!EmpServer.Requested) {
+            Dialog.Ok("emp_wa_rolled_back_keeper");
+        }
     }
 
     /// <summary>
