@@ -231,6 +231,8 @@ namespace ElinTogether.Models;
 [Union(1263, typeof(RefusedDelta))]
 // Farris made on Nymelle B2F by the player holding it, for the host's world (GitHub issue 55)
 [Union(1272, typeof(NymelleFarrisDelta))]
+// A change to the ranks of the sender's team, asked of the host (lead dev 2026-11-01)
+[Union(1290, typeof(TeamRankRequestDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;
