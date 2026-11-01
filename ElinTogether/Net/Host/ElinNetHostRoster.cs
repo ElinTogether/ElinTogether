@@ -98,7 +98,9 @@ internal partial class ElinNetHost
 
         _rosterKey = key;
         _rosterSentAt = now;
-        var peers = Socket.Peers.ToArray();
+        // only players playing (as listed): a peer still validating or choosing its character is told nobody's
+        // Steam account nor where they stand (it gets the roster once it plays: it is in it, the roster changed)
+        var peers = Socket.Peers.Where(peer => ActiveRemoteCharas.ContainsKey(peer.Id) || IsAway(peer)).ToArray();
         if (peers.Length == 0) {
             return;
         }
