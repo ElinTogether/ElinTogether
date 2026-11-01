@@ -38,6 +38,14 @@ internal static class Mailbox
     internal const int FlagRead = 1;
     internal const int FlagTaken = 2;
     internal const int FlagReturned = 4;
+    // its stacks could not be read when it was taken: kept as it is, listed for admins, who can try again
+    internal const int FlagBroken = 8;
+
+    /// <summary>
+    ///     For the bench only (fault injection, mailbox_safety_check): called before each step that moves a stack or
+    ///     gold ("destroy" i, "gold" 0, "give" i, "givegold" 0, "post" 0); what it throws is a step that failed
+    /// </summary>
+    internal static Action<string, int>? TestFault { get; set; }
 
     private const float SendGap = 5f;
     private const float ListGap = 1f;
@@ -82,6 +90,13 @@ internal static class Mailbox
     }
 
     private static bool IsEmpty(string[] row) => row.Length <= ItemsAt && Int(row, GoldAt) <= 0;
+
+    /// <summary>
+    ///     What a letter holds, for the journal's comparison: its gold and its stacks as written
+    /// </summary>
+    internal static string ContentOf(string[] row) => Math.Max(0, Int(row, GoldAt)) + "|" + string.Join("|", row.Skip(ItemsAt));
+
+    private static bool IsAdmin(ulong user) => user == ServerAvatar.HostUser || ElinNetHost.Admins.ContainsKey(user);
 
     /// <summary>
     ///     The letters waiting for that player, returned ones too
@@ -230,11 +245,26 @@ internal static class Mailbox
             case MailRequestDelta.Delete:
                 reason = DeleteLetter(chara, request.LetterId);
                 break;
+            case MailRequestDelta.Retry:
+                if (!IsAdmin(user)) {
+                    reason = Refuse(chara, "a retry of letter " + request.LetterId + " (not an admin)", "emp_mail_gone");
+                    break;
+                }
+
+                reason = Retry(host, request.LetterId);
+                done = reason is null ? "emp_mail_restored" : "";
+                break;
             default:
                 return;
         }
 
-        reply(State(host, chara.uid, reason ?? "", done));
+        var state = State(host, chara.uid, reason ?? "", done);
+        // (the admins also see the letters that could not be read, with "Try again")
+        if (IsAdmin(user)) {
+            state.Broken = BrokenLetters(host);
+        }
+
+        reply(state);
     }
 
     private static string? SendLetter(ElinNetHost host, Chara from, ulong user, bool here, bool muted, MailRequestDelta request)
@@ -303,24 +333,61 @@ internal static class Mailbox
             return "emp_mail_bad_item";
         }
 
-        // the things leave the world (everyone is told, as for any card); they exist only in the letter now
-        using (ElinDelta.Simulate()) {
-            foreach (var thing in things) {
-                thing.Destroy();
-            }
-
-            if (request.Gold > 0) {
-                from.ModCurrency(-request.Gold);
-            }
-        }
-
+        // the row is in the book before anything leaves the bag: whatever fails below, what left is in the letter
         var book = ElinNetHost.MailLetters;
         var id = Math.Max(ElinNetHost.MailLastId, book.Keys.DefaultIfEmpty().Max()) + 1;
         ElinNetHost.MailLastId = id;
         book[id] = Row(request.To, from.uid, user, Now(), 0, request.Gold, text, from.NameSimple, packed);
+
+        // the things leave the world (everyone is told, as for any card); they exist only in the letter now. A step
+        // that fails stops there: what did not leave stays in the bag and is taken out of the letter
+        var moved = new List<string>();
+        var goldBefore = from.GetCurrency();
+        var failed = false;
+        using (ElinDelta.Simulate()) {
+            for (var i = 0; i < things.Count && !failed; i++) {
+                try {
+                    TestFault?.Invoke("destroy", i);
+                    things[i].Destroy();
+                } catch (Exception ex) {
+                    failed = true;
+                    EmpLog.Warning(ex, "Letter {Id}: stack {Uid} of {From} could not leave the bag", id, things[i].uid, from.uid);
+                }
+
+                if (things[i].isDestroyed) {
+                    moved.Add(packed[i]);
+                }
+            }
+
+            if (!failed && request.Gold > 0) {
+                try {
+                    TestFault?.Invoke("gold", 0);
+                    from.ModCurrency(-request.Gold);
+                } catch (Exception ex) {
+                    failed = true;
+                    EmpLog.Warning(ex, "Letter {Id}: the gold of {From} could not leave its purse", id, from.uid);
+                }
+            }
+        }
+
+        var gold = Mathf.Clamp(goldBefore - from.GetCurrency(), 0, request.Gold);
+        if (failed && moved.Count == 0 && gold == 0) {
+            book.Remove(id);
+            EmpLog.Warning("Letter {Id} of {From} not sent: nothing left the bag", id, from.uid);
+            return "emp_mail_bad_item";
+        }
+
+        var row = Row(request.To, from.uid, user, Now(), 0, gold, text, from.NameSimple, moved);
+        book[id] = row;
+        MailJournal.Record(id, from, null, row);
         _lastSent[from.uid] = now;
+        if (failed) {
+            EmpLog.Warning("Letter {Id} from {From}: {Moved} of {Stacks} stacks and {Gold} of {Asked} gold left the bag, the rest stays with the sender",
+                id, from.uid, moved.Count, packed.Count, gold, request.Gold);
+        }
+
         EmpLog.Information("Letter {Id} from {From} to {To}: {Stacks} stacks, {Gold} gold, {Length} letters of text",
-            id, from.uid, request.To, packed.Count, request.Gold, text.Length);
+            id, from.uid, request.To, moved.Count, gold, text.Length);
         TellOwner(host, request.To, true);
         return null;
     }
@@ -343,11 +410,30 @@ internal static class Mailbox
             return false;
         }
 
+        // in the book first: the thing leaves the world only into the letter
         var book = ElinNetHost.MailLetters;
         var id = Math.Max(ElinNetHost.MailLastId, book.Keys.DefaultIfEmpty().Max()) + 1;
         ElinNetHost.MailLastId = id;
-        book[id] = Row(toUid, 0, 0, Now(), FlagReturned, 0, text, fromName, [packed]);
-        thing.Destroy();
+        var row = Row(toUid, 0, 0, Now(), FlagReturned, 0, text, fromName, [packed]);
+        book[id] = row;
+        try {
+            TestFault?.Invoke("post", 0);
+            thing.Destroy();
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Letter {Id} for {Uid}: {Thing} could not leave the world", id, toUid, thing.id);
+        }
+
+        if (!thing.isDestroyed) {
+            // (still where it was: no letter, the caller gives it another way)
+            book.Remove(id);
+            return false;
+        }
+
+        // (the recipient carries the mark: its world is saved with the letter or before it)
+        if (EClass.game.cards.globalCharas.Find(toUid) is { } recipient) {
+            MailJournal.Record(id, recipient, null, row);
+        }
+
         EmpLog.Information("Letter {Id} from the world to {To}: {Thing}", id, toUid, thing.id);
         if (NetSession.Instance.Transport is ElinNetHost host) {
             TellOwner(host, toUid, true);
@@ -388,46 +474,149 @@ internal static class Mailbox
             return "emp_mail_bag_full";
         }
 
-        var things = new List<Thing>();
-        try {
-            for (var i = ItemsAt; i < row.Length; i++) {
-                things.Add(new LZ4Bytes { Bytes = Convert.FromBase64String(row[i]) }.Decompress<Thing>());
-            }
-        } catch (Exception ex) {
-            // (kept as it is: a later version may read it)
-            EmpLog.Warning(ex, "Letter {Id} could not be read", id);
+        if (!Decode(row, out var things, out var error)) {
+            // (kept as it is, marked for the admins: a later version may read it)
+            row[FlagsAt] = (Int(row, FlagsAt) | FlagBroken).ToString();
+            EmpLog.Warning(error, "Letter {Id} could not be read, kept and marked broken", id);
             return "emp_mail_broken";
         }
 
         // emptied before anything is given: a letter is taken once
+        var before = (string[])row.Clone();
         var emptied = row.Take(ItemsAt).ToArray();
         emptied[GoldAt] = "0";
-        emptied[FlagsAt] = (Int(row, FlagsAt) | FlagTaken | FlagRead).ToString();
+        emptied[FlagsAt] = ((Int(row, FlagsAt) | FlagTaken | FlagRead) & ~FlagBroken).ToString();
         ElinNetHost.MailLetters[id] = emptied;
 
-        foreach (var thing in things) {
-            // new uids: the old ones left the world with the sender's copy
-            foreach (var card in thing.things.Flatten().Prepend(thing)) {
-                EClass.game.cards.AssignUID(card);
+        // one stack at a time: a step that fails (or a bag full meanwhile) stops there, and what was not given stays
+        // in the letter as it was written
+        var given = new bool[things.Count];
+        var stop = "";
+        for (var i = 0; i < things.Count && stop.Length == 0; i++) {
+            var thing = things[i];
+            if (!PlayerTrade.HasRoom(to, 1, 0)) {
+                stop = "emp_mail_bag_full";
+                break;
             }
 
-            CardCache.Add(thing);
-            CardCache.CacheContainer(thing.things);
-            host.Delta.AddRemote(CardGenDelta.Create(thing));
-            using (ElinDelta.Simulate()) {
-                // (not stacked: the receiver's game would stack it into a pile inside one of its bags, as for a trade)
-                to.AddThing(thing, false);
+            try {
+                TestFault?.Invoke("give", i);
+                // new uids: the old ones left the world with the sender's copy
+                foreach (var card in thing.things.Flatten().Prepend(thing)) {
+                    EClass.game.cards.AssignUID(card);
+                }
+
+                CardCache.Add(thing);
+                CardCache.CacheContainer(thing.things);
+                host.Delta.AddRemote(CardGenDelta.Create(thing));
+                using (ElinDelta.Simulate()) {
+                    // (not stacked: the receiver's game would stack it into a pile inside one of its bags, as for a trade)
+                    to.AddThing(thing, false);
+                }
+            } catch (Exception ex) {
+                stop = "emp_mail_partly";
+                EmpLog.Warning(ex, "Letter {Id}: stack {Index} could not be given to {Uid}", id, i, to.uid);
+            }
+
+            given[i] = !thing.isDestroyed && thing.GetRootCard() == to;
+        }
+
+        var goldGiven = 0;
+        if (stop.Length == 0 && gold > 0) {
+            var had = to.GetCurrency();
+            try {
+                TestFault?.Invoke("givegold", 0);
+                using (ElinDelta.Simulate()) {
+                    to.ModCurrency(gold);
+                }
+            } catch (Exception ex) {
+                stop = "emp_mail_partly";
+                EmpLog.Warning(ex, "Letter {Id}: the gold could not be given to {Uid}", id, to.uid);
+            }
+
+            goldGiven = Mathf.Clamp(to.GetCurrency() - had, 0, gold);
+        }
+
+        // what was not given stays in the letter, as it was written (the copy made from it never reached a bag)
+        var left = new List<string>();
+        for (var i = 0; i < things.Count; i++) {
+            if (!given[i]) {
+                left.Add(before[ItemsAt + i]);
             }
         }
 
-        if (gold > 0) {
-            using (ElinDelta.Simulate()) {
-                to.ModCurrency(gold);
-            }
+        var after = emptied;
+        var partly = left.Count > 0 || goldGiven < gold;
+        if (partly) {
+            after = emptied.Concat(left).ToArray();
+            after[GoldAt] = (gold - goldGiven).ToString();
+            after[FlagsAt] = ((Int(before, FlagsAt) | FlagRead) & ~FlagTaken & ~FlagBroken).ToString();
+            ElinNetHost.MailLetters[id] = after;
+            EmpLog.Warning("Letter {Id} taken in part by {Uid}: {Given} of {Stacks} stacks and {GoldGiven} of {Gold} gold, the rest stays in it",
+                id, to.uid, things.Count - left.Count, things.Count, goldGiven, gold);
+        }
+
+        MailJournal.Record(id, to, before, after);
+        if (partly) {
+            return stop.Length > 0 ? stop : "emp_mail_partly";
         }
 
         EmpLog.Information("Letter {Id} taken by {Uid}: {Stacks} stacks, {Gold} gold", id, to.uid, things.Count, gold);
         return null;
+    }
+
+    /// <summary>
+    ///     The stacks of a letter made again from what it holds; false (and why) when one cannot be read
+    /// </summary>
+    private static bool Decode(string[] row, out List<Thing> things, out Exception? error)
+    {
+        things = [];
+        error = null;
+        try {
+            for (var i = ItemsAt; i < row.Length; i++) {
+                things.Add(new LZ4Bytes { Bytes = Convert.FromBase64String(row[i]) }.Decompress<Thing>());
+            }
+
+            return true;
+        } catch (Exception ex) {
+            error = ex;
+            return false;
+        }
+    }
+
+    /// <summary>
+    ///     Admin "Try again": a letter marked broken is read once more; when every stack reads, it is a letter like the
+    ///     others again (its recipient is told) and can be taken
+    /// </summary>
+    private static string? Retry(ElinNetHost host, int id)
+    {
+        if (!ElinNetHost.MailLetters.TryGetValue(id, out var row) || (Int(row, FlagsAt) & FlagBroken) == 0) {
+            return "emp_mail_gone";
+        }
+
+        if (!Decode(row, out _, out var error)) {
+            EmpLog.Warning(error, "Letter {Id} still cannot be read", id);
+            return "emp_mail_still_broken";
+        }
+
+        row[FlagsAt] = (Int(row, FlagsAt) & ~FlagBroken).ToString();
+        EmpLog.Information("Letter {Id} can be read again (admin)", id);
+        TellOwner(host, Int(row, ToAt), true);
+        return null;
+    }
+
+    /// <summary>
+    ///     The letters marked broken, for the admins: who they are for and from, how many stacks (not the stacks)
+    /// </summary>
+    internal static List<MailLetter> BrokenLetters(ElinNetHost host)
+    {
+        return ElinNetHost.MailLetters.Where(p => (Int(p.Value, FlagsAt) & FlagBroken) != 0).OrderBy(p => p.Key).Select(p => {
+            var letter = Letter(p.Key, p.Value);
+            letter.Items = letter.Items.Select(_ => Array.Empty<byte>()).ToList();
+            letter.Text = "";
+            letter.ToName = NameOf(host, Int(p.Value, ToAt));
+            return letter;
+        }).ToList();
     }
 
     private static string? DeleteLetter(Chara owner, int id)
@@ -450,6 +639,7 @@ internal static class Mailbox
     /// </summary>
     internal static void Update()
     {
+        MailJournal.Tick();
         if (!Keeps || !EClass.core.IsGameStarted || EClass.game is null || NetSession.Instance.Transport is not ElinNetHost host) {
             return;
         }
@@ -531,6 +721,11 @@ internal static class Mailbox
             $"{p.Key} to {Int(p.Value, ToAt)} from {Int(p.Value, FromAt)} flags {Int(p.Value, FlagsAt)} gold {Int(p.Value, GoldAt)} " +
             $"stacks {Math.Max(0, p.Value.Length - ItemsAt)} sent {Long(p.Value, SentAt)}"));
     }
+
+    /// <summary>
+    ///     For the bench: the entries of the mail journal not yet covered by a save wholly on the disk
+    /// </summary>
+    internal static int JournalCount() => MailJournal.Count;
 
     /// <summary>
     ///     For the bench: that letter as if it was sent so many days ago
@@ -636,6 +831,8 @@ internal static class Mailbox
     internal static void Take(int id) => Ask(new() { Kind = MailRequestDelta.Take, LetterId = id });
 
     internal static void Delete(int id) => Ask(new() { Kind = MailRequestDelta.Delete, LetterId = id });
+
+    internal static void Retry(int id) => Ask(new() { Kind = MailRequestDelta.Retry, LetterId = id });
 
     internal static void MarkRead(MailLetter letter)
     {

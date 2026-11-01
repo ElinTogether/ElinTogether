@@ -123,6 +123,18 @@ internal static class TabMail
             }
         }
 
+        // (the host and the admins only: the host sends this list to no one else)
+        if (Mailbox.Latest is { Broken.Count: > 0 } latest) {
+            var broken = _left.Card("emp_ui_mail_broken_title".Loc(latest.Broken.Count));
+            foreach (var letter in latest.Broken) {
+                var id = letter.Id;
+                var row = broken.Row();
+                row.Text("emp_ui_mail_broken_row".Loc(id, Plain(letter.ToName), Plain(letter.FromName), letter.Items.Count,
+                    letter.Gold.ToString("N0"))).LayoutElement().flexibleWidth = 1f;
+                row.RowButton("emp_ui_mail_retry".lang(), () => Mailbox.Retry(id));
+            }
+        }
+
         if (_writing) {
             BuildWriter(_right);
         } else if (letters.Find(l => l.Id == _picked) is { } picked) {

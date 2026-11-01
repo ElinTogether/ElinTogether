@@ -18,6 +18,8 @@ public class MailRequestDelta : ElinDelta
     public const int Take = 2;
     public const int Delete = 3;
     public const int Read = 4;
+    // an admin: read a letter marked broken once more (Mailbox.Retry)
+    public const int Retry = 5;
 
     [Key(0)]
     public required int Kind { get; init; }
@@ -41,7 +43,7 @@ public class MailRequestDelta : ElinDelta
 
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
-        return Kind is < List or > Read ? "no such request" : NoCharacter(sender);
+        return Kind is < List or > Retry ? "no such request" : NoCharacter(sender);
     }
 
     protected override void OnApply(ElinNetBase net)
@@ -79,6 +81,11 @@ public class MailStateDelta : ElinDelta
     // the text key of what the last request did (sent, taken), empty for none
     [Key(5)]
     public string Done { get; set; } = "";
+
+    // to an admin only: the letters of the whole book whose stacks could not be read (no stacks in them, only their
+    // count), for "Try again"
+    [Key(6)]
+    public List<MailLetter> Broken { get; set; } = [];
 
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
@@ -127,4 +134,8 @@ public class MailLetter
 
     [Key(8)]
     public List<byte[]> Items { get; set; } = [];
+
+    // who it is for, in the admins' list of broken letters only
+    [Key(9)]
+    public string ToName { get; set; } = "";
 }

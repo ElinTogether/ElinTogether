@@ -81,6 +81,11 @@ internal static class SaveWriter
     }
 
     /// <summary>
+    ///     The files of the last save are all on the disk (nothing waits to be written)
+    /// </summary>
+    internal static bool Idle => _pending.IsCompleted;
+
+    /// <summary>
     ///     The files of the last save are on the disk once this returns
     /// </summary>
     internal static void Wait()
