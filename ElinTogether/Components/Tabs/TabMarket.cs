@@ -135,7 +135,7 @@ internal class TabMarket : TabEmpBase
             Relayout();
         });
 
-        _list = card.ScrollList(7 * (RowH + UIHelper.RowSpacing) - UIHelper.RowSpacing);
+        _list = card.ScrollList(7 * (RowH + UIHelper.RowSpacing) - UIHelper.RowSpacing, true);
         Refill();
     }
 
