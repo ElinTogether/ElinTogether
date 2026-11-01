@@ -299,7 +299,7 @@ internal class TabPlayers : TabEmpBase
             if (TeamBanner.On && teamId != Teams.Wanderers && TeamBanner.EmblemSprite(teamId) is { } emblem) {
                 var teamRow = lines.Row();
                 teamRow.Layout.spacing = 6f;
-                TeamEmblemBaker.Place(teamRow.transform, emblem, 28f);
+                EmblemZoom.Zoomable(TeamEmblemBaker.Place(teamRow.transform, emblem, 28f), teamId);
                 teamRow.Text("emp_ui_kv_team".lang() + ": " + Teams.NameOf(teamId));
             } else {
                 lines.KeyValue("emp_ui_kv_team".lang(), Teams.NameOf(teamId));
