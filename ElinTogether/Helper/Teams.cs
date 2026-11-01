@@ -862,7 +862,9 @@ internal static class Teams
 
     /// <summary>
     ///     The lands of one owner become another's (<see cref="LandOwnerOf" />): a player in no team who joins or founds
-    ///     a team brings its own lands to it, a returning character takes its former one's. Their rules stay
+    ///     a team brings its own lands to it, a returning character takes its former one's. Their rules stay. Never
+    ///     past the host's "Lands per team": the lands a team has no room for stay the player's own (the oldest go
+    ///     first), and the player is told
     /// </summary>
     internal static void MoveLands(int from, int to)
     {
@@ -870,7 +872,19 @@ internal static class Teams
             return;
         }
 
-        foreach (var land in Zones.Where(z => z.Value == from).Select(z => z.Key).ToArray()) {
+        var lands = Zones.Where(z => z.Value == from).Select(z => z.Key).OrderBy(uid => uid).ToArray();
+        var kept = 0;
+        if (to > 0 && BasesOwned && EmpConfig.Server.LandsPerTeam.Value is > 0 and var cap) {
+            var room = System.Math.Max(0, cap - LandsOf(to).Count());
+            kept = System.Math.Max(0, lands.Length - room);
+            lands = lands.Take(room).ToArray();
+            if (kept > 0 && from < 0) {
+                Say(-from, "emp_team_land_kept", kept, cap);
+                EmpLog.Information("Team {TeamId} at its cap of {Cap} lands: {Kept} lands stay player {CharaUid}'s own", to, cap, kept, -from);
+            }
+        }
+
+        foreach (var land in lands) {
             Zones[land] = to;
             EmpLog.Information("Land {ZoneUid}: owner {From} -> {To}", land, from, to);
         }

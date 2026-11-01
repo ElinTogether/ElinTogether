@@ -760,6 +760,7 @@
     "LangGeneral.emp_ui_sv_opt_lands_per_team_10.text": "10 块",
     "LangGeneral.emp_ui_sv_opt_lands_per_team_0.text": "不限",
     "LangGeneral.emp_team_land_cap.text": "你的队伍已拥有{0}块土地，无法再认领。",
+    "LangGeneral.emp_team_land_kept.text": "你的队伍已达到 {1} 块土地的上限：你的 {0} 块土地仍归你自己所有。",
     "LangGeneral.emp_ui_sv_cfg_sibling_lands.text": "同一格多块土地",
     "LangGeneral.emp_ui_sv_desc_sibling_lands.text": "不同队伍的土地可以共用世界地图的同一格。在已有土地的格子上使用土地证书会在同一格开辟另一块地；走进有多块土地的格子时会列出供你选择。需要开启“据点归队伍所有”。关闭：每格一块土地。",
     "LangGeneral.emp_sibling_ask.text": "这一格已有土地。要在同一格再开辟一块地吗？你会走进新地块，再次使用证书来认领。",
