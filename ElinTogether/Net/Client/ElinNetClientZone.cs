@@ -327,6 +327,8 @@ internal partial class ElinNetClient
             Helper.OwnSettings.Reopen();
             // the first time in this world with this character: the three first steps (once, remembered)
             Helper.FirstSteps.AfterJoin();
+            // the letters waiting from before, so the badges count them before the Players tab is ever opened
+            Helper.Mailbox.AskList();
 
             // the world copy of a guest walking in from its own world map: Player.MoveZone, which pays the journey on
             // arrival in a town, runs only on the other entries (EnterHostMap), never here (hunt 6 item 3, H603)
