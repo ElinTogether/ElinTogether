@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Common;
 using ElinTogether.Helper;
+using ElinTogether.Helper.Steam;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
 using ElinTogether.Net.Steam;
@@ -361,18 +362,55 @@ internal class TabPlay : TabEmpBase
         }
     }
 
+    // "More..." under the friends' games open, kept while the game runs
+    private static bool _moreOpen;
+
     private static void BuildJoin(YKVertical page)
     {
         var card = page.Card("emp_ui_play_join_title".lang());
+        // the friends in an Elin Together game now, one Join each (user 2026-11-01); Steam invites still work
+        var games = FriendGames.Now();
+        if (games.Count == 0) {
+            card.Text("emp_ui_play_friends_none".lang(), FontColor.Gray);
+        }
+
+        foreach (var game in games) {
+            var line = card.Row();
+            line.Layout.childAlignment = TextAnchor.MiddleLeft;
+            line.Text(game.Friend).LayoutElement().flexibleWidth = 1f;
+            if (EClass.core.IsGameStarted) {
+                continue;
+            }
+
+            var lobby = game.Lobby;
+            var join = line.Button("emp_ui_team_join_short".lang(), () => {
+                LayerElinTogether.Instance?.Close();
+                NetSession.Instance.Lobby.ConnectLobby(new Steamworks.CSteamID(lobby));
+            });
+            var element = join.LayoutElement();
+            element.preferredWidth = 90f;
+            element.flexibleWidth = 0f;
+        }
+
         if (EClass.core.IsGameStarted) {
             // (joining leaves this game: from the title screen only, as before)
             card.TextSmall("emp_ui_play_join_ingame".lang(), FontColor.Gray);
             return;
         }
 
-        card.TextSmall("emp_ui_play_join_desc".lang(), FontColor.Gray);
-        // a server: a game nobody plays, started with -empserver, joined by its address
-        card.ButtonRow().RowButton("emp_ui_join_address".lang(), () => {
+        // the rest behind "More...": a server's address (a game nobody plays, started with -empserver)
+        var more = card.Vertical();
+        more.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        more.Layout.spacing = UIHelper.RowSpacing;
+        card.ButtonRow().RowButton("emp_ui_play_more".lang(), () => {
+            _moreOpen = !_moreOpen;
+            more.gameObject.SetActive(_moreOpen);
+            card.GetComponentInParent<TabEmpBase>()?.Relayout();
+        });
+        more.transform.SetAsLastSibling();
+        more.gameObject.SetActive(_moreOpen);
+        more.TextSmall("emp_ui_play_join_desc".lang(), FontColor.Gray);
+        more.ButtonRow().RowButton("emp_ui_join_address".lang(), () => {
             var last = EmpConfig.Client.ServerAddress;
             Dialog.InputName("emp_ui_join_address_ask", last.Value.Length > 0 ? last.Value : "127.0.0.1:55556", (cancel, text) => {
                 if (cancel || text.Trim().Length == 0) {
@@ -429,27 +467,24 @@ internal class TabPlay : TabEmpBase
 #endif
 
     /// <summary>
-    ///     The official server: its own card at the top, always there (also closed), with its state and Join. Filled
-    ///     when the lobby list answers (BuildPublicServers)
+    ///     The public server: its own card at the top with its state and Join, shown only once the lobby list found it
+    ///     open (user 2026-11-01: a closed server's card was a dead end). Filled by BuildPublicServers
     /// </summary>
     private static YKVertical BuildOfficialCard(YKVertical page)
     {
         var card = page.Card("emp_ui_official_title".lang());
-        card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
+        // (the card's header is outside its body: the whole section hides)
+        card.transform.parent.gameObject.SetActive(false);
         return card;
     }
 
     private static void FillOfficial(YKVertical card, LobbyData? lobby)
     {
-        // (drop the "searching" line: the header is outside the body)
-        for (var i = card.transform.childCount - 1; i >= 0; i--) {
-            UnityEngine.Object.Destroy(card.transform.GetChild(i).gameObject);
-        }
-
         if (lobby is not { } found) {
-            card.TextSmall("emp_ui_official_closed".lang(), FontColor.Gray);
             return;
         }
+
+        card.transform.parent.gameObject.SetActive(true);
 
         var line = card.Row();
         StatusDot(line, new(0.45f, 0.68f, 0.32f));
