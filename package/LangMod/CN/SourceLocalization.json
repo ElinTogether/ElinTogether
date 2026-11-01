@@ -1324,5 +1324,13 @@
     "LangGeneral.emp_peer_why_hidden.text": "此游戏无法运行隐藏服务器",
     "LangGeneral.emp_peer_no_rules.text": "找不到此世界的签名规则",
     "LangGeneral.emp_dc_peer_rules.text": "你已离开：维护此世界的玩家没有使用其签名规则。",
-    "LangGeneral.emp_dc_peer_rules_why.text": "你已离开：维护此世界的玩家没有使用其签名规则：{0}"
+    "LangGeneral.emp_dc_peer_rules_why.text": "你已离开：维护此世界的玩家没有使用其签名规则：{0}",
+    "LangGeneral.emp_peer_keeping.text": "现在由你来维护这个世界。谢谢！",
+    "LangGeneral.emp_peer_moved.text": "世界已转移到 {0} 的游戏……",
+    "LangGeneral.emp_peer_asking.text": "正在寻找公开世界……",
+    "LangGeneral.emp_peer_store_down.text": "公开世界的存储服务没有响应（{0}）。",
+    "LangGeneral.emp_peer_nobody.text": "目前没有人维护公开世界，而这个游戏无法维护它（{0}）。",
+    "LangGeneral.emp_peer_join_fail.text": "没有找到 {0} 的游戏。请稍后再试。",
+    "LangGeneral.emp_peer_rollback.text": "管理员把世界恢复到了之前的存档。一分钟后世界将交给下一位玩家。",
+    "LangGeneral.emp_peer_card.text": "由玩家轮流维护的世界。如果现在没有人维护，你的游戏会打开它。"
 }

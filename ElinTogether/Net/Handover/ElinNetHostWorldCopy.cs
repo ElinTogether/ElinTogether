@@ -56,6 +56,24 @@ internal partial class ElinNetHost
     internal static int HandoverNumber => WorldHandoverCount[0];
 
     /// <summary>
+    ///     A peer-hosted world kept with the world's store: the handover number is the one the store gave with the
+    ///     lease (PeerKeeper.ServerOpening), never lower than the save's
+    /// </summary>
+    internal static void SetHandoverNumber(int handover)
+    {
+        WorldHandoverCount[0] = System.Math.Max(HandoverNumber, handover);
+    }
+
+    /// <summary>
+    ///     That player's game was given the latest save whole (PeerKeeper's succession list puts it first)
+    /// </summary>
+    internal bool HasLatestCopy(ulong user)
+    {
+        return _worldSnapshot is { } latest && Socket.Peers.Any(p => (ulong)p.User == user &&
+            _worldCopyGiven.TryGetValue(p.Id, out var had) && had == latest.Manifest.Saved);
+    }
+
+    /// <summary>
     ///     The world was just saved by itself, see EmpAutoHost
     /// </summary>
     internal void WorldSaved()
@@ -83,6 +101,7 @@ internal partial class ElinNetHost
             Host = LocalUser,
             Handover = HandoverNumber,
             Saved = DateTime.UtcNow.Ticks,
+            Succession = Helper.PeerKeeper.Succession,
         };
 
         STask.Run(() => {
@@ -136,6 +155,11 @@ internal partial class ElinNetHost
         var leaving = new HostLeaving {
             Guests = Session.CurrentPlayers.Where(p => p is not null && p.Index != 0).Select(p => (ulong)p.User).ToArray(),
         };
+        // a peer-hosted world kept with the world's store: the keeper named the next one, and the order after it
+        if (Helper.PeerKeeper.Enabled && PeerHostedServer) {
+            leaving.Guests = Helper.PeerKeeper.Succession;
+            leaving.Next = Helper.PeerKeeper.Next;
+        }
 
         var told = 0;
         foreach (var peer in Socket.Peers) {
@@ -204,7 +228,11 @@ internal partial class ElinNetHost
     ///     from this very moment and not from the last save made by itself. Then <paramref name="then" />, always
     /// </summary>
     /// <param name="save">False when the game was just saved by what calls this</param>
-    internal static void LeaveWithLastCopy(bool save, Action then)
+    /// <param name="beforeLeaving">
+    ///     Run once the guests have the last save, before they are told the host leaves (PeerKeeper: the last version
+    ///     and the lease handed to the next keeper); not run when no guest is owed a last save
+    /// </param>
+    internal static void LeaveWithLastCopy(bool save, Action then, Func<System.Collections.IEnumerator>? beforeLeaving = null)
     {
         // (asked twice: the first one is under way)
         if (_leaving) {
@@ -217,10 +245,10 @@ internal partial class ElinNetHost
         }
 
         _leaving = true;
-        EmpMod.Instance.StartCoroutine(host.GiveLastCopy(save, then));
+        EmpMod.Instance.StartCoroutine(host.GiveLastCopy(save, then, beforeLeaving));
     }
 
-    private System.Collections.IEnumerator GiveLastCopy(bool save, Action then)
+    private System.Collections.IEnumerator GiveLastCopy(bool save, Action then, Func<System.Collections.IEnumerator>? beforeLeaving)
     {
         EmpPop.Information("emp_takeover_leaving".lang());
 
@@ -261,6 +289,22 @@ internal partial class ElinNetHost
 
         EmpLog.Information("Leaving: last save {Result} after {Seconds:F1}s",
             given ? "given to every guest" : saved ? "not given in time" : "not made", watch.Elapsed.TotalSeconds);
+
+        if (beforeLeaving is not null) {
+            var before = beforeLeaving();
+            while (true) {
+                try {
+                    if (!before.MoveNext()) {
+                        break;
+                    }
+                } catch (Exception ex) {
+                    EmpLog.Warning(ex, "Leaving: what comes before the word to the guests failed");
+                    break;
+                }
+
+                yield return before.Current;
+            }
+        }
 
         _leaving = false;
         try {

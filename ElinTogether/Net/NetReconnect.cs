@@ -44,7 +44,7 @@ internal static class NetReconnect
         var session = NetSession.Instance;
 
         // only for a player who was in the game: a join that fails is not a link lost
-        if (Active || WorldTakeover.Busy || !session.Rules.AllowReconnect || !EClass.core.IsGameStarted ||
+        if (Active || WorldTakeover.Busy || PeerKeeper.Claiming || !session.Rules.AllowReconnect || !EClass.core.IsGameStarted ||
             session.Transport is not ElinNetClient { IsZoneSession: false } client ||
             client.Rejoin is not { } rejoin) {
             return;
@@ -111,6 +111,7 @@ internal static class NetReconnect
                 // back in the game, or the player started something else
                 if (EClass.core.IsGameStarted || session.Transport is ElinNetHost) {
                     back = true;
+                    PeerKeeper.LinkBack();
                     if (_ties is { Count: > 0 } ties && session.Transport is ElinNetClient) {
                         EmpMod.Instance.StartCoroutine(TieAgainOnceHere(ties));
                     }
@@ -119,14 +120,18 @@ internal static class NetReconnect
                 }
 
                 var now = Time.realtimeSinceStartup;
-                if (now - tried < RetrySeconds) {
+                if (now - tried < RetrySeconds || PeerKeeper.Claiming) {
                     continue;
                 }
 
                 // the host did not come back: the guest whose turn it is opens the world from its copy, the others
                 // look for that game (it said nothing before going: a crash, a line cut for good)
                 // (also when the guest whose turn it was did not open it in its time: the next one does)
-                if (takeover && now - lost >= wait && !WorldTakeover.Busy) {
+                // (a peer-hosted world kept with the world's store: its lease says when the keeper is gone, and the
+                // keeper's own list who takes it, see PeerKeeper)
+                if (takeover && PeerKeeper.WhileLost()) {
+                    // the election handles it; the attempts below join the keeper that comes back, or the new one
+                } else if (takeover && now - lost >= wait && !WorldTakeover.Busy) {
                     if (!WorldHandover.IsMyTurn(now - lost - wait)) {
                         WorldHandover.Follow();
                     } else if (WorldTakeover.Begin() is { Length: > 0 } why) {

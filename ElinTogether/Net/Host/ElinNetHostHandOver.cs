@@ -35,6 +35,8 @@ internal partial class ElinNetHost
     ///     Who plays in this game. Debug windows sharing one Steam account are the identity the host knows them by,
     ///     see SteamNetPeer.UseDevIdentity
     /// </summary>
+    internal static ulong LocalUserId => LocalUser;
+
     private static ulong LocalUser =>
 #if DEBUG
         EmpConfig.Dev.Identity.Value != 0 ? SteamNetPeer.DevIdentityBase + (ulong)EmpConfig.Dev.Identity.Value :

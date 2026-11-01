@@ -40,6 +40,13 @@ public class WorldCopyManifest
     /// </summary>
     [Key(5)]
     public bool Incomplete { get; set; }
+
+    /// <summary>
+    ///     A peer-hosted world kept with the world's store (PeerKeeper): who takes the world over after this keeper, in
+    ///     order. Empty otherwise
+    /// </summary>
+    [Key(6)]
+    public ulong[] Succession { get; set; } = [];
 }
 
 [MessagePackObject]
@@ -71,6 +78,13 @@ public class HostLeaving
 {
     [Key(0)]
     public ulong[] Guests { get; set; } = [];
+
+    /// <summary>
+    ///     A peer-hosted world kept with the world's store (PeerKeeper): the player the keeper handed the lease to,
+    ///     who opens the world now (0: none, or the takeover of P4). <see cref="Guests" /> is then the succession list
+    /// </summary>
+    [Key(1)]
+    public ulong Next { get; set; }
 }
 
 /// <summary>

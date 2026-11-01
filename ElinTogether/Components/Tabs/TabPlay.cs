@@ -473,6 +473,17 @@ internal class TabPlay : TabEmpBase
     private static YKVertical BuildOfficialCard(YKVertical page)
     {
         var card = page.Card("emp_ui_official_title".lang());
+        // a peer-hosted world kept with the world's store: the card is there whether a keeper is up or not, and its
+        // one button joins the keeper or opens the world here (PeerKeeper). The lobby list fills it in when one is up
+        if (PeerKeeper.Enabled && !EClass.core.IsGameStarted) {
+            card.TextSmall("emp_peer_card".lang(), FontColor.Gray);
+            card.ButtonRow().RowButton("emp_ui_lobby_official_join".lang(), () => {
+                LayerElinTogether.Instance?.Close();
+                PeerKeeper.Enter();
+            });
+            return card;
+        }
+
         // (the card's header is outside its body: the whole section hides)
         card.transform.parent.gameObject.SetActive(false);
         return card;
@@ -480,7 +491,7 @@ internal class TabPlay : TabEmpBase
 
     private static void FillOfficial(YKVertical card, LobbyData? lobby)
     {
-        if (lobby is not { } found) {
+        if (lobby is not { } found || PeerKeeper.Enabled) {
             return;
         }
 
