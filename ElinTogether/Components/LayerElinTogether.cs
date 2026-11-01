@@ -47,7 +47,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
         var opening = !string.IsNullOrEmpty(Data.StartingTab) ? Data.StartingTab : _lastOpenedTab;
         // at the title screen only the tabs that work there (user 2026-11-01: the others are for a game in progress)
         var inGame = EClass.core.IsGameStarted;
-        if (!inGame && opening is not (null or "" or TabPlay.TabName or "emp_tab_server" or TabReport.TabName or "emp_tab_client")) {
+        if (!inGame && opening is not (null or "" or TabPlay.TabName or "emp_tab_server" or TabReport.TabName or "emp_tab_client" or "emp_tab_patchnotes")) {
             opening = TabPlay.TabName;
         }
 
