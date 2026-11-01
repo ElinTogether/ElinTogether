@@ -146,9 +146,9 @@ internal partial class ElinNetHost
             companion.SetCompanionOwner(back);
         }
 
-        if (Teams.TeamOf(away.uid) is var team and not Teams.Wanderers) {
-            Teams.Join(back, team);
-            Teams.Leave(away);
+        // (its seat in its team as it was, its leadership too: a join could be refused by a full team)
+        if (Teams.TeamOf(away.uid) is not Teams.Wanderers) {
+            Teams.ReplaceMember(away, back);
         } else {
             // (in no team: its own lands are the returning character's)
             Teams.MoveLands(-away.uid, -back.uid);

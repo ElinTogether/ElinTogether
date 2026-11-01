@@ -877,6 +877,38 @@ internal static class Teams
     }
 
     /// <summary>
+    ///     A character back from a solo save takes the place of the one that waited, in its team: the same seat (its
+    ///     leadership too), never refused by a full team. What it brings is moved in as a join moves it
+    /// </summary>
+    internal static bool ReplaceMember(Chara away, Chara back)
+    {
+        var id = TeamOf(away.uid);
+        if (!KeepsBook || id == Wanderers || away.uid == back.uid) {
+            return false;
+        }
+
+        // (a back character already counted somewhere: out of it first)
+        if (TeamOf(back.uid) != Wanderers) {
+            Remove(back.uid);
+        }
+
+        var team = TeamList[id];
+        TeamList[id] = team.Select((uid, i) => i != 1 && uid == away.uid ? back.uid : uid).ToArray();
+        foreach (var book in new[] { Requests, Invites }) {
+            if (book.TryGetValue(away.uid, out var value)) {
+                book.Remove(away.uid);
+                book[back.uid] = value;
+            }
+        }
+
+        EmpLog.Information("Chara {Back} took the seat of {Away} in team {TeamId}", back.uid, away.uid, id);
+        TeamKnowledge.Moved(back, Wanderers, id);
+        TeamOwnStory.Moved(back, Wanderers, id);
+        Tell();
+        return true;
+    }
+
+    /// <summary>
     ///     That player is in no team again. Its team and the team's lands stay, even without members
     /// </summary>
     internal static bool Leave(Chara chara)
