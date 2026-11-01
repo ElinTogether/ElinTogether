@@ -1271,5 +1271,18 @@
     "LangGeneral.emp_ui_sv_cfg_client_mods.text": "每位玩家可自行决定是否安装的模组",
     "LangGeneral.emp_ui_sv_desc_client_mods.text": "模组 id（或创意工坊编号），用逗号分隔。好友无论是否安装这些模组都不会被拒绝，也不会为此被要求重启，其代码不计入模组校验。仅适用于不添加游戏数据（物品、角色、地图）的模组：它们添加的内容仍会被校验。",
     "LangGeneral.emp_ui_sv_client_mods_hint.text": "例如 maccha_coffee_somewhat_enhanced_display",
-    "LangGeneral.emp_ui_sv_client_mods_none.text": "无"
+    "LangGeneral.emp_ui_sv_client_mods_none.text": "无",
+    "LangGeneral.emp_ui_host_game_title.text": "主持游戏",
+    "LangGeneral.emp_ui_host_game_desc.text": "选择你的一个存档。载入后会自动向好友开放。",
+    "LangGeneral.emp_ui_host_game_choose.text": "选择要主持的游戏",
+    "LangGeneral.emp_ui_host_pick_desc.text": "你的存档，最近的在前。",
+    "LangGeneral.emp_ui_host_pick_none.text": "还没有存档：请先开始新游戏，再回到这里。",
+    "LangGeneral.emp_ui_host_pick.text": "选择",
+    "LangGeneral.emp_ui_host_back.text": "返回",
+    "LangGeneral.emp_ui_host_start_title.text": "主持 {0}",
+    "LangGeneral.emp_ui_host_start_desc.text": "在下方设定世界规则，然后开始：游戏会载入并向好友开放。",
+    "LangGeneral.emp_ui_host_start.text": "开始主持 {0}",
+    "LangGeneral.emp_ui_host_open.text": "你的游戏已开放：好友可以加入了。",
+    "LangGeneral.emp_ui_host_failed.text": "无法向多人模式开放你的游戏：{0} 游戏仍以单人模式载入。",
+    "LangGeneral.emp_ui_host_failed_log.text": "服务器未能启动（请查看模组日志）。"
 }

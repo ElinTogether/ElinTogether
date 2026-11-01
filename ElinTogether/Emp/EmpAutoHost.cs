@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using ElinTogether.Helper;
+using ElinTogether.LangMod;
 using ElinTogether.Net;
 using UnityEngine;
 
@@ -56,6 +57,16 @@ internal static class EmpAutoHost
     /// </summary>
     internal static void OpenSession()
     {
+        // the save "Host a game" loaded at the title screen: opened whatever the boxes say, as "Start Server" would.
+        // Another world loaded since forgets the ask
+        if (HostAfterLoad is { } asked) {
+            HostAfterLoad = null;
+            if (asked == Game.id) {
+                OpenAsked();
+                return;
+            }
+        }
+
         var local = false;
 #if DEBUG
         if (_bench) {
@@ -107,6 +118,60 @@ internal static class EmpAutoHost
                 NetSession.Instance.ResetSession();
             }
         }
+    }
+
+    /// <summary>
+    ///     The id of the save the title screen's "Host a game" is loading (TabPlay.StartHosting): opened to
+    ///     multiplayer once it is loaded and the right character is in place
+    /// </summary>
+    internal static string? HostAfterLoad { get; set; }
+
+    /// <summary>
+    ///     What the in-game "Start Server" does (TabPlay.StartServerFromPanel), without the click; why it could not is
+    ///     said in a window and the game stays loaded, played alone
+    /// </summary>
+    private static void OpenAsked()
+    {
+        if (NetSession.Instance.Transport is not null || !EClass.core.IsGameStarted || EClass.scene.mode == Scene.Mode.Title) {
+            return;
+        }
+
+        if (EClass.player?.chara?.homeBranch?.owner is null) {
+            Failed("emp_ui_unclaimed_zone".lang());
+            return;
+        }
+
+        // another player took this world over since it was last hosted here: its game is the one that goes on
+        if (WorldHandover.TryJoinNewerLocal()) {
+            return;
+        }
+
+        // (with the box "hidden server", a hidden game hosts it and this one joins)
+        if (HiddenServer.TryStart(Open)) {
+            return;
+        }
+
+        Open();
+
+        static void Open()
+        {
+            try {
+                NetSession.Instance.InitializeComponent<ElinNetHost>().StartServer();
+            } catch (Exception ex) {
+                EmpLog.Warning(ex, "The chosen game could not be opened to multiplayer");
+                NetSession.Instance.ResetSession();
+                Failed(ex.Message);
+                return;
+            }
+
+            if (NetSession.Instance.Transport is ElinNetHost) {
+                EmpPop.Pop("emp_ui_host_open".lang());
+            } else {
+                Failed("emp_ui_host_failed_log".lang());
+            }
+        }
+
+        static void Failed(string why) => EmpPop.Block("emp_ui_host_failed".Loc(why));
     }
 
     // why a save asked by a network message waits for the game to be able to save, see SaveFromMessage
