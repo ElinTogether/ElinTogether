@@ -158,17 +158,25 @@ internal static class RemoteBasePaidPatch
     internal static void ClaimHeldLand(int zoneUid)
     {
         var zone = EClass._zone;
-        if (NetSession.Instance is not { IsZoneAuthority: true, Transport: ElinNetClient main } session || zone is null ||
-            session.AwayZone != zone || zone.uid != zoneUid || zone.mainFaction == EClass.pc.faction) {
-            EmpLog.Warning("The host made land {ZoneUid}, but this game no longer holds it", zoneUid);
-            return;
-        }
-
         var deed = EClass.pc.things.List(t => t.uid == _heldDeed && t.trait is TraitDeed, true).FirstOrDefault() ??
                    EClass.pc.things.List(t => t.trait is TraitDeed, true).FirstOrDefault();
         _heldDeed = 0;
+        if (NetSession.Instance is not { IsZoneAuthority: true, Transport: ElinNetClient main } session || zone is null ||
+            session.AwayZone != zone || zone.uid != zoneUid || zone.mainFaction == EClass.pc.faction || deed is null) {
+            // the host undoes the land it made (a claim is final only when this game claimed it too)
+            EmpLog.Warning("The host made land {ZoneUid}, but this game no longer holds it or its deed: undone", zoneUid);
+            if (NetSession.Instance.Transport is ElinNetClient client) {
+                client.SendWhileAway(new ClaimZoneDelta { ZoneUid = zoneUid, Refused = true });
+                if (NetSession.Instance is { IsZoneAuthority: true, AwayZone: not null }) {
+                    client.SendTravelCheckpoint();
+                }
+            }
+
+            return;
+        }
+
         zone.ClaimZone();
-        deed?.ModNum(-1);
+        deed.ModNum(-1);
         WidgetMenuPanel.OnChangeMode();
         main.SendTravelCheckpoint();
     }

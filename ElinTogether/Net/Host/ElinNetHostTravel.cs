@@ -1389,6 +1389,7 @@ internal partial class ElinNetHost
         // the numbers given to its cards that waited for one, see ZoneSoftRejoin.Rebinds
         var rebound = new Dictionary<int, int>();
         var chara = ReplaceRemoteChara(peer.User, release.Chara, rebound: rebound, capGainsOf: wasVisitor ? peer.Id : -1);
+        ClaimZoneDelta.ResolveAway(peer.Id, release, chara);
         ReplaceCompanions(release.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0, rebound);
         ReplaceResidents(release.Residents, ownerUid, managed);
         DropGoneResidents(release.GoneResidents, ownerUid);
@@ -1473,7 +1474,8 @@ internal partial class ElinNetHost
         var start = zones[checkpoint.ZoneUid];
         _checkpointUidNext[peer.Id] = Math.Min(Math.Max(checkpoint.UidNext, start), start + MaxLeaseUids);
 
-        ReplaceRemoteChara(peer.User, checkpoint.Chara);
+        var chara = ReplaceRemoteChara(peer.User, checkpoint.Chara);
+        ClaimZoneDelta.ResolveAway(peer.Id, checkpoint, chara);
         ReplaceCompanions(checkpoint.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0);
         ReplaceResidents(checkpoint.Residents, ownerUid, managed);
         DropGoneResidents(checkpoint.GoneResidents, ownerUid);
@@ -1946,6 +1948,8 @@ internal partial class ElinNetHost
         _guestAsks.Remove(peer.Id);
         _guests.Remove(peer.Id);
         _softRejoins.Remove(peer.Id);
+        // a land made for it away that its game never confirmed
+        ClaimZoneDelta.UndoAway(peer.Id, "disconnected before its game claimed it");
 
         // cards of the last checkpoint are in the save now, the host must not allocate their uids
         if (_checkpointUidNext.Remove(peer.Id, out var uidNext)) {

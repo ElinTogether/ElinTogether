@@ -1147,6 +1147,23 @@ internal static class Teams
     }
 
     /// <summary>
+    ///     A claim that did not happen after all (a land made for a player away whose game never claimed it): no owner,
+    ///     no claimer, as before it
+    /// </summary>
+    internal static void Unclaim(Zone zone)
+    {
+        if (!KeepsBook) {
+            return;
+        }
+
+        Zones.Remove(zone.uid);
+        ZoneRules.Remove(zone.uid);
+        zone.SetInt(BaseIncome.ClaimerKey, 0);
+        zone.SetInt(SoloCheckedKey, 0);
+        Tell();
+    }
+
+    /// <summary>
     ///     User 2026-10-30, "a solo player is not in the same team as the other solo players": a land of no team that
     ///     its claimer (BaseIncome.ClaimerKey) holds while in no team, from before this rule (an old world, or claimed
     ///     while teams were off), becomes that player's own, once. A claimer now in a team, a land of no known claimer,
