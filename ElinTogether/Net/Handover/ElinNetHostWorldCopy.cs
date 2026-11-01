@@ -246,10 +246,50 @@ internal partial class ElinNetHost
         }
 
         _leaving = true;
-        EmpMod.Instance.StartCoroutine(host.GiveLastCopy(save, then, beforeLeaving));
+        try {
+            EmpMod.Instance.StartCoroutine(host.GiveLastCopy(save, then, beforeLeaving));
+        } catch (Exception ex) {
+            EmpLog.Error(ex, "Leaving: the last save could not be started, leaving without it");
+            _leaving = false;
+            then();
+        }
     }
 
+    /// <summary>
+    ///     Whatever throws on the way (robustness audit 2026-11-01), the host leaves: _leaving is reset and then() is
+    ///     called, also when the coroutine ends early. A step that throws ends the wait, nothing more
+    /// </summary>
     private System.Collections.IEnumerator GiveLastCopy(bool save, Action then, Func<System.Collections.IEnumerator>? beforeLeaving)
+    {
+        try {
+            var steps = GiveLastCopySteps(save, beforeLeaving);
+            while (true) {
+                try {
+                    if (!steps.MoveNext()) {
+                        break;
+                    }
+                } catch (Exception ex) {
+                    EmpLog.Error(ex, "Leaving: the last save failed on the way, leaving anyway");
+                    break;
+                }
+
+                yield return steps.Current;
+            }
+
+            try {
+                if (this != null) {
+                    AnnounceLeaving();
+                }
+            } catch (Exception ex) {
+                EmpLog.Error(ex, "Leaving: the guests could not be told");
+            }
+        } finally {
+            _leaving = false;
+            then();
+        }
+    }
+
+    private System.Collections.IEnumerator GiveLastCopySteps(bool save, Func<System.Collections.IEnumerator>? beforeLeaving)
     {
         EmpPop.Information("emp_takeover_leaving".lang());
 
@@ -305,15 +345,6 @@ internal partial class ElinNetHost
 
                 yield return before.Current;
             }
-        }
-
-        _leaving = false;
-        try {
-            if (this != null) {
-                AnnounceLeaving();
-            }
-        } finally {
-            then();
         }
     }
 
