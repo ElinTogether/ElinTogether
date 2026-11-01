@@ -505,6 +505,7 @@ internal partial class ElinNetClient
                 }
 
                 game.cards.globalCharas.Remove(old);
+                CompanionHelper.UnlinkWork(old);
 
                 // branches hold object references
                 if (old.homeBranch is { } branch && branch.members.IndexOf(old) is var index and >= 0) {
