@@ -61,7 +61,7 @@ internal static class WorldHandover
     /// <summary>
     ///     The keeper of the world this game was last a guest of (its Steam id), 0 when none
     /// </summary>
-    internal static ulong LastKeeper => _last?.Host ?? 0;
+    internal static ulong LastKeeper => _last is { Keeper: not 0 } last ? last.Keeper : _last?.Host ?? 0;
 
     /// <summary>
     ///     Another player keeps the world now (the store says so, PeerKeeper): its game is looked for and joined

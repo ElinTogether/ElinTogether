@@ -47,6 +47,13 @@ public class WorldCopyManifest
     /// </summary>
     [Key(6)]
     public ulong[] Succession { get; set; } = [];
+
+    /// <summary>
+    ///     A peer-hosted world: the player who keeps it (its own id, the one its lease names; <see cref="Host" /> is
+    ///     the hidden server's reserved identity, the same for every keeper). 0 otherwise
+    /// </summary>
+    [Key(7)]
+    public ulong Keeper { get; set; }
 }
 
 [MessagePackObject]

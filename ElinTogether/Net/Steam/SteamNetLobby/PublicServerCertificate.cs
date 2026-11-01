@@ -199,10 +199,16 @@ internal static class PublicServerCertificate
 /// </summary>
 internal sealed class EtWorldCertificateIssuer : IHostCertificateIssuer
 {
-    public bool Keeps => SaveDepot.KeepsEtWorld;
+    // (or the hidden server of the peer-hosted world, plan P5, which keeps it through PeerKeeper)
+    public bool Keeps => SaveDepot.KeepsEtWorld || PeerKeeper.KeepsPublic;
 
     public void LobbyOpened(ulong lobbyId)
     {
+        if (PeerKeeper.KeepsPublic) {
+            PeerKeeper.LobbyOpened(lobbyId);
+            return;
+        }
+
         SaveDepot.AskCertificate(lobbyId);
     }
 }

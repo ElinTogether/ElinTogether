@@ -8,6 +8,7 @@ using ElinTogether.Components;
 using ElinTogether.LangMod;
 using ElinTogether.Models;
 using ElinTogether.Net;
+using ElinTogether.Net.Steam;
 using HeathenEngineering.SteamworksIntegration;
 using Steamworks;
 using UnityEngine;
@@ -62,7 +63,18 @@ internal static class PeerKeeper
     /// <summary>
     ///     This game, as the store and the other players know it
     /// </summary>
-    private static ulong Me => NetSession.Instance.Self is { } self && (ulong)self.User != 0 ? (ulong)self.User : ElinNetHost.LocalUserId;
+    private static ulong Me => NetSession.Instance.Self is { } self && (ulong)self.User != 0 ? (ulong)self.User : PlayerId;
+
+    /// <summary>
+    ///     The id this player is known by in the world and at the store, the same in its visible game and in its
+    ///     hidden server (whose own seat is a reserved identity, ServerAvatar.HostUser): its Steam id, or the bench's
+    ///     identity of the window
+    /// </summary>
+    internal static ulong PlayerId =>
+#if DEBUG
+        EmpConfig.Dev.Identity.Value != 0 ? SteamNetPeer.DevIdentityBase + (ulong)EmpConfig.Dev.Identity.Value :
+#endif
+        UserData.Me;
 
     // ------------------------------------------------------------------------------- the store, off the thread
 
@@ -183,6 +195,7 @@ internal static class PeerKeeper
             return true;
         }
 
+        _claimFailed = false;
         EmpPop.Information("emp_peer_asking".lang());
         Later(() => Store.Who(), (who, failed) => {
             if (who is null) {
@@ -376,7 +389,10 @@ internal static class PeerKeeper
             }
 
             if (laid.Why.Length > 0) {
+                // (said once: a guest that lost its keeper does not try again every few seconds)
+                _claimFailed = true;
                 EmpLog.Warning("Peer-hosted world: not opened here: {Why}", laid.Why);
+                EmpPop.Information("emp_peer_open_fail".Loc(laid.Why));
                 yield break;
             }
 
@@ -509,7 +525,7 @@ internal static class PeerKeeper
         } else {
             laid.From = "the store's version " + head!.N;
             Directory.CreateDirectory(fresh);
-            var why = Store.Download(head, fresh, local.Manifest is not null ? local.Dir : null);
+            var why = Store.Download(head, fresh, local.Manifest is not null ? local.Dir : null, laid.Handover);
             if (why.Length > 0) {
                 IO.DeleteDirectory(fresh);
                 return why;
@@ -563,6 +579,7 @@ internal static class PeerKeeper
 
     private static float _nextLook;
     private static float _freeSince = -1f;
+    private static bool _claimFailed;
 
     /// <summary>
     ///     NetReconnect, every few seconds while the keeper is lost without a word: the store says whether its lease
@@ -612,8 +629,13 @@ internal static class PeerKeeper
                 return;
             }
 
+            if (_claimFailed) {
+                return;
+            }
+
             if (CanKeep(who) is { } why) {
                 EmpLog.Information("Peer-hosted world: the keeper is gone and this game may not keep the world ({Why})", why);
+                _claimFailed = true;
                 return;
             }
 
@@ -627,6 +649,7 @@ internal static class PeerKeeper
     internal static void LinkBack()
     {
         _freeSince = -1f;
+        _claimFailed = false;
     }
 
     // ------------------------------------------------------------------------------ between the two games
@@ -676,6 +699,34 @@ internal static class PeerKeeper
     internal static ulong[] Succession => _succession;
 
     private static bool Keeping => Enabled && ElinNetHost.PeerHostedServer && _handover > 0;
+
+    /// <summary>
+    ///     This hidden server keeps the public world: its lobby carries the store's host certificate (plan P3)
+    /// </summary>
+    internal static bool KeepsPublic => Keeping && _lostTo is null && EtWorldDepot.WorldName == Net.Steam.HostCertificate.World;
+
+    private static ulong _certLobby;
+
+    /// <summary>
+    ///     The hidden server opened its Steam lobby (PublicServerCertificate): a certificate naming it is asked, each
+    ///     BEAT renews it after that
+    /// </summary>
+    internal static void LobbyOpened(ulong lobby)
+    {
+        if (!Keeping || lobby == 0) {
+            return;
+        }
+
+        _certLobby = lobby;
+        var handover = _handover;
+        Later(() => Store.Cert(handover, lobby), (reply, _) => {
+            if (reply is { Ok: true }) {
+                Net.Steam.PublicServerCertificate.Set(reply.Value);
+            } else {
+                EmpLog.Warning("Peer-hosted world: no host certificate for lobby {Lobby}: {Why}", lobby, reply?.Error ?? "no answer");
+            }
+        });
+    }
 
     /// <summary>
     ///     The hidden server, before its session opens: the lease is this machine's (the visible game took it; taken
@@ -772,6 +823,11 @@ internal static class PeerKeeper
         if (reply.Ok) {
             if (reply.Value!.Rollback > 0) {
                 RolledBack(host, reply.Value.Rollback);
+            } else if (reply.Value.Cert is { Length: > 0 } cert) {
+                Net.Steam.PublicServerCertificate.Set(cert);
+            } else if (_certLobby == 0 && Net.Steam.PublicServerCertificate.OwnLobby() is var lobby and not 0) {
+                // (a lobby opened before this machine held the lease: asked now)
+                LobbyOpened(lobby);
             }
 
             return;
@@ -781,6 +837,7 @@ internal static class PeerKeeper
             // cut off longer than the lease, or banned from keeping: another keeper may be opening the world, two
             // games must never go on with it. Nothing more is saved to the store, the guests are sent to the holder
             _lostTo = reply.Lease ?? new StoreLease();
+            Net.Steam.PublicServerCertificate.Set(null);
             EmpLog.Warning("Peer-hosted world: the lease is lost ({Why}, now {Holder}), this server stops", reply.Error, _lostTo.Steam);
             EmpServer.StopNow();
         }
@@ -848,11 +905,12 @@ internal static class PeerKeeper
     /// </summary>
     private static ulong[] ComputeSuccession(ElinNetHost host)
     {
-        var keeper = ElinNetHost.LocalUserId;
+        var keeper = PlayerId;
         var now = Time.unscaledTime;
         var playing = NetSession.Instance.CurrentPlayers.Where(p => p is not null && p.Index != 0)
             .Select(p => (User: (ulong)p.User, Peer: p.Index))
-            .Where(p => p.User != 0 && p.User != keeper && !PeerHosting.IsBanned(p.User))
+            .Where(p => p.User != 0 && p.User != keeper && p.User != ElinNetHost.OwnerSeat && p.User != ElinNetHost.LocalUserId &&
+                        !PeerHosting.IsBanned(p.User))
             .GroupBy(p => p.User).Select(g => g.First()).ToList();
         foreach (var gone in _since.Keys.Where(u => playing.All(p => p.User != u)).ToList()) {
             _since.Remove(gone);
@@ -886,7 +944,8 @@ internal static class PeerKeeper
     /// </summary>
     internal static bool HoldStop(ElinNetHost host)
     {
-        if (!Keeping || _handedOver) {
+        // (once under way it runs to its end: the lease is let go before the guests are told)
+        if (_handedOver || (!_handingOver && !Keeping)) {
             return false;
         }
 
@@ -955,7 +1014,7 @@ internal static class PeerKeeper
     private static IEnumerator BeforeLeaving()
     {
         if (_rollback == 0 && _lostTo is null) {
-            var reason = NetSession.Instance.CurrentPlayers.Any(p => p is not null && p.Index != 0 && (ulong)p.User != ElinNetHost.LocalUserId)
+            var reason = _succession.Length > 0 && NetSession.Instance.CurrentPlayers.Any(p => p is not null && _succession.Contains((ulong)p.User))
                 ? "handover"
                 : "last-leave";
             var put = false;
@@ -985,5 +1044,6 @@ internal static class PeerKeeper
         }
 
         _handover = 0;
+        Net.Steam.PublicServerCertificate.Set(null);
     }
 }

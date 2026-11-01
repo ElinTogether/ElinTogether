@@ -40,8 +40,13 @@ internal interface IWorldStore
     StoreReply<bool> Release(long handover, ulong next);
 
     /// <summary>
+    ///     POST cert: a host certificate naming the keeper's Steam lobby (plan P3), renewed by every BEAT after it
+    /// </summary>
+    StoreReply<string> Cert(long handover, ulong lobby);
+
+    /// <summary>
     ///     The files of a save folder as a new version over the head <paramref name="parent" /> (0: the first one):
-    ///     the blobs the store lacks are sent first. The version's number. Refusals: not_holder, rolled_back,
+    ///     the blobs the store lacks are sent first (the lease renewed on the way). The version's number. Refusals: not_holder, rolled_back,
     ///     handover_mismatch, parent_mismatch, too_big, banned, rate_limited
     /// </summary>
     StoreReply<long> Put(string folder, long parent, long handover, string reason, string gameDate, string saveTime);
@@ -54,9 +59,10 @@ internal interface IWorldStore
     /// <summary>
     ///     Writes every file of <paramref name="version" /> into <paramref name="folder" /> (made, empty): a file of
     ///     <paramref name="reuse" /> (a copy kept on this disk) with the same SHA-256 is copied from there, the rest is
-    ///     fetched. Every file is checked against its hash. Empty when written, else why not
+    ///     fetched. Every file is checked against its hash. The lease <paramref name="handover" /> is renewed on the way
+    ///     (a big world on a slow line takes longer than it lives). Empty when written, else why not
     /// </summary>
-    string Download(StoreVersion version, string folder, string? reuse);
+    string Download(StoreVersion version, string folder, string? reuse, long handover);
 }
 
 internal sealed class StoreReply<T>
@@ -138,6 +144,11 @@ internal sealed class StoreBeat
     ///     An admin rolled the world back to this version during this lease (0: no): the keeper saves nothing more
     /// </summary>
     internal long Rollback { get; init; }
+
+    /// <summary>
+    ///     A fresh host certificate for the lobby named by Cert, null: none
+    /// </summary>
+    internal string? Cert { get; init; }
 }
 
 internal sealed class StoreFile
@@ -173,14 +184,17 @@ internal sealed class StoreVersion
 }
 
 /// <summary>
-///     The store this game uses. Until a client is set (P2's EtWorldDepot, see EtWorldPeerStore) there is none, and
-///     the election is not used
+///     The store this game uses: the ETWorld service the save depot names (EtWorldPeerStore, ready only with an
+///     "etworld:" DepotPath); the election is not used without it
 /// </summary>
 internal static class PeerStore
 {
-    internal static IWorldStore Current { get; set; } = new NoWorldStore();
+    internal static IWorldStore Current { get; set; } = new EtWorldPeerStore();
 
-    private sealed class NoWorldStore : IWorldStore
+    /// <summary>
+    ///     A store that is never ready (tests)
+    /// </summary>
+    internal sealed class NoWorldStore : IWorldStore
     {
         public bool Ready => false;
 
@@ -192,11 +206,13 @@ internal static class PeerStore
 
         public StoreReply<bool> Release(long handover, ulong next) => StoreReply<bool>.No("no_store");
 
+        public StoreReply<string> Cert(long handover, ulong lobby) => StoreReply<string>.No("no_store");
+
         public StoreReply<long> Put(string folder, long parent, long handover, string reason, string gameDate, string saveTime) =>
             StoreReply<long>.No("no_store");
 
         public StoreVersion? Head() => null;
 
-        public string Download(StoreVersion version, string folder, string? reuse) => "no world store set";
+        public string Download(StoreVersion version, string folder, string? reuse, long handover) => "no world store set";
     }
 }

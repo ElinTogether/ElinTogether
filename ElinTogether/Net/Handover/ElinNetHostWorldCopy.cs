@@ -102,6 +102,7 @@ internal partial class ElinNetHost
             Handover = HandoverNumber,
             Saved = DateTime.UtcNow.Ticks,
             Succession = Helper.PeerKeeper.Succession,
+            Keeper = Helper.PeerKeeper.Enabled && PeerHostedServer ? Helper.PeerKeeper.PlayerId : 0,
         };
 
         STask.Run(() => {
