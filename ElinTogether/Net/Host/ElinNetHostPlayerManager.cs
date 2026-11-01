@@ -81,6 +81,38 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     GitHub issue 58: the companions of a player nobody plays right now wait with it, off map and in the party, as
+    ///     when it leaves (TakeCompanionsAlong); its next arrival brings them next to it (BringCompanions). A world saved
+    ///     while a guest played kept them on the map: after a reload they followed the host, who had no say over them
+    /// </summary>
+    private static void ParkCompanions(List<Chara> companions, Chara player)
+    {
+        foreach (var companion in companions) {
+            if (companion.isDead || companion.currentZone is null) {
+                continue;
+            }
+
+            companion.SetNoGoal();
+            if (_map is not null && _map.charas.Contains(companion)) {
+                _zone.RemoveCard(companion);
+            } else if (companion.parent is Zone) {
+                companion.parent = null;
+            }
+
+            companion.currentZone = null;
+
+            if (NetSession.Instance.Connection is ElinNetHost host) {
+                host.Delta.AddRemote(new CharaRemoveFromGameDelta {
+                    Owner = companion,
+                });
+            }
+
+            EmpLog.Debug("Companion {Uid} waits with player {OwnerUid}, nobody plays it",
+                companion.uid, player.uid);
+        }
+    }
+
+    /// <summary>
     ///     The character of a player nobody plays right now is never on a map: it waits for its player with what
     ///     it carries. Wherever the game runs: the host, a player hosting its zone, a player alone on a map
     ///     (its world is the copy it left with, and nothing told it who stopped playing since)
@@ -1003,9 +1035,15 @@ internal partial class ElinNetHost
         var currentRemoteCharas = game.cards.globalCharas.Values
             .Where(c => c != pc && c.GetBool("remote_chara"));
 
-        foreach (var chara in currentRemoteCharas.Except(excluded)) {
+        foreach (var chara in currentRemoteCharas.Except(excluded).ToList()) {
             LoadedRideTies.AddRange(CompanionHelper.PlayerRideTies(chara));
+            // its companions wait with it (GitHub issue 58). Not in a guest's world copy: the host tells it who is
+            // where. Read from the world, not from the party its upload carries: that copy is its own game's
+            List<Chara> companions = Session.Connection is ElinNetClient
+                ? []
+                : game.cards.globalCharas.Values.Where(c => c is not null && c.CompanionOwnerUid == chara.uid && c.IsCompanionOf(chara)).ToList();
             RemoveRemoteChara(chara);
+            ParkCompanions(companions, chara);
         }
 
         pc.party?.members.RemoveAll(c => c is null);
