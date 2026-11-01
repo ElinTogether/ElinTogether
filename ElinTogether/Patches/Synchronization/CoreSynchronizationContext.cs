@@ -29,6 +29,7 @@ internal class CoreSynchronizationContext : SynchronizationContext
         PlayerTrade.WatchSession();
         SaveDepot.Update();
         HiddenServer.Update();
+        PeerKeeper.Update();
         EmpServer.Update();
         EmpAutoHost.Update();
         // (alone on a map of its own the host link is still there: the host still hears it)

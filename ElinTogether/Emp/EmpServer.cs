@@ -165,6 +165,12 @@ internal static class EmpServer
                 return;
             }
 
+            // a peer-hosted world kept with the world's store: this machine holds its lease, or it is not opened
+            if (PeerKeeper.ServerOpening() is { } notKept) {
+                Fail(notKept);
+                return;
+            }
+
             EmpLog.Information("Server: opening the session on port {Port}", Common.EmpConstants.LocalPort);
             try {
                 session.InitializeComponent<ElinNetHost>().StartServer(true, alsoSteam: true);
@@ -184,6 +190,13 @@ internal static class EmpServer
                 _stopping = true;
                 _stopAt = Time.unscaledTime;
                 EmpLog.Information("Server: asked to stop, saving");
+            }
+
+            // a peer-hosted world: the last save to the guests, the last version, the lease to the next keeper, then
+            // the word that the keeper leaves (PeerKeeper); its players are put out after that
+            if (session.Connection is ElinNetHost handing && PeerKeeper.HoldStop(handing)) {
+                Tell("stopping");
+                return;
             }
 
             // the world is saved as a game hosted from the menu would hold it: the players leave, the owner's
@@ -236,6 +249,7 @@ internal static class EmpServer
 
         if (session.Connection is ElinNetHost keeper) {
             keeper.PeerHostedTick();
+            PeerKeeper.ServerTick(keeper);
         }
 
         // nobody is there to save: the server does, while someone plays
@@ -356,6 +370,12 @@ internal static class EmpServer
         EmpLog.Information("Server: save made in {Main} ms main thread", watch.ElapsedMilliseconds);
         if (saved) {
             _saved = DateTime.Now.ToString("HH:mm");
+            // a peer-hosted world: every guest keeps a copy of each save (the takeover opens it), and the store gets it
+            if (ElinNetHost.PeerHostedServer && NetSession.Instance.Transport is ElinNetHost host) {
+                host.WorldSaved();
+                PeerKeeper.ServerSaved();
+            }
+
         } else {
             _saved = "FAILED " + DateTime.Now.ToString("HH:mm");
             EmpLog.Warning("Server: the game could not save the world, see Player.log");

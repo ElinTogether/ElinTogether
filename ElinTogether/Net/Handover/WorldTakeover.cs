@@ -144,7 +144,7 @@ internal static class WorldTakeover
     ///     more there; the folder gets its name in one rename, so a save folder is whole or is not there
     /// </summary>
     /// <returns>empty when laid, else why not</returns>
-    private static string Lay(WorldHandover.Copy copy, string target)
+    internal static string Lay(WorldHandover.Copy copy, string target)
     {
         var (dir, manifest) = WorldHandover.Read(copy);
         if (manifest is null || manifest.Incomplete || !WorldCopyStore.Verify(dir, manifest)) {

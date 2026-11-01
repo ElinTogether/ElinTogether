@@ -1,3 +1,4 @@
+using ElinTogether.LangMod;
 using ElinTogether.Models;
 
 namespace ElinTogether.Net;
@@ -27,7 +28,22 @@ internal partial class ElinNetClient
             return;
         }
 
-        WorldHandover.HostLeft(leaving.Guests);
+        WorldHandover.HostLeft(leaving.Guests, leaving.Next);
+
+        // a peer-hosted world kept with the world's store: the keeper handed the lease to the one it named, who opens
+        // the world now; the others follow it (NetReconnect, as below)
+        if (Helper.PeerKeeper.Enabled && leaving.Next != 0) {
+            var me = Session.Self is { } self ? (ulong)self.User : 0UL;
+            if (leaving.Next == me) {
+                Helper.PeerKeeper.NamedNext();
+            } else {
+                EmpLog.Information("The keeper leaves, the world goes to {Next}", leaving.Next);
+                EmpPop.Information("emp_peer_moved".Loc(Helper.PeerKeeper.Name(leaving.Next)));
+            }
+
+            return;
+        }
+
         if (!WorldHandover.IsMyTurn(0f)) {
             EmpLog.Information("The host leaves, the world is not ours to take over: {State}", WorldHandover.Describe());
             return;

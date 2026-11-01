@@ -1423,5 +1423,14 @@
     "LangGeneral.emp_patches_skipped.text": "Elin Together 有 {0} 个部分无法在 Elin {1} 上加载（此版本为 Elin {2} 制作）。部分多人功能可能无法使用：请将 Elin 切换到 Nightly 分支（Steam：Elin → 属性 → 测试版）。",
     "LangGeneral.emp_title_older_game.text": "为 Elin {0} 制作。你的 Elin 是 {1}：如果出问题，请使用 Elin 的 Nightly 分支（Steam：Elin → 属性 → 测试版）。",
     "LangGeneral.emp_ui_official_kept_by.text": "当前由 {0} 维持",
-    "LangGeneral.emp_public_server_unverified.text": "这个游戏自称是 Elin Together 公共服务器，但其主机与证明不符。未加入。"
+    "LangGeneral.emp_public_server_unverified.text": "这个游戏自称是 Elin Together 公共服务器，但其主机与证明不符。未加入。",
+    "LangGeneral.emp_peer_keeping.text": "现在由你来维护这个世界。谢谢！",
+    "LangGeneral.emp_peer_moved.text": "世界已转移到 {0} 的游戏……",
+    "LangGeneral.emp_peer_asking.text": "正在寻找公开世界……",
+    "LangGeneral.emp_peer_store_down.text": "公开世界的存储服务没有响应（{0}）。",
+    "LangGeneral.emp_peer_nobody.text": "目前没有人维护公开世界，而这个游戏无法维护它（{0}）。",
+    "LangGeneral.emp_peer_join_fail.text": "没有找到 {0} 的游戏。请稍后再试。",
+    "LangGeneral.emp_peer_rollback.text": "管理员把世界恢复到了之前的存档。一分钟后世界将交给下一位玩家。",
+    "LangGeneral.emp_peer_card.text": "由玩家轮流维护的世界。如果现在没有人维护，你的游戏会打开它。",
+    "LangGeneral.emp_peer_open_fail.text": "无法在这里打开世界（{0}）。"
 }

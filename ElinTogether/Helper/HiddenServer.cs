@@ -100,6 +100,42 @@ internal static class HiddenServer
                 return true;
             }
 
+            return Launch(EClass.game.isCloud ? "cloud:" + Game.id : Game.id, classic);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Hidden server: could not be started");
+            Fallback(classic, "emp_hidden_why_launch".lang());
+            return true;
+        }
+    }
+
+    // what to do when a server started by StartOn does not come up (the lease is let go), null otherwise
+    private static Action? _onFail;
+
+    /// <summary>
+    ///     A peer-hosted world taken from the world's store (PeerKeeper): the hidden server is started on that save
+    ///     folder, from the title screen (this game never loads it: it joins the server as a guest, which sends it the
+    ///     world). <paramref name="failed" /> when the server does not come up. False: not started (failed is not run)
+    /// </summary>
+    internal static bool StartOn(string save, Action failed)
+    {
+        if (!SettingsTable.HiddenServerAvailable || EmpServer.Requested || Starting || Playing ||
+            NetSession.Instance.Transport is not null || EClass.core.IsGameStarted) {
+            return false;
+        }
+
+        _onFail = failed;
+        try {
+            return Launch(save, () => { });
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Hidden server: could not be started");
+            Fallback(() => { }, "emp_hidden_why_launch".lang());
+            return true;
+        }
+    }
+
+    private static bool Launch(string save, Action classic)
+    {
+        {
             var exe = Process.GetCurrentProcess().MainModule?.FileName;
             if (exe is null || !File.Exists(exe)) {
                 Fallback(classic, "emp_hidden_why_launch".lang());
@@ -127,7 +163,6 @@ internal static class HiddenServer
                 return true;
             }
 
-            var save = EClass.game.isCloud ? "cloud:" + Game.id : Game.id;
             var log = Path.Combine(Folder, "server.log");
             var start = new ProcessStartInfo(exe,
                 $"-batchmode -nographics -empserver \"{save}\" -empparent {Process.GetCurrentProcess().Id} -empmute -logFile \"{log}\"" +
@@ -163,10 +198,6 @@ internal static class HiddenServer
 
             _progress = LayerProgress.Start("emp_hidden_starting".lang());
             _progress.onCancel = () => Fail("emp_hidden_why_cancel".lang());
-            return true;
-        } catch (Exception ex) {
-            EmpLog.Warning(ex, "Hidden server: could not be started");
-            Fallback(classic, "emp_hidden_why_launch".lang());
             return true;
         }
     }
@@ -226,6 +257,7 @@ internal static class HiddenServer
     {
         var session = NetSession.Instance;
         _classic = null;
+        _onFail = null;
         _joined = true;
         CloseProgress();
         EmpLog.Information("Hidden server: up after {Seconds} s, joining it", (int)(Time.unscaledTime - _startedAt));
@@ -258,6 +290,11 @@ internal static class HiddenServer
 
     private static void Fallback(Action classic, string why)
     {
+        // a server started on a world taken from the store: the lease is let go (PeerKeeper)
+        var failed = _onFail;
+        _onFail = null;
+        failed?.Invoke();
+
         // a peer-hosted world is never hosted the classic way: that would make its keeper a host again
         if (PeerHosting.Active) {
             EmpLog.Warning("Hidden server: not used, and this peer-hosted world is not hosted the usual way ({Why})", why);

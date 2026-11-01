@@ -54,6 +54,44 @@ internal static class WorldHandover
         }
     }
 
+    // a peer-hosted world kept with the world's store: the keeper's own order of who takes over, and the one it named
+    private static bool _ordered;
+    private static ulong _next;
+
+    /// <summary>
+    ///     The keeper of the world this game was last a guest of (its Steam id), 0 when none
+    /// </summary>
+    internal static ulong LastKeeper => _last is { Keeper: not 0 } last ? last.Keeper : _last?.Host ?? 0;
+
+    /// <summary>
+    ///     Another player keeps the world now (the store says so, PeerKeeper): its game is looked for and joined
+    /// </summary>
+    internal static void FollowKeeper(ulong keeper)
+    {
+        if (keeper == 0 || keeper == _me) {
+            return;
+        }
+
+        if (Array.IndexOf(_guests, keeper) < 0) {
+            _guests = [keeper, .._guests];
+        }
+
+        _next = keeper;
+        _ordered = true;
+        Follow();
+    }
+
+    /// <summary>
+    ///     This game's place in the keeper's last succession list (0: first), the length of the list when it is not
+    ///     in it: it waits for that many turns before it takes the world
+    /// </summary>
+    internal static int Position(ulong me)
+    {
+        var order = _guests.Where(g => g != 0 && g != LastKeeper).Distinct().ToArray();
+        var at = Array.IndexOf(order, me);
+        return at >= 0 ? at : order.Length;
+    }
+
     /// <summary>
     ///     How many guests may take their turn at opening the world
     /// </summary>
@@ -134,6 +172,14 @@ internal static class WorldHandover
         var session = NetSession.Instance;
         _last = offer;
         _me = session.Self is { } self ? (ulong)self.User : 0UL;
+        // a peer-hosted world kept with the store: the keeper's order (its own seat is not in it)
+        _ordered = offer.Succession is { Length: > 0 };
+        _next = 0;
+        if (_ordered) {
+            _guests = offer.Succession;
+            return;
+        }
+
         // the host is the player 0 of its own list
         _guests = session.CurrentPlayers.Where(p => p is not null && p.Index != 0).Select(p => (ulong)p.User).ToArray();
     }
@@ -141,10 +187,17 @@ internal static class WorldHandover
     /// <summary>
     ///     The host said it leaves, and who was playing then
     /// </summary>
-    internal static void HostLeft(ulong[]? guests)
+    internal static void HostLeft(ulong[]? guests, ulong named = 0)
     {
         if (guests is { Length: > 0 }) {
             _guests = guests;
+        }
+
+        // the keeper named the next one (PeerKeeper): that one, then the keeper's order
+        _next = named;
+        _ordered = named != 0 || (Helper.PeerKeeper.Enabled && _ordered);
+        if (named != 0 && Array.IndexOf(_guests, named) < 0) {
+            _guests = [named, .._guests];
         }
 
         if (_me == 0 && NetSession.Instance.Self is { } self) {
@@ -224,7 +277,8 @@ internal static class WorldHandover
         _nextWatch = Time.unscaledTime + WatchSeconds;
 
         var session = NetSession.Instance;
-        if (!EmpConfig.Server.Takeover.Value || !EClass.core.IsGameStarted ||
+        // (a server never joins anyone: a peer-hosted world's keeper hands it over itself, PeerKeeper)
+        if (!EmpConfig.Server.Takeover.Value || EmpServer.Requested || !EClass.core.IsGameStarted ||
             session.Transport is not ElinNetHost { IsZoneSession: false } host || session.CurrentPlayers.Count > 1 ||
             WorldTakeover.Busy) {
             return;
@@ -364,7 +418,10 @@ internal static class WorldHandover
     /// </summary>
     internal static ulong Successor(IEnumerable<ulong> guests, float secondsWithoutHost)
     {
-        var order = guests.Where(g => g != 0).Distinct().OrderBy(g => g).ToArray();
+        // (the keeper's own order when it gave one, the one it named first)
+        var listed = guests.Where(g => g != 0).Distinct();
+        var order = _ordered ? (_next != 0 ? listed.Where(g => g == _next).Concat(listed.Where(g => g != _next)) : listed).ToArray()
+            : listed.OrderBy(g => g).ToArray();
         if (order.Length == 0) {
             return 0;
         }

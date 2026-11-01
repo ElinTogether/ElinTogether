@@ -136,6 +136,30 @@ internal static class EtWorldDepot
         }
     }
 
+    /// <summary>
+    ///     One signed request of the API as it is, for the election of the next keeper (EtWorldPeerStore): "{w}" in
+    ///     the path is the world. Shares this install's key, its registration and the clock offset with the depot
+    /// </summary>
+    internal static (int Status, JObject? Json, byte[] Body) Request(string address, string keyFile, ulong steam, string name,
+        string method, string path, byte[]? body = null, string? signed = null, bool raw = false)
+    {
+        lock (_gate) {
+            try {
+                Use(address, keyFile);
+            } catch (No no) {
+                throw new IOException("the world service address is not usable: " + no.Message);
+            }
+
+            return Call(method, path.Replace("{w}", _world), body, steam, name, signed, raw);
+        }
+    }
+
+    internal static string Sha256Hex(byte[] bytes) => Sha(bytes);
+
+    internal static byte[] GzipBytes(byte[] raw) => Gzip(raw);
+
+    internal static byte[] GunzipBytes(byte[] stored, long size) => Gunzip(stored, size);
+
     private static void Use(string address, string keyFile)
     {
         var at = address.IndexOf('#');
