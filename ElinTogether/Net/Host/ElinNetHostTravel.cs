@@ -25,8 +25,10 @@ internal partial class ElinNetHost
     private const int LeaseUidHeadroom = 50_000;
 
     // what a player alone on a map may allocate at most: a counter it reported beyond (int.MaxValue was tried, security
-    // audit 2026-10-27) would have made the host's uids wrap and collide in the save
-    private const int MaxLeaseUids = 5_000_000;
+    // audit 2026-10-27) would have made the host's uids wrap and collide in the save. Also the size of a range: the
+    // next one starts past its end, so two leases at once never share uids (robustness audit 2026-11-01; was 5M with
+    // ranges spaced by the headroom only, 1M keeps room for thousands of overlapping leases in the int space)
+    private const int MaxLeaseUids = 1_000_000;
 
     /// <summary>
     ///     Same for quest uids: a zone simulated by a client creates the quests of its residents there
@@ -1096,15 +1098,59 @@ internal partial class ElinNetHost
         return null;
     }
 
+    // end (exclusive) of the highest range handed out and still in use, 0 without any
+    private int ActiveLeaseEnd => _leases.Values.SelectMany(z => z.Values).Select(s => s + MaxLeaseUids).DefaultIfEmpty(0).Max();
+
+    /// <summary>
+    ///     The host's own counter reached a range a player allocates in (more than the headroom created on the host
+    ///     during that lease), or the saved range of a player that kept its checkpoint: it jumps past it, the two
+    ///     would hand out the same uids. Called before the game assigns a card uid, see LeaseUidRangePatch
+    /// </summary>
+    internal static void KeepCounterOutOfLeases(CardManager cards)
+    {
+        var host = NetSession.Instance.Transport as ElinNetHost;
+        var saved = LeaseRangeFloor[FloorCards];
+        for (var moved = true; moved;) {
+            moved = false;
+            if (saved > 0 && cards.uidNext >= saved && cards.uidNext < saved + MaxLeaseUids) {
+                moved = Skip(saved);
+            }
+
+            if (host is null) {
+                continue;
+            }
+
+            foreach (var zones in host._leases.Values) {
+                foreach (var start in zones.Values) {
+                    if (cards.uidNext >= start && cards.uidNext < start + MaxLeaseUids) {
+                        moved = Skip(start);
+                    }
+                }
+            }
+        }
+
+        return;
+
+        bool Skip(int start)
+        {
+            EmpLog.Warning("Host card counter {UidNext} reached the leased uid range starting at {Start}, jumping past it",
+                cards.uidNext, start);
+            cards.uidNext = start + MaxLeaseUids;
+            return true;
+        }
+    }
+
     /// <summary>
     ///     Lease the zone to the player, returns the first card uid it may allocate
     /// </summary>
     private int ReserveLease(ISteamNetPeer peer, Zone zone)
     {
-        // above the host counter and above any range handed out and still in use
-        var floor = _leases.Values.SelectMany(z => z.Values).DefaultIfEmpty(0).Max();
-        var rangeStart = Math.Max(Math.Max(game.cards.uidNext, floor), LeaseRangeFloor[FloorCards]) + LeaseUidHeadroom;
-        LeaseRangeFloor[FloorCards] = rangeStart;
+        // above the host counter and past the END of any range handed out and still in use (the saved floor is the
+        // highest range start, as older versions kept it): ranges never overlap each other
+        var saved = LeaseRangeFloor[FloorCards];
+        var floor = Math.Max(ActiveLeaseEnd, saved > 0 ? saved + MaxLeaseUids : 0);
+        var rangeStart = Math.Max(game.cards.uidNext, floor) + LeaseUidHeadroom;
+        LeaseRangeFloor[FloorCards] = Math.Max(saved, rangeStart);
 
         if (!_leases.TryGetValue(peer.Id, out var zones)) {
             zones = _leases[peer.Id] = [];
@@ -1357,16 +1403,14 @@ internal partial class ElinNetHost
         }
 
         var handedBack = false;
+        // something of the return threw: no soft return over a half-applied state, the player gets the world
+        var failed = false;
         // the base of the zone it held, when that player may manage it: its residents come back with it
         var managed = -1;
         if (_leases.TryGetValue(peer.Id, out var zones) && zones.Remove(release.ZoneUid, out var rangeStart)) {
             handedBack = true;
 
-            if (game.spatials.Find(release.ZoneUid) is { IsRegion: false } zone && !_questZones.Contains(zone.uid) &&
-                ApplyLeasedZone(zone, release, peer)) {
-                managed = zone.uid;
-            }
-
+            // first, whatever follows throws or not: the cards made away keep their uids (robustness audit 2026-11-01)
             // only a range the client allocated in pushes the host counter
             if (release.UidNext > rangeStart) {
                 game.cards.uidNext = Math.Max(game.cards.uidNext, Math.Min(release.UidNext, rangeStart + MaxLeaseUids));
@@ -1375,6 +1419,19 @@ internal partial class ElinNetHost
             // every range came back with what was used of it: nothing above the counter is in use anymore
             if (_leases.Values.All(z => z.Count == 0)) {
                 LeaseRangeFloor[FloorCards] = 0;
+            }
+
+            // a throw here left the return half done: no hand over to its visitors, no world sent, the player waiting
+            // for good. It is told loudly and the return goes on with a full copy of the world
+            try {
+                if (game.spatials.Find(release.ZoneUid) is { IsRegion: false } zone && !_questZones.Contains(zone.uid) &&
+                    ApplyLeasedZone(zone, release, peer)) {
+                    managed = zone.uid;
+                }
+            } catch (Exception ex) {
+                failed = true;
+                EmpLog.Error(ex, "The zone {ZoneUid} handed back by player {@Peer} could not be applied, its return goes on",
+                    release.ZoneUid, peer);
             }
         } else if (release.ZoneUid != -1) {
             EmpLog.Warning("Player {@Peer} released zone {ZoneUid} without holding its lease, ignoring the zone",
@@ -1393,12 +1450,27 @@ internal partial class ElinNetHost
 
         // the numbers given to its cards that waited for one, see ZoneSoftRejoin.Rebinds
         var rebound = new Dictionary<int, int>();
-        var chara = ReplaceRemoteChara(peer.User, release.Chara, rebound: rebound, capGainsOf: wasVisitor ? peer.Id : -1);
-        ClaimZoneDelta.ResolveAway(peer.Id, release, chara);
-        ReplaceCompanions(release.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0, rebound);
-        ReplaceResidents(release.Residents, ownerUid, managed);
-        DropGoneResidents(release.GoneResidents, ownerUid);
-        ReplaceGuestCharas(release, peer);
+        Chara? chara = null;
+        try {
+            chara = ReplaceRemoteChara(peer.User, release.Chara, rebound: rebound, capGainsOf: wasVisitor ? peer.Id : -1);
+            ClaimZoneDelta.ResolveAway(peer.Id, release, chara);
+            ReplaceCompanions(release.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0, rebound);
+            ReplaceResidents(release.Residents, ownerUid, managed);
+            DropGoneResidents(release.GoneResidents, ownerUid);
+            ReplaceGuestCharas(release, peer);
+        } catch (Exception ex) {
+            failed = true;
+            EmpLog.Error(ex, "The characters handed back by player {@Peer} could not all be applied, its return goes on", peer);
+        }
+
+        if (failed) {
+            soft = softReturn = softGuest = false;
+            // the character the host already had for it, if the new one never came in
+            if (chara is null && SavedRemoteCharas.TryGetValue(peer.User, out var played) &&
+                game.cards.globalCharas.TryGetValue(played, out var known)) {
+                chara = known;
+            }
+        }
 
         // never next to the host when something tells where: it walks into the host's map by the way it took, or
         // the host is the one coming to the map it stands on (held or only visited) and it stays on its tile
@@ -1412,7 +1484,12 @@ internal partial class ElinNetHost
 
         if (handedBack) {
             // before looking for someone to take it over: there is nothing to take over
-            DestroyQuestZone(release.ZoneUid);
+            try {
+                DestroyQuestZone(release.ZoneUid);
+            } catch (Exception ex) {
+                EmpLog.Error(ex, "The quest zone {ZoneUid} handed back by player {@Peer} could not be removed", release.ZoneUid, peer);
+            }
+
             HandOverZone(release.ZoneUid, peer.Id, left: release);
         }
 

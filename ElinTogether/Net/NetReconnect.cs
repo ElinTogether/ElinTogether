@@ -102,58 +102,44 @@ internal static class NetReconnect
             // the caller resets the session right after Begin: the title screen is up on the next frame
             yield return null;
 
-            ShowNotice(hostLeft);
+            try {
+                ShowNotice(hostLeft);
+            } catch (Exception ex) {
+                EmpLog.Warning(ex, "Reconnect: the notice could not be shown");
+            }
 
             // a hard end: a join that connects but never loads the world counts in the same time
             while (Time.realtimeSinceStartup < giveUp) {
                 yield return null;
 
-                // back in the game, or the player started something else
-                if (EClass.core.IsGameStarted || session.Transport is ElinNetHost) {
-                    back = true;
-                    PeerKeeper.LinkBack();
-                    if (_ties is { Count: > 0 } ties && session.Transport is ElinNetClient) {
-                        EmpMod.Instance.StartCoroutine(TieAgainOnceHere(ties));
-                    }
-
-                    yield break;
-                }
-
-                var now = Time.realtimeSinceStartup;
-                if (now - tried < RetrySeconds || PeerKeeper.Claiming) {
+                // one try that throws is one try lost, never the routine (robustness audit 2026-11-01): it ended with
+                // the session left as it was and no word to the player
+                int step;
+                try {
+                    step = Step();
+                } catch (Exception ex) {
+                    EmpLog.Warning(ex, "Reconnect: this try failed, the next one comes");
+                    tried = Time.realtimeSinceStartup;
                     continue;
                 }
 
-                // the host did not come back: the guest whose turn it is opens the world from its copy, the others
-                // look for that game (it said nothing before going: a crash, a line cut for good)
-                // (also when the guest whose turn it was did not open it in its time: the next one does)
-                // (a peer-hosted world kept with the world's store: its lease says when the keeper is gone, and the
-                // keeper's own list who takes it, see PeerKeeper)
-                if (takeover && PeerKeeper.WhileLost()) {
-                    // the election handles it; the attempts below join the keeper that comes back, or the new one
-                } else if (takeover && now - lost >= wait && !WorldTakeover.Busy) {
-                    if (!WorldHandover.IsMyTurn(now - lost - wait)) {
-                        WorldHandover.Follow();
-                    } else if (WorldTakeover.Begin() is { Length: > 0 } why) {
-                        EmpLog.Warning("The host is gone and the world is not taken over: {Why}", why);
-                        takeover = false;
-                    } else {
-                        // (the takeover ends this routine itself, see WorldTakeover)
-                        EmpLog.Information("The host did not come back in {Seconds}s: taking the world over", now - lost);
-                        EmpPop.Information("emp_takeover_begin".lang());
-                    }
+                if (step == StepBack) {
+                    back = true;
+                    yield break;
                 }
 
-                if (session.Transport is ElinNetClient client) {
-                    // connected: the join is under way. Through a lobby nothing is connected yet while Steam
-                    // lets us in and the key is handed over: that attempt gets the time of any request
-                    var direct = client.IsLocalConnection || client.IsDirectConnection;
-                    if (client.IsConnected || (!direct && now - tried < EmpConfig.Policy.Timeout.Value)) {
-                        continue;
+                if (step == StepWait) {
+                    continue;
+                }
+
+                if (step == StepResetFirst) {
+                    try {
+                        // the component closes its link at the end of the frame, which resets the session once more
+                        session.ResetSession();
+                    } catch (Exception ex) {
+                        EmpLog.Warning(ex, "Reconnect: the session could not be reset before the next try");
                     }
 
-                    // the component closes its link at the end of the frame, which resets the session once more
-                    session.ResetSession();
                     yield return null;
                 }
 
@@ -163,7 +149,11 @@ internal static class NetReconnect
                 tried = Time.realtimeSinceStartup;
             }
         } finally {
-            Clear();
+            try {
+                Clear();
+            } catch (Exception ex) {
+                EmpLog.Warning(ex, "Reconnect: the notice could not be closed");
+            }
         }
 
         if (back) {
@@ -172,9 +162,73 @@ internal static class NetReconnect
 
         EmpLog.Information("Gave up joining the game again after {Seconds}s", Time.realtimeSinceStartup - lost);
 
-        session.ResetSession();
+        // always both: the player is never left on a half-open session without a word
+        try {
+            session.ResetSession();
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Reconnect: the session could not be reset after giving up");
+        }
+
         Dialog.Ok(hostLeft ? "emp_ui_host_closed" : "emp_ui_reconnect_failed");
+        yield break;
+
+        // what one turn of the loop decides, without waiting
+        int Step()
+        {
+            // back in the game, or the player started something else
+            if (EClass.core.IsGameStarted || session.Transport is ElinNetHost) {
+                PeerKeeper.LinkBack();
+                if (_ties is { Count: > 0 } ties && session.Transport is ElinNetClient) {
+                    EmpMod.Instance.StartCoroutine(TieAgainOnceHere(ties));
+                }
+
+                return StepBack;
+            }
+
+            var now = Time.realtimeSinceStartup;
+            if (now - tried < RetrySeconds || PeerKeeper.Claiming) {
+                return StepWait;
+            }
+
+            // the host did not come back: the guest whose turn it is opens the world from its copy, the others
+            // look for that game (it said nothing before going: a crash, a line cut for good)
+            // (also when the guest whose turn it was did not open it in its time: the next one does)
+            // (a peer-hosted world kept with the world's store: its lease says when the keeper is gone, and the
+            // keeper's own list who takes it, see PeerKeeper)
+            if (takeover && PeerKeeper.WhileLost()) {
+                // the election handles it; the attempts below join the keeper that comes back, or the new one
+            } else if (takeover && now - lost >= wait && !WorldTakeover.Busy) {
+                if (!WorldHandover.IsMyTurn(now - lost - wait)) {
+                    WorldHandover.Follow();
+                } else if (WorldTakeover.Begin() is { Length: > 0 } why) {
+                    EmpLog.Warning("The host is gone and the world is not taken over: {Why}", why);
+                    takeover = false;
+                } else {
+                    // (the takeover ends this routine itself, see WorldTakeover)
+                    EmpLog.Information("The host did not come back in {Seconds}s: taking the world over", now - lost);
+                    EmpPop.Information("emp_takeover_begin".lang());
+                }
+            }
+
+            if (session.Transport is ElinNetClient client) {
+                // connected: the join is under way. Through a lobby nothing is connected yet while Steam
+                // lets us in and the key is handed over: that attempt gets the time of any request
+                var direct = client.IsLocalConnection || client.IsDirectConnection;
+                if (client.IsConnected || (!direct && now - tried < EmpConfig.Policy.Timeout.Value)) {
+                    return StepWait;
+                }
+
+                return StepResetFirst;
+            }
+
+            return StepTry;
+        }
     }
+
+    private const int StepWait = 0;
+    private const int StepBack = 1;
+    private const int StepResetFirst = 2;
+    private const int StepTry = 3;
 
     private static void Attempt(Action rejoin, bool byLobby)
     {

@@ -130,7 +130,8 @@ public class RemoteCard : IEquatable<RemoteCard>
 
     public override string ToString()
     {
-        return $"{Find()}";
+        // never Find(): on a client it decodes and caches the card, a log line changing state (robustness audit 2026-11-01)
+        return $"{Type}:{Uid}";
     }
 
     public static bool operator ==(RemoteCard? lhs, RemoteCard? rhs)

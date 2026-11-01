@@ -86,6 +86,32 @@ internal static class SaveWriter
     internal static bool Idle => _pending.IsCompleted;
 
     /// <summary>
+    ///     Inside a save whose files are written beside the game: runs the action on the writer's thread once all of
+    ///     them are on the disk, and not at all if one of them failed. False outside such a save (the files are
+    ///     written already, the caller runs it itself)
+    /// </summary>
+    internal static bool AfterWrites(Action action)
+    {
+        if (_deferred is not { } writes) {
+            return false;
+        }
+
+        writes.Add(() => {
+            if (_failed) {
+                EmpLog.Warning("Save: a file was not written, what waited for the save is left for the next one");
+                return;
+            }
+
+            try {
+                action();
+            } catch (Exception ex) {
+                EmpLog.Error(ex, "Save: what waited for the save failed");
+            }
+        });
+        return true;
+    }
+
+    /// <summary>
     ///     The files of the last save are on the disk once this returns
     /// </summary>
     internal static void Wait()
