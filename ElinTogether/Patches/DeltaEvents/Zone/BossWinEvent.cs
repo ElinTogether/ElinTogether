@@ -37,3 +37,39 @@ internal static class BossWinEvent
         session.Connection?.Delta.AddRemote(delta);
     }
 }
+
+/// <summary>
+///     The boss of a nefia leaves when its floor is entered again (Zone.Simulate): the game that runs the zone marks
+///     the dungeon conquered in its world alone. A guest alone in that dungeon left it unconquered in everyone else's,
+///     the host's too (its lease hands back the zone it held, not the top of the dungeon)
+/// </summary>
+[HarmonyPatch(typeof(Zone), nameof(Zone.Simulate))]
+internal static class BossLeaveEvent
+{
+    [HarmonyPrefix]
+    internal static void Before(Zone __instance, out Zone? __state)
+    {
+        __state = __instance.GetTopZone() is { isConquered: false } top ? top : null;
+    }
+
+    [HarmonyPostfix]
+    internal static void After(Zone __instance, Zone? __state)
+    {
+        var session = NetSession.Instance;
+        if (__state is not { isConquered: true } || !__instance.IsNefia || session.Transport is null || ElinDelta.IsApplying ||
+            (session.Connection is ElinNetClient && !session.IsZoneAuthority)) {
+            return;
+        }
+
+        var delta = new BossWinDelta {
+            ZoneUid = __instance.uid,
+            TopZoneUid = __state.uid,
+            Nefia = true,
+            DangerLv = __instance.DangerLv,
+            Left = true,
+        };
+
+        QuestAwaySync.Send(delta);
+        session.Connection?.Delta.AddRemote(delta);
+    }
+}
