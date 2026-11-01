@@ -1316,5 +1316,6 @@
     "LangGeneral.emp_tip_cfg_code_mods.text": "同时下载包含代码（DLL 文件）的游戏模组，仅限你信任的房主。\n模组中的代码以你的全部权限在本机运行：房主可以指定任何创意工坊物品，包括它自己上传的。\n关闭时：缺少的模组含有代码时不下载，会告诉你是哪个模组，本机不做任何更改。\n仅在开启下载选项时有效。",
     "LangGeneral.emp_tip_cfg_depot_path.text": "存档仓库文件夹：小组所有玩家都能访问的文件夹（共享或同步），用于保存世界。留空：不使用仓库。\n第一位玩家从中取得世界并当房主，每次存档都会存回去，下一位玩家可以接手。\n也可以填写 Elin Together Server 的地址（host:55557），或私有 GitHub 仓库：github:owner/repository",
     "LangGeneral.emp_tip_cfg_depot_password.text": "存档仓库的密码（仓库为 Elin Together Server 且设置了密码时）。\nGitHub 仓库：访问密钥（fine-grained token，仅限此仓库，Contents: Read and write）。切勿分享此文件。",
-    "LangGeneral.emp_tip_cfg_record_replay.text": "保留最近 30 秒的画面（每秒一张小图，仅保存在内存中），并随问题报告一起发送"
+    "LangGeneral.emp_tip_cfg_record_replay.text": "保留最近 30 秒的画面（每秒一张小图，仅保存在内存中），并随问题报告一起发送",
+    "LangGeneral.emp_gain_capped.text": "已达到本服务器每小时收入上限，其余部分不予支付。"
 }

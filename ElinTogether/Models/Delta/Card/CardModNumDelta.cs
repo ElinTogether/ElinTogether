@@ -30,6 +30,18 @@ public class CardModNumDelta : ElinDelta
         }
     }
 
+    /// <summary>
+    ///     Counts this copy changes itself, told by the host and not told back (a gain the host cut short)
+    /// </summary>
+    internal static ScopeExit Overwriting()
+    {
+        var previous = IsOverwriting;
+        IsOverwriting = true;
+        return new() {
+            OnExit = () => IsOverwriting = previous,
+        };
+    }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         // a thing in the bag of another player's companion (the host's own pets too) is that player's to spend; a
