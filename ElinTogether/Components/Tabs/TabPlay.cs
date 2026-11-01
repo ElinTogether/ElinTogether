@@ -51,13 +51,19 @@ internal class TabPlay : TabEmpBase
             // a guest at the title screen, already joined and waiting for the world: no host or join cards (a second
             // join from here would drop the first), only where it stands and the way out
             BuildJoining(page);
+        } else if (!EClass.core.IsGameStarted && _choosing) {
+            BuildSaveList(page);
         } else {
-            // the journal's two pages: the official game, hosting and joining on the left, the public games on the
-            // right, scrolled inside their card (four cards one under the other ran under the window's edge)
+            // the journal's two pages, read top-down (user 2026-11-01): hosting first, then the ways to join (the
+            // public server, a friend) on the left, the public games on the right, scrolled inside their card
             var (left, right) = page.Book();
-            // the project's own public game first: its card is the most visible thing of the page
+            if (EClass.core.IsGameStarted) {
+                BuildHost(left);
+            } else {
+                BuildHostGame(left);
+            }
+
             var official = BuildOfficialCard(left);
-            BuildHost(left);
             BuildJoin(left);
             BuildPublicServers(right, official);
         }
@@ -169,27 +175,171 @@ internal class TabPlay : TabEmpBase
 
     // ---------------------------------------------------------------- not connected
 
-    private static void BuildHost(YKVertical page)
-    {
-        var card = page.Card("emp_ui_play_host_title".lang());
-        if (!EClass.core.IsGameStarted) {
-            // the world kept in the depot: whoever comes first takes it and hosts it
-            if (SaveDepot.Enabled) {
-                card.TextSmall("emp_ui_play_host_depot".lang(), FontColor.Gray);
-                // held by another player whose lock says where: the same click joins their game
-                var label = SaveDepot.HeldBy() is not { } who ? "emp_ui_depot_take".lang() :
-                    (SaveDepot.Joinable ? "emp_ui_depot_join_btn" : "emp_ui_depot_held_btn").Loc(who);
-                card.ButtonRow().RowButton(label, () => {
-                    LayerElinTogether.Instance?.Close();
-                    SaveDepot.Take();
-                });
-            } else {
-                card.TextSmall("emp_ui_play_host_title_screen".lang(), FontColor.Gray);
-            }
+    // ---------------------------------------------------------------- host a game (title screen)
 
+    // the title screen's "Host a game" (user 2026-11-01): a save is chosen here, the rules page shows it with
+    // "Start hosting", which loads it and opens it to multiplayer (EmpAutoHost.HostAfterLoad). Never stored
+    private static bool _choosing;
+
+    /// <summary>
+    ///     The save chosen to be hosted, shown on the rules page with its Start button until it starts or Back
+    /// </summary>
+    internal static GameIndex? HostPick { get; private set; }
+
+    private static bool Cloud => EClass.core.config.cloud;
+
+    /// <summary>
+    ///     "Host a game": one button that lists the saves; the shared world of the depot, when there is one, as a
+    ///     second line under it
+    /// </summary>
+    private static void BuildHostGame(YKVertical page)
+    {
+        var card = page.Card("emp_ui_host_game_title".lang());
+        card.TextSmall("emp_ui_host_game_desc".lang(), FontColor.Gray);
+        card.ButtonRow().RowButton("emp_ui_host_game_choose".lang(), () => {
+            _choosing = true;
+            LayerElinTogether.Instance?.Reopen();
+        });
+
+        if (!SaveDepot.Enabled) {
             return;
         }
 
+        // the world kept in the depot: whoever comes first takes it and hosts it
+        card.Divider();
+        card.TextSmall("emp_ui_play_host_depot".lang(), FontColor.Gray);
+        // held by another player whose lock says where: the same click joins their game
+        var label = SaveDepot.HeldBy() is not { } who ? "emp_ui_depot_take".lang() :
+            (SaveDepot.Joinable ? "emp_ui_depot_join_btn" : "emp_ui_depot_held_btn").Loc(who);
+        card.ButtonRow().RowButton(label, () => {
+            LayerElinTogether.Instance?.Close();
+            SaveDepot.Take();
+        });
+    }
+
+    /// <summary>
+    ///     The player's saves as the game's Load window reads them (GameIO.GetGameList), the most recent first; the
+    ///     depot's own copy of the shared world is hosted from its line, not from here
+    /// </summary>
+    private static List<GameIndex> Saves()
+    {
+        try {
+            return GameIO.GetGameList(Cloud ? CorePath.RootSaveCloud : CorePath.RootSave)
+                .Where(g => !g.IsCorrupted && !(SaveDepot.Enabled && g.id == SaveDepot.WorldId))
+                .OrderByDescending(g => g.real?.GetRawReal() ?? 0)
+                .ToList();
+        } catch (System.Exception ex) {
+            EmpLog.Warning(ex, "The saves could not be listed");
+            return [];
+        }
+    }
+
+    private static void BuildSaveList(YKVertical page)
+    {
+        var card = page.Card("emp_ui_host_game_choose".lang());
+        var saves = Saves();
+        card.TextSmall((saves.Count == 0 ? "emp_ui_host_pick_none" : "emp_ui_host_pick_desc").lang(), FontColor.Gray);
+        if (saves.Count > 0) {
+            var list = card.ScrollList(380f);
+            list.Layout.spacing = UIHelper.RowSpacing * 2f;
+            for (var i = 0; i < saves.Count; i++) {
+                if (i > 0) {
+                    list.Divider();
+                }
+
+                BuildSaveEntry(list, saves[i]);
+            }
+        }
+
+        card.ButtonRow().RowButton("emp_ui_host_back".lang(), () => {
+            _choosing = false;
+            LayerElinTogether.Instance?.Reopen();
+        });
+    }
+
+    /// <summary>
+    ///     One save as the Load window writes it: its name, the character and where it is, the date it was last
+    ///     played and the days played; a save of another version of the game cannot be chosen
+    /// </summary>
+    private static void BuildSaveEntry(YKLayout parent, GameIndex save)
+    {
+        var line = parent.Row();
+        line.Layout.childAlignment = TextAnchor.UpperLeft;
+        var text = line.Vertical();
+        text.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        text.Layout.spacing = 0f;
+        text.LayoutElement().flexibleWidth = 1f;
+        text.LayoutElement().minWidth = 0f;
+
+        var compatible = EClass.core.version.IsSaveCompatible(save.version);
+        text.Text(SaveName(save), compatible ? FontColor.Default : FontColor.Bad);
+        text.TextSmall($"{(save.permaDeath ? "★" : "")}{save.pcName} ({save.zoneName})", FontColor.Gray);
+        text.TextSmall($"{save.RealDate}   {"infoHire".lang(save.days.ToString())}", FontColor.Gray);
+        if (!compatible) {
+            text.TextSmall("incompatible".lang(), FontColor.Bad);
+            return;
+        }
+
+        var target = save;
+        var pick = line.Button("emp_ui_host_pick".lang(), () => {
+            HostPick = target;
+            _choosing = false;
+            // the rules page, on its presets: the Start button is at its top
+            SetSubTab("server", 0);
+            LayerElinTogether.Instance?.Close();
+            LayerElinTogether.OpenPanelSesame("emp_tab_server");
+        });
+        var element = pick.LayoutElement();
+        element.preferredWidth = 110f;
+        element.flexibleWidth = 0f;
+    }
+
+    internal static string SaveName(GameIndex save) => string.IsNullOrEmpty(save.factionName) ? save.id : save.factionName;
+
+    /// <summary>
+    ///     Back from the rules page to the list of saves
+    /// </summary>
+    internal static void BackToSaves()
+    {
+        HostPick = null;
+        _choosing = true;
+        LayerElinTogether.Instance?.Close();
+        LayerElinTogether.OpenPanelSesame(TabName);
+    }
+
+    /// <summary>
+    ///     Loads the chosen save as the game's Load window does (a backup first for a save of an older version), and
+    ///     asks for it to be opened to multiplayer once it is loaded (EmpAutoHost.OpenSession)
+    /// </summary>
+    internal static void StartHosting(GameIndex save)
+    {
+        HostPick = null;
+        _choosing = false;
+        var cloud = Cloud;
+        save.cloud = cloud;
+        LayerElinTogether.Instance?.Close();
+        try {
+            if (!save.madeBackup && save.version.IsBelow(EClass.core.version)) {
+                GameIO.MakeBackup(save);
+                EClass.ui.Say("backupDone");
+                save.madeBackup = true;
+                GameIO.UpdateGameIndex(save);
+            }
+        } catch (System.Exception ex) {
+            EmpLog.Warning(ex, "No backup of the save {Id} before loading it", save.id);
+        }
+
+        EmpAutoHost.HostAfterLoad = save.id;
+        LayerTitle.KillActor();
+        // (an incompatible save: the game says so, and nothing is opened)
+        if (!Game.TryLoad(save.id, cloud, () => Game.Load(save.id, cloud))) {
+            EmpAutoHost.HostAfterLoad = null;
+        }
+    }
+
+    private static void BuildHost(YKVertical page)
+    {
+        var card = page.Card("emp_ui_play_host_title".lang());
         card.TextSmall("emp_ui_play_host_desc".lang(), FontColor.Gray);
         var buttons = card.ButtonRow();
         buttons.RowButton("emp_ui_sv_start".lang(), StartServerFromPanel);
