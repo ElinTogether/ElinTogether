@@ -154,6 +154,17 @@ internal partial class ElinNetHost
             Teams.MoveLands(-away.uid, -back.uid);
         }
 
+        // the lands it claimed earn for, and are billed to, the one now played; its unpaid bills follow it
+        foreach (var land in EClass.pc.faction.GetChildren().Select(b => b.owner).Where(z => z?.GetInt(BaseIncome.ClaimerKey) == away.uid)) {
+            land.SetInt(BaseIncome.ClaimerKey, back.uid);
+        }
+
+        if (TeamTaxBills.TryGetValue(-away.uid, out var owed)) {
+            TeamTaxBills.Remove(-away.uid);
+            TeamTaxBills.TryGetValue(-back.uid, out var already);
+            TeamTaxBills[-back.uid] = already + owed;
+        }
+
         AdminLog($"return character {away.uid} -> {back.uid} ({back.Name}) of {user} from {away.GetStr(CharaExport.AwaySaveKey)}: " +
                  $"left with {away.GetStr(CharaExport.AwayFromKey)}, back with {CharaExport.Summary(back)}");
         EmpLog.Information("Chara {Away} back from a solo save as {Back} ({Name})", away.uid, back.uid, back.Name);

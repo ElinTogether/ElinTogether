@@ -22,6 +22,15 @@ internal static class BaseIncome
     // on a land: the player who claimed it (Teams.OnClaimed)
     internal const int ClaimerKey = 47110001;
 
+    /// <summary>
+    ///     The player in no team a land is for: its own owner in the book first (a character back from a solo save
+    ///     took it over), else the one who claimed it
+    /// </summary>
+    internal static int ClaimerOf(Zone zone)
+    {
+        return Teams.SoloOwnerOf(zone) is > 0 and var solo ? solo : zone.GetInt(ClaimerKey);
+    }
+
     private static ElinNetHost? Host => NetSession.Instance.Connection is ElinNetHost { IsZoneSession: false } host ? host : null;
 
     // ---- goods put on sale by a guest
@@ -92,7 +101,7 @@ internal static class BaseIncome
         var zone = __instance.owner;
         var team = Teams.TeamOfZone(zone);
         // (the commons has no owner: what it earns goes to the shared bank)
-        var owners = (team != Teams.Wanderers ? Teams.MembersOfTeam(team) : Commons.Is(zone) ? [] : [zone.GetInt(ClaimerKey)])
+        var owners = (team != Teams.Wanderers ? Teams.MembersOfTeam(team) : Commons.Is(zone) ? [] : [ClaimerOf(zone)])
             .Where(uid => uid != 0).ToArray();
         if (owners.Length == 0 && ElinNetHost.SavedRemoteCharas.Count == 0 || owners.Length > 0 && owners.All(uid => uid == EClass.pc.uid)) {
             return true;

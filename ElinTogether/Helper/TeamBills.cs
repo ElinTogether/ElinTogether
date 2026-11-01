@@ -217,7 +217,7 @@ internal static class TeamBills
     private static (int Team, int Claimer) Payer(Zone zone)
     {
         var team = Teams.TeamOfZone(zone);
-        return team != Teams.Wanderers || Commons.Is(zone) ? (team, 0) : (team, zone.GetInt(BaseIncome.ClaimerKey));
+        return team != Teams.Wanderers || Commons.Is(zone) ? (team, 0) : (team, BaseIncome.ClaimerOf(zone));
     }
 
     // the player a team's mail is in the name of (the Wanderers: the claimer)
