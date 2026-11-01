@@ -185,8 +185,7 @@ internal static class PeerHosting
             return session.Transport is ElinNetClient && IsSignedAdmin(me) && Models.ModerationDelta.AdminIds.Contains(me);
         }
 
-        return session.Transport is ElinNetHost { IsZoneSession: false } ||
-               session.Transport is ElinNetClient && Models.ModerationDelta.AdminIds.Contains(me);
+        return session.Transport is ElinNetHost || Models.ModerationDelta.AdminIds.Contains(me);
     }
 
     private static HashSet<ulong> Parse(string[]? ids)

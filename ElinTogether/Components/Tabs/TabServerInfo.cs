@@ -81,7 +81,8 @@ internal class TabServerInfo : TabEmpBase
 
     private static bool IsHost => NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false };
 
-    private static bool IsAdmin => Helper.PeerHosting.IAmAdmin();
+    private static bool IsAdmin => Helper.PeerHosting.Active ? Helper.PeerHosting.IAmAdmin() : IsHost ||
+        (NetSession.Instance.Transport is ElinNetClient && ModerationDelta.AdminIds.Contains(NetSession.Instance.Self?.User ?? UserData.Me));
 
     /// <summary>
     ///     One parchment note: the text, or for the host an empty-state with "Write one"; the host's pencil opens the

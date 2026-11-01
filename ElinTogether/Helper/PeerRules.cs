@@ -51,8 +51,22 @@ internal static class PeerRules
     /// <summary>
     ///     The snapshot's settings as config entries and values (unknown keys and unreadable values left out, logged)
     /// </summary>
+    // the last snapshot read (by its hash), so a bad key is logged once, not at every tick
+    private static string _valuesOf = "";
+    private static Dictionary<ConfigEntryBase, object> _values = [];
+
+    // entries that do not keep the signed value once written (bounded by the config): logged once, not retried
+    private static readonly HashSet<ConfigEntryBase> _unsettable = [];
+
     private static Dictionary<ConfigEntryBase, object> Values(RulesSnapshot rules)
     {
+        var hash = rules.Hash;
+        if (hash == _valuesOf) {
+            return _values;
+        }
+
+        _valuesOf = hash;
+        _unsettable.Clear();
         var values = new Dictionary<ConfigEntryBase, object>();
         foreach (var setting in rules.Settings) {
             var key = setting.Key;
@@ -67,12 +81,13 @@ internal static class PeerRules
             }
         }
 
-        return values;
+        return _values = values;
     }
 
     /// <summary>
-    ///     On the keeper's hidden server: the signed values over the config, in memory only (the keeper's own file is
-    ///     not written: its friends' games keep their settings). The count of values that were different
+    ///     On the keeper's hidden server: the signed values over the config, in memory only (not saved here; a later
+    ///     save of the config by this process would write them to the keeper's file, which only its own hosting of
+    ///     other worlds reads). The count of values that were different
     /// </summary>
     internal static int Apply()
     {
@@ -80,7 +95,7 @@ internal static class PeerRules
             return 0;
         }
 
-        var diff = Values(rules).Where(v => !Equals(v.Key.BoxedValue, v.Value)).ToArray();
+        var diff = Values(rules).Where(v => !_unsettable.Contains(v.Key) && !Equals(v.Key.BoxedValue, v.Value)).ToArray();
         if (diff.Length == 0) {
             return 0;
         }
@@ -91,6 +106,11 @@ internal static class PeerRules
         try {
             foreach (var change in diff) {
                 change.Key.BoxedValue = change.Value;
+                if (!Equals(change.Key.BoxedValue, change.Value)) {
+                    _unsettable.Add(change.Key);
+                    EmpLog.Warning("Peer-hosted world: {Key} does not take the signed value {Value} (kept {Kept})",
+                        change.Key.Definition.Key, Canon(change.Value), Canon(change.Key.BoxedValue));
+                }
             }
         } finally {
             config.SaveOnConfigSet = save;

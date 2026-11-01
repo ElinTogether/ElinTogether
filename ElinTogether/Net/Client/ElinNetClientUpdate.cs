@@ -120,14 +120,14 @@ internal partial class ElinNetClient
     private bool _rulesReceived;
 
     /// <summary>
-    ///     This keeper of a peer-hosted world does not play its signed rules (or build): told in a window, left. The
-    ///     store hears of it with P3 (report); not a lost link, so no reconnection is tried
+    ///     This keeper of a peer-hosted world does not play its signed rules (or build): left, the reason shown by the
+    ///     disconnection's own window (OnPeerDisconnected; a reason of ours, so no reconnection is tried). The
+    ///     store hears of it with P3 (report)
     /// </summary>
     internal void LeaveKeeper(string why)
     {
         var reason = Common.EmpDisconnectInfo.With(Common.EmpDisconnectInfo.PeerRules, why);
         EmpLog.Warning("Peer-hosted world: the keeper {@Peer} is left, its rules are not the signed ones: {Why}", Host, why);
-        Dialog.Ok(Common.EmpDisconnectInfo.Describe(reason));
         Socket.Disconnect(Host, reason);
     }
 
