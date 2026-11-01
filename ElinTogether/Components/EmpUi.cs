@@ -741,6 +741,9 @@ internal static class EmpUi
         var element = frame.GetComponent<LayoutElement>();
         element.minHeight = element.preferredHeight = height;
         element.flexibleWidth = 1f;
+        // (YK's vertical layouts never set their children's heights (childControlHeight off): they stack each child at
+        // its own rect height, so the LayoutElement alone left the frame at a new RectTransform's 100 units)
+        ((RectTransform)frame.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
         frame.GetComponent<Image>().color = new(0f, 0f, 0f, 0.001f);
 
         var content = parent.Vertical();

@@ -42,17 +42,36 @@ internal class TabChat : TabEmpBase
             return;
         }
 
-        card.DropdownRow("emp_ui_chat_show".lang(), [..Channels().Select(c => ChannelName(c))], i => {
-            _filter = Channels()[i];
-            Refill();
-        }, Mathf.Max(0, Channels().IndexOf(_filter)));
+        BuildFilter(card);
 
-        // (a fixed frame that takes the room the page leaves, once: a line that arrives only fills it)
-        _list = card.ScrollList(330f, true);
+        // (a chat app's page: the log takes all the height between the filter and the writing row, which sits at the
+        // bottom of the window; TabEmpBase.FillPage sets that height once, a line that arrives only fills the log)
+        _list = card.ScrollList(LogStartHeight, true);
         _scroll = _list.GetComponentInParent<ScrollRect>();
         Refill();
 
         BuildWriter(card);
+    }
+
+    // the log's height until the page is laid out shown and it takes the window's room
+    private const float LogStartHeight = 160f;
+
+    // a compact bar: the label and a dropdown at their own widths, on the left
+    private void BuildFilter(YKLayout card)
+    {
+        var bar = card.Horizontal();
+        bar.Layout.childForceExpandWidth = false;
+        bar.Layout.childAlignment = TextAnchor.MiddleLeft;
+        bar.Layout.spacing = 10f;
+        bar.Text("emp_ui_chat_show".lang()).SetSize(UIHelper.LabelSize);
+        var dropdown = bar.Dropdown([..Channels().Select(c => ChannelName(c))], i => {
+            _filter = Channels()[i];
+            Refill();
+        }, Mathf.Max(0, Channels().IndexOf(_filter)));
+        var element = dropdown.LayoutElement();
+        element.preferredWidth = 220f;
+        element.flexibleWidth = 0f;
+        dropdown.Rect().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, UIHelper.RowHeight);
     }
 
     // the filters this player has: a team filter only in a team
@@ -180,17 +199,46 @@ internal class TabChat : TabEmpBase
             AddLine(line);
         }
 
+        // (lines stack from the bottom of the log, the newest next to the writing row; the empty chat's words in the
+        // middle of the log)
+        _list.Layout.childAlignment = _count == 0 ? TextAnchor.MiddleCenter : TextAnchor.LowerLeft;
         if (_count == 0) {
-            _list.Text("emp_ui_chat_empty".lang(), FontColor.Gray);
+            var empty = _list.Text("emp_ui_chat_empty".lang(), FontColor.Gray);
+            empty.alignment = TextAnchor.MiddleCenter;
+            // (as wide as the log, so its words are centred in it)
+            UIHelper.WrapTexts(empty);
             // (an empty chat says what to do: the box under the list, focused in one click)
-            _list.ButtonRow().RowButton("emp_ui_chat_write_first".lang(), () => {
+            var row = _list.ButtonRow();
+            row.Layout.childAlignment = TextAnchor.MiddleCenter;
+            row.RowButton("emp_ui_chat_write_first".lang(), () => {
                 if (_field != null) {
                     _field.ActivateInputField();
                 }
             });
         }
 
+        FitLog();
         ToBottom(true);
+    }
+
+    /// <summary>
+    ///     The log's content is at least as tall as the log, so its lines can sit at its bottom (and the empty chat's
+    ///     words in its middle). Follows the log's height, which the page sets once it is laid out shown
+    /// </summary>
+    private bool FitLog()
+    {
+        if (_list == null || _scroll == null || _scroll.viewport == null) {
+            return false;
+        }
+
+        var element = _list.LayoutElement();
+        var height = _scroll.viewport.rect.height;
+        if (Mathf.Abs(element.minHeight - height) < 0.5f) {
+            return false;
+        }
+
+        element.minHeight = height;
+        return true;
     }
 
     private static bool Shows(ChatLog.Line line) => _filter < 0 || line.Channel == _filter;
@@ -232,6 +280,12 @@ internal class TabChat : TabEmpBase
     {
         if (_list == null) {
             return;
+        }
+
+        // (the log took the window's room: its content follows, still at the newest line unless scrolled up)
+        var atBottom = AtBottom();
+        if (FitLog()) {
+            ToBottom(atBottom);
         }
 
         // (shown: every line is read)

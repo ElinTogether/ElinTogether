@@ -376,10 +376,12 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     }
 
     /// <summary>
-    ///     The first time a page with a filling list is laid out shown, the list grows by the height left empty under
-    ///     the page in the window's view (the Chat log, the Market board): the window's room is used, and the height
-    ///     is set once, so it never changes again while the page is open (lead dev 2026-11-01: wasted space, menus
-    ///     that change size). True when a list grew
+    ///     The first time a page with a filling list is laid out shown, the list takes the height that makes the page
+    ///     exactly as tall as the window's view (the Chat log, the Market board): it grows into the room left empty
+    ///     under the page, or shrinks (down to MinFill) when the page ran past the view, so what comes after the list
+    ///     (the Chat's writing row) sits at the bottom of the window. The height is set once, so it never changes
+    ///     again while the page is open (lead dev 2026-11-01: wasted space, menus that change size). True when a
+    ///     list changed
     /// </summary>
     private bool FillPage()
     {
@@ -389,20 +391,29 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
             return false;
         }
 
-        var spare = view.rect.height - content.rect.height - 4f;
+        // (the page's own height, even if something stretches the content to the view)
+        var spare = view.rect.height - LayoutUtility.GetPreferredHeight(content) - 4f;
         foreach (var list in lists) {
             list.Done = true;
         }
 
-        if (spare < 8f) {
+        if (Mathf.Abs(spare) < 8f) {
             return false;
         }
 
         foreach (var list in lists) {
+            var rect = (RectTransform)list.transform;
+            var height = Mathf.Max(MinFill, rect.rect.height + Mathf.Floor(spare / lists.Count));
             var element = list.GetComponent<LayoutElement>();
-            element.minHeight = element.preferredHeight = element.preferredHeight + Mathf.Floor(spare / lists.Count);
+            element.minHeight = element.preferredHeight = height;
+            // (YK's layouts stack the frame at its rect height and never set it: the LayoutElement alone did nothing,
+            // the Chat log stayed a few lines high with its writing row in the middle of the page)
+            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
         }
 
         return true;
     }
+
+    /// <summary>The lowest a filling list shrinks to on a page taller than the window</summary>
+    private const float MinFill = 120f;
 }
