@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using ElinTogether.Helper;
+using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
 
@@ -16,7 +18,58 @@ internal static class RemoteGodGiftPatch
     // an int key, not a string one: Card.SetInt(string) of "the player" also writes the shared dialog flags
     internal static int Key(Religion religion)
     {
-        return ("emp_gift_" + religion.id).GetHashCode();
+        return Key(religion.id);
+    }
+
+    internal static int Key(string religionId)
+    {
+        return ("emp_gift_" + religionId).GetHashCode();
+    }
+
+    /// <summary>
+    ///     A player's character uploaded by its own game replaces the host's copy (ElinNetHost.ReplaceRemoteChara):
+    ///     each count is the higher of the two, the gifts the host gave on its map are not forgotten by an upload that
+    ///     never heard of them, nor those given while away by the host's older copy (GitHub issue 51). Returns the
+    ///     counts the uploading game is behind on, to tell it
+    /// </summary>
+    internal static List<(string Religion, int Rank)> Merge(Chara uploaded, Chara? old)
+    {
+        var behind = new List<(string, int)>();
+        if (old is null || EClass.game?.religions?.list is not { } religions) {
+            return behind;
+        }
+
+        foreach (var religion in religions) {
+            var key = Key(religion);
+            var mine = uploaded.GetInt(key);
+            var kept = old.GetInt(key);
+            if (kept > mine) {
+                uploaded.SetInt(key, kept);
+                behind.Add((religion.id, kept));
+            }
+        }
+
+        return behind;
+    }
+
+    /// <summary>
+    ///     The host gave a player a gift of its god: that player's own game keeps the count too, else praying away
+    ///     from the host it would be given again
+    /// </summary>
+    private static void Tell(Chara chara, Religion religion)
+    {
+        if (NetSession.Instance.Connection is not ElinNetHost host || !chara.IsRemotePlayer) {
+            return;
+        }
+
+        foreach (var (peer, uid) in host.PeerCharas()) {
+            if (uid == chara.uid) {
+                host.SendDeltaTo(peer, new GodGiftDelta {
+                    Religion = religion.id,
+                    Rank = chara.GetInt(Key(religion)),
+                });
+            }
+        }
     }
 
     [HarmonyPrefix]
@@ -47,7 +100,13 @@ internal static class RemoteGodGiftPatch
             return;
         }
 
-        (chara ?? EClass.pc).SetInt(Key(__instance), __instance.giftRank);
+        var player = chara ?? EClass.pc;
+        var before = player.GetInt(Key(__instance));
+        player.SetInt(Key(__instance), __instance.giftRank);
         __instance.giftRank = world;
+
+        if (player.GetInt(Key(__instance)) > before) {
+            Tell(player, __instance);
+        }
     }
 }

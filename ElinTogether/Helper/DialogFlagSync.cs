@@ -114,6 +114,7 @@ internal static class DialogFlagSync
         TellChanges();
         PersonalQuests.Tick();
         SharedQuests.TellChanges();
+        OrphanEscorts.Tick();
     }
 
     /// <summary>

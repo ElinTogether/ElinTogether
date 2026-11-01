@@ -1636,6 +1636,18 @@ internal partial class ElinNetHost
             }
         }
 
+        // a god's gifts given on this map are counted on our copy, those given away on its own: both kept, and its
+        // game hears of ours (GitHub issue 51, see RemoteGodGiftPatch.Merge)
+        var behind = Patches.RemoteGodGiftPatch.Merge(uploaded, old);
+        if (behind.Count > 0 && Socket.Peers.FirstOrDefault(p => Equals(p.User, user)) is { } owner) {
+            foreach (var (religion, rank) in behind) {
+                SendDeltaTo(owner.Id, new GodGiftDelta {
+                    Religion = religion,
+                    Rank = rank,
+                });
+            }
+        }
+
         // stale entries at its uids (copies received earlier) would get it renumbered when cached again
         ForgetCachedCard(uploaded);
 
@@ -1899,7 +1911,8 @@ internal partial class ElinNetHost
             return "emp_travel_invalid";
         }
 
-        if (zone == _zone) {
+        // (not the world map: each player walks its own copy of it, the host's included, GitHub issue 50)
+        if (zone == _zone && !zone.IsRegion) {
             return "emp_travel_host_zone";
         }
 
