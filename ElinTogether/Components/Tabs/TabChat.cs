@@ -27,6 +27,8 @@ internal class TabChat : TabEmpBase
     private ScrollRect? _scroll;
     private int _shown = -1;
     private int _count;
+    // the writing box, focused by the empty list's button
+    private InputField? _field;
 
     public override void OnLayout()
     {
@@ -127,6 +129,7 @@ internal class TabChat : TabEmpBase
         input.AllowAnyText();
         input.StyleAsSearch("emp_ui_chat_hint".lang());
         input.field.onValueChanged.AddListener(text => _draft = text);
+        _field = input.field;
 
         void Send()
         {
@@ -177,6 +180,12 @@ internal class TabChat : TabEmpBase
 
         if (_count == 0) {
             _list.Text("emp_ui_chat_empty".lang(), FontColor.Gray);
+            // (an empty chat says what to do: the box under the list, focused in one click)
+            _list.ButtonRow().RowButton("emp_ui_chat_write_first".lang(), () => {
+                if (_field != null) {
+                    _field.ActivateInputField();
+                }
+            });
         }
 
         ToBottom();
