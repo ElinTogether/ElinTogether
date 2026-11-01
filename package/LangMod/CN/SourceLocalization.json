@@ -1324,5 +1324,12 @@
     "LangGeneral.emp_peer_why_hidden.text": "此游戏无法运行隐藏服务器",
     "LangGeneral.emp_peer_no_rules.text": "找不到此世界的签名规则",
     "LangGeneral.emp_dc_peer_rules.text": "你已离开：维护此世界的玩家没有使用其签名规则。",
-    "LangGeneral.emp_dc_peer_rules_why.text": "你已离开：维护此世界的玩家没有使用其签名规则：{0}"
+    "LangGeneral.emp_dc_peer_rules_why.text": "你已离开：维护此世界的玩家没有使用其签名规则：{0}",
+    "LangGeneral.emp_ui_depot_et_taking.text": "正在打开共享世界……",
+    "LangGeneral.emp_ui_depot_et_down.text": "世界服务没有响应。请检查网络和“Depot”中的地址（etworld:https://...），稍后再试。",
+    "LangGeneral.emp_ui_depot_et_big.text": "这个世界对世界服务来说太大了（512 MB）。存档保留在这台电脑上。",
+    "LangGeneral.emp_ui_depot_et_banned.text": "你不能保管共享世界。请在其他人保管时加入。",
+    "LangGeneral.emp_ui_depot_et_not_yet.text": "你还不能保管共享世界：新玩家在世界中被确认后，几天后才能保管。请在其他人保管时加入。",
+    "LangGeneral.emp_ui_depot_et_reserved.text": "世界正在移交给另一位玩家。请几秒后再试。",
+    "LangGeneral.emp_ui_depot_et_key.text": "世界服务记录的这台电脑的密钥属于另一个 Steam 账号。请使用那个账号游玩，或联系管理员。"
 }
