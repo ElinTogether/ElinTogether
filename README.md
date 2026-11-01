@@ -636,8 +636,9 @@ Version 1.0 is meant to be usable by a group of friends and by a public server. 
 
 **5. Before recommending it to anyone**
 
-- The Chinese and Japanese READMEs are shorter than this one and were not proofread by a native speaker; the mod's
-  settings are in English in the tables above and in game for most languages.
+- The Chinese and Japanese READMEs are shorter than this one and were not proofread by a native speaker. In game,
+  the mod's texts (menus, settings and their tooltips, messages, patch notes) are in English, Japanese and Chinese;
+  other languages see them in English.
 - To report a defect: the *Report a bug to the developers* button of *Client Settings → Help* (see
   [If something goes wrong](#if-something-goes-wrong)).
 
