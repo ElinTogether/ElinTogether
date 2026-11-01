@@ -186,8 +186,6 @@ internal class TabPlay : TabEmpBase
     /// </summary>
     internal static GameIndex? HostPick { get; private set; }
 
-    private static bool Cloud => EClass.core.config.cloud;
-
     /// <summary>
     ///     "Host a game": one button that lists the saves; the shared world of the depot, when there is one, as a
     ///     second line under it
@@ -224,7 +222,12 @@ internal class TabPlay : TabEmpBase
     private static List<GameIndex> Saves()
     {
         try {
-            return GameIO.GetGameList(Cloud ? CorePath.RootSaveCloud : CorePath.RootSave)
+            // both folders: with Steam Cloud on, the local saves were missing from the list (bench 2026-11-01)
+            var local = GameIO.GetGameList(CorePath.RootSave);
+            local.ForEach(g => g.cloud = false);
+            var cloud = GameIO.GetGameList(CorePath.RootSaveCloud);
+            cloud.ForEach(g => g.cloud = true);
+            return local.Concat(cloud)
                 .Where(g => !g.IsCorrupted && !(SaveDepot.Enabled && g.id == SaveDepot.WorldId))
                 .OrderByDescending(g => g.real?.GetRawReal() ?? 0)
                 .ToList();
@@ -240,14 +243,13 @@ internal class TabPlay : TabEmpBase
         var saves = Saves();
         card.TextSmall((saves.Count == 0 ? "emp_ui_host_pick_none" : "emp_ui_host_pick_desc").lang(), FontColor.Gray);
         if (saves.Count > 0) {
-            var list = card.ScrollList(380f);
-            list.Layout.spacing = UIHelper.RowSpacing * 2f;
+            // (straight in the card, the tab scrolls: a scroll list inside it showed two saves and cut the third line)
             for (var i = 0; i < saves.Count; i++) {
                 if (i > 0) {
-                    list.Divider();
+                    card.Divider();
                 }
 
-                BuildSaveEntry(list, saves[i]);
+                BuildSaveEntry(card, saves[i]);
             }
         }
 
@@ -272,8 +274,9 @@ internal class TabPlay : TabEmpBase
         text.LayoutElement().minWidth = 0f;
 
         var compatible = EClass.core.version.IsSaveCompatible(save.version);
-        text.Text(SaveName(save), compatible ? FontColor.Default : FontColor.Bad);
-        text.TextSmall($"{(save.permaDeath ? "★" : "")}{save.pcName} ({save.zoneName})", FontColor.Gray);
+        // the character first: most saves are named "Home", the character and the place tell them apart
+        text.Text($"{(save.permaDeath ? "★" : "")}{save.pcName}", compatible ? FontColor.Default : FontColor.Bad);
+        text.TextSmall($"{save.zoneName} · {SaveName(save)}", FontColor.Gray);
         text.TextSmall($"{save.RealDate}   {"infoHire".lang(save.days.ToString())}", FontColor.Gray);
         if (!compatible) {
             text.TextSmall("incompatible".lang(), FontColor.Bad);
@@ -315,8 +318,7 @@ internal class TabPlay : TabEmpBase
     {
         HostPick = null;
         _choosing = false;
-        var cloud = Cloud;
-        save.cloud = cloud;
+        var cloud = save.cloud;
         LayerElinTogether.Instance?.Close();
         try {
             if (!save.madeBackup && save.version.IsBelow(EClass.core.version)) {

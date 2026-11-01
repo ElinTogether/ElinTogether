@@ -305,7 +305,7 @@ internal class TabServerConfiguration : TabEmpBase
 
     private static void BuildStartHosting(YKLayout page, GameIndex pick)
     {
-        var name = TabPlay.SaveName(pick);
+        var name = string.IsNullOrEmpty(pick.pcName) ? TabPlay.SaveName(pick) : pick.pcName;
         var card = page.Card("emp_ui_host_start_title".Loc(name));
         card.TextSmall("emp_ui_host_start_desc".lang(), FontColor.Gray);
         var buttons = card.ButtonRow();
