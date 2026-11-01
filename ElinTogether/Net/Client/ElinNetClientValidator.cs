@@ -74,8 +74,9 @@ internal partial class ElinNetClient
 
         // not the same version of Elin: the host decides whether that is allowed, this player is told
         if (!BuildVersionIntegrity.SameGame(request.HostGameVersion)) {
-            EmpPop.Information("emp_game_version_differs".Loc(Host.User.Name, request.HostGameVersion,
-                BuildVersionIntegrity.GameVersion));
+            EmpPop.Information("emp_game_version_differs".Loc(Host.User.Name,
+                BuildVersionIntegrity.Display(request.HostGameVersion),
+                BuildVersionIntegrity.Display(BuildVersionIntegrity.GameVersion)));
         }
 
         AdvanceHandshake(NetHandshakePhase.AwaitingIntegrity);

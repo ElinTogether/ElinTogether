@@ -206,7 +206,7 @@
     "LangGeneral.emp_ui_thing_gone.text": "来晚了，已被其他人拿走。",
     "LangGeneral.emp_base_refused.text": "主机拒绝了：据点或你的钱包付不起。",
     "LangGeneral.emp_base_pending.text": "上一个请求仍在等待主机回应。",
-    "LangGeneral.emp_game_version_differs.text": "{0} 的 Elin 版本不同（{1}，你的是 {2}）。仍可加入。如果出问题，请使用相同版本。",
+    "LangGeneral.emp_game_version_differs.text": "{0} 的 Elin 版本不同（{1}，你的是 {2}）。仍可一起游玩。如果出问题，请双方都使用 Elin 的同一个 Steam 分支（Nightly 或 Stable）并更新。",
     "LangGeneral.emp_ui_sv_cfg_same_game_version.text": "好友需要相同的 Elin 版本",
     "LangGeneral.emp_ui_sv_desc_same_game_version.text": "好友需要与房主相同的 Elin 版本才能加入（Elin Together 版本必须始终一致）。关闭：会带着警告加入。",
     "LangGeneral.emp_ui_depot_held_btn.text": "{0} 正在主持这个世界",
@@ -1342,5 +1342,7 @@
     "LangGeneral.emp_permadeath_banner.text": "你已经死亡。朋友可以在酒保处复活你。",
     "LangGeneral.emp_permadeath_leave.text": "离开游戏",
     "LangGeneral.emp_ui_admin_menu.text": "管理…",
-    "LangGeneral.emp_ui_sv_start_needs_land.text": "请先获得一块土地：在野外阅读土地契约。"
+    "LangGeneral.emp_ui_sv_start_needs_land.text": "请先获得一块土地：在野外阅读土地契约。",
+    "LangGeneral.emp_patches_skipped.text": "Elin Together 有 {0} 个部分无法在 Elin {1} 上加载（此版本为 Elin {2} 制作）。部分多人功能可能无法使用：请将 Elin 切换到 Nightly 分支（Steam：Elin → 属性 → 测试版）。",
+    "LangGeneral.emp_title_older_game.text": "为 Elin {0} 制作。你的 Elin 是 {1}：如果出问题，请使用 Elin 的 Nightly 分支（Steam：Elin → 属性 → 测试版）。"
 }
