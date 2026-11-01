@@ -124,6 +124,43 @@ internal static class EmblemSprites
         }
     }
 
+    /// <summary>A layer's picture or text by name: the game's name in the player's language where it has one, else the id</summary>
+    internal static string NameOf(string typed)
+    {
+        if (typed.Length < 3 || typed[1] != ':') {
+            return typed;
+        }
+
+        var id = typed.Substring(2);
+        try {
+            switch (typed[0]) {
+                case 'x':
+                    return "\"" + (TeamEmblem.Unhex(id) ?? "") + "\"";
+                case 't':
+                    return EClass.sources.things.map.TryGetValue(id, out var thing) ? thing.GetName() ?? id : id;
+                case 'c':
+                    return EClass.sources.charas.map.TryGetValue(id, out var chara) ? chara.GetName() ?? id : id;
+                case 'e':
+                case 'a': {
+                    var alias = typed[0] == 'e' && id.StartsWith("ele_") ? id.Substring(4) : id;
+                    return EClass.sources.elements.alias.TryGetValue(alias, out var e) && e.GetName() is { Length: > 0 } n ? n : id;
+                }
+                case 'r':
+                    return EClass.sources.religions.map.TryGetValue(id, out var god) && god.GetName() is { Length: > 0 } g ? g : id;
+                case 'o' when int.TryParse(id, out var o) && EClass.sources.objs.map.TryGetValue(o, out var obj):
+                    return obj.GetName() is { Length: > 0 } on ? on : id;
+                case 'b' when int.TryParse(id, out var b) && EClass.sources.blocks.map.TryGetValue(b, out var block):
+                    return block.GetName() is { Length: > 0 } bn ? bn : id;
+                case 'f' when int.TryParse(id, out var f) && EClass.sources.floors.map.TryGetValue(f, out var floor):
+                    return floor.GetName() is { Length: > 0 } fn ? fn : id;
+                default:
+                    return id;
+            }
+        } catch (System.Exception) {
+            return id;
+        }
+    }
+
     /// <summary>A portrait of the base game (its file in the game's own _Elona package), not a mod's</summary>
     private static ModItem<Sprite>? BasePortrait(string id)
     {

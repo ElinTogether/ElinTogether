@@ -11,33 +11,48 @@ using YKF;
 namespace ElinTogether.Components;
 
 /// <summary>
-///     The leader's emblem creator on the Team tab's Emblem page (PLAN_team_emblem): a 3x preview where a click picks
-///     the layer under the pointer and a drag moves it; whether everything is cut to the bottom layer; undo, reset,
-///     save, a random emblem, a few starters, and the two ways to add a layer: a shape (lead dev 2026-11-01: the old
-///     background shape is a layer like the others, so a sword may reach past it) or a picture of the game's things
-///     and monsters (<see cref="SpriteGrid" />). On the right page the layers (select, up, down, remove) and the
-///     selected layer's tools on two pills: Place (move pad, turns, flips, size, angle, opacity, duplicate, mirror)
-///     and Look (its colours by the <see cref="ColourPicker" />, pattern, points, height, thickness, outline). The
-///     draft stays in this game until Save asks the host
+///     The leader's emblem creator on the Team tab's Emblem page (PLAN_team_emblem, lead dev 2026-11-01 "develop it
+///     much further"). Left page: a 3x preview where a click picks the layer under the pointer and a drag moves it (the
+///     selection with it, snapped to a 4 px grid and the centre when Snap is on), chips at 48, 24 and 16 px beside it
+///     to see how it reads small; add a shape, a picture of the game (<see cref="SpriteGrid" />, many sources) or a
+///     text; undo and redo (40 steps), save; random, templates, the emblem as a code to copy or paste; cut to the
+///     bottom layer, snap. Right page: the layers (shift-click to select several; hide, lock, up, down, remove), copy,
+///     paste, all, the align and spread buttons, then the selected layer's tools on three pills: Place (move pad, turn,
+///     flips, size, angle, opacity, duplicate, mirror), Look (text, font, alignment, spacing, curve; colours by the
+///     <see cref="ColourPicker" />, pattern, texture, points, height, thickness, outline) and Effects (name, live
+///     mirror, blend, clip to the layer below, shadow, gradient). The previews bake into the editor's own textures,
+///     at most every 50 ms while dragging, and once more when it stops. The draft stays in this game until Save asks
+///     the host
 /// </summary>
 internal static class EmblemEditor
 {
-    private const int UndoMax = 20;
+    private const int UndoMax = 40;
     private const int Step = 2;
+    private const int SnapGrid = 4;
     private const float PreviewSize = TeamEmblem.Grid * 3f;
+    private const float BakeEvery = 0.05f;
+    private const int ThumbCapacity = 48;
 
-    // the colour being picked: none, the fill (a sprite's tint), the pattern's second colour, the outline's
-    private const int NoColour = 0, Fill1 = 1, Fill2 = 2, OutlineColour = 3;
+    // the colour being picked
+    private const int NoColour = 0, Fill1 = 1, Fill2 = 2, OutlineColour = 3, ShadowColour = 4, GradColour = 5;
+
+    // what a click in the picture grid does: add a layer, or give the selected shape its texture
+    private const int PickLayer = 1, PickTexture = 2;
 
     private static int _team = -1;
     private static Emblem _draft = new([]);
     private static int _selected;
-    private static bool _picking;
+    private static readonly HashSet<int> _multi = [];
+    private static int _picking;
     private static int _colourField;
     private static int _toolPage;
+    private static bool _snap = true;
+    private static EmblemLayer? _clipboard;
+    private static string? _note;
     private static readonly List<Emblem> _undo = [];
+    private static readonly List<Emblem> _redo = [];
 
-    // a drag (a slider's, the preview's, the colour picker's) being one undo step, not one per value
+    // a drag (a slider's, the preview's, the colour picker's, typing) being one undo step, not one per value
     private static string? _dragKey;
 
     // the preview's pointer: the layer moved and where it was taken from it, and a selection to redraw on release
@@ -48,15 +63,20 @@ internal static class EmblemEditor
     private static YKLayout? _left;
     private static YKLayout? _right;
     private static bool _leads;
-    private static Image? _preview;
-    private static readonly List<Image> _small = [];
+
+    // the editor's own bakes (review 2026-11-01: never the shared cache, whose LRU destroys sprites still shown)
+    private static Sprite? _previewSprite;
+    private static bool _dirty;
+    private static float _lastBake = -1f;
+    private static readonly Dictionary<string, LinkedListNode<(string Key, Sprite Sprite)>> _thumbs = [];
+    private static readonly LinkedList<(string Key, Sprite Sprite)> _thumbOrder = new();
 
     private static readonly Color Dark = new(0.2f, 0.17f, 0.13f, 1f);
 
     /// <summary>
     ///     The Emblem page of the Team tab: the big preview and the emblem's buttons on the left page; the layers and
     ///     the selected layer's tools (or the picture grid, or the colour picker, while open) on the right page.
-    ///     Anyone but the leader sees the emblem and its layers only
+    ///     Anyone without the emblem right sees the emblem and its layers only
     /// </summary>
     internal static void Build(YKLayout left, YKLayout right, int teamId, bool leads)
     {
@@ -64,9 +84,12 @@ internal static class EmblemEditor
             _team = teamId;
             _draft = Saved(teamId);
             _selected = 0;
+            _multi.Clear();
             _undo.Clear();
-            _picking = false;
+            _redo.Clear();
+            _picking = 0;
             _colourField = NoColour;
+            _note = null;
         }
 
         _left = left;
@@ -91,6 +114,21 @@ internal static class EmblemEditor
         }
     }
 
+    private static bool HasSelection => _selected < _draft.Layers.Count;
+
+    private static EmblemLayer Current => _draft.Layers[_selected];
+
+    /// <summary>The selected layers (the primary one included), bottom first</summary>
+    private static List<int> Selection()
+    {
+        var set = new HashSet<int>(_multi.Where(i => i < _draft.Layers.Count));
+        if (HasSelection) {
+            set.Add(_selected);
+        }
+
+        return set.OrderBy(i => i).ToList();
+    }
+
     private static void Fill()
     {
         if (_left == null || _right == null) {
@@ -104,11 +142,12 @@ internal static class EmblemEditor
         var left = _left;
         var right = _right;
         _selected = Mathf.Clamp(_selected, 0, Mathf.Max(0, _draft.Layers.Count - 1));
+        _multi.RemoveWhere(i => i >= _draft.Layers.Count);
         if (_draft.Layers.Count == 0) {
             _colourField = NoColour;
         }
 
-        // the left page: the preview, centred, with air above it
+        // the left page: the preview, centred, with air above it; the chips beside it
         var view = left.Horizontal();
         view.Layout.childAlignment = TextAnchor.MiddleCenter;
         view.Layout.childForceExpandWidth = false;
@@ -116,22 +155,22 @@ internal static class EmblemEditor
         view.Layout.padding = new(0, 0, 10, 6);
         view.LayoutElement().minHeight = view.LayoutElement().preferredHeight = PreviewSize + 16f;
         view.LayoutElement().flexibleWidth = 1f;
-        _preview = TeamEmblemBaker.Place(view.transform, TeamEmblemBaker.Get(_draft), PreviewSize);
-        // (as the emblem shows elsewhere: a player's card and a team's chip, user 2026-10-30)
+        var sprite = PreviewSprite();
+        var preview = TeamEmblemBaker.Place(view.transform, sprite, PreviewSize);
+        // (as the emblem shows elsewhere: a player's card, a team's chip, a list row; user 2026-10-30, 16 and 24 px 2026-11-01)
         var small = view.Vertical();
         small.Layout.childAlignment = TextAnchor.MiddleCenter;
         small.Layout.spacing = 8f;
         small.Layout.padding = new(16, 0, 0, 0);
-        _small.Clear();
-        foreach (var size in new[] { 48f, 24f }) {
-            _small.Add(TeamEmblemBaker.Place(small.transform, TeamEmblemBaker.Get(_draft), size));
+        foreach (var size in new[] { 48f, 24f, 16f }) {
+            TeamEmblemBaker.Place(small.transform, sprite, size);
         }
 
         if (!_leads) {
             right.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
             var names = right.ListArea(_draft.Layers.Count, 10, 26f);
             foreach (var layer in _draft.Layers) {
-                names.Text(NameOf(layer.Thing));
+                names.Text(NameOf(layer));
             }
 
             right.TextSmall("emp_ui_team_tools_leader_only".lang(), FontColor.Gray);
@@ -139,56 +178,35 @@ internal static class EmblemEditor
         }
 
         // a click on the preview picks the layer under the pointer, a drag moves it
-        _preview.raycastTarget = true;
-        var input = _preview.gameObject.AddComponent<EmblemPreviewInput>();
+        preview.raycastTarget = true;
+        var input = preview.gameObject.AddComponent<EmblemPreviewInput>();
         input.Down = PointerDown;
         input.Drag = PointerDrag;
         input.Up = PointerUp;
+        input.Tick = Tick;
 
-        // what is added: a shape or a picture
+        // what is added: a shape, a picture or a text
         var adds = left.ButtonRow();
         adds.Layout.childAlignment = TextAnchor.MiddleCenter;
         var room = _draft.Layers.Count < TeamEmblem.MaxLayers;
         UIButton? shapes = null;
-        shapes = Part(adds.RowButton("emp_ui_emblem_add_shape".lang(), () => ShowShapes(shapes)), 2);
+        shapes = Part(adds.RowButton("emp_ui_emblem_add_shape".lang(), () => ShowShapes(shapes)), 3);
         shapes.interactable = room;
-        Part(adds.RowButton("emp_ui_emblem_add_picture".lang(), () => {
-            _picking = true;
-            _colourField = NoColour;
-            Fill();
-        }), 2).interactable = room;
-
-        // (cut to the bottom layer: how every emblem drew before shapes became layers)
-        var clipLine = left.Row();
-        var clip = clipLine.Toggle("emp_ui_emblem_clip".lang(), _draft.Clip, on => {
-            Change(_draft with { Clip = on });
-            Refresh();
-        });
-        clip.LayoutElement().flexibleWidth = 1f;
-        clip.AsRow();
+        Part(adds.RowButton("emp_ui_emblem_add_picture".lang(), () => OpenGrid(PickLayer)), 3).interactable = room;
+        Part(adds.RowButton("emp_ui_emblem_add_text".lang(), AddText), 3).interactable = room;
 
         // (three buttons in the page's width: each a third of it, widened only by a longer label)
         var bar = left.ButtonRow();
         bar.Layout.childAlignment = TextAnchor.MiddleCenter;
-        Part(bar.RowButton("emp_ui_emblem_undo".lang(), () => {
-            if (_undo.Count == 0) {
-                return;
-            }
-
-            _draft = _undo[_undo.Count - 1];
-            _undo.RemoveAt(_undo.Count - 1);
-            Fill();
-        }), 3).interactable = _undo.Count > 0;
-        Part(bar.RowButton("emp_ui_emblem_reset".lang(), () => {
-            Change(Saved(_team));
-            Fill();
-        }), 3);
-        Part(bar.RowButton("emp_ui_emblem_save".lang(), () => {
-            // (the team's colour: the bottom shape's when it is one of the twelve team colours; else it stays)
-            var colour = TeamEmblem.TeamColour(_draft) ?? TeamBanner.Of(_team)?.Color ?? 0;
-            Teams.Ask(TeamAsk.Banner, 0, colour, TeamEmblem.Format(_draft));
-        }), 3).interactable = _draft.Layers.Count > 0 && Unsaved;
-        if (Unsaved && _draft.Layers.Count > 0) {
+        Part(bar.RowButton("emp_ui_emblem_undo".lang(), Undo), 3).interactable = _undo.Count > 0;
+        Part(bar.RowButton("emp_ui_emblem_redo".lang(), Redo), 3).interactable = _redo.Count > 0;
+        var text = TeamEmblem.Format(_draft);
+        var fits = text.Length <= TeamEmblem.MaxText;
+        Part(bar.RowButton("emp_ui_emblem_save".lang(), Save), 3).interactable = _draft.Layers.Count > 0 && Unsaved && fits;
+        if (!fits) {
+            // (review 2026-11-01: the host refused a text past its limit without a word)
+            left.TextSmall("emp_ui_emblem_too_long".Loc(text.Length, TeamEmblem.MaxText), FontColor.Warning);
+        } else if (Unsaved && _draft.Layers.Count > 0) {
             left.TextSmall("emp_ui_emblem_unsaved".lang(), FontColor.Warning);
         }
 
@@ -196,57 +214,103 @@ internal static class EmblemEditor
         more.Layout.childAlignment = TextAnchor.MiddleCenter;
         Part(more.RowButton("emp_ui_emblem_random".lang(), () => {
             Change(RandomEmblem());
-            _selected = 0;
+            Select(0);
             _colourField = NoColour;
             Fill();
-        }), 2);
+        }), 3);
         UIButton? starters = null;
-        starters = Part(more.RowButton("emp_ui_emblem_templates".lang(), () => ShowStarters(starters)), 2);
+        starters = Part(more.RowButton("emp_ui_emblem_templates".lang(), () => ShowStarters(starters)), 3);
+        UIButton? code = null;
+        code = Part(more.RowButton("emp_ui_emblem_code".lang(), () => ShowCode(code)), 3);
+
+        // cut to the bottom layer (how every emblem drew before shapes became layers), and the drag's snap
+        var toggles = left.Row();
+        var clip = toggles.Toggle("emp_ui_emblem_clip".lang(), _draft.Clip, on => {
+            Change(_draft with { Clip = on });
+            Refresh();
+        });
+        clip.LayoutElement().flexibleWidth = 1f;
+        clip.AsRow();
+        var snap = toggles.Toggle("emp_ui_emblem_snap".lang(), _snap, on => _snap = on);
+        snap.LayoutElement().flexibleWidth = 0f;
+        snap.AsRow();
+
+        if (_note != null) {
+            left.TextSmall(_note, FontColor.Gray);
+            _note = null;
+        }
 
         // the right page: the picture grid, the colour picker, or the layers and the selected layer's tools
-        if (_picking) {
+        if (_picking != 0) {
             right.ButtonRow().RowButton("emp_ui_emblem_add_close".lang(), () => {
-                _picking = false;
+                _picking = 0;
                 Fill();
             });
-            TeamBanner.BuildThingPicker(right, Dark, thing => {
-                if (_draft.Layers.Count >= TeamEmblem.MaxLayers) {
-                    return;
-                }
-
-                Change(_draft with { Layers = [.._draft.Layers, TeamEmblem.Layer(thing)] });
-                _selected = _draft.Layers.Count - 1;
-                _picking = false;
-                Fill();
-            });
-        } else if (_colourField != NoColour && _draft.Layers.Count > 0) {
+            var mode = _picking;
+            TeamBanner.BuildThingPicker(right, Dark, thing => Picked(mode, thing));
+        } else if (_colourField != NoColour && HasSelection) {
             BuildColour(right);
         } else {
-            right.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
-            var layers = right.ListArea(_draft.Layers.Count, 3, UIHelper.RowHeight);
-            // (the top layer first, as a stack is seen)
-            for (var i = _draft.Layers.Count - 1; i >= 0; i--) {
-                LayerRow(layers, i);
-            }
-
-            if (_draft.Layers.Count > 0) {
-                TeamBanner.Pills(right, ["emp_ui_emblem_tools_place".lang(), "emp_ui_emblem_tools_look".lang()], _toolPage, i => {
-                    _toolPage = i;
-                    Fill();
-                });
-                if (_toolPage == 0) {
-                    PlaceTools(right);
-                } else {
-                    LookTools(right);
-                }
-            } else {
-                // (an empty list said nothing: how to start, user 2026-10-30 "on peut faire beaucoup mieux")
-                right.EmptyText("emp_ui_emblem_start".lang());
-            }
+            BuildLayers(right);
         }
 
         if (left.transform.parent is RectTransform spread) {
             LayoutRebuilder.MarkLayoutForRebuild(spread);
+        }
+    }
+
+    private static void BuildLayers(YKLayout right)
+    {
+        right.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
+        var layers = right.ListArea(_draft.Layers.Count, 3, UIHelper.RowHeight);
+        // (the top layer first, as a stack is seen)
+        for (var i = _draft.Layers.Count - 1; i >= 0; i--) {
+            LayerRow(layers, i);
+        }
+
+        // copy, paste, select all
+        var edit = right.ButtonRow();
+        Part(edit.RowButton("emp_ui_emblem_copy".lang(), () => {
+            if (HasSelection) {
+                _clipboard = Current;
+                Fill();
+            }
+        }), 3).interactable = HasSelection;
+        Part(edit.RowButton("emp_ui_emblem_paste".lang(), Paste), 3).interactable =
+            _clipboard != null && _draft.Layers.Count < TeamEmblem.MaxLayers;
+        Part(edit.RowButton("emp_ui_emblem_all".lang(), () => {
+            _multi.Clear();
+            _multi.UnionWith(Enumerable.Range(0, _draft.Layers.Count));
+            Fill();
+        }), 3).interactable = _draft.Layers.Count > 1;
+
+        if (_draft.Layers.Count == 0) {
+            // (an empty list said nothing: how to start, user 2026-10-30 "on peut faire beaucoup mieux")
+            right.EmptyText("emp_ui_emblem_start".lang());
+            return;
+        }
+
+        AlignRow(right);
+        if (Current.Lock != 0) {
+            right.TextSmall("emp_ui_emblem_locked".lang(), FontColor.Gray);
+            return;
+        }
+
+        TeamBanner.Pills(right, ["emp_ui_emblem_tools_place".lang(), "emp_ui_emblem_tools_look".lang(), "emp_ui_emblem_tools_effects".lang()],
+            _toolPage, i => {
+                _toolPage = i;
+                Fill();
+            });
+        switch (_toolPage) {
+            case 0:
+                PlaceTools(right);
+                break;
+            case 1:
+                LookTools(right);
+                break;
+            default:
+                EffectTools(right);
+                break;
         }
     }
 
@@ -257,40 +321,224 @@ internal static class EmblemEditor
         return button;
     }
 
-    /// <summary>The layer alone, centred and full size (its thumbnail in the list)</summary>
-    private static Sprite Thumb(EmblemLayer layer) =>
-        TeamEmblemBaker.Get(new([layer with { X = TeamEmblem.Grid / 2, Y = TeamEmblem.Grid / 2, Size = 100, Rotation = 0, Flip = 0, Opacity = 100 }]));
+    // ---------------------------------------------------------------- the editor's bakes
 
-    /// <summary>A layer: its thumbnail and name (a click selects it), then up, down and remove</summary>
+    /// <summary>The preview's sprite, owned by the editor and rewritten in place (the chips show the same one)</summary>
+    private static Sprite PreviewSprite()
+    {
+        _previewSprite = TeamEmblemBaker.Into(_previewSprite, _draft);
+        _dirty = false;
+        _lastBake = Time.realtimeSinceStartup;
+        return _previewSprite;
+    }
+
+    /// <summary>The layer alone, centred and full size (its thumbnail in the list), in the editor's small cache</summary>
+    private static Sprite Thumb(EmblemLayer layer)
+    {
+        var alone = new Emblem([layer with { X = TeamEmblem.Grid / 2, Y = TeamEmblem.Grid / 2, Size = 100, Rotation = 0, Flip = 0, Opacity = 100, Hidden = 0, Sym = 0, ClipBelow = 0, Shadow = 0 }]);
+        var key = TeamEmblem.Format(alone);
+        if (_thumbs.TryGetValue(key, out var node) && node.Value.Sprite != null) {
+            _thumbOrder.Remove(node);
+            _thumbOrder.AddFirst(node);
+            return node.Value.Sprite;
+        }
+
+        if (node != null) {
+            _thumbOrder.Remove(node);
+            _thumbs.Remove(key);
+        }
+
+        var sprite = TeamEmblemBaker.Into(null, alone);
+        _thumbs[key] = _thumbOrder.AddFirst((key, sprite));
+        while (_thumbOrder.Count > ThumbCapacity) {
+            var last = _thumbOrder.Last!.Value;
+            _thumbOrder.RemoveLast();
+            _thumbs.Remove(last.Key);
+            TeamEmblemBaker.Free(last.Sprite);
+        }
+
+        return sprite;
+    }
+
+    /// <summary>The draft changed: the preview is baked now, or at the next tick when one was baked under 50 ms ago</summary>
+    private static void Refresh()
+    {
+        _dirty = true;
+        if (Time.realtimeSinceStartup - _lastBake >= BakeEvery) {
+            BakeNow();
+        }
+    }
+
+    private static void BakeNow()
+    {
+        if (_previewSprite == null) {
+            return;
+        }
+
+        TeamEmblemBaker.Into(_previewSprite, _draft);
+        _dirty = false;
+        _lastBake = Time.realtimeSinceStartup;
+    }
+
+    /// <summary>Each frame while the editor shows: a change waiting is baked once 50 ms have passed (the last one of a drag)</summary>
+    private static void Tick()
+    {
+        if (_dirty && Time.realtimeSinceStartup - _lastBake >= BakeEvery) {
+            BakeNow();
+        }
+    }
+
+    // ---------------------------------------------------------------- the layer list
+
+    /// <summary>A layer: its thumbnail and name (a click selects it, shift-click adds it), hide, lock, up, down, remove</summary>
     private static void LayerRow(YKLayout parent, int index)
     {
         var layer = _draft.Layers[index];
         var row = parent.Row();
-        TeamBanner.Swatch(row, Dark, 26f, 26f, index == _selected, () => {
-            _selected = index;
+        var picked = index == _selected || _multi.Contains(index);
+        TeamBanner.Swatch(row, Dark, 26f, 26f, picked, () => {
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || Input.GetKey(KeyCode.LeftControl) ||
+                Input.GetKey(KeyCode.RightControl)) {
+                // (shift or ctrl: several layers, moved and aligned together)
+                if (!_multi.Add(index)) {
+                    _multi.Remove(index);
+                }
+
+                _multi.Add(_selected);
+                if (_multi.Contains(index)) {
+                    _selected = index;
+                }
+            } else {
+                Select(index);
+            }
+
             Fill();
         });
-        var thumb = TeamEmblemBaker.Place(row.transform.GetChild(row.transform.childCount - 1), Thumb(layer), 24f);
+        var swatch = row.transform.GetChild(row.transform.childCount - 1);
+        var thumb = TeamEmblemBaker.Place(swatch, Thumb(layer), 24f);
         var trt = thumb.rectTransform;
         trt.anchorMin = trt.anchorMax = trt.pivot = new(0.5f, 0.5f);
         trt.anchoredPosition = Vector2.zero;
-        var name = NameOf(layer.Thing);
+        if (layer.Hidden != 0) {
+            thumb.color = new(1f, 1f, 1f, 0.35f);
+        }
+
+        var name = NameOf(layer);
         row.Text(index == _selected ? "> " + name : name).LayoutElement().flexibleWidth = 1f;
-        // the game's own small list buttons (its playlist's up and down, the inventory's trash); up draws it higher
+        // the game's own small list buttons where it has them (its playlist's up and down, the inventory's trash)
         var icons = EmpUi.GameIcons;
-        row.IconButton(icons?.up, "^", () => Move(index, 1), "emp_ui_emblem_up", index < _draft.Layers.Count - 1, size: 26f);
-        row.IconButton(icons?.down, "v", () => Move(index, -1), "emp_ui_emblem_down", index > 0, size: 26f);
+        row.IconButton(null, layer.Hidden != 0 ? "-" : "o", () => Toggle(index, l => l with { Hidden = l.Hidden ^ 1 }), "emp_ui_emblem_hide", size: 24f);
+        row.IconButton(null, layer.Lock != 0 ? "L" : "u", () => Toggle(index, l => l with { Lock = l.Lock ^ 1 }), "emp_ui_emblem_lock", size: 24f);
+        row.IconButton(icons?.up, "^", () => Move(index, 1), "emp_ui_emblem_up", index < _draft.Layers.Count - 1, size: 24f);
+        row.IconButton(icons?.down, "v", () => Move(index, -1), "emp_ui_emblem_down", index > 0, size: 24f);
         row.IconButton(icons?.trash, "x", () => {
             Change(_draft with { Layers = _draft.Layers.Where((_, i) => i != index).ToList() });
+            _multi.Clear();
             if (_selected >= index && _selected > 0) {
                 _selected--;
             }
 
             Fill();
-        }, "emp_ui_emblem_remove", size: 26f);
+        }, "emp_ui_emblem_remove", layer.Lock == 0, size: 24f);
     }
 
-    /// <summary>The move pad: the four nudges as a 3x3 cross of small arrows</summary>
+    /// <summary>One layer changed from the list (hide, lock: allowed on a locked layer)</summary>
+    private static void Toggle(int index, System.Func<EmblemLayer, EmblemLayer> change)
+    {
+        var list = _draft.Layers.ToList();
+        list[index] = change(list[index]);
+        Change(_draft with { Layers = list });
+        Fill();
+    }
+
+    private static void Select(int index)
+    {
+        _selected = index;
+        _multi.Clear();
+    }
+
+    /// <summary>
+    ///     Align the selected layers' boxes (left, centres, right, top, middles, bottom) to the selection's bounds, or
+    ///     a lone layer to the emblem's; spread three or more evenly across or down
+    /// </summary>
+    private static void AlignRow(YKLayout root)
+    {
+        var row = root.Row();
+        row.Layout.spacing = 2f;
+        row.TextSmall("emp_ui_emblem_align".lang(), FontColor.Gray).LayoutElement().flexibleWidth = 1f;
+        var count = Selection().Count;
+        foreach (var (sign, tip, mode) in new[] {
+                     ("|<", "emp_ui_emblem_al_left", 0), ("|", "emp_ui_emblem_al_center", 1), (">|", "emp_ui_emblem_al_right", 2),
+                     ("T", "emp_ui_emblem_al_top", 3), ("-", "emp_ui_emblem_al_middle", 4), ("_", "emp_ui_emblem_al_bottom", 5),
+                 }) {
+            var m = mode;
+            row.IconButton(null, sign, () => Align(m), tip, count >= 1, size: 26f);
+        }
+
+        row.IconButton(null, "<>", () => Spread(true), "emp_ui_emblem_dist_h", count >= 3, size: 26f);
+        row.IconButton(null, "^v", () => Spread(false), "emp_ui_emblem_dist_v", count >= 3, size: 26f);
+    }
+
+    private static float Half(EmblemLayer l) => TeamEmblem.Grid * l.Size / 200f;
+
+    private static void Align(int mode)
+    {
+        var picked = Selection().Where(i => _draft.Layers[i].Lock == 0).ToList();
+        if (picked.Count == 0) {
+            return;
+        }
+
+        var ls = picked.Select(i => _draft.Layers[i]).ToList();
+        // (one layer: the emblem's bounds; several: theirs)
+        float minX = 0f, maxX = TeamEmblem.Grid, minY = 0f, maxY = TeamEmblem.Grid;
+        if (picked.Count > 1) {
+            (minX, maxX) = (ls.Min(l => l.X - Half(l)), ls.Max(l => l.X + Half(l)));
+            (minY, maxY) = (ls.Min(l => l.Y - Half(l)), ls.Max(l => l.Y + Half(l)));
+        }
+
+        var list = _draft.Layers.ToList();
+        foreach (var i in picked) {
+            var l = list[i];
+            var h = Half(l);
+            var (x, y) = mode switch {
+                0 => (minX + h, (float)l.Y),
+                1 => ((minX + maxX) / 2f, l.Y),
+                2 => (maxX - h, l.Y),
+                3 => (l.X, minY + h),
+                4 => (l.X, (minY + maxY) / 2f),
+                _ => ((float)l.X, maxY - h),
+            };
+            list[i] = l with { X = Pos(x), Y = Pos(y) };
+        }
+
+        Change(_draft with { Layers = list });
+        Fill();
+    }
+
+    private static void Spread(bool across)
+    {
+        var picked = Selection().Where(i => _draft.Layers[i].Lock == 0).OrderBy(i => across ? _draft.Layers[i].X : _draft.Layers[i].Y).ToList();
+        if (picked.Count < 3) {
+            return;
+        }
+
+        var list = _draft.Layers.ToList();
+        float first = across ? list[picked[0]].X : list[picked[0]].Y;
+        float last = across ? list[picked[picked.Count - 1]].X : list[picked[picked.Count - 1]].Y;
+        for (var k = 1; k < picked.Count - 1; k++) {
+            var at = Pos(first + (last - first) * k / (picked.Count - 1));
+            list[picked[k]] = across ? list[picked[k]] with { X = at } : list[picked[k]] with { Y = at };
+        }
+
+        Change(_draft with { Layers = list });
+        Fill();
+    }
+
+    private static int Pos(float v) => Mathf.Clamp(Mathf.RoundToInt(v), TeamEmblem.MinPos, TeamEmblem.MaxPos);
+
+    // ---------------------------------------------------------------- the tools
+
+    /// <summary>The move pad: the four nudges as a 3x3 cross of small arrows (the whole selection moves)</summary>
     private static void MovePad(YKLayout parent)
     {
         var icons = EmpUi.GameIcons;
@@ -324,17 +572,14 @@ internal static class EmblemEditor
             }
 
             var (dx, dy) = (cell.Dx, cell.Dy);
-            line!.IconButton(icons?.up, cell.Sign, () => Edit(l => l with {
-                X = Mathf.Clamp(l.X + dx * Step, TeamEmblem.MinPos, TeamEmblem.MaxPos),
-                Y = Mathf.Clamp(l.Y + dy * Step, TeamEmblem.MinPos, TeamEmblem.MaxPos),
-            }), null, true, cell.Angle, 28f);
+            line!.IconButton(icons?.up, cell.Sign, () => MoveSelection(dx * Step, dy * Step), null, true, cell.Angle, 28f);
         }
     }
 
     /// <summary>The selected layer's place: nudges, turn, flips, size, angle, opacity, duplicate, mirror</summary>
     private static void PlaceTools(YKLayout root)
     {
-        var layer = _draft.Layers[_selected];
+        var layer = Current;
 
         // the move pad beside the turn and the flips (one block instead of three rows of wide buttons)
         var block = root.Horizontal();
@@ -375,15 +620,47 @@ internal static class EmblemEditor
     }
 
     /// <summary>
-    ///     The selected layer's look: its colour (a picture's tint, or its own colours), a shape's pattern and second
-    ///     colour, points, height and thickness, then the outline's width and colour
+    ///     The selected layer's look: a text's text, font, alignment, spacing and curve; its colour (a picture's tint,
+    ///     or its own colours); a shape's pattern and second colour, texture, points, height and thickness; then the
+    ///     outline's width and colour
     /// </summary>
     private static void LookTools(YKLayout root)
     {
-        var layer = _draft.Layers[_selected];
+        var layer = Current;
+        if (layer.IsText) {
+            var line = root.Row();
+            line.Text("emp_ui_emblem_text".lang());
+            var field = line.InputText(layer.Text);
+            field.field.characterLimit = TeamEmblem.MaxChars;
+            field.LayoutElement().flexibleWidth = 1f;
+            field.field.onValueChanged.AddListener(typed => {
+                var clean = new string(typed.Where(c => !char.IsControl(c)).ToArray());
+                if (clean.Length is > 0 and <= TeamEmblem.MaxChars) {
+                    Edit(l => l with { Thing = "x:" + TeamEmblem.Hex(clean) }, "text");
+                }
+            });
+            field.field.onEndEdit.AddListener(_ => _dragKey = null);
+
+            var fonts = EmblemText.Fonts();
+            var pick = root.Row();
+            if (fonts.Count > 0) {
+                Choice(pick, "emp_ui_emblem_font", fonts.ToArray(), Mathf.Max(0, fonts.IndexOf(layer.Font)), i => {
+                    Edit(l => l with { Font = i == 0 ? "" : fonts[i] });
+                    Fill();
+                });
+            }
+
+            Choice(pick, "emp_ui_emblem_align", Labels("emp_ui_emblem_align_", 3), layer.Align, i => {
+                Edit(l => l with { Align = i });
+                Fill();
+            });
+            Stepper(root, "emp_ui_emblem_spacing", layer.Spacing, -8, 16, 1, (l, v) => l with { Spacing = v }, l => l.Spacing, " px");
+            Stepper(root, "emp_ui_emblem_curve", layer.Curve, -180, 180, 15, (l, v) => l with { Curve = v }, l => l.Curve, "°");
+        }
+
         var colours = root.Row();
-        ColourButton(colours, layer.IsShape ? "emp_ui_emblem_colour1" : "emp_ui_emblem_tint", layer.Color, Fill1, true);
-        if (!layer.IsShape) {
+        ColourButton(colours, layer.IsSprite ? "emp_ui_emblem_tint" : "emp_ui_emblem_colour1", layer.Color, Fill1, true);
+        if (layer.IsSprite) {
             var none = colours.Button("emp_ui_emblem_tint_none".lang(), () => {
                 Edit(l => l with { Color = TeamEmblem.Own });
                 Fill();
@@ -391,15 +668,26 @@ internal static class EmblemEditor
             none.LayoutElement().preferredWidth = 90f;
             none.LayoutElement().flexibleWidth = 0f;
             none.interactable = layer.Color != TeamEmblem.Own;
-        } else {
+        } else if (layer.IsShape) {
             var pattern = root.Row();
-            Choice(pattern, "emp_ui_emblem_pattern",
-                Enumerable.Range(0, TeamEmblem.PatternCount).Select(i => $"emp_ui_emblem_pattern_{i}").ToArray(),
-                layer.Pattern, i => {
-                    Edit(l => l with { Pattern = i });
-                    Fill();
-                });
+            Choice(pattern, "emp_ui_emblem_pattern", Labels("emp_ui_emblem_pattern_", TeamEmblem.PatternCount), layer.Pattern, i => {
+                Edit(l => l with { Pattern = i });
+                Fill();
+            });
             ColourButton(pattern, "emp_ui_emblem_colour2", layer.Color2, Fill2, layer.Pattern != 0);
+
+            // a picture of the game tiled across the shape (a floor, a wall...), tinted by the fill
+            var texture = root.Row();
+            var tex = texture.Button(layer.Texture.Length > 0 ? "emp_ui_emblem_texture".lang() + ": " + EmblemSprites.NameOf(layer.Texture) : "emp_ui_emblem_texture".lang(),
+                () => OpenGrid(PickTexture));
+            tex.LayoutElement().flexibleWidth = 1f;
+            var clear = texture.Button("emp_ui_emblem_texture_none".lang(), () => {
+                Edit(l => l with { Texture = "" });
+                Fill();
+            });
+            clear.LayoutElement().preferredWidth = 90f;
+            clear.LayoutElement().flexibleWidth = 0f;
+            clear.interactable = layer.Texture.Length > 0;
 
             var kind = layer.Kind;
             if (kind is "star" or "polygon") {
@@ -407,19 +695,72 @@ internal static class EmblemEditor
                     (l, v) => l with { Sides = v }, l => l.Sides, "");
             }
 
-            if (kind != "line") {
-                Stepper(root, "emp_ui_emblem_height", layer.Aspect, 10, 100, 10, (l, v) => l with { Aspect = v }, l => l.Aspect, " %");
-            }
-
             if (kind is "rounded" or "star" or "line" or "cross" or "ring") {
                 Stepper(root, "emp_ui_emblem_thick", layer.Thick, 5, 90, 5, (l, v) => l with { Thick = v }, l => l.Thick, " %");
             }
+        }
+
+        if (!layer.IsSprite && layer.Kind != "line") {
+            Stepper(root, "emp_ui_emblem_height", layer.Aspect, 10, 100, 10, (l, v) => l with { Aspect = v }, l => l.Aspect, " %");
         }
 
         Stepper(root, "emp_ui_emblem_outline", layer.Outline, 0, TeamEmblem.MaxOutline, 1,
             (l, v) => l with { Outline = v }, l => l.Outline, " px");
         ColourButton(root.Row(), "emp_ui_emblem_outline_colour", layer.OutlineColor, OutlineColour, true);
     }
+
+    /// <summary>The selected layer's effects: name, live mirror, blend, clip to the layer below, shadow, gradient</summary>
+    private static void EffectTools(YKLayout root)
+    {
+        var layer = Current;
+        var naming = root.Row();
+        naming.Text("emp_ui_emblem_name".lang());
+        var name = naming.InputText(layer.Name);
+        name.field.characterLimit = TeamEmblem.MaxName;
+        name.LayoutElement().flexibleWidth = 1f;
+        name.field.onEndEdit.AddListener(typed => {
+            var clean = new string(typed.Where(c => !char.IsControl(c)).ToArray());
+            if (clean.Length <= TeamEmblem.MaxName && clean != Current.Name) {
+                Edit(l => l with { Name = clean });
+                Fill();
+            }
+        });
+
+        var modes = root.Row();
+        Choice(modes, "emp_ui_emblem_sym", Labels("emp_ui_emblem_sym_", 4), layer.Sym, i => {
+            Edit(l => l with { Sym = i });
+            Fill();
+        });
+        Choice(modes, "emp_ui_emblem_blend", Labels("emp_ui_emblem_blend_", 3), layer.Blend, i => {
+            Edit(l => l with { Blend = i });
+            Fill();
+        });
+
+        var clipLine = root.Row();
+        var clip = clipLine.Toggle("emp_ui_emblem_clip_below".lang(), layer.ClipBelow != 0, on => Edit(l => l with { ClipBelow = on ? 1 : 0 }));
+        clip.LayoutElement().flexibleWidth = 1f;
+        clip.AsRow();
+        clip.interactable = _selected > 0;
+
+        Stepper(root, "emp_ui_emblem_shadow", layer.Shadow, 0, TeamEmblem.MaxShadow, 1, (l, v) => l with { Shadow = v }, l => l.Shadow, " px");
+        ColourButton(root.Row(), "emp_ui_emblem_shadow_colour", layer.ShadowColor, ShadowColour, layer.Shadow > 0);
+
+        if (layer.IsSprite) {
+            return;
+        }
+
+        var gradient = root.Row();
+        Choice(gradient, "emp_ui_emblem_gradient", Labels("emp_ui_emblem_gradient_", 3), layer.Gradient, i => {
+            Edit(l => l with { Gradient = i });
+            Fill();
+        });
+        ColourButton(gradient, "emp_ui_emblem_grad_colour", layer.GradColor, GradColour, layer.Gradient != 0);
+        if (layer.Gradient == 1) {
+            Stepper(root, "emp_ui_emblem_grad_angle", layer.GradAngle, 0, 359, 15, (l, v) => l with { GradAngle = v }, l => l.GradAngle, "°");
+        }
+    }
+
+    private static string[] Labels(string prefix, int count) => Enumerable.Range(0, count).Select(i => (prefix + i).lang()).ToArray();
 
     /// <summary>A small square of the colour and a button with its name: both open the colour picker for it</summary>
     private static void ColourButton(YKLayout row, string labelId, uint colour, int field, bool enabled)
@@ -444,14 +785,16 @@ internal static class EmblemEditor
     /// <summary>The colour picker for the field being picked, with the layer's name and Done over it</summary>
     private static void BuildColour(YKLayout root)
     {
-        var layer = _draft.Layers[_selected];
+        var layer = Current;
         var head = root.Row();
         var title = _colourField switch {
             Fill2 => "emp_ui_emblem_colour2",
             OutlineColour => "emp_ui_emblem_outline_colour",
-            _ => layer.IsShape ? "emp_ui_emblem_colour1" : "emp_ui_emblem_tint",
+            ShadowColour => "emp_ui_emblem_shadow_colour",
+            GradColour => "emp_ui_emblem_grad_colour",
+            _ => layer.IsSprite ? "emp_ui_emblem_tint" : "emp_ui_emblem_colour1",
         };
-        head.Text(NameOf(layer.Thing) + ": " + title.lang()).LayoutElement().flexibleWidth = 1f;
+        head.Text(NameOf(layer) + ": " + title.lang()).LayoutElement().flexibleWidth = 1f;
         var done = head.Button("emp_ui_colour_done".lang(), () => {
             _colourField = NoColour;
             Fill();
@@ -462,14 +805,18 @@ internal static class EmblemEditor
         var start = _colourField switch {
             Fill2 => layer.Color2,
             OutlineColour => layer.OutlineColor,
-            _ => layer.Color == TeamEmblem.Own && !layer.IsShape ? 0xFFFFFFFFu : layer.Color,
+            ShadowColour => layer.ShadowColor,
+            GradColour => layer.GradColor,
+            _ => layer.Color == TeamEmblem.Own && layer.IsSprite ? 0xFFFFFFFFu : layer.Color,
         };
         var field = _colourField;
         ColourPicker.Build(root, start, TeamColours(), rgba => Edit(l => field switch {
             Fill2 => l with { Color2 = rgba },
             OutlineColour => l with { OutlineColor = rgba },
+            ShadowColour => l with { ShadowColor = rgba },
+            GradColour => l with { GradColor = rgba },
             // (a picture's tint keeps its alpha apart from "own colours": never the 0 that means them)
-            _ => l with { Color = !l.IsShape && rgba == TeamEmblem.Own ? 0x00000001u : rgba },
+            _ => l with { Color = l.IsSprite && rgba == TeamEmblem.Own ? 0x00000001u : rgba },
         }, "colour"), _ => _dragKey = null);
     }
 
@@ -489,13 +836,17 @@ internal static class EmblemEditor
             if (l.Outline > 0) {
                 list.Add(l.OutlineColor);
             }
+
+            if (l.Gradient != 0) {
+                list.Add(l.GradColor);
+            }
         }
 
         return list.Distinct().Take(12).ToList();
     }
 
     /// <summary>A title in grey over one of the game's dropdowns, half the row wide</summary>
-    private static void Choice(YKLayout row, string titleId, string[] optionIds, int value, System.Action<int> change)
+    private static void Choice(YKLayout row, string titleId, string[] options, int value, System.Action<int> change)
     {
         var col = row.Vertical();
         col.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -503,7 +854,7 @@ internal static class EmblemEditor
         col.LayoutElement().flexibleWidth = 1f;
         col.LayoutElement().preferredWidth = 0f;
         col.TextSmall(titleId.lang(), FontColor.Gray);
-        var dropdown = col.Dropdown(optionIds.Select(id => id.lang()).ToList(), change, value);
+        var dropdown = col.Dropdown(options.ToList(), change, Mathf.Clamp(value, 0, Mathf.Max(0, options.Length - 1)));
         dropdown.LayoutElement().flexibleWidth = 1f;
         dropdown.LayoutElement().preferredHeight = UIHelper.RowHeight;
         dropdown.Rect().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, UIHelper.RowHeight);
@@ -518,11 +869,11 @@ internal static class EmblemEditor
         Slider? slider = null;
         row.SignButton("-", () => {
             Edit(l => set(l, Mathf.Clamp(get(l) - step, min, max)));
-            slider?.SetValueWithoutNotify(get(_draft.Layers[_selected]));
+            slider?.SetValueWithoutNotify(get(Current));
         });
         slider = row.Slider(value, v => {
             var rounded = Mathf.RoundToInt(v);
-            if (rounded == get(_draft.Layers[_selected])) {
+            if (rounded == get(Current)) {
                 return;
             }
 
@@ -532,44 +883,53 @@ internal static class EmblemEditor
         slider.LayoutElement().flexibleWidth = 1f;
         row.SignButton("+", () => {
             Edit(l => set(l, Mathf.Clamp(get(l) + step, min, max)));
-            slider.SetValueWithoutNotify(get(_draft.Layers[_selected]));
+            slider.SetValueWithoutNotify(get(Current));
         });
     }
 
     /// <summary>
     ///     A copy of the selected layer on the other side of the emblem, turned the other way (a pair of wings, two
-    ///     crossed swords): the two halves of a symmetric emblem in one click (user 2026-10-30)
+    ///     crossed swords): the two halves of a symmetric emblem in one click (user 2026-10-30). The Effects page's
+    ///     Mirror keeps such a copy live instead
     /// </summary>
     private static void Mirror()
     {
-        if (_draft.Layers.Count >= TeamEmblem.MaxLayers || _selected >= _draft.Layers.Count) {
+        if (_draft.Layers.Count >= TeamEmblem.MaxLayers || !HasSelection) {
             return;
         }
 
-        var layer = _draft.Layers[_selected];
-        var copy = layer with { X = TeamEmblem.Grid - layer.X, Flip = layer.Flip ^ 1, Rotation = (360 - layer.Rotation) % 360 };
-        var list = _draft.Layers.ToList();
-        list.Insert(_selected + 1, copy);
-        Change(_draft with { Layers = list });
-        _selected++;
-        Fill();
+        var layer = Current;
+        Insert(layer with { X = TeamEmblem.Grid - layer.X, Flip = layer.Flip ^ 1, Rotation = (360 - layer.Rotation) % 360 });
     }
 
     private static void Duplicate()
     {
-        if (_draft.Layers.Count >= TeamEmblem.MaxLayers || _selected >= _draft.Layers.Count) {
+        if (_draft.Layers.Count >= TeamEmblem.MaxLayers || !HasSelection) {
             return;
         }
 
         // the copy just above the original, a little aside so it shows
-        var copy = _draft.Layers[_selected];
-        copy = copy with {
-            X = Mathf.Clamp(copy.X + 4, TeamEmblem.MinPos, TeamEmblem.MaxPos), Y = Mathf.Clamp(copy.Y + 4, TeamEmblem.MinPos, TeamEmblem.MaxPos),
-        };
+        var copy = Current;
+        Insert(copy with { X = Pos(copy.X + 4), Y = Pos(copy.Y + 4) });
+    }
+
+    private static void Paste()
+    {
+        if (_clipboard is not { } layer || _draft.Layers.Count >= TeamEmblem.MaxLayers) {
+            return;
+        }
+
+        Insert(layer with { Lock = 0 });
+    }
+
+    /// <summary>A layer just above the selected one, selected</summary>
+    private static void Insert(EmblemLayer layer)
+    {
         var list = _draft.Layers.ToList();
-        list.Insert(_selected + 1, copy);
+        var at = HasSelection ? _selected + 1 : list.Count;
+        list.Insert(at, layer);
         Change(_draft with { Layers = list });
-        _selected++;
+        Select(at);
         Fill();
     }
 
@@ -583,6 +943,7 @@ internal static class EmblemEditor
         var list = _draft.Layers.ToList();
         (list[index], list[to]) = (list[to], list[index]);
         Change(_draft with { Layers = list });
+        _multi.Clear();
         if (_selected == index) {
             _selected = to;
         } else if (_selected == to) {
@@ -617,20 +978,120 @@ internal static class EmblemEditor
         // the first shape is the emblem's ground, in the team's colour; a later one smaller, in white
         var first = _draft.Layers.Count == 0;
         var colour = first ? ColourPicker.ToRgba(TeamBanner.ChipColor(_team)) : TeamEmblem.Rgba(17);
-        Change(_draft with { Layers = [.._draft.Layers, TeamEmblem.Shape(kind, colour, first ? 90 : 50)] });
-        _selected = _draft.Layers.Count - 1;
-        _picking = false;
+        Add(TeamEmblem.Shape(kind, colour, first ? 90 : 50));
+    }
+
+    /// <summary>A text layer of the team's name (its first 16 characters), white with a dark outline, on the Look page</summary>
+    internal static void AddText()
+    {
+        if (_draft.Layers.Count >= TeamEmblem.MaxLayers) {
+            return;
+        }
+
+        var name = new string(Teams.NameOf(_team).Where(c => !char.IsControl(c) && !char.IsSurrogate(c)).Take(TeamEmblem.MaxChars).ToArray());
+        Add(TeamEmblem.TextLayer(name.Length > 0 ? name : "ABC", TeamEmblem.Rgba(17)));
+        _toolPage = 1;
+        Fill();
+    }
+
+    private static void Add(EmblemLayer layer)
+    {
+        Change(_draft with { Layers = [.._draft.Layers, layer] });
+        Select(_draft.Layers.Count - 1);
+        _picking = 0;
         _colourField = NoColour;
         Fill();
     }
 
+    private static void OpenGrid(int mode)
+    {
+        _picking = mode;
+        _colourField = NoColour;
+        Fill();
+    }
+
+    /// <summary>A picture picked in the grid: a new layer, or the selected shape's texture</summary>
+    private static void Picked(int mode, string thing)
+    {
+        if (mode == PickTexture) {
+            _picking = 0;
+            Edit(l => l.IsShape ? l with { Texture = thing } : l);
+            Fill();
+            return;
+        }
+
+        if (_draft.Layers.Count < TeamEmblem.MaxLayers) {
+            Add(TeamEmblem.Layer(thing));
+        }
+    }
+
+    // ---------------------------------------------------------------- the emblem as a code, saving
+
+    private static void Save()
+    {
+        var text = TeamEmblem.Format(_draft);
+        if (text.Length > TeamEmblem.MaxText) {
+            Fill();
+            return;
+        }
+
+        // (the team's colour: the bottom shape's when it is one of the twelve team colours; else it stays)
+        var colour = TeamEmblem.TeamColour(_draft) ?? TeamBanner.Of(_team)?.Color ?? 0;
+        Teams.Ask(TeamAsk.Banner, 0, colour, text);
+    }
+
+    /// <summary>Copy code (the emblem's text to the clipboard, to share) and Paste code in the game's context menu</summary>
+    private static void ShowCode(UIButton? anchor)
+    {
+        var menu = EClass.ui.CreateContextMenuInteraction();
+        if (anchor != null) {
+            menu.SetHighlightTarget(anchor);
+        }
+
+        menu.AddButton("emp_ui_emblem_code_copy".lang(), () => {
+            ExportCode();
+            Fill();
+        });
+        menu.AddButton("emp_ui_emblem_code_paste".lang(), () => {
+            ImportCode(GUIUtility.systemCopyBuffer ?? "");
+            Fill();
+        });
+        menu.Show();
+    }
+
+    /// <summary>The draft's text on the clipboard</summary>
+    internal static string ExportCode()
+    {
+        var text = TeamEmblem.Format(_draft);
+        GUIUtility.systemCopyBuffer = text;
+        _note = "emp_ui_emblem_code_copied".lang();
+        return text;
+    }
+
+    /// <summary>A pasted code as the draft (one undo step), when it reads as an emblem this game can draw</summary>
+    internal static bool ImportCode(string code)
+    {
+        code = code.Trim();
+        if (code.Length is 0 or > TeamEmblem.MaxText || TeamEmblem.Validate(TeamEmblem.Parse(code), TeamBanner.Normalize) is not { } emblem) {
+            _note = "emp_ui_emblem_code_bad".lang();
+            return false;
+        }
+
+        Change(emblem);
+        Select(emblem.Layers.Count - 1);
+        _colourField = NoColour;
+        _picking = 0;
+        return true;
+    }
+
     // ---------------------------------------------------------------- the preview's pointer
 
-    /// <summary>The topmost layer whose square holds this point of the grid, or -1</summary>
+    /// <summary>The topmost visible, unlocked layer whose square holds this point of the grid, or -1</summary>
     private static int LayerAt(Vector2 p)
     {
         for (var i = _draft.Layers.Count - 1; i >= 0; i--) {
-            if (Holds(_draft.Layers[i], p)) {
+            var l = _draft.Layers[i];
+            if (l.Hidden == 0 && l.Lock == 0 && Holds(l, p)) {
                 return i;
             }
         }
@@ -640,21 +1101,31 @@ internal static class EmblemEditor
 
     private static bool Holds(EmblemLayer l, Vector2 p)
     {
-        var half = TeamEmblem.Grid * l.Size / 200f;
+        var half = Half(l);
         return Mathf.Abs(p.x - l.X) <= half && Mathf.Abs(p.y - l.Y) <= half;
     }
 
     private static void PointerDown(Vector2 p)
     {
         // (the selected layer keeps the pointer while it is under it, even under another one)
-        var keep = _selected < _draft.Layers.Count && Holds(_draft.Layers[_selected], p);
+        var keep = HasSelection && Current.Lock == 0 && Holds(Current, p);
         var hit = keep ? _selected : LayerAt(p);
         _moving = hit >= 0;
         if (!_moving) {
             return;
         }
 
-        if (hit != _selected) {
+        if (hit != _selected && !_multi.Contains(hit)) {
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) {
+                _multi.Add(_selected);
+                _multi.Add(hit);
+            } else {
+                _multi.Clear();
+            }
+
+            _selected = hit;
+            _reselect = true;
+        } else if (hit != _selected) {
             _selected = hit;
             _reselect = true;
         }
@@ -665,23 +1136,36 @@ internal static class EmblemEditor
 
     private static void PointerDrag(Vector2 p)
     {
-        if (!_moving) {
+        if (!_moving || !HasSelection) {
             return;
         }
 
-        var x = Mathf.Clamp(Mathf.RoundToInt(p.x - _grab.x), TeamEmblem.MinPos, TeamEmblem.MaxPos);
-        var y = Mathf.Clamp(Mathf.RoundToInt(p.y - _grab.y), TeamEmblem.MinPos, TeamEmblem.MaxPos);
-        if (_draft.Layers[_selected] is var l && l.X == x && l.Y == y) {
-            return;
+        var x = p.x - _grab.x;
+        var y = p.y - _grab.y;
+        if (_snap) {
+            (x, y) = (Snap(x), Snap(y));
         }
 
-        Edit(layer => layer with { X = x, Y = y }, "preview");
+        var l = Current;
+        var (dx, dy) = (Pos(x) - l.X, Pos(y) - l.Y);
+        if (dx != 0 || dy != 0) {
+            MoveSelection(dx, dy, "preview");
+        }
+    }
+
+    /// <summary>A position on the 4 px grid, or the centre when within 3 of it</summary>
+    private static float Snap(float v)
+    {
+        const float centre = TeamEmblem.Grid / 2f;
+        return Mathf.Abs(v - centre) <= 3f ? centre : Mathf.Round(v / SnapGrid) * SnapGrid;
     }
 
     private static void PointerUp()
     {
         _moving = false;
         _dragKey = null;
+        // (the drag's last position baked at once)
+        BakeNow();
         if (_reselect) {
             _reselect = false;
             // (the layer list and the tools show the layer picked on the preview)
@@ -689,11 +1173,34 @@ internal static class EmblemEditor
         }
     }
 
+    /// <summary>Every selected, unlocked layer moved by that much (a drag's moves one undo step)</summary>
+    private static void MoveSelection(int dx, int dy, string? drag = null)
+    {
+        var undoStep = drag == null || drag != _dragKey;
+        _dragKey = drag;
+        var list = _draft.Layers.ToList();
+        var moved = false;
+        foreach (var i in Selection()) {
+            if (list[i].Lock != 0) {
+                continue;
+            }
+
+            list[i] = list[i] with { X = Pos(list[i].X + dx), Y = Pos(list[i].Y + dy) };
+            moved = true;
+        }
+
+        if (moved) {
+            Change(_draft with { Layers = list }, undoStep);
+            Refresh();
+        }
+    }
+
     // ---------------------------------------------------------------- random and starters
 
     /// <summary>
-    ///     A random emblem: a shape of two colours, one or two things of the game over it (some turned, tinted or
-    ///     outlined, the first sometimes reaching past the shape), sometimes a ring or a star
+    ///     A random emblem: a shape of two colours (sometimes a gradient), one or two things of the game or an icon over
+    ///     it (some turned, tinted or outlined, the first sometimes reaching past the shape), sometimes a ring or a
+    ///     star, sometimes the team's initials
     /// </summary>
     private static Emblem RandomEmblem()
     {
@@ -705,6 +1212,10 @@ internal static class EmblemEditor
             Pattern = rng.Next(TeamEmblem.PatternCount), Color2 = TeamEmblem.Rgba(bg2), Sides = 5 + rng.Next(4),
             Outline = rng.Next(2), OutlineColor = TeamEmblem.Rgba(16),
         };
+        if (rng.Next(4) == 0) {
+            ground = ground with { Pattern = 0, Gradient = 1 + rng.Next(2), GradColor = TeamEmblem.Rgba(bg2) };
+        }
+
         var layers = new List<EmblemLayer> { ground };
         if (rng.Next(3) == 0) {
             layers.Add(TeamEmblem.Shape(rng.Next(2) == 0 ? "ring" : "star", TeamEmblem.Rgba(rng.Next(TeamBanner.EmblemColorCount)), 60 + rng.Next(30)));
@@ -713,6 +1224,11 @@ internal static class EmblemEditor
         var rows = EClass.sources.things.rows;
         for (var n = layers.Count + 1 + rng.Next(2); layers.Count < n;) {
             string? thing = null;
+            if (rng.Next(4) == 0 && SpriteGrid.All(2) is { Count: > 0 } icons) {
+                // (an icon of the game: an element, a skill)
+                thing = icons[rng.Next(icons.Count)].Value;
+            }
+
             for (var tries = 0; tries < 30 && thing == null; tries++) {
                 var row = rows[rng.Next(rows.Count)];
                 if (!string.IsNullOrEmpty(row.id) && TeamBanner.Normalize("t:" + row.id) is { } typed && TeamBanner.SpriteOf(typed) != null) {
@@ -724,10 +1240,17 @@ internal static class EmblemEditor
                 break;
             }
 
-            var first = layers.Count(l => !l.IsShape) == 0;
+            var first = layers.Count(l => l.IsSprite) == 0;
             layers.Add(new(thing, first ? 32 : 20 + rng.Next(24), first ? 32 : 20 + rng.Next(24),
                 first ? 70 + rng.Next(60) : 40 + rng.Next(30), rng.Next(3) == 0 ? rng.Next(8) * 45 : 0, rng.Next(4) == 0 ? 1 : 0,
                 rng.Next(2) == 0 ? TeamEmblem.Own : TeamEmblem.Rgba(rng.Next(TeamBanner.EmblemColorCount)), 100, rng.Next(2)));
+        }
+
+        if (rng.Next(4) == 0) {
+            var initials = new string(Teams.NameOf(_team).Split(' ').Where(w => w.Length > 0 && !char.IsSurrogate(w[0])).Select(w => w[0]).Take(3).ToArray());
+            if (initials.Length > 0) {
+                layers.Add(TeamEmblem.TextLayer(initials.ToUpperInvariant(), TeamEmblem.Rgba(17)) with { Y = 50, Size = 50 });
+            }
         }
 
         return new(layers, rng.Next(3) == 0);
@@ -736,26 +1259,49 @@ internal static class EmblemEditor
     private static Emblem Old(int bg, int shape, int pattern, int bg2, params TeamEmblem.OldLayer[] layers) =>
         TeamEmblem.FromLegacy(new(bg, shape, layers, pattern, bg2))!;
 
-    /// <summary>A few ready emblems of the game's own things and monsters (one the game does not have is left out)</summary>
-    private static readonly Emblem[] Starters = [
-        Old(19, 1, 0, 19, new TeamEmblem.OldLayer("c:putty", 32, 34, 90, 0, 0, TeamEmblem.OwnColours, 100, 1)),
-        Old(13, 2, 1, 16, new TeamEmblem.OldLayer("t:mathammer", 32, 30, 110, 1, 0, 18, 100, 1)),
-        Old(12, 3, 5, 0, new TeamEmblem.OldLayer("t:torch", 32, 28, 100, 0, 0, TeamEmblem.OwnColours, 100, 1)),
-        Old(7, 4, 7, 18, new TeamEmblem.OldLayer("t:crystal_mana", 32, 32, 80, 0, 0, TeamEmblem.OwnColours, 100, 0)),
-        Old(14, 5, 6, 6, new TeamEmblem.OldLayer("c:hound", 32, 34, 90, 0, 0, TeamEmblem.OwnColours, 100, 1)),
-        Old(16, 0, 3, 17, new TeamEmblem.OldLayer("t:crystal_sun", 22, 22, 60, 0, 0, 18, 100, 0), new TeamEmblem.OldLayer("t:crystal_earth", 42, 42, 60, 0, 0, 2, 100, 0)),
+    /// <summary>
+    ///     A few ready emblems: the four templates (classic shield, crest, banner, round badge, named), then some of
+    ///     the game's own things and monsters (one the game does not have is left out)
+    /// </summary>
+    private static readonly (string? Label, Emblem Emblem)[] Starters = [
+        ("emp_ui_emblem_tpl_shield", new([
+            TeamEmblem.Shape("shield", TeamEmblem.Rgba(12), 92) with { Pattern = 1, Color2 = TeamEmblem.Rgba(17), Outline = 2, OutlineColor = TeamEmblem.Rgba(18) },
+            new("t:sword", 32, 30, 80, 0, 0, TeamEmblem.Own, 100, 1),
+        ])),
+        ("emp_ui_emblem_tpl_crest", new([
+            TeamEmblem.Shape("hexagon", TeamEmblem.Rgba(19), 90) with { Gradient = 1, GradColor = TeamEmblem.Rgba(16), Outline = 1, OutlineColor = TeamEmblem.Rgba(18) },
+            TeamEmblem.Shape("star", TeamEmblem.Rgba(18), 46) with { Y = 26, Sides = 5, Outline = 1 },
+            TeamEmblem.TextLayer("CREST", TeamEmblem.Rgba(17)) with { Y = 50, Size = 60, Shadow = 1 },
+        ])),
+        ("emp_ui_emblem_tpl_banner", new([
+            TeamEmblem.Shape("banner", TeamEmblem.Rgba(13), 96) with { Pattern = 6, Color2 = TeamEmblem.Rgba(18), Outline = 1 },
+            new("e:ele_eleFire", 32, 26, 50, 0, 0, TeamEmblem.Own, 100, 1),
+        ])),
+        ("emp_ui_emblem_tpl_badge", new([
+            TeamEmblem.Shape("round", TeamEmblem.Rgba(14), 96) with { Gradient = 2, GradColor = TeamEmblem.Rgba(16), Outline = 2, OutlineColor = TeamEmblem.Rgba(18) },
+            TeamEmblem.Shape("ring", TeamEmblem.Rgba(18), 84) with { Thick = 12 },
+            TeamEmblem.TextLayer("TEAM", TeamEmblem.Rgba(17)) with { Y = 22, Size = 60, Curve = 120 },
+            new("c:putty", 32, 38, 50, 0, 0, TeamEmblem.Own, 100, 1),
+        ])),
+        (null, Old(19, 1, 0, 19, new TeamEmblem.OldLayer("c:putty", 32, 34, 90, 0, 0, TeamEmblem.OwnColours, 100, 1))),
+        (null, Old(13, 2, 1, 16, new TeamEmblem.OldLayer("t:mathammer", 32, 30, 110, 1, 0, 18, 100, 1))),
+        (null, Old(12, 3, 5, 0, new TeamEmblem.OldLayer("t:torch", 32, 28, 100, 0, 0, TeamEmblem.OwnColours, 100, 1))),
+        (null, Old(7, 4, 7, 18, new TeamEmblem.OldLayer("t:crystal_mana", 32, 32, 80, 0, 0, TeamEmblem.OwnColours, 100, 0))),
+        (null, Old(14, 5, 6, 6, new TeamEmblem.OldLayer("c:hound", 32, 34, 90, 0, 0, TeamEmblem.OwnColours, 100, 1))),
+        (null, Old(16, 0, 3, 17, new TeamEmblem.OldLayer("t:crystal_sun", 22, 22, 60, 0, 0, 18, 100, 0),
+            new TeamEmblem.OldLayer("t:crystal_earth", 42, 42, 60, 0, 0, 2, 100, 0))),
         // (shapes as layers: a sword past a round ground, a star in a ring)
-        new([
+        (null, new([
             TeamEmblem.Shape("round", TeamEmblem.Rgba(12), 76) with { Outline = 2, OutlineColor = TeamEmblem.Rgba(18) },
             new("t:sword", 32, 32, 130, 315, 0, TeamEmblem.Own, 100, 1),
-        ]),
-        new([
+        ])),
+        (null, new([
             TeamEmblem.Shape("ring", TeamEmblem.Rgba(18), 96),
             TeamEmblem.Shape("star", TeamEmblem.Rgba(13), 70) with { Outline = 1 },
-        ]),
+        ])),
     ];
 
-    /// <summary>The starters in the game's context menu under the button, by the name of their main thing</summary>
+    /// <summary>The starters in the game's context menu under the button, by their name or that of their main picture</summary>
     private static void ShowStarters(UIButton? anchor)
     {
         var menu = EClass.ui.CreateContextMenuInteraction();
@@ -763,17 +1309,20 @@ internal static class EmblemEditor
             menu.SetHighlightTarget(anchor);
         }
 
-        foreach (var starter in Starters) {
-            var layers = starter.Layers.Where(l => l.IsShape || TeamBanner.Normalize(l.Thing) != null).ToList();
-            if (!layers.Any(l => !l.IsShape) && starter.Layers.Any(l => !l.IsShape)) {
+        foreach (var (label, starter) in Starters) {
+            var layers = starter.Layers.Where(l => !l.IsSprite || TeamBanner.Normalize(l.Thing) != null).ToList();
+            if (!layers.Any(l => l.IsSprite) && starter.Layers.Any(l => l.IsSprite) && label == null) {
                 continue;
             }
 
+            // (a template's text: the team's name when it fits)
+            var team = new string(Teams.NameOf(_team).Where(c => !char.IsControl(c) && !char.IsSurrogate(c)).Take(TeamEmblem.MaxChars).ToArray());
+            layers = layers.Select(l => l.IsText && team.Length > 0 ? l with { Thing = "x:" + TeamEmblem.Hex(team) } : l).ToList();
             var pick = starter with { Layers = layers };
-            var main = layers.FirstOrDefault(l => !l.IsShape).Thing ?? layers[layers.Count - 1].Thing;
-            menu.AddButton(NameOf(main), () => {
+            var main = layers.FirstOrDefault(l => l.IsSprite);
+            menu.AddButton(label?.lang() ?? NameOf(main.Thing != null ? main : layers[layers.Count - 1]), () => {
                 Change(pick);
-                _selected = 0;
+                Select(0);
                 _colourField = NoColour;
                 Fill();
             });
@@ -786,18 +1335,22 @@ internal static class EmblemEditor
 
     /// <summary>
     ///     The selected layer changed: the draft and the preview only (the buttons stay as they are). A
-    ///     <paramref name="drag" /> key makes its repeated changes one undo step
+    ///     <paramref name="drag" /> key makes its repeated changes one undo step. A locked layer does not change
     /// </summary>
     private static void Edit(System.Func<EmblemLayer, EmblemLayer> change, string? drag = null)
     {
         var undoStep = drag == null || drag != _dragKey;
         _dragKey = drag;
-        if (_selected >= _draft.Layers.Count) {
+        if (!HasSelection || Current.Lock != 0) {
             return;
         }
 
         var list = _draft.Layers.ToList();
         list[_selected] = change(list[_selected]);
+        if (list[_selected] == _draft.Layers[_selected]) {
+            return;
+        }
+
         Change(_draft with { Layers = list }, undoStep);
         Refresh();
     }
@@ -809,43 +1362,57 @@ internal static class EmblemEditor
             if (_undo.Count > UndoMax) {
                 _undo.RemoveAt(0);
             }
+
+            _redo.Clear();
         }
 
         _draft = next;
     }
 
-    private static void Refresh()
+    internal static void Undo()
     {
-        var sprite = TeamEmblemBaker.Get(_draft);
-        if (_preview != null) {
-            _preview.sprite = sprite;
+        if (_undo.Count == 0) {
+            return;
         }
 
-        foreach (var image in _small) {
-            if (image != null) {
-                image.sprite = sprite;
-            }
-        }
+        _redo.Add(_draft);
+        _draft = _undo[_undo.Count - 1];
+        _undo.RemoveAt(_undo.Count - 1);
+        _multi.Clear();
+        Fill();
     }
+
+    internal static void Redo()
+    {
+        if (_redo.Count == 0) {
+            return;
+        }
+
+        _undo.Add(_draft);
+        _draft = _redo[_redo.Count - 1];
+        _redo.RemoveAt(_redo.Count - 1);
+        _multi.Clear();
+        Fill();
+    }
+
+    private static string NameOf(EmblemLayer layer) => layer.Name.Length > 0 ? layer.Name : NameOf(layer.Thing);
 
     private static string NameOf(string thing)
     {
-        var id = thing.Length > 2 ? thing.Substring(2) : thing;
         if (thing.StartsWith("g:")) {
-            return ("emp_ui_emblem_" + id).lang();
+            return ("emp_ui_emblem_" + thing.Substring(2)).lang();
         }
 
-        if (thing.StartsWith("c:")) {
-            return EClass.sources.charas.map.TryGetValue(id, out var chara) ? chara.GetName() ?? id : id;
-        }
-
-        return EClass.sources.things.map.TryGetValue(id, out var row) ? row.GetName() ?? id : id;
+        return EmblemSprites.NameOf(thing);
     }
 
     // ---------------------------------------------------------------- the bench (Debug eval)
 
     /// <summary>The draft's canonical text (the bench reads it)</summary>
     internal static string DraftText => TeamEmblem.Format(_draft);
+
+    /// <summary>The steps that Undo and Redo hold (the bench reads them)</summary>
+    internal static string History => _undo.Count + "/" + _redo.Count;
 
     /// <summary>The bench sets the draft from a text, as Starters would</summary>
     internal static bool SetDraft(string text)
@@ -855,7 +1422,7 @@ internal static class EmblemEditor
         }
 
         Change(emblem);
-        _selected = emblem.Layers.Count - 1;
+        Select(emblem.Layers.Count - 1);
         _colourField = NoColour;
         Fill();
         return true;
@@ -863,13 +1430,15 @@ internal static class EmblemEditor
 }
 
 /// <summary>
-///     The emblem preview's pointer, in points of the 64 grid from the top left: pressed, dragged, released
+///     The emblem preview's pointer, in points of the 64 grid from the top left: pressed, dragged, released; and a
+///     tick each frame (the editor's throttled bake)
 /// </summary>
 internal sealed class EmblemPreviewInput : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler, IPointerUpHandler
 {
     internal System.Action<Vector2>? Down;
     internal System.Action<Vector2>? Drag;
     internal System.Action? Up;
+    internal System.Action? Tick;
 
     private Vector2 OnGrid(PointerEventData data)
     {
@@ -888,4 +1457,6 @@ internal sealed class EmblemPreviewInput : MonoBehaviour, IPointerDownHandler, I
     public void OnDrag(PointerEventData data) => Drag?.Invoke(OnGrid(data));
 
     public void OnPointerUp(PointerEventData data) => Up?.Invoke();
+
+    private void Update() => Tick?.Invoke();
 }
