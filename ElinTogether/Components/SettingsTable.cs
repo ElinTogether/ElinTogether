@@ -61,11 +61,11 @@ internal sealed record SettingRow(string Id, string Card, bool Advanced, ConfigE
             var desc = $"emp_ui_sv_desc_{Id}".lang();
             // (under a dropdown, one line per choice: the applies-when line comes on a line of its own, last)
             // (the official server's rule, said where the box is greyed)
-            if (Id == "import_chara" && OfficialServer.Hosting) {
+            if (Id == "import_chara" && SettingsTable.OfficialLocked) {
                 desc = $"{desc} {"emp_ui_sv_import_official".lang()}";
             }
 
-            if (Id is "team_own_story" or "team_knowledge" && OfficialServer.Hosting) {
+            if (Id is "team_own_story" or "team_knowledge" && SettingsTable.OfficialLocked) {
                 desc = $"{desc} {"emp_ui_sv_own_story_official".lang()}";
             }
 
@@ -327,13 +327,22 @@ internal static class SettingsTable
         }
     }
 
+    /// <summary>
+    ///     The official server's fixed rules are locked (greyed rows, skipped by a preset, a reset or an undo) only while
+    ///     this game really runs it (-empserver with the account and the key) or the bench forces it. Not merely because
+    ///     PublicGame is on with the key on this PC: PublicGame is itself a fixed rule, so a host that picked the public
+    ///     server preset could never go back to Recommended
+    /// </summary>
+    internal static bool OfficialLocked =>
+        (OfficialServer.BenchForce || EmpServer.Requested && OfficialServer.CanHost()) && !Helper.PeerHosting.Active;
+
     internal static IEnumerable<SettingRow> Rows()
     {
         var fixedEntries = OfficialFixedEntries();
         foreach (var row in RowsRaw()) {
             if (row.Entry is { } e && fixedEntries.Contains(e) || row.Choice is { } c && c.Entries.All(fixedEntries.Contains)) {
                 var own = row.Requires;
-                yield return row with { Requires = () => !Helper.StoryOwner.OfficialHosting && (own?.Invoke() ?? true) };
+                yield return row with { Requires = () => !OfficialLocked && (own?.Invoke() ?? true) };
             } else {
                 yield return row;
             }
@@ -352,10 +361,10 @@ internal static class SettingsTable
         yield return new("same_game_version", "joining", true, EmpConfig.Server.SameGameVersion, Apply: "join");
         yield return new("characters", "joining", false, Choice: Characters, Apply: "join");
         yield return new("choose_chara", "joining", true, EmpConfig.Server.ChooseCharacter, Apply: "join", Under: "characters");
-        yield return new("import_chara", "joining", true, EmpConfig.Server.ImportCharacter, Requires: () => !OfficialServer.Hosting, Apply: "join", Under: "characters");
+        yield return new("import_chara", "joining", true, EmpConfig.Server.ImportCharacter, Requires: () => !OfficialLocked, Apply: "join", Under: "characters");
         // (the way back is the import: without it a character that left could only be brought back unchanged)
         yield return new("export_chara", "joining", true, EmpConfig.Server.ExportCharacter,
-            Requires: () => EmpConfig.Server.ImportCharacter.Value && !OfficialServer.Hosting, Apply: "join", Under: "characters");
+            Requires: () => EmpConfig.Server.ImportCharacter.Value && !OfficialLocked, Apply: "join", Under: "characters");
         yield return new("permadeath_revive", "joining", true, EmpConfig.Server.PermadeathRevive);
 
         // Playing together
@@ -409,8 +418,8 @@ internal static class SettingsTable
         yield return new("team_personal", "together", true, EmpConfig.Server.TeamPersonal, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("spawn_zone", "together", true, Choice: SpawnZone, Requires: () => EmpConfig.Server.Teams.Value && EmpConfig.Server.IndependentTravel.Value);
         yield return new("team_pvp", "together", true, EmpConfig.Server.TeamPvp, Requires: () => EmpConfig.Server.Teams.Value);
-        yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => !OfficialServer.Hosting);
-        yield return new("team_boxes", "together", true, EmpConfig.Server.TeamBoxes, Requires: () => EmpConfig.Server.Teams.Value && !OfficialServer.Hosting);
+        yield return new("team_knowledge", "together", true, EmpConfig.Server.TeamKnowledge, Requires: () => !OfficialLocked);
+        yield return new("team_boxes", "together", true, EmpConfig.Server.TeamBoxes, Requires: () => EmpConfig.Server.Teams.Value && !OfficialLocked);
         yield return new("team_bills", "together", true, EmpConfig.Server.TeamBills, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_story", "together", true, EmpConfig.Server.TeamStory, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_sheets", "together", true, EmpConfig.Server.TeamSheets, Requires: () => EmpConfig.Server.Teams.Value);
@@ -421,7 +430,7 @@ internal static class SettingsTable
         yield return new("leaderboards", "together", true, EmpConfig.Server.Leaderboards);
         yield return new("market", "together", true, EmpConfig.Server.Market);
         yield return new("mailbox", "together", true, EmpConfig.Server.Mailbox);
-        yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialServer.Hosting);
+        yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialLocked);
         yield return new("team_own_guilds", "together", true, EmpConfig.Server.TeamOwnGuilds, Requires: () => Helper.TeamOwnStory.Wanted);
 
         // When the host leaves
@@ -1058,7 +1067,7 @@ internal static class SettingsTable
     internal static bool Write(IEnumerable<(ConfigEntryBase Entry, object Value)> changes)
     {
         // (the official server's fixed rules cannot be changed from a page, a preset, a reset or an undo)
-        var fixedEntries = Helper.StoryOwner.OfficialHosting && !_forcing ? OfficialFixedEntries() : [];
+        var fixedEntries = OfficialLocked && !_forcing ? OfficialFixedEntries() : [];
         var diff = changes.Where(c => !Equals(c.Entry.BoxedValue, c.Value) && !fixedEntries.Contains(c.Entry)).ToArray();
         if (diff.Length == 0) {
             return false;
