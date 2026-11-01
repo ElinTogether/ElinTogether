@@ -185,6 +185,8 @@ internal partial class ElinNetHost
             game.cards.globalCharas.Find(charaUid) is not { } chara) {
             EmpLog.Debug("Remote character does not exist, request for new character generation");
             peer.Send(new SessionNewPlayerRequest());
+        } else if (TrySendSoftStay(chara, peer)) {
+            // zone session: a visitor that stood on this map before we ran it keeps its game (GitHub issue 46)
         } else {
             // remote character exists
             SendSaveProbe(chara, peer, () => {

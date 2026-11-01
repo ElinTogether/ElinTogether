@@ -94,6 +94,9 @@ internal partial class ElinNetHost
             _returnSpots.Remove(request.GuestUser);
         }
 
+        // standing here already: it keeps its game, see TrySendSoftStay (GitHub issue 46)
+        NoteSoftStay(request);
+
         SteamNetManager.ConnectionKeys[user] = "zone_guest";
 
         EmpLog.Information("Expecting guest {RemoteIdentity}",

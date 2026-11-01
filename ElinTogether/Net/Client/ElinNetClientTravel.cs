@@ -445,6 +445,9 @@ internal partial class ElinNetClient
         EnterAway(zone);
         Session.IsGuest = true;
 
+        // we stay on that very map (GitHub issue 46): its keeper may switch us in place, nothing moves until it answers
+        BeginSoftStay(zone);
+
         EmpLog.Information("Joining the zone session of {RemoteIdentity} in {ZoneFullName}",
             address.HostUser, zone.ZoneFullName);
 
@@ -513,6 +516,8 @@ internal partial class ElinNetClient
         if (session is not ElinNetClient || !Session.IsGuest) {
             return;
         }
+
+        EndSoftStay();
 
         // meanwhile we play on alone: the host gives the zone to one of us (or calls us back),
         // see TakeOverZone, and only if it stays silent we go back
@@ -1014,7 +1019,8 @@ internal partial class ElinNetClient
 
         // host rule SoftRecall: we keep our game and wait for ZoneSoftRejoin instead of the world, see
         // ElinNetClientSoftRejoin. Anything else going on (dead, visitors, not on that map): as before
-        if (recall.Soft && CanRejoinSoftly()) {
+        // (also a visitor of the player holding it, GitHub issue 46: it stays there with it)
+        if (recall.Soft && (CanRejoinSoftly() || CanRejoinSoftlyAsGuest())) {
             _softRejoinDeadline = Time.realtimeSinceStartup + SoftRejoinWaitSeconds;
         }
 
@@ -1196,7 +1202,8 @@ internal partial class ElinNetClient
     ///     Also while a guest waits to hear what becomes of the map its owner just left: if the host recalls it,
     ///     the copy the owner handed back is the one kept
     /// </remarks>
-    internal bool IsInTransfer => _pendingGrant is not null || _rejoining || _handoffDeadline > 0 || _softReturnZone != 0;
+    internal bool IsInTransfer => _pendingGrant is not null || _rejoining || _handoffDeadline > 0 || _softReturnZone != 0 ||
+                                  IsAwaitingSoftStay;
 
     /// <summary>
     ///     No input during a transfer, it lasts a round trip
@@ -1371,6 +1378,8 @@ internal partial class ElinNetClient
                 Checkpoint = checkpoint,
                 StoodZoneUid = stoodIn,
                 Arrival = arrival,
+                // a visitor staying on the map the host walks onto (GitHub issue 46), see CanRejoinSoftlyAsGuest
+                Soft = rejoin && !checkpoint && arrival is null && IsAwaitingSoftRejoin,
             };
         }
 

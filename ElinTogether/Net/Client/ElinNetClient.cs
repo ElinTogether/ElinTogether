@@ -65,6 +65,7 @@ internal partial class ElinNetClient : ElinNetBase
         UpdateQuestInvite();
         UpdateTransferLock();
         UpdateSoftRejoinWait();
+        UpdateSoftStayWait();
         UpdateTravelWatchdog();
         UpdateHostLeft();
         Helper.OwnSettings.WatchRespawn();
