@@ -129,7 +129,7 @@ internal class TabPlay : TabEmpBase
         }
         if (!isGuest) {
             card.ButtonRow().RowButton("emp_ui_rules_open".lang(),
-                () => LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_server"));
+                () => LayerElinTogether.Instance?.Open(TabServerConfiguration.RulesLink));
         }
     }
 

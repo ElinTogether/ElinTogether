@@ -59,7 +59,7 @@ internal class TabMarket : TabEmpBase
             var card = this.Card("emp_ui_tab_market".lang());
             if (NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false }) {
                 TabTeam.EmptyPage(card, Icons, "emp_ui_market_off_host".lang(), "emp_ui_market_turn_on".lang(), () => {
-                    LayerElinTogether.Instance?.Window.SwitchContent("emp_tab_server");
+                    LayerElinTogether.Instance?.Open(TabServerConfiguration.RulesLink);
                     TabServerConfiguration.ShowRule("market");
                 });
             } else {
