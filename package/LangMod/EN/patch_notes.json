@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.26.1643",
+    "date": "2026-11-01",
+    "title": "clearer menus, update notice, patch notes, many fixes",
+    "bullets": [
+      "Update notice: the mod now tells you when a newer version is out (a dot on the Multiplayer button, a Download card, one short message).",
+      "Patch notes tab in the Elin Together window: the last versions and what changed, in English, Chinese and Japanese.",
+      "Host a game from the title screen: pick one of your saves, check the rules, and it loads and opens to your friends by itself.",
+      "Clearer menus: the title button is called \"Multiplayer\".",
+      "Feedback: a short message says why the host refused an action (\"That belongs to …\").",
+      "Fixes: #48 an item held on the mouse is no longer lost when the map reloads.",
+      "Fixes found by review: Vernis's town furniture can no longer be taken on a public-server style world.",
+      "All texts of the mod are in English, Chinese and Japanese."
+    ]
+  },
+  {
     "version": "0.26.1597",
     "date": "2026-10-31",
     "title": "Elin EA 23.357, issues #46 and #47",
