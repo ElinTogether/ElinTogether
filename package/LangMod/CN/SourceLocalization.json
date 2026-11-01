@@ -1326,5 +1326,6 @@
     "LangGeneral.emp_ver_numbers.text": "模组：你 {0}，主机 {1}。游戏：你 {2}，主机 {3}。",
     "LangGeneral.emp_permadeath_banner.text": "你已经死亡。朋友可以在酒保处复活你。",
     "LangGeneral.emp_permadeath_leave.text": "离开游戏",
-    "LangGeneral.emp_ui_admin_menu.text": "管理…"
+    "LangGeneral.emp_ui_admin_menu.text": "管理…",
+    "LangGeneral.emp_ui_sv_start_needs_land.text": "请先获得一块土地：在野外阅读土地契约。"
 }

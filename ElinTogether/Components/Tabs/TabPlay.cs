@@ -350,7 +350,12 @@ internal class TabPlay : TabEmpBase
         var card = page.Card("emp_ui_play_host_title".lang());
         card.TextSmall("emp_ui_play_host_desc".lang(), FontColor.Gray);
         var buttons = card.ButtonRow();
-        buttons.RowButton("emp_ui_sv_start".lang(), StartServerFromPanel);
+        var start = buttons.RowButton("emp_ui_sv_start".lang(), StartServerFromPanel);
+        // (it would fail without a land: greyed, the reason on hover, UX audit 2026-11-01)
+        if (EClass.player.chara?.homeBranch?.owner is null) {
+            start.interactable = false;
+            start.SetTooltipLang("emp_ui_sv_start_needs_land".lang());
+        }
         if (SaveDepot.Enabled && Game.id != SaveDepot.WorldId) {
             buttons.RowButton("emp_ui_depot_put".lang(), SaveDepot.Put);
         }
