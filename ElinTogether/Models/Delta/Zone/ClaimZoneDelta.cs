@@ -36,6 +36,13 @@ public class ClaimZoneDelta : ElinDelta
     [Key(2)]
     public bool Accepted { get; init; }
 
+    /// <summary>
+    ///     The host's word to a player of its map: the land was claimed for you (its respawn point when it has none, as
+    ///     the host's own first claim is, see ClaimZonePatch)
+    /// </summary>
+    [Key(3)]
+    public bool Claimed { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net is not ElinNetHost { IsZoneSession: false } host) {
@@ -43,6 +50,9 @@ public class ClaimZoneDelta : ElinDelta
                 RemoteBasePaidPatch.Refuse(true);
             } else if (Accepted) {
                 RemoteBasePaidPatch.ClaimHeldLand(ZoneUid);
+            } else if (Claimed && player.spawnZone is null && game.spatials.Find(ZoneUid) is Zone claimed) {
+                player.spawnZone = claimed;
+                EmpLog.Information("Respawn point set to the land claimed, {ZoneFullName}", claimed.ZoneFullName);
             }
 
             return;
@@ -54,7 +64,7 @@ public class ClaimZoneDelta : ElinDelta
             return;
         }
 
-        if (Refused || Accepted) {
+        if (Refused || Accepted || Claimed) {
             return;
         }
 
@@ -80,6 +90,10 @@ public class ClaimZoneDelta : ElinDelta
             } finally {
                 Teams.Claimer = null;
             }
+        }
+
+        if (_zone.mainFaction == pc.faction) {
+            host.SendDeltaTo(OriginPeer, new ClaimZoneDelta { ZoneUid = ZoneUid, Claimed = true });
         }
 
         // what TraitDeed.OnRead does after the claim, for the start zone: the home quest and the main quest move on (in the
