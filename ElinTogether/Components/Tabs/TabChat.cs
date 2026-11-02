@@ -26,6 +26,10 @@ internal partial class TabChat : TabEmpBase
 
     private YKVertical? _list;
     private ScrollRect? _scroll;
+
+    // the log's content height last frame, and whether the player was at its newest line then
+    private float _contentHeight;
+    private bool _stick = true;
     private int _shown = -1;
     private int _count;
     // the writing box, focused by the empty list's button
@@ -166,7 +170,16 @@ internal partial class TabChat : TabEmpBase
         BuildEmoteButton(row);
         BuildDrawingButton(row);
         row.RowButton("emp_ui_chat_send".lang(), Send).LayoutElement().flexibleWidth = 0f;
+
+        // (YK's vertical layouts stack a child at its own rect height: the row and its field's box kept a new
+        // RectTransform's 100 units, an empty band above and under the field)
+        ((RectTransform)box.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, WriterHeight - 16f);
+        ((RectTransform)row.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, WriterHeight);
+        row.LayoutElement().minHeight = row.LayoutElement().preferredHeight = WriterHeight;
     }
+
+    // the writing row: the Send button's height
+    private const float WriterHeight = 52f;
 
     private void Send()
     {
@@ -523,6 +536,20 @@ internal partial class TabChat : TabEmpBase
         var atBottom = AtBottom();
         if (FitLog()) {
             ToBottom(atBottom);
+        }
+
+        // (a log at its newest line stays there when its content grows after the line was added: the page's own
+        // layout passes give a wrapped line its height a frame or two later, and the log showed its oldest lines)
+        if (_scroll != null && _scroll.content != null) {
+            var height = _scroll.content.rect.height;
+            if (Mathf.Abs(height - _contentHeight) > 0.5f) {
+                _contentHeight = height;
+                if (_stick) {
+                    _scroll.verticalNormalizedPosition = 0f;
+                }
+            } else {
+                _stick = AtBottom();
+            }
         }
 
         // (shown: every line is read)
