@@ -12,6 +12,7 @@ namespace ElinTogether.Patches;
 ///     game gives a map generated today
 /// </summary>
 [HarmonyPatch(typeof(Game), nameof(Game.OnLoad))]
+[AlwaysPatched]
 internal static class ZoneDatesRepairPatch
 {
     [HarmonyPostfix]

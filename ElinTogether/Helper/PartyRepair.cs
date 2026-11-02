@@ -15,6 +15,7 @@ namespace ElinTogether.Helper;
 ///     <see cref="RepairOnLoad" /> repairs a world saved before this, in every game (host, guest, server)
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class PartyRepair
 {
     private static bool _warnedLookup;

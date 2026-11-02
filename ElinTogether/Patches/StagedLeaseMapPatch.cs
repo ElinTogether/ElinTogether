@@ -8,6 +8,7 @@ namespace ElinTogether.Patches;
 ///     <see cref="ZoneLeaseState.StageMap" />: in with that save, or as soon as the host loads it itself
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class StagedLeaseMapPatch
 {
     [HarmonyPrefix]
