@@ -56,6 +56,19 @@ public class QuestJournalDelta : ElinDelta
     public long[]? Tax { get; init; }
 
     /// <summary>
+    ///     The world's count of each quest that counts karma (the thieves' guild trial), quest uid -> count: a player
+    ///     away loads an older world copy at each move (SharedQuestKarma)
+    /// </summary>
+    [Key(6)]
+    public Dictionary<int, int>? KarmaTotals { get; init; }
+
+    /// <summary>
+    ///     And the share of each player's connection already in that count, quest uid -> connection -> share
+    /// </summary>
+    [Key(7)]
+    public Dictionary<int, Dictionary<long, int>>? KarmaShares { get; init; }
+
+    /// <summary>
     ///     Host, end of a frame
     /// </summary>
     internal static void Tell()
@@ -95,7 +108,10 @@ public class QuestJournalDelta : ElinDelta
     private static QuestJournalDelta Build(QuestManager quests)
     {
         var steps = quests.list.Where(q => q is QuestSequence && !PersonalQuests.IsPersonal(q)).ToList();
+        SharedQuestKarma.Tell(quests.list.Where(q => !PersonalQuests.IsPersonal(q) && !TeamQuests.IsCopy(q)), out var karma, out var shares);
         return new() {
+            KarmaTotals = karma,
+            KarmaShares = shares,
             Phases = steps.SelectMany(q => new[] { q.uid, q.phase }).ToArray(),
             Ids = steps.Select(q => q.id).ToArray(),
             Completed = quests.completedIDs.ToArray(),
@@ -140,6 +156,12 @@ public class QuestJournalDelta : ElinDelta
         // opens, a resident's talk, the next quest of the story)
         quests.completedIDs.UnionWith(Completed);
         quests.completedTypes.UnionWith(CompletedTypes ?? []);
+
+        foreach (var (uid, total) in KarmaTotals ?? []) {
+            if (quests.list.Find(q => q.uid == uid) is { } counting && !PersonalQuests.IsPersonal(counting) && !TeamQuests.IsCopy(counting)) {
+                SharedQuestKarma.TakeHost(counting, total, KarmaShares?.GetValueOrDefault(uid));
+            }
+        }
 
         if (Tax is { Length: 2 }) {
             player.stats.taxBills = System.Math.Max(player.stats.taxBills, (int)Tax[0]);

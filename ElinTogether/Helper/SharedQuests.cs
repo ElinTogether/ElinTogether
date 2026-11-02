@@ -120,8 +120,14 @@ internal static class SharedQuests
                 continue;
             }
 
+            // (the karma this player's deeds counted on a quest of the world's log: its share, see SharedQuestKarma)
+            var world = !TeamQuests.IsCopy(quest) && !PersonalQuests.IsPersonal(quest);
+            if (world) {
+                SharedQuestKarma.Collect(quest);
+            }
+
             var hash = LZ4Bytes.ToJson(quest).GetHashCode();
-            if (_told.TryGetValue(quest, out var told) && told == hash) {
+            if (_told.TryGetValue(quest, out var told) && told == hash && !(world && SharedQuestKarma.Untold(quest))) {
                 continue;
             }
 
@@ -148,6 +154,7 @@ internal static class SharedQuests
                 Id = quest.id,
                 Data = data,
             };
+            SharedQuestKarma.Stamp(delta, quest);
             QuestAwaySync.Send(delta);
             NetSession.Instance.Connection?.Delta.AddRemote(delta);
         }
