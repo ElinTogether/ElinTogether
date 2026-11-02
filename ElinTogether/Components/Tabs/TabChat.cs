@@ -367,6 +367,9 @@ internal partial class TabChat : TabEmpBase
         };
         var head = tag.Length > 0 ? $"[{tag}] ".TagColor(ChatLog.ColorOf(line.Channel)) : "";
         var text = _list!.Text("");
+        // (the note prefab comes at a scale of 1.05: the layout gives the line the log's width, the scale drew a long
+        // one 5% past the log's right edge and its last line under the log)
+        text.transform.localScale = Vector3.one;
         // (the emotes as the game's icons, the words escaped: ChatMarkup, ChatIcons)
         var icons = new List<Sprite>();
         var action = ChatMarkup.IsAction(line.Text);
