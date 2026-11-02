@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -52,17 +53,17 @@ internal static class CharaDieEvent
         ///     The death a guest's act causes on the host runs here. A snapshot holds only the transpilers patched in
         ///     before this class (types are patched in assembly order): OtherPlayerPatch comes later, and a guest's
         ///     planter finish grew the host's plant. Its transpiler is applied to this copy too (a no-op when the
-        ///     snapshot already has it). A new transpiler of Chara.Die must be added here as well
+        ///     snapshot already has it). A new transpiler of Chara.Die must be added here as well (SnapshotStub warns at start)
         /// </summary>
         [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
         internal void Stub_Die(Element? e, Card? origin, AttackSource attackSource, Chara? originalTarget)
         {
-            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
             {
-                return OtherPlayerPatch.OnPlanterFinish(instructions);
+                return SnapshotStub.With(instructions, original, OtherPlayerPatch.OnPlanterFinish);
             }
 
-            _ = Transpiler([]);
+            _ = Transpiler([], null!);
             throw new NotImplementedException("Chara.Die");
         }
     }

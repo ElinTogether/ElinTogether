@@ -41,9 +41,11 @@ internal sealed class EmpMod : BaseUnityPlugin
     /// </summary>
     internal static void PatchAll()
     {
+        SnapshotStub.Reset();
         foreach (var type in AccessTools.GetTypesFromAssembly(Assembly)) {
             try {
                 SharedHarmony.CreateClassProcessor(type).Patch();
+                SnapshotStub.Note(type);
             } catch (System.Exception ex) {
                 if (!SkippedPatches.Contains(type.FullName)) {
                     SkippedPatches.Add(type.FullName);
@@ -53,6 +55,8 @@ internal sealed class EmpMod : BaseUnityPlugin
                     type.FullName, EClass.core?.version.GetText(), ex.InnerException?.Message ?? ex.Message);
             }
         }
+
+        SnapshotStub.ReportMissing();
 
         // the player is told once, in words, rather than finding out by a sync that does not happen
         if (SkippedPatches.Count > 0 && !_skippedTold && EClass.core is { } core) {
