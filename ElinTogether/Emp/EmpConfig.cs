@@ -614,6 +614,15 @@ internal partial class EmpConfig
             "Unticked, those orders are refused\n" +
             "版主（只能禁言和踢出），以及管理员的冻结（玩家在解除前无法行动）和关押（送到管理员指定的地图并冻结）。不适用于主机和其他管理员；取消勾选时这些命令被拒绝");
 
+        Server.VouchPlayers = config.Bind(
+            "Server",
+            "VouchPlayers",
+            true,
+            "Dedicated public server only, with the world admin key on this PC: each player who joins is asked for the public half of its world service key, " +
+            "which is then vouched for at the world service under the Steam id of its connection, so that nobody else can later keep the public world in its name. " +
+            "Nothing is asked of the player. Has no effect anywhere else\n" +
+            "仅限专用公共服务器，且本机有世界管理员密钥：每位加入的玩家会被索取其世界服务密钥的公开部分，并以其连接的 Steam ID 在世界服务中担保，这样以后别人无法以其名义维护公共世界。不会询问玩家。其他情况下无效");
+
         Server.NightPasses = config.Bind(
             "Server",
             "NightPasses",
@@ -1229,6 +1238,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> MembersOnly { get; set; } = null!;
         internal static ConfigEntry<bool> ContainerAccessLog { get; set; } = null!;
         internal static ConfigEntry<bool> AdminExtras { get; set; } = null!;
+        internal static ConfigEntry<bool> VouchPlayers { get; set; } = null!;
         internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> AbsentQuestsWait { get; set; } = null!;

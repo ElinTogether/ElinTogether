@@ -1659,5 +1659,7 @@
     "LangGeneral.emp_ui_chat_drawing_too_big.text": "这幅画太大，无法发送到聊天。",
     "LangGeneral.emp_tip_chat_drawings.text": "画作：从我的画作中选一幅发送到聊天（署名作者）",
     "LangGeneral.emp_ui_chat_drawings_none.text": "还没有画作：在“队伍 - 我的画作”中创作一幅。",
-    "LangGeneral.emp_ui_chat_drawings_private.text": "画作只能发给所有人或你的队伍，不能私聊发送。"
+    "LangGeneral.emp_ui_chat_drawings_private.text": "画作只能发给所有人或你的队伍，不能私聊发送。",
+    "LangGeneral.emp_ui_sv_cfg_vouch_players.text": "在世界服务中担保玩家",
+    "LangGeneral.emp_ui_sv_desc_vouch_players.text": "仅限专用公共服务器（本机需有世界管理员密钥）。每位加入玩家的世界服务密钥会以其连接的 Steam ID 获得担保，这样以后别人无法以该玩家的名义维护公共世界。不会询问玩家。其他情况下无效。"
 }

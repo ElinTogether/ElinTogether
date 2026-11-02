@@ -237,6 +237,8 @@ namespace ElinTogether.Models;
 [Union(1291, typeof(ChatEmoteDelta))]
 // A small picture in the chat, the hook of the drawing editor (lead dev 2026-11-02)
 [Union(1292, typeof(ChatImageDelta))]
+// The public server asks a joined player for its world service key and vouches for it (PLAN_peer_hosted_server 2.1)
+[Union(1310, typeof(EtWorldKeyDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

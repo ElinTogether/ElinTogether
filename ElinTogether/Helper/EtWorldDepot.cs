@@ -77,6 +77,22 @@ internal static class EtWorldDepot
     internal static string PublicKey => _pub;
 
     /// <summary>
+    ///     The public half (64 hex) of the key kept in <paramref name="keyFile" />, the key made there first when
+    ///     there is none (the same key the service will know this install by); no request
+    /// </summary>
+    internal static string PublicKeyOf(string keyFile)
+    {
+        lock (_gate) {
+            var seed = LoadKey(keyFile);
+            try {
+                return Hex(Ed25519.PublicKey(seed));
+            } finally {
+                Array.Clear(seed, 0, seed.Length);
+            }
+        }
+    }
+
+    /// <summary>
     ///     The world of the service this game uses ("public" unless the address says "#other")
     /// </summary>
     internal static string WorldName => _world;
