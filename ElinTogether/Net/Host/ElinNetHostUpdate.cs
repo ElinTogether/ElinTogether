@@ -206,7 +206,9 @@ internal partial class ElinNetHost
                     // (the Multiplayer menu's asks: a team, the market, the boards, a teammate's sheet, the host's log for a
                     // bug report; dropped before, so a player on its own map could not found a team, user 2026-10-30)
                     or TeamRequestDelta or MarketAskDelta or LeaderboardDelta or JournalDelta or CharaSheetDelta or HostLogRequest
-                    or TeamQuestUpdateDelta or TeamQuestDoneDelta or TeamRankRequestDelta) &&
+                    or TeamQuestUpdateDelta or TeamQuestDoneDelta or TeamRankRequestDelta
+                    // (a dead player revived from a bartender of its own map, paid there: GitHub issue 59)
+                    or CharaReviveRequestDelta { PaidAway: true }) &&
                 !(delta is CharaAffinityDelta && Helper.AffinityPerPlayer.On)) {
                 continue;
             }
