@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.26.1791",
+    "date": "2026-11-02",
+    "title": "chat, drawings, emblem editor 2, issues #57-#64, equality fixes",
+    "bullets": [
+      "Chat: the log fills the window and the writing box sits at the bottom.",
+      "Drawings: a paint editor (brush, eraser, fill, shapes, layers, any canvas size).",
+      "Emblem editor: reworked layout, paint tools, sharper preview.",
+      "Fixes from your reports: #57 a player who walks away is no longer shown standing on your tile.",
+      "Host and guest equality: strife counts one kill once for a guest."
+    ]
+  },
+  {
     "version": "0.26.1729",
     "date": "2026-11-02",
     "title": "team ranks, emblem editor, presets, join a friend, many fixes",
