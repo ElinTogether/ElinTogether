@@ -63,9 +63,10 @@ internal static class CardDamageHpEvent
     }
 
     /// <summary>
-    ///     Inside the game's damage code when above 0, see CharaAddConditionEvent
+    ///     Inside the game's damage code when above 0, see CharaAddConditionEvent. Also raised around the replay
+    ///     of a blow (CardDamageHpDelta), which runs the game's code without this prefix
     /// </summary>
-    internal static int Depth { get; private set; }
+    internal static int Depth { get; set; }
 
     [HarmonyFinalizer]
     internal static void OnCardDamageHPEnd()

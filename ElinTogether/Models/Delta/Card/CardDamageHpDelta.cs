@@ -62,11 +62,17 @@ public class CardDamageHpDelta : ElinDelta
         }
 
         var shield = RemotePlayerKillPatch.Shield(card, origin);
+        // the stub skips CardDamageHpEvent's prefix, which marks "inside the damage code": on the host, a blow a
+        // guest's game reported on its own character (poison, a trap, hunger) left that player's copy feared under
+        // a fifth of its life (the game spares "the player" only), and the fear reached the guest, who could no
+        // longer strike. The host's own player is never feared there
+        CardDamageHpEvent.Depth++;
         try {
             using (Simulate(net.IsHost)) {
                 card.Stub_DamageHP(Dmg, Ele, EleP, AttackSource, Origin, ShowEffect, Weapon, OriginalTarget, ResistPenetrationLevel);
             }
         } finally {
+            CardDamageHpEvent.Depth--;
             RemotePlayerKillPatch.Unshield(card, shield, origin);
         }
 
