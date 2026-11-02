@@ -77,6 +77,34 @@ internal static class RemoteRevivePatch
     }
 
     /// <summary>
+    ///     GitHub issue 59: a guest travelling alone plays its own copy of the world (no connection to apply to), and the
+    ///     game's revive (the barman's list, paid here; a scroll, a spell) stood up its copy of the dead player only, in
+    ///     its own party: the player stayed dead in the world. The host revives it where it fell; the price was paid
+    ///     here, where this player's purse lives while it travels. This copy stands up too (not in the party), so that
+    ///     it is not listed and paid again
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPriority(Priority.First)]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.GetRevived))]
+    internal static bool OnAwayRevive(Chara __instance)
+    {
+        var session = NetSession.Instance;
+        if (session is not { IsAway: true, Connection: null, Transport: ElinNetClient away } || !__instance.isDead ||
+            __instance.IsPC || EClass.game?.principal is not { permadeath: true } || !session.Rules.PermadeathRevive ||
+            !PlayerRevive.IsPlayerChara(__instance)) {
+            return true;
+        }
+
+        EmpLog.Information("Player character {Uid} revived from a map held alone: asked to the host", __instance.uid);
+        away.SendWhileAway(new CharaReviveRequestDelta {
+            Target = __instance,
+            PaidAway = true,
+        });
+        __instance.Revive();
+        return false;
+    }
+
+    /// <summary>
     ///     Permadeath with PermadeathRevive: the dead players of the world are on the barman's list too, played now or
     ///     not (the game lists the dead of its faction only)
     /// </summary>
