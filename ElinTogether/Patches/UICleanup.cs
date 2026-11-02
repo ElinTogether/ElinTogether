@@ -3,6 +3,7 @@ using HarmonyLib;
 namespace ElinTogether.Patches;
 
 [HarmonyPatch]
+[AlwaysPatched]
 internal class UICleanup
 {
     [HarmonyPrefix]

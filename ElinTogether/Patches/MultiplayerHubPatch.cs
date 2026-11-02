@@ -12,6 +12,7 @@ namespace ElinTogether.Patches;
 ///     for a layer prefab of that name.
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class MultiplayerHubPatch
 {
     internal const string LayerId = "LayerElinTogether";
