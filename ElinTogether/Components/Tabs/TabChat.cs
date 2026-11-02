@@ -282,7 +282,13 @@ internal partial class TabChat : TabEmpBase
         // (the emotes as the game's icons, the words escaped: ChatMarkup, ChatIcons)
         var icons = new List<Sprite>();
         var action = ChatMarkup.IsAction(line.Text);
-        var body = ChatMarkup.Render(action ? ChatMarkup.ActionOf(line.Text) : line.Text, text.fontSize + 4, icons);
+        var links = new List<Thing>();
+        var body = ChatMarkup.Render(action ? ChatMarkup.ActionOf(line.Text) : line.Text, text.fontSize + 4, icons, links);
+        // (an item link: the item's tooltip over the line)
+        if (links.Count > 0) {
+            text.raycastTarget = true;
+            text.gameObject.AddComponent<ChatLineTip>().Thing = links[0];
+        }
         // (a line naming this player stands out: a mark before it, its words in the mention colour)
         if (line.Mention) {
             body = body.TagColor(ChatMarkup.MentionColor);

@@ -22,6 +22,38 @@ internal partial class TabChat
     private string _popupKind = "";
     // where the caret was while the box had the focus (a click elsewhere takes the focus, and the caret with it)
     private int _caret;
+    private float _focusedAt = -10f;
+
+    // the Chat tab shown, for Shift+click in the inventory (ChatItemLink)
+    private static TabChat? _active;
+
+    private void OnDisable()
+    {
+        if (_active == this) {
+            _active = null;
+        }
+
+        ClosePopup();
+    }
+
+    /// <summary>
+    ///     A Shift+click on a thing of the inventory while the Chat box has (or had a moment ago: the click took it)
+    ///     the focus puts a link to that thing in the line, in place of the game's Shift+click
+    /// </summary>
+    internal static bool TryLink(Thing? thing)
+    {
+        if (thing == null || _active is not { isActiveAndEnabled: true, _field: not null } tab ||
+            Time.unscaledTime - tab._focusedAt > 1f) {
+            return false;
+        }
+
+        tab.Insert(ChatMarkup.LinkOf(thing));
+        return true;
+    }
+
+    /// <summary>The same test without the link: the game asks first whether the click may happen at all</summary>
+    internal static bool WouldLink(Thing? thing) =>
+        thing != null && _active is { isActiveAndEnabled: true, _field: not null } tab && Time.unscaledTime - tab._focusedAt <= 1f;
 
     private void UpdateComposer()
     {
@@ -29,8 +61,10 @@ internal partial class TabChat
             return;
         }
 
+        _active = this;
         if (_field.isFocused) {
             _caret = _field.caretPosition;
+            _focusedAt = Time.unscaledTime;
         }
 
         if (_popup != null && Input.GetKeyDown(KeyCode.Escape)) {

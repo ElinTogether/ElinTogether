@@ -1591,7 +1591,7 @@
     "LangGeneral.emp_ui_sv_desc_chat_bubbles.text": "在聊天标签页中写的消息也会以短气泡显示在写信人角色的头上，同一地图的玩家可见。",
     "LangGeneral.emp_ui_chat_help_me.text": "/me 动作 … 描述你的角色在做什么",
     "LangGeneral.emp_ui_chat_help_w.text": "/w 名字 消息 … 发给一名玩家的私聊",
-    "LangGeneral.emp_ui_chat_help_more.text": ":名字: 插入表情，@名字 呼叫玩家",
+    "LangGeneral.emp_ui_chat_help_more.text": ":名字: 插入表情，@名字 呼叫玩家。写消息时 Shift+点击背包中的物品即可插入物品链接",
     "LangGeneral.emp_ui_chat_cmd_unknown.text": "没有 {0} 这个命令。",
     "LangGeneral.emp_ui_chat_cmd_no_player.text": "没有名为 {0} 的玩家。",
     "LangGeneral.emp_ui_chat_cmd_private_off.text": "这个世界关闭了私聊。"
