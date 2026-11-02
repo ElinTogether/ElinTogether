@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
+using ElinTogether.Models;
 using ElinTogether.Net;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,7 +15,7 @@ namespace ElinTogether.Components;
 ///     a box to write to everyone, to one's team or to one player. A line that arrives is added under the others; the
 ///     tab is never built again for it, so a line being typed keeps its text and its focus
 /// </summary>
-internal class TabChat : TabEmpBase
+internal partial class TabChat : TabEmpBase
 {
     public const string TabName = "emp_tab_chat";
 
@@ -149,30 +150,12 @@ internal class TabChat : TabEmpBase
         input.field.characterLimit = 500;
         input.AllowAnyText();
         input.StyleAsSearch("emp_ui_chat_hint".lang());
-        input.field.onValueChanged.AddListener(text => _draft = text);
+        input.field.onValueChanged.AddListener(text => {
+            _draft = text;
+            OnDraftChanged(text);
+        });
         _field = input.field;
-
-        void Send()
-        {
-            var text = input.field.text.Trim();
-            if (text.Length == 0) {
-                return;
-            }
-
-            var target = Targets().ElementAtOrDefault(_target);
-            if (target.Team) {
-                ChatLog.SendTeam(text);
-            } else if (target.To != 0) {
-                PlayerWhisper.Send(target.To, target.Name, text);
-            } else {
-                // (the way the game's own chat box sends a line: the player says it on the map, the mod passes it on)
-                ActionMode.Adv.OnEnterChat(text);
-            }
-
-            _draft = "";
-            input.field.text = "";
-            input.field.ActivateInputField();
-        }
+        _writer = row;
 
         // (Enter sends, as in the game's chat box)
         input.field.onEndEdit.AddListener(_ => {
@@ -180,7 +163,40 @@ internal class TabChat : TabEmpBase
                 Send();
             }
         });
+        BuildEmoteButton(row);
         row.RowButton("emp_ui_chat_send".lang(), Send).LayoutElement().flexibleWidth = 0f;
+    }
+
+    private void Send()
+    {
+        if (_field == null) {
+            return;
+        }
+
+        var text = _field.text.Trim();
+        if (text.Length == 0) {
+            return;
+        }
+
+        ClosePopup();
+        var target = Targets().ElementAtOrDefault(_target);
+        if (target.Team) {
+            ChatLog.SendTeam(text);
+        } else if (target.To != 0) {
+            PlayerWhisper.Send(target.To, target.Name, text);
+        } else {
+            // (the way the game's own chat box sends a line: the player says it on the map, the mod passes it on)
+            ActionMode.Adv.OnEnterChat(text);
+        }
+
+        // (a line of one emote: the game's emote over this player's character too, for the players of its map)
+        if (target.To == 0 && ChatMarkup.AloneEmote(text) is { } emo) {
+            ChatEmoteDelta.Send(emo);
+        }
+
+        _draft = "";
+        _field.text = "";
+        _field.ActivateInputField();
     }
 
     private void Refill()
@@ -252,7 +268,15 @@ internal class TabChat : TabEmpBase
             _ => "",
         };
         var head = tag.Length > 0 ? $"[{tag}] ".TagColor(ChatLog.ColorOf(line.Channel)) : "";
-        var text = _list!.Text($"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{line.Who}: {line.Text}");
+        var text = _list!.Text("");
+        // (the emotes as the game's icons, the words escaped: ChatMarkup, ChatIcons)
+        var icons = new List<Sprite>();
+        var body = ChatMarkup.Render(line.Text, text.fontSize + 4, icons);
+        text.text = $"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{line.Who}: {body}";
+        if (icons.Count > 0) {
+            text.gameObject.AddComponent<ChatIcons>().Set(icons);
+        }
+
         // (the line wraps at the log's width: its prefab's fitter sized it to the unwrapped line, wider than the log)
         UIHelper.WrapTexts(text);
         _count++;
@@ -278,6 +302,7 @@ internal class TabChat : TabEmpBase
     // a line that arrived while the tab is open: added under the others (the newest at the bottom, scrolled to)
     private void Update()
     {
+        UpdateComposer();
         if (_list == null) {
             return;
         }

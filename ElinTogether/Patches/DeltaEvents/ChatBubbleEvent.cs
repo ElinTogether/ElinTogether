@@ -49,7 +49,10 @@ internal class ChatBubbleEvent
     /// </summary>
     internal static void PopChat(string who, string text)
     {
-        WidgetPopText.Say($"{who}: {text}", sprite: UIHelper.FindSprite("emo2_hint"));
+        // (the words only: a line of one emote shows that emote's icon, ChatMarkup)
+        var plain = ChatMarkup.Plain(text);
+        var sprite = ChatMarkup.AloneEmote(text) is { } emo ? ChatMarkup.EmoteSprite(emo.ToString()) : null;
+        WidgetPopText.Say(plain.Length > 0 ? $"{who}: {plain}" : who, sprite: sprite ?? UIHelper.FindSprite("emo2_hint"));
         Shown.Enqueue(text);
         while (Shown.Count > 20) {
             Shown.Dequeue();
