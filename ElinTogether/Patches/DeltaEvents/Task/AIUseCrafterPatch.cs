@@ -454,12 +454,19 @@ internal static class AIUseCrafterPatch
                         }
                     }
 
+                    // a player's stamina is its own game's (CharaStaminaDelta): its RunClient spends it, and the
+                    // overwork its game deals is told here. Spent again on this copy, which may be behind, the
+                    // guest took overwork blows with stamina to spare, twice when it really ran out (GitHub issue 64)
+                    var ownStamina = !act.owner.IsRemotePlayer;
                     for (var i = 0; i < act.num; i++) {
                         var actor = act.owner;
                         actor.RemoveCondition<ConInvulnerable>();
                         EClass.player.invlunerable = false;
                         actor.elements.ModExp(e.id, cost * 12f * (100f + duration * 2f) / 100f);
-                        actor.stamina.Mod(-cost);
+                        if (ownStamina) {
+                            actor.stamina.Mod(-cost);
+                        }
+
                         if (actor.isDead) {
                             break;
                         }
