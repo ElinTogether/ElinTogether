@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ElinTogether.Helper;
+using ElinTogether.LangMod;
 using UnityEngine;
 using UnityEngine.UI;
 using YKF;
@@ -167,10 +168,68 @@ internal partial class TabChat
             return;
         }
 
-        if (_popupKind == "mention") {
+        // (a "/" starting the line, the command not written yet: what the commands are)
+        if (text.StartsWith("/") && !text.Contains(' ')) {
+            if (_popupKind != "help" && ListPopup("help") is { } list) {
+                foreach (var line in HelpLines()) {
+                    list.Text(line).LayoutElement().preferredWidth = 420f;
+                }
+            }
+
+            return;
+        }
+
+        if (_popupKind is "mention" or "help") {
             ClosePopup();
         }
     }
+
+    private static IEnumerable<string> HelpLines() => [
+        "emp_ui_chat_help_me".lang(),
+        "emp_ui_chat_help_w".lang(),
+        "emp_ui_chat_help_more".lang(),
+    ];
+
+    /// <summary>
+    ///     A line starting with "/": /w name words sends a private line to that player, /me goes out as it is (every
+    ///     game draws it as an action, ChatMarkup), anything else tells the commands. True when the line is to be sent
+    /// </summary>
+    private bool RunCommand(string text)
+    {
+        if (!text.StartsWith("/") || ChatMarkup.IsAction(text)) {
+            return true;
+        }
+
+        if (text.StartsWith("/w ", StringComparison.OrdinalIgnoreCase)) {
+            var rest = text.Substring(3).TrimStart();
+            if (!PlayerWhisper.Enabled) {
+                Tell("emp_ui_chat_cmd_private_off".lang());
+                return false;
+            }
+
+            // (the longest player name the words start with: a name may hold spaces)
+            var to = PrivateTargets().Where(t => rest.StartsWith(t.Name + " ", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(t => t.Name.Length).FirstOrDefault();
+            if (to.Uid == 0) {
+                var asked = rest.Split(' ')[0];
+                Tell("emp_ui_chat_cmd_no_player".Loc(asked.Length > 0 ? asked : "?"));
+                return false;
+            }
+
+            var words = rest.Substring(to.Name.Length).Trim();
+            if (words.Length > 0) {
+                PlayerWhisper.Send(to.Uid, to.Name, words);
+            }
+
+            return false;
+        }
+
+        Tell("emp_ui_chat_cmd_unknown".Loc(text.Split(' ')[0]) + " " + string.Join("  ", HelpLines()));
+        return false;
+    }
+
+    // a line for this player only, in its log (a command it got wrong)
+    private static void Tell(string text) => ChatLog.Add(ChatLog.Server, "/", text, true);
 
     /// <summary>A list over the writing row, for the mention names and the commands' help</summary>
     private YKVertical? ListPopup(string kind)

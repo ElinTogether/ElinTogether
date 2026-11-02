@@ -179,6 +179,14 @@ internal partial class TabChat : TabEmpBase
         }
 
         ClosePopup();
+        _draft = "";
+        _field.text = "";
+        _field.ActivateInputField();
+        // (/w and the help are done here; /me goes out as it is and every game draws it as an action)
+        if (!RunCommand(text)) {
+            return;
+        }
+
         var target = Targets().ElementAtOrDefault(_target);
         if (target.Team) {
             ChatLog.SendTeam(text);
@@ -199,10 +207,6 @@ internal partial class TabChat : TabEmpBase
         if (target.To == 0 && ChatMarkup.AloneEmote(text) is { } emo) {
             ChatEmoteDelta.Send(emo);
         }
-
-        _draft = "";
-        _field.text = "";
-        _field.ActivateInputField();
     }
 
     private void Refill()
@@ -277,12 +281,16 @@ internal partial class TabChat : TabEmpBase
         var text = _list!.Text("");
         // (the emotes as the game's icons, the words escaped: ChatMarkup, ChatIcons)
         var icons = new List<Sprite>();
-        var body = ChatMarkup.Render(line.Text, text.fontSize + 4, icons);
+        var action = ChatMarkup.IsAction(line.Text);
+        var body = ChatMarkup.Render(action ? ChatMarkup.ActionOf(line.Text) : line.Text, text.fontSize + 4, icons);
         // (a line naming this player stands out: a mark before it, its words in the mention colour)
         if (line.Mention) {
-            body = "<b>» </b>" + body.TagColor(ChatMarkup.MentionColor);
+            body = body.TagColor(ChatMarkup.MentionColor);
         }
-        text.text = $"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{line.Who}: {body}";
+
+        // ("/me waves": "* Name waves", in italics)
+        var said = action ? $"<i>* {line.Who} {body}</i>" : $"{line.Who}: {body}";
+        text.text = $"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{(line.Mention ? "<b>» </b>" : "")}{said}";
         if (icons.Count > 0) {
             text.gameObject.AddComponent<ChatIcons>().Set(icons);
         }

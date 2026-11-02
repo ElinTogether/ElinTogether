@@ -90,9 +90,19 @@ internal static class ChatMarkup
     /// <summary>The colour of a line naming this player and of the "@names" in any line</summary>
     internal static readonly Color MentionColor = new(0.65f, 0.25f, 0.05f);
 
-    /// <summary>The words of a line, for the pop text and the bubbles: no emote code</summary>
+    /// <summary>"/me waves": what the speaker's character does, drawn "* Name waves"</summary>
+    internal static bool IsAction(string text) => text.Length > 4 && text.StartsWith("/me ", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The action of a "/me" line, without the command</summary>
+    internal static string ActionOf(string text) => text.Substring(4).Trim();
+
+    /// <summary>
+    ///     The words of a line, for the pop text and the bubbles: no emote code; an action between stars, as the game
+    ///     writes what a character does
+    /// </summary>
     internal static string Plain(string text)
     {
-        return EmoteCode.Replace(text, match => IsEmote(match.Groups[1].Value) ? "" : match.Value).Trim();
+        var words = EmoteCode.Replace(IsAction(text) ? ActionOf(text) : text, match => IsEmote(match.Groups[1].Value) ? "" : match.Value).Trim();
+        return IsAction(text) && words.Length > 0 ? $"*{words}*" : words;
     }
 }
