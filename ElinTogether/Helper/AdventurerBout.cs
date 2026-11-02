@@ -2,6 +2,7 @@ using System.Linq;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.Models;
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using UnityEngine;
 
 namespace ElinTogether.Helper;
@@ -315,6 +316,7 @@ public static class AdventurerBout
         }
 
         // the real item changes hands here; the host's own patches tell everyone, as for a trade
+        var picked = PlayerTrade.HasRoom(guest, 1, 0);
         using (ElinDelta.Simulate()) {
             if (best is null) {
                 best = ThingGen.Create("plat").SetNum(EClass.rndHalf(target.LV / 10 + 2));
@@ -323,10 +325,20 @@ public static class AdventurerBout
                 target.EQ_CAT(best.category.id);
             }
 
-            if (PlayerTrade.HasRoom(guest, 1, 0)) {
+            if (picked) {
                 guest.AddThing(best, false);
             } else {
                 EClass._zone.AddCard(best, guest.pos);
+            }
+        }
+
+        // the game picks it up in front of the winner ("You pick up ...", ZonePreEnterBoutWin); given silently, the
+        // guest saw no reward (GitHub issue 62). Worded by this game for its own player: "You", as the guest reads it
+        using (MsgRelayContext.RedirectTo(guest)) {
+            if (picked) {
+                EClass.pc.Say("pick_thing", EClass.pc, best);
+            } else {
+                EClass.pc.Say("backpack_full_drop", best);
             }
         }
 
