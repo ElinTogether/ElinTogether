@@ -12,6 +12,7 @@ namespace ElinTogether.Patches;
 ///     the idle public server grew by ~1.4 GB an hour (2026-11-01, "#pass New Batch pass tile_floor/2705/1023" in its log)
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class ServerNoDrawPatch
 {
     [HarmonyPrefix]

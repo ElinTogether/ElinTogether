@@ -7,6 +7,7 @@ namespace ElinTogether.Patches;
 ///     the player's config.txt (language, display, widgets), whatever it would change in its own memory
 /// </summary>
 [HarmonyPatch(typeof(CoreConfig), nameof(CoreConfig.Save))]
+[AlwaysPatched]
 internal static class ServerConfigPatch
 {
     [HarmonyPrefix]
