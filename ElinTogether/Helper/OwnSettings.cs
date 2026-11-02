@@ -110,6 +110,7 @@ internal static class OwnSettings
                 LuckyCoin = player.luckycoin,
                 LastFelmeraReward = player.lastFelmeraReward,
                 GiftJure = player.giftJure,
+                PrayedDay = player.prayed ? EClass.world.date.GetRawDay() : null,
                 FishArtifact = player.fishArtifact,
                 SeedShrine = player.seedShrine,
                 LittleSaved = player.little_saved,
@@ -264,6 +265,10 @@ internal static class OwnSettings
             // opened, the little ones saved and lost. A world fact stays the host's: the stats.* counts
             player.lastFelmeraReward = kept?.LastFelmeraReward ?? 0;
             player.giftJure = kept?.GiftJure ?? 0;
+            // and its daily prayer: the copy holds whether the host prayed today, so a host who had prayed made the
+            // guest's god ignore it (no faith experience), and one who had not let the guest pray twice after a
+            // rejoin. Prayed only if noted on this very day (WorldDateAdvanceDelta clears it at each new day)
+            player.prayed = kept?.PrayedDay is { } prayedDay && EClass.game.world?.date?.GetRawDay() == prayedDay;
             player.fishArtifact = kept?.FishArtifact ?? 0;
             player.seedShrine = kept?.SeedShrine ?? 0;
             player.little_saved = kept?.LittleSaved ?? 0;
@@ -309,6 +314,18 @@ internal static class OwnSettings
             }
 
             _watched = (player, player.uidSpawnZone, chara._cints[2]);
+
+            // its biography: the one it brought from its own save, the first time in this world (see BackgroundFile)
+            if (ImportedBackground is { } imported && BackgroundPath(EClass.game.seed, chara.uid) is var bio && !File.Exists(bio)) {
+                try {
+                    Directory.CreateDirectory(Root);
+                    File.WriteAllText(bio, imported);
+                } catch (Exception ex) {
+                    EmpLog.Warning(ex, "Could not keep the biography this player brought at {Path}", bio);
+                }
+            }
+
+            ImportedBackground = null;
 
             if (kept is null) {
                 return;
@@ -476,6 +493,55 @@ internal static class OwnSettings
         }
     }
 
+    /// <summary>
+    ///     The biography of a character brought from a save of this player (CharaImport), until its first world
+    /// </summary>
+    internal static string? ImportedBackground { get; set; }
+
+    internal static string? ReadBackground(string saveFolder)
+    {
+        try {
+            var path = Path.Combine(saveFolder, "background.txt");
+            return File.Exists(path) ? File.ReadAllText(path) : null;
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Could not read the biography of save {Path}", saveFolder);
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     The file of the biography of "the player" (Player.GetBackgroundText, EditBackgroundText: background.txt of
+    ///     the save). A client's save is a copy of the host's world, its file the host's biography: a client's is its
+    ///     own, a file of this machine per world and character next to its settings. None yet: a new one, as the game
+    ///     makes for a new character (Player.GenerateBackgroundText)
+    /// </summary>
+    internal static string BackgroundFile()
+    {
+        var save = GameIO.pathCurrentSave + "background.txt";
+        if (Game.id != ResourceFetch.EmpSaveId || EClass.game is not { } game || EClass.pc is not { } pc) {
+            return save;
+        }
+
+        var path = BackgroundPath(game.seed, pc.uid);
+        try {
+            if (!File.Exists(path)) {
+                Directory.CreateDirectory(Root);
+                var templates = new DirectoryInfo(CorePath.CorePackage.Background).GetFiles("*.txt");
+                File.WriteAllText(path, templates.Length > 0 ? File.ReadAllText(templates.RandomItem().FullName) : "");
+            }
+
+            return path;
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Could not make this player's own biography at {Path}", path);
+            return save;
+        }
+    }
+
+    private static string BackgroundPath(int seed, int chara)
+    {
+        return Path.Combine(Root, $"{seed}_{chara}_background.txt");
+    }
+
     private static string PathOf(int seed, int chara)
     {
         return Path.Combine(Root, $"{seed}_{chara}.lz4");
@@ -575,6 +641,9 @@ internal static class OwnSettings
         public int LuckyCoin;
         public int LastFelmeraReward;
         public int GiftJure;
+
+        // the day this player last prayed (Player.prayed, Date.GetRawDay), none if not today when noted
+        public int? PrayedDay;
         public int FishArtifact;
         public int SeedShrine;
         public int LittleSaved;

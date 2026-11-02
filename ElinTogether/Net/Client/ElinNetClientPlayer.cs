@@ -261,6 +261,8 @@ internal partial class ElinNetClient
             }
 
             EmpLog.Information("Bringing {Name} from save {Source}", imported.Chara.Name, imported.Source);
+            // and its biography, kept on this machine (OwnSettings.BackgroundFile)
+            OwnSettings.ImportedBackground = OwnSettings.ReadBackground(save.path);
             Host.Send(new SessionCharaImportResponse {
                 Chara = LZ4Bytes.Create(imported.Chara),
                 Fame = imported.Fame,
