@@ -28,6 +28,9 @@ internal sealed class EmpMod : BaseUnityPlugin
     internal static readonly Assembly Assembly = Assembly.GetExecutingAssembly();
     internal static readonly Harmony SharedHarmony = new(ModInfo.Guid);
 
+    // (not the id of the session patches: those are all removed when the last session of a release build closes)
+    internal static readonly Harmony AlwaysHarmony = new(ModInfo.Guid + ".always");
+
     internal static EmpMod Instance { get; private set; } = null!;
 
     /// <summary>
@@ -41,11 +44,45 @@ internal sealed class EmpMod : BaseUnityPlugin
     /// </summary>
     internal static void PatchAll()
     {
+        Patch(SharedHarmony, false);
+    }
+
+    /// <summary>
+    ///     The classes marked <see cref="AlwaysPatchedAttribute" />, once, when the mod starts (every build): never
+    ///     taken away with the session's
+    /// </summary>
+    private static void PatchAlways()
+    {
+        Patch(AlwaysHarmony, true);
+    }
+
+    /// <summary>
+    ///     The patches of a release build are only there while a session is open (ElinNetBase.Awake and OnDestroy),
+    ///     those of a debug build from the start. A debug game started with -empreleasepatches patches as a release
+    ///     build does, so that the bench meets what the players meet (issue 66)
+    /// </summary>
+    internal static readonly bool PatchesPerSession =
+#if DEBUG
+        System.Array.IndexOf(System.Environment.GetCommandLineArgs(), ReleasePatchesArgument) >= 0;
+#else
+        true;
+#endif
+
+#if DEBUG
+    internal const string ReleasePatchesArgument = "-empreleasepatches";
+#endif
+
+    private static void Patch(Harmony harmony, bool always)
+    {
         SnapshotStub.Reset();
         foreach (var type in AccessTools.GetTypesFromAssembly(Assembly)) {
+            if (AlwaysPatchedAttribute.On(type) != always) {
+                continue;
+            }
+
             try {
                 SnapshotStub.Begin(type);
-                SharedHarmony.CreateClassProcessor(type).Patch();
+                harmony.CreateClassProcessor(type).Patch();
                 SnapshotStub.Note();
             } catch (System.Exception ex) {
                 if (!SkippedPatches.Contains(type.FullName)) {
@@ -91,10 +128,13 @@ internal sealed class EmpMod : BaseUnityPlugin
 
         // session or not: a world whose mounts stand outside the map could not be loaded at all
         Patches.RideOffMapPatch.Apply();
+        PatchAlways();
+
+        if (!PatchesPerSession) {
+            PatchAll();
+        }
 
 #if DEBUG
-        PatchAll();
-
         if (EmpConfig.Dev.Listener.Value) {
             gameObject.AddComponent<EmpDebugListener>();
         }

@@ -166,7 +166,12 @@ internal static class HiddenServer
             var log = Path.Combine(Folder, "server.log");
             var start = new ProcessStartInfo(exe,
                 $"-batchmode -nographics -empserver \"{save}\" -empparent {Process.GetCurrentProcess().Id} -empmute -logFile \"{log}\"" +
-                (PeerHosting.Active ? " " + LocalPeerHosting.Argument : "")) {
+                (PeerHosting.Active ? " " + LocalPeerHosting.Argument : "")
+#if DEBUG
+                // (the bench's release patch timing goes to the server it starts too)
+                + (EmpMod.PatchesPerSession ? " " + EmpMod.ReleasePatchesArgument : "")
+#endif
+                ) {
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(exe),
