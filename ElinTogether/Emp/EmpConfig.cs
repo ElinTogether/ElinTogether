@@ -35,6 +35,13 @@ internal partial class EmpConfig
     {
         var config = EmpMod.Instance.Config;
 
+        // a hidden server reads the player's own config file, it never writes it: the visible game that started it
+        // has the file and may be saving it (a box ticked, a new key) while this one binds, and a key new to the file
+        // saved here at that moment threw a sharing violation out of EmpMod.Awake, a server with no mod (issue 66 bench)
+        if (EmpServer.Hidden) {
+            config.SaveOnConfigSet = false;
+        }
+
         // what an older version of the mod left in the file, read before any Bind saves it again
         var before = File.Exists(config.ConfigFilePath) ? File.ReadAllText(config.ConfigFilePath) : "";
 
