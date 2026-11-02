@@ -1598,5 +1598,12 @@
     "LangGeneral.emp_ui_cl_chat_game_time.text": "聊天中显示游戏时间",
     "LangGeneral.emp_ui_cl_desc_chat_game_time.text": "每条聊天消息旁显示游戏内时间，而不是电脑时间。",
     "LangGeneral.emp_ui_chat_menu_whisper.text": "私聊 {0}",
-    "LangGeneral.emp_ui_chat_menu_mention.text": "呼叫 @{0}"
+    "LangGeneral.emp_ui_chat_menu_mention.text": "呼叫 @{0}",
+    "LangGeneral.emp_ui_sv_cfg_chat_images.text": "玩家可以在聊天中发送图片",
+    "LangGeneral.emp_ui_sv_desc_chat_images.text": "玩家可以在聊天中发送小图片（绘画）；每个玩家仍可在“我的设置”中隐藏它们。",
+    "LangGeneral.emp_ui_cl_hide_chat_images.text": "隐藏聊天中的图片",
+    "LangGeneral.emp_ui_cl_desc_hide_chat_images.text": "不显示其他玩家在聊天中发送的图片，只用一行提示有人发送了图片。",
+    "LangGeneral.emp_ui_chat_image_hidden.text": "（发送了一张图片，已在“我的设置”中隐藏）",
+    "LangGeneral.emp_ui_chat_images_off.text": "这个世界关闭了聊天图片。",
+    "LangGeneral.emp_ui_chat_image_too_big.text": "图片必须是 PNG，每边最多 {0} 像素，大小不超过 {1} KB。"
 }

@@ -219,6 +219,11 @@ internal partial class TabChat : TabEmpBase
             Destroy(child.gameObject);
         }
 
+        foreach (var texture in _pictures) {
+            Destroy(texture);
+        }
+
+        _pictures.Clear();
         _count = 0;
         _shown = ChatLog.Version;
         foreach (var line in ChatLog.Entries.Where(Shows)) {
@@ -380,6 +385,48 @@ internal partial class TabChat : TabEmpBase
         // (the line wraps at the log's width: its prefab's fitter sized it to the unwrapped line, wider than the log)
         UIHelper.WrapTexts(text);
         _count++;
+
+        // a picture (ChatImages): under its line, unless this player hides them
+        if (line.Image != null) {
+            if (EmpConfig.Client.HideChatImages.Value && line.Uid != EClass.pc.uid) {
+                text.text += " " + "emp_ui_chat_image_hidden".lang().TagColor(new Color(0.45f, 0.4f, 0.32f));
+            } else {
+                AddPicture(line.Image);
+            }
+        }
+    }
+
+    // the textures of the pictures shown, freed when the log is drawn again
+    private readonly List<Texture2D> _pictures = [];
+
+    private void AddPicture(byte[] png)
+    {
+        if (!ChatImages.IsValid(png)) {
+            return;
+        }
+
+        var texture = new Texture2D(2, 2);
+        if (!texture.LoadImage(png)) {
+            Destroy(texture);
+            return;
+        }
+
+        texture.filterMode = FilterMode.Point;
+        _pictures.Add(texture);
+        // (a row as wide as the log holding the picture at its own shape, at most 180 high, from the line's start)
+        var scale = Mathf.Min(2f, 180f / Mathf.Max(texture.width, texture.height));
+        var size = new Vector2(texture.width * scale, texture.height * scale);
+        var row = new GameObject("ChatPicture", typeof(RectTransform));
+        row.transform.SetParent(_list!.transform, false);
+        ((RectTransform)row.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, size.y);
+        var picture = new GameObject("Picture", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
+        picture.transform.SetParent(row.transform, false);
+        picture.GetComponent<RawImage>().texture = texture;
+        picture.GetComponent<RawImage>().raycastTarget = false;
+        var rt = (RectTransform)picture.transform;
+        rt.anchorMin = rt.anchorMax = rt.pivot = new(0f, 1f);
+        rt.anchoredPosition = new(24f, 0f);
+        rt.sizeDelta = size;
     }
 
     // the log is at its newest line (or too short to scroll): a new line keeps it there

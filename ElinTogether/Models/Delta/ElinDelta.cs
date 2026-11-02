@@ -235,6 +235,8 @@ namespace ElinTogether.Models;
 [Union(1290, typeof(TeamRankRequestDelta))]
 // A chat line of one emote: the game's emote over the speaker, for its map (lead dev 2026-11-02)
 [Union(1291, typeof(ChatEmoteDelta))]
+// A small picture in the chat, the hook of the drawing editor (lead dev 2026-11-02)
+[Union(1292, typeof(ChatImageDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

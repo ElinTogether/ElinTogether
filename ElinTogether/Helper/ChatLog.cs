@@ -32,6 +32,9 @@ internal static class ChatLog
 
         /// <summary>The game's clock when the line came ("" before a game runs): My settings shows it instead of the real one</summary>
         public string GameTime { get; init; } = "";
+
+        /// <summary>A picture sent in the chat (PNG, checked by ChatImages.IsValid), drawn under the line</summary>
+        public byte[]? Image { get; init; }
     }
 
     private static readonly List<Line> Lines = [];
@@ -55,7 +58,7 @@ internal static class ChatLog
         UnreadMentions = 0;
     }
 
-    internal static void Add(int channel, string who, string text, bool mine = false, int uid = 0)
+    internal static void Add(int channel, string who, string text, bool mine = false, int uid = 0, byte[]? image = null)
     {
         // (a line naming this player: highlighted, a short sound of the game's chat, counted until the tab is seen)
         var mention = !mine && channel != Server && ChatMarkup.Mentions(text, MyNames());
@@ -69,6 +72,7 @@ internal static class ChatLog
             Uid = uid,
             Mention = mention,
             GameTime = date != null ? $"{date.hour:00}:{date.min:00}" : "",
+            Image = image,
         });
         if (Lines.Count > Capacity) {
             Lines.RemoveAt(0);

@@ -75,6 +75,13 @@ internal class TabClientConfiguration : TabEmpBase
             gameTime.Value = v;
             TabChat.RefillShown();
         });
+
+        // the pictures other players send in the chat (ChatImages), this player's own choice
+        var hide = EmpConfig.Client.HideChatImages;
+        card.ToggleRow("emp_ui_cl_hide_chat_images".lang(), "emp_ui_cl_desc_hide_chat_images".lang(), hide.Value, v => {
+            hide.Value = v;
+            TabChat.RefillShown();
+        });
     }
 
     // the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice
