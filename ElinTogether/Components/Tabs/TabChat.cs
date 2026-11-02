@@ -185,7 +185,13 @@ internal partial class TabChat : TabEmpBase
         } else if (target.To != 0) {
             PlayerWhisper.Send(target.To, target.Name, text);
         } else {
-            // (the way the game's own chat box sends a line: the player says it on the map, the mod passes it on)
+            // (the way the game's own chat box sends a line: the player says it on the map, as a bubble the players
+            // there see (ChatBubbleEvent, a host rule), the mod passes it on)
+            var words = ChatMarkup.Plain(text);
+            if (NetSession.Instance.Rules.ChatBubbles && words.Length > 0) {
+                EClass.pc.SayRaw(words);
+            }
+
             ActionMode.Adv.OnEnterChat(text);
         }
 

@@ -2,7 +2,7 @@ using MessagePack;
 
 namespace ElinTogether.Net;
 
-// Keys: the highest in use is 152 (141 unused), the next free one is 153 (145 reserved for the server avatar, 146 and 147 spare). Keep them in order and do not skip any: a MessagePack
+// Keys: the highest in use is 159 (141 unused), the next free one is 160 (145 reserved for the server avatar, 146 and 147 spare). Keep them in order and do not skip any: a MessagePack
 // array writes a nil for every missing index, so a gap costs a byte per join for ever (51, 94 and 110 are the old ones)
 [MessagePackObject]
 public class NetSessionRules
@@ -545,6 +545,13 @@ public class NetSessionRules
     [Key(158)]
     public string? ClientOnlyMods { get; set; }
 
+    /// <summary>
+    ///     Host setting "Chat lines show as bubbles": a line written in the Chat tab is also a short bubble over the
+    ///     writer's character, for the players of its map (the game's chat box always makes one)
+    /// </summary>
+    [Key(159)]
+    public bool ChatBubbles { get; set; } = true;
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -555,6 +562,7 @@ public class NetSessionRules
         GlobalChat = EmpConfig.Server.GlobalChat.Value,
         AllowFollow = EmpConfig.Server.Follow.Value,
         PrivateChat = EmpConfig.Server.PrivateChat.Value,
+        ChatBubbles = EmpConfig.Server.ChatBubbles.Value,
         GuestMoongate = EmpConfig.Server.GuestMoongate.Value,
         GuestLandingPortal = EmpConfig.Server.GuestLandingPortal.Value,
         GuestSkyHelm = EmpConfig.Server.GuestSkyHelm.Value,

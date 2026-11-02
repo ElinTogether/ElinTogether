@@ -1586,5 +1586,7 @@
     "LangGeneral.emp_ui_emblem_src_tiles.text": "地块",
     "LangGeneral.emp_ui_emblem_src_portraits.text": "肖像",
     "LangGeneral.emp_ui_emblem_src_places.text": "地点",
-    "LangGeneral.emp_tip_chat_emotes.text": "表情：在消息中插入游戏的表情。只有一个表情的消息也会显示在你的角色头上"
+    "LangGeneral.emp_tip_chat_emotes.text": "表情：在消息中插入游戏的表情。只有一个表情的消息也会显示在你的角色头上",
+    "LangGeneral.emp_ui_sv_cfg_chat_bubbles.text": "聊天消息也以气泡显示",
+    "LangGeneral.emp_ui_sv_desc_chat_bubbles.text": "在聊天标签页中写的消息也会以短气泡显示在写信人角色的头上，同一地图的玩家可见。"
 }

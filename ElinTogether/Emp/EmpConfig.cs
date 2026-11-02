@@ -680,6 +680,13 @@ internal partial class EmpConfig
             "Only that player gets the lines, the host passes them on without showing them\n" +
             "对其他玩家角色选择“交谈”会打开与该玩家的私聊，无论对方在哪里；只有该玩家会收到，主机只转发不显示");
 
+        Server.ChatBubbles = config.Bind(
+            "Server",
+            "ChatBubbles",
+            true,
+            "A line written in the Chat tab also shows as a short bubble over the writer's character, for the players on its map\n" +
+            "在聊天标签页中写的消息也会以短气泡显示在写信人角色的头上，同一地图的玩家可见");
+
         Server.GuestMoongate = config.Bind(
             "Server",
             "GuestMoongate",
@@ -1209,6 +1216,7 @@ internal partial class EmpConfig
 
         internal static ConfigEntry<bool> Follow { get; set; } = null!;
         internal static ConfigEntry<bool> PrivateChat { get; set; } = null!;
+        internal static ConfigEntry<bool> ChatBubbles { get; set; } = null!;
         internal static ConfigEntry<bool> GuestMoongate { get; set; } = null!;
 
         internal static ConfigEntry<bool> StrangerVisits { get; set; } = null!;
