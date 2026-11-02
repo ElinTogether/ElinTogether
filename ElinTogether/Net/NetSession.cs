@@ -189,6 +189,7 @@ public class NetSession : EClass
         }
 
         Transport = null;
+        ActionModeCombat.ResetForNewSession();
 
         EmpLog.Information("Connection component removed");
     }

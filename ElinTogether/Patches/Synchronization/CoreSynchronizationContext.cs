@@ -28,7 +28,8 @@ internal class CoreSynchronizationContext : SynchronizationContext
     {
         PlayerTrade.WatchSession();
         SaveDepot.Update();
-        HiddenServer.Update();
+        // (HiddenServer.Update runs from EmpMod.Update: it waits for its server with no session open, when a release
+        // build has none of these patches)
         PeerKeeper.Update();
         CrossCheck.Update();
         EmpServer.Update();

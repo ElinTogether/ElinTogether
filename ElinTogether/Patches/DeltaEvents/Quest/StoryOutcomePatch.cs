@@ -69,11 +69,10 @@ internal static class StoryOutcomePatch
     [HarmonyPrefix]
     internal static bool OnOutcome(DramaOutcome __instance, MethodBase __originalMethod)
     {
-        if (ElinDelta.IsApplying) {
-            return true;
-        }
-
         var name = __originalMethod.Name;
+        if (ElinDelta.IsApplying) {
+            return name != nameof(DramaOutcome.OnClaimLand) || ClaimLandOnce(__instance);
+        }
         var target = __instance.manager?.tg?.chara;
 
         // what the dialog changed so far (the stage of the debt) is to reach the host before this
@@ -106,6 +105,34 @@ internal static class StoryOutcomePatch
             QuestAwaySync.Send(delta);
         }
 
-        return true;
+        return name != nameof(DramaOutcome.OnClaimLand) || ClaimLandOnce(__instance);
+    }
+
+    private static readonly string[] _claimQuests = ["sharedContainer", "crafter", "defense"];
+
+    /// <summary>
+    ///     DramaOutcome.OnClaimLand made idempotent: Ash's three home quests are world quests (one log for everyone,
+    ///     only main/exploration/debt are each story's), and QuestHome is the world's. With "each player or team lives
+    ///     its own story" every new story claims the land with Ash again (issue 67): the game's code added the three
+    ///     quests once more to everyone's log, the host saw its finished starter quests offered again (and a second
+    ///     tax quest after the second shipping box), and the home quest went back to phase 2. Each is added only when
+    ///     the world has never had it, the home quest only moves forward. False: the game's code is not run
+    /// </summary>
+    private static bool ClaimLandOnce(DramaOutcome outcome)
+    {
+        var quests = EClass.game.quests;
+        var ash = EClass.game.cards.globalCharas.Find("ashland");
+        foreach (var id in _claimQuests) {
+            if (!quests.IsAdded(id)) {
+                quests.globalList.Add(Quest.Create(id).SetClient(ash, assignQuest: false));
+            }
+        }
+
+        if (quests.Get<QuestHome>() is { phase: < 2 } home) {
+            home.ChangePhase(2);
+        }
+
+        outcome.AddMaid();
+        return false;
     }
 }

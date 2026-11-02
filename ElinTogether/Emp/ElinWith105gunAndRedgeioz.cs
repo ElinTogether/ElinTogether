@@ -136,6 +136,9 @@ internal sealed class EmpMod : BaseUnityPlugin
         Helper.HubDot.Update();
         // (from the patches during a session; a server has to load its world before any session)
         EmpServer.Update();
+        // (the visible game waits for its hidden server with no session open: in a release build the Core.Update
+        // patch is not there yet, it never joined nor timed out, issue 66)
+        Helper.HiddenServer.Update();
         // (-empnewworld: a new world made at the title, before any session)
         Helper.OfficialWorld.Update();
     }
