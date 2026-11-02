@@ -81,6 +81,9 @@ internal readonly record struct EmblemLayer(
     /// <summary>A picture of the game (a thing, a monster, an icon, a tile, a portrait...)</summary>
     internal bool IsSprite => !IsShape && !IsText;
 
+    /// <summary>A paint layer: 64x64 pixels drawn in the editor (<see cref="EmblemPaint" />), drawn as a picture</summary>
+    internal bool IsPaint => EmblemPaint.Is(Thing);
+
     /// <summary>A text layer's text</summary>
     internal string Text => IsText ? TeamEmblem.Unhex(Thing.Substring(2)) ?? "" : "";
 
@@ -99,7 +102,9 @@ internal readonly record struct EmblemLayer(
 
 /// <param name="Layers">Drawn in order, the first at the bottom</param>
 /// <param name="Clip">Every layer is cut to the bottom layer's outline (how every emblem before layer shapes drew)</param>
-internal sealed record Emblem(IReadOnlyList<EmblemLayer> Layers, bool Clip = false);
+/// <param name="W">The canvas' width in pixels: 64 for a team emblem, up to 256 for a drawing (<see cref="Drawing" />)</param>
+/// <param name="H">The canvas' height in pixels. A layer's place is in the canvas' pixels, its size in % of 64 pixels</param>
+internal sealed record Emblem(IReadOnlyList<EmblemLayer> Layers, bool Clip = false, int W = TeamEmblem.Grid, int H = TeamEmblem.Grid);
 
 /// <summary>
 ///     The text of a team emblem, kept in the team's thing id (<see cref="Net.ElinNetHost.TeamThings" />) and told to
@@ -361,7 +366,7 @@ internal static class TeamEmblem
 
     // a typed id of the e3 form: a sprite of a known source, a shape or a text (the ids themselves are checked later)
     private static bool Typed(string thing) =>
-        thing.Length >= 3 && thing[1] == ':' && (thing[0] is 'g' or 'x' || EmblemSprites.Codes.IndexOf(thing[0]) >= 0);
+        thing.Length >= 3 && thing[1] == ':' && (thing[0] is 'g' or 'x' or 'd' || EmblemSprites.Codes.IndexOf(thing[0]) >= 0);
 
     private static Emblem? ParseThird(string text)
     {
@@ -467,6 +472,22 @@ internal static class TeamEmblem
         });
         return Prefix3 + (emblem.Clip ? "1" : "0") + "|" + string.Join(";", layers);
     }
+
+    /// <summary>The layers of an emblem or a drawing in the e3 form (a drawing's text holds them after its own fields)</summary>
+    internal static string LayerText(Emblem emblem) =>
+        string.Join(";", emblem.Layers.Select(l => {
+            var fields = Fields(l);
+            var keep = fields.Length;
+            while (keep > Head && fields[keep - 1] == Plain3[keep - 1]) {
+                keep--;
+            }
+
+            return l.Thing + "," + string.Join(",", fields.Take(keep));
+        }));
+
+    /// <summary>The layers of <see cref="LayerText" /> read back (not validated), null when they do not read</summary>
+    internal static Emblem? ParseLayers(string layers, bool clip) => ParseThird(Prefix3 + (clip ? "1" : "0") + "|" + layers);
+
     private static string FormatLegacy(Legacy emblem)
     {
         if (FitsFirstForm(emblem)) {
@@ -496,11 +517,18 @@ internal static class TeamEmblem
             return null;
         }
 
+        // (the canvas: 64 for an emblem; a drawing's places reach half its size past its edges, its sizes as far)
+        if (emblem.W is < Drawing.MinSide or > Drawing.MaxSide || emblem.H is < Drawing.MinSide or > Drawing.MaxSide) {
+            return null;
+        }
+
+        int minX = -emblem.W / 2, maxX = emblem.W + emblem.W / 2, minY = -emblem.H / 2, maxY = emblem.H + emblem.H / 2;
+        var maxSize = Math.Max(MaxSize, MaxSize * Math.Max(emblem.W, emblem.H) / Grid);
         var layers = new List<EmblemLayer>();
         var d = new EmblemLayer("", 0, 0, 0, 0, 0, 0);
         foreach (var raw in emblem.Layers) {
             var l = raw;
-            if (l.X is < MinPos or > MaxPos || l.Y is < MinPos or > MaxPos || l.Size is < MinSize or > MaxSize ||
+            if (l.X < minX || l.X > maxX || l.Y < minY || l.Y > maxY || l.Size < MinSize || l.Size > maxSize ||
                 l.Rotation is < 0 or > 359 || l.Flip is < 0 or > 3 || l.Opacity is < MinOpacity or > 100 ||
                 l.Outline is < 0 or > MaxOutline || l.Pattern is < 0 or >= PatternCount || l.Sides is < 3 or > 12 ||
                 l.Aspect is < 10 or > 100 || l.Thick is < 5 or > 90 || l.Spacing is < -8 or > 16 || l.Curve is < -180 or > 180 ||
@@ -550,7 +578,9 @@ internal static class TeamEmblem
                 continue;
             }
 
-            if (normalize(l.Thing) is not { } typed) {
+            // (a paint layer: its pixels must read; it is a picture for every other field)
+            var typed = l.IsPaint ? EmblemPaint.Valid(l.Thing, Math.Max(emblem.W, emblem.H)) ? l.Thing : null : normalize(l.Thing);
+            if (typed == null) {
                 return null;
             }
 

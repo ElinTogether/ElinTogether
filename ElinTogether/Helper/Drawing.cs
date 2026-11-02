@@ -1,0 +1,288 @@
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using UnityEngine;
+
+namespace ElinTogether.Helper;
+
+/// <summary>
+///     A player's free drawing (lead dev 2026-11-02): the emblem editor's layers on a canvas of any size up to 256x256
+///     (sides in steps of 16), credited to its creator. Its text, small enough to go over the network (the chat, later):
+///     <c>w1|W|H|clip|creator|creatorName|created|basedOn|basedOnName|title|layers</c> (names and title as hex of their
+///     UTF-8, the time in Unix seconds, the layers as e3's). The credit is never dropped: a drawing saved from another
+///     player keeps it, and a drawing edited by someone else becomes theirs "based on" its creator (no signature: the
+///     credit is not proof, only kept)
+/// </summary>
+internal sealed record Drawing(
+    Emblem Art,
+    string Title,
+    ulong Creator,
+    string CreatorName,
+    long Created,
+    ulong BasedOn = 0,
+    string BasedOnName = "")
+{
+    internal const string Prefix = "w1|";
+    internal const int MinSide = 16;
+    internal const int MaxSide = 256;
+    internal const int SideStep = 16;
+    internal const int MaxTitle = 24;
+
+    /// <summary>The longest text a drawing may have (the network's limit, later the chat's)</summary>
+    internal const int MaxText = 48000;
+
+    /// <summary>The canvas sizes offered for a new drawing</summary>
+    internal static readonly int[] Sides = Enumerable.Range(1, MaxSide / SideStep).Select(i => i * SideStep).ToArray();
+
+    internal string Format() =>
+        string.Join("|", "w1", I(Art.W), I(Art.H), Art.Clip ? "1" : "0", Creator.ToString(CultureInfo.InvariantCulture),
+            TeamEmblem.Hex(CreatorName), Created.ToString(CultureInfo.InvariantCulture), BasedOn.ToString(CultureInfo.InvariantCulture),
+            TeamEmblem.Hex(BasedOnName), TeamEmblem.Hex(Title), TeamEmblem.LayerText(Art));
+
+    private static string I(int v) => v.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>A drawing's text read and checked (sizes, layers, names), null when it is not one</summary>
+    internal static Drawing? Parse(string text)
+    {
+        if (text.Length is 0 or > MaxText || !text.StartsWith(Prefix)) {
+            return null;
+        }
+
+        var p = text.Split('|');
+        if (p.Length != 11 || !int.TryParse(p[1], NumberStyles.None, CultureInfo.InvariantCulture, out var w) ||
+            !int.TryParse(p[2], NumberStyles.None, CultureInfo.InvariantCulture, out var h) || p[3] is not ("0" or "1") ||
+            !ulong.TryParse(p[4], NumberStyles.None, CultureInfo.InvariantCulture, out var creator) ||
+            !long.TryParse(p[6], NumberStyles.None, CultureInfo.InvariantCulture, out var created) ||
+            !ulong.TryParse(p[7], NumberStyles.None, CultureInfo.InvariantCulture, out var basedOn) ||
+            !Side(w) || !Side(h) ||
+            TeamEmblem.Unhex(p[5]) is not { Length: <= 64 } creatorName || TeamEmblem.Unhex(p[8]) is not { Length: <= 64 } basedOnName ||
+            TeamEmblem.Unhex(p[9]) is not { Length: <= MaxTitle } title || title.Any(char.IsControl)) {
+            return null;
+        }
+
+        // (an empty drawing reads too: a canvas without layers yet)
+        Emblem art;
+        if (p[10].Length == 0) {
+            art = new([], p[3] == "1", w, h);
+        } else if (TeamEmblem.ParseLayers(p[10], p[3] == "1") is { } layers &&
+                   TeamEmblem.Validate(layers with { W = w, H = h }, EmblemSprites.NormalizeOrKeep) is { } valid) {
+            art = valid;
+        } else {
+            return null;
+        }
+
+        return new(art, title, creator, creatorName, created, basedOn, basedOnName);
+    }
+
+    private static bool Side(int v) => v is >= MinSide and <= MaxSide && v % SideStep == 0;
+
+    /// <summary>The drawing baked into a texture of its size, point filtered; the caller destroys it</summary>
+    internal static Texture2D Bake(Drawing drawing)
+    {
+        var tex = new Texture2D(drawing.Art.W, drawing.Art.H, TextureFormat.RGBA32, false) {
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp,
+            name = "emp_drawing",
+        };
+        tex.SetPixels32(TeamEmblemBaker.Bake(drawing.Art));
+        tex.Apply(false, false);
+        return tex;
+    }
+
+    // ---------------------------------------------------------------- who draws
+
+    /// <summary>This player's Steam id (0 when Steam is away)</summary>
+    internal static ulong Me
+    {
+        get {
+            try {
+                return Steamworks.SteamUser.GetSteamID().m_SteamID;
+            } catch (System.Exception) {
+                return 0;
+            }
+        }
+    }
+
+    /// <summary>This player's name as others see it (Steam's), the character's when Steam is away</summary>
+    internal static string MyName
+    {
+        get {
+            try {
+                if (Steamworks.SteamFriends.GetPersonaName() is { Length: > 0 } name) {
+                    return Clip(name, 64);
+                }
+            } catch (System.Exception) {
+                // (Steam away)
+            }
+
+            return Clip(EClass.pc?.NameSimple ?? "?", 64);
+        }
+    }
+
+    private static string Clip(string text, int max) => new(text.Where(c => !char.IsControl(c)).Take(max).ToArray());
+
+    /// <summary>A new drawing by this player</summary>
+    internal static Drawing New(int w, int h, string title) =>
+        new(new([], false, w, h), Clip(title, MaxTitle), Me, MyName, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+    /// <summary>
+    ///     The drawing as this player saves an edit of it: theirs already, or a new one by them "based on" its creator
+    ///     (and on the ones it was itself based on, named after it)
+    /// </summary>
+    internal Drawing EditedByMe(Emblem art)
+    {
+        if (Creator == Me) {
+            return this with { Art = art };
+        }
+
+        // (based on its creator, and on whom that one was based on: every name kept, the latest first)
+        var names = BasedOnName.Length > 0 ? CreatorName + ", " + BasedOnName : CreatorName;
+        return new(art, Title, Me, MyName, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Creator, Clip(names, 64));
+    }
+}
+
+/// <summary>
+///     A player's drawings ("My drawings"), shared by every server they play on: a file in the game's own data folder
+///     beside the mod's settings (ElinMP/Drawings/&lt;Steam id&gt;/drawings.txt), never in a world's save. One line per
+///     drawing: a local id, a tab, its text. Drawings of other players are kept with their credit
+/// </summary>
+internal static class DrawingStore
+{
+    internal const int MaxDrawings = 100;
+
+    private static List<(string Id, Drawing Drawing)>? _list;
+    private static string _for = "";
+
+    // lines this game could not read (a newer game's drawing): written back as they were, never dropped
+    private static readonly List<string> _unread = [];
+
+    // the file could not be read: nothing is written over it
+    private static bool _broken;
+
+    private static string Folder
+    {
+        get {
+            var key = Drawing.Me.ToString(CultureInfo.InvariantCulture);
+#if DEBUG
+            // (the bench's games share one Steam account and one data folder: each keeps its own list)
+            if (EmpConfig.Dev.Identity.Value > 0) {
+                key += "_" + EmpConfig.Dev.Identity.Value;
+            }
+#endif
+            return Path.Combine(Application.persistentDataPath, "ElinMP", "Drawings", key);
+        }
+    }
+
+    private static string FilePath => Path.Combine(Folder, "drawings.txt");
+
+    /// <summary>The drawings, newest first</summary>
+    internal static IReadOnlyList<(string Id, Drawing Drawing)> All
+    {
+        get {
+            Load();
+            return _list!;
+        }
+    }
+
+    internal static Drawing? Get(string id) => All.FirstOrDefault(e => e.Id == id).Drawing;
+
+    private static void Load()
+    {
+        var path = FilePath;
+        if (_list != null && _for == path) {
+            return;
+        }
+
+        _for = path;
+        _list = [];
+        _unread.Clear();
+        _broken = false;
+        try {
+            // (a save stopped between its delete and its move left only the temporary file)
+            var read = File.Exists(path) ? path : File.Exists(path + ".tmp") ? path + ".tmp" : null;
+            if (read == null) {
+                return;
+            }
+
+            foreach (var line in File.ReadAllLines(read)) {
+                var tab = line.IndexOf('\t');
+                if (tab > 0 && Drawing.Parse(line.Substring(tab + 1)) is { } d) {
+                    _list.Add((line.Substring(0, tab), d));
+                } else if (line.Length > 0) {
+                    _unread.Add(line);
+                }
+            }
+        } catch (System.Exception e) {
+            _broken = true;
+            EmpLog.Debug(e, "Drawings: {Path} could not be read", path);
+        }
+    }
+
+    private static void Write()
+    {
+        if (_broken) {
+            return;
+        }
+
+        try {
+            Directory.CreateDirectory(Folder);
+            var tmp = FilePath + ".tmp";
+            File.WriteAllLines(tmp, _list!.Select(e => e.Id + "\t" + e.Drawing.Format()).Concat(_unread));
+            if (File.Exists(FilePath)) {
+                File.Delete(FilePath);
+            }
+
+            File.Move(tmp, FilePath);
+        } catch (System.Exception e) {
+            EmpLog.Debug(e, "Drawings: {Path} could not be written", FilePath);
+        }
+    }
+
+    /// <summary>A drawing kept (a new one first in the list; one of that id replaced); its id, null when the list is full or it is too big</summary>
+    internal static string? Save(Drawing drawing, string? id = null)
+    {
+        Load();
+        if (drawing.Format().Length > Drawing.MaxText) {
+            return null;
+        }
+
+        var at = id == null ? -1 : _list!.FindIndex(e => e.Id == id);
+        if (at >= 0) {
+            _list![at] = (id!, drawing);
+        } else {
+            if (_list!.Count >= MaxDrawings) {
+                return null;
+            }
+
+            id = System.Guid.NewGuid().ToString("N").Substring(0, 12);
+            _list.Insert(0, (id, drawing));
+        }
+
+        Write();
+        return id;
+    }
+
+    internal static void Delete(string id)
+    {
+        Load();
+        if (_list!.RemoveAll(e => e.Id == id) > 0) {
+            Write();
+        }
+    }
+
+    /// <summary>A copy of the drawing beside it ("Copy of"), the credit kept; its id</summary>
+    internal static string? Duplicate(string id) =>
+        Get(id) is { } d
+            ? Save(d with { Title = TrimTitle("emp_ui_drawing_copy_of".lang().Replace("{0}", d.Title.Length > 0 ? d.Title : "emp_ui_drawing_untitled".lang())) })
+            : null;
+
+    internal static void Rename(string id, string title)
+    {
+        if (Get(id) is { } d) {
+            Save(d with { Title = TrimTitle(title) }, id);
+        }
+    }
+
+    private static string TrimTitle(string title) => new(title.Where(c => !char.IsControl(c)).Take(Drawing.MaxTitle).ToArray());
+}

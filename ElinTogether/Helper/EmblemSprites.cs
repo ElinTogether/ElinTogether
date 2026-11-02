@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ElinTogether.LangMod;
 using UnityEngine;
 
 namespace ElinTogether.Helper;
@@ -136,6 +137,8 @@ internal static class EmblemSprites
             switch (typed[0]) {
                 case 'x':
                     return "\"" + (TeamEmblem.Unhex(id) ?? "") + "\"";
+                case 'd':
+                    return "emp_ui_emblem_paint".lang();
                 case 't':
                     return EClass.sources.things.map.TryGetValue(id, out var thing) ? thing.GetName() ?? id : id;
                 case 'c':
@@ -153,6 +156,17 @@ internal static class EmblemSprites
                     return block.GetName() is { Length: > 0 } bn ? bn : id;
                 case 'f' when int.TryParse(id, out var f) && EClass.sources.floors.map.TryGetValue(f, out var floor):
                     return floor.GetName() is { Length: > 0 } fn ? fn : id;
+                // (lead dev 2026-11-02: a layer list of "default", "c_f-1", "0" said nothing)
+                case 'z':
+                    // (a zone row without a name of its own reads as a number: the place's picture id then)
+                    return EClass.sources.zones.rows.FirstOrDefault(z => z.image == id)?.GetName() is { Length: > 0 } zn && !zn.All(char.IsDigit)
+                        ? zn
+                        : "emp_ui_emblem_name_place".Loc(id);
+                case 'p':
+                    return "emp_ui_emblem_name_portrait".Loc(id);
+                case 'u':
+                case 'v':
+                    return "emp_ui_emblem_name_icon".Loc(id);
                 default:
                     return id;
             }

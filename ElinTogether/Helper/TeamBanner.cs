@@ -405,7 +405,7 @@ internal static class TeamBanner
     ///     player's language, English name or id, filtered as it is typed); a click gives the typed id to
     ///     <paramref name="onPick" />
     /// </summary>
-    internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick, bool itemsOnly = false)
+    internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick, bool itemsOnly = false, bool fill = false)
     {
         SpriteGridView? grid = null;
         void Show() => grid?.Show(SpriteGrid.Filter(SpriteGrid.All(_kind), _query));
@@ -428,7 +428,7 @@ internal static class TeamBanner
             _query = text;
             Show();
         });
-        grid = SpriteGrid.Build(card, colour, onPick);
+        grid = SpriteGrid.Build(card, colour, onPick, fill);
         Show();
     }
 

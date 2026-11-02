@@ -401,29 +401,73 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
             list.Done = true;
         }
 
-        if (Mathf.Abs(spare) < 8f) {
-            return false;
-        }
-
         static float HeightOf(FillsPage list) => ((RectTransform)list.transform).rect.height;
-        var growing = lists.Where(l => l.Grows).ToList();
-        var room = lists.Sum(l => Mathf.Max(0f, HeightOf(l) - MinFill));
-        if ((spare > 0f && growing.Count == 0) || (spare < 0f && room < -spare)) {
-            return false;
-        }
 
-        foreach (var list in spare > 0f ? growing : lists) {
-            var rect = (RectTransform)list.transform;
-            var change = spare > 0f ? Mathf.Floor(spare / growing.Count) : Mathf.Floor(spare * Mathf.Max(0f, HeightOf(list) - MinFill) / room);
-            var height = Mathf.Max(Mathf.Min(MinFill, HeightOf(list)), HeightOf(list) + change);
+        static void SetHeight(FillsPage list, float height)
+        {
             var element = list.GetComponent<LayoutElement>();
             element.minHeight = element.preferredHeight = height;
             // (YK's layouts stack the frame at its rect height and never set it: the LayoutElement alone did nothing,
             // the Chat log stayed a few lines high with its writing row in the middle of the page)
-            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+            ((RectTransform)list.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
         }
 
-        return true;
+        if (spare <= -8f) {
+            var room = lists.Sum(l => Mathf.Max(0f, HeightOf(l) - MinFill));
+            if (room < -spare) {
+                return false;
+            }
+
+            foreach (var list in lists) {
+                var change = Mathf.Floor(spare * Mathf.Max(0f, HeightOf(list) - MinFill) / room);
+                SetHeight(list, Mathf.Max(Mathf.Min(MinFill, HeightOf(list)), HeightOf(list) + change));
+            }
+
+            return true;
+        }
+
+        // (a list on the shorter page of a book also takes what the longer page leaves under it: the emblem editor's
+        // tools stopped halfway down beside a taller left page, lead dev 2026-11-02)
+        var grown = false;
+        foreach (var group in lists.Where(l => l.Grows).GroupBy(PageOf)) {
+            var room = Mathf.Max(0f, spare) + BookSlack(group.Key);
+            if (room < 8f) {
+                continue;
+            }
+
+            var count = group.Count();
+            foreach (var list in group) {
+                SetHeight(list, HeightOf(list) + Mathf.Floor(room / count));
+            }
+
+            grown = true;
+        }
+
+        return grown;
+    }
+
+    /// <summary>The page of a book (EmpUi.Book) that holds this list, or null when it is in none</summary>
+    private static Transform? PageOf(FillsPage list)
+    {
+        for (var t = list.transform; t.parent != null; t = t.parent) {
+            if (t.parent.Find("Fold") != null && t.parent.GetComponent<HorizontalLayoutGroup>() != null) {
+                return t;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>How much taller the book's longest page is than this one (0 outside a book)</summary>
+    private static float BookSlack(Transform? page)
+    {
+        if (page == null || page.parent is not RectTransform spread) {
+            return 0f;
+        }
+
+        var own = LayoutUtility.GetPreferredHeight((RectTransform)page);
+        var longest = spread.Cast<Transform>().OfType<RectTransform>().Where(p => p.name != "Fold").Max(p => LayoutUtility.GetPreferredHeight(p));
+        return Mathf.Max(0f, longest - own);
     }
 
     /// <summary>The lowest a filling list shrinks to on a page taller than the window</summary>

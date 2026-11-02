@@ -115,16 +115,24 @@ internal static class SpriteGrid
 
     /// <summary>
     ///     The grid in a frame of six rows, its hover line under it; a click gives the entry's typed id to
-    ///     <paramref name="onPick" />. Returns the view, to give it a new list as the filter changes
+    ///     <paramref name="onPick" />. <paramref name="fill" />: the frame takes the page's width and, once, the height
+    ///     the page leaves under it (the emblem editor: lead dev 2026-11-02, three rows over an empty half page).
+    ///     Returns the view, to give it a new list as the filter changes
     /// </summary>
-    internal static SpriteGridView Build(YKLayout parent, Color colour, System.Action<string> onPick)
+    internal static SpriteGridView Build(YKLayout parent, Color colour, System.Action<string> onPick, bool fill = false)
     {
         var frame = new GameObject("SpriteGrid", typeof(RectTransform), typeof(LayoutElement), typeof(RectMask2D), typeof(Image), typeof(ScrollRect));
         frame.transform.SetParent(parent.transform, false);
         var element = frame.GetComponent<LayoutElement>();
         element.minHeight = element.preferredHeight = Rows * Cell;
         element.minWidth = element.preferredWidth = PerRow * Cell;
-        element.flexibleWidth = 0f;
+        element.flexibleWidth = fill ? 1f : 0f;
+        // (also by hand: a YK page does not control its children's height, the frame kept Unity's 100)
+        ((RectTransform)frame.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Rows * Cell);
+        if (fill) {
+            frame.AddComponent<TabEmpBase.FillsPage>().Grows = true;
+        }
+
         frame.GetComponent<Image>().color = new(0f, 0f, 0f, 0.08f);
 
         var content = new GameObject("Content", typeof(RectTransform));
@@ -153,7 +161,10 @@ internal static class SpriteGrid
     internal const int VisibleRows = Rows;
 }
 
-/// <summary>The grid's cells: as many as the rows in view and one more, moved and refilled as it scrolls</summary>
+/// <summary>
+///     The grid's cells: as many as the rows in view and one more, moved and refilled as it scrolls. As many columns
+///     as the frame's width holds, centred, and as many rows as its height shows (a frame that fills the page grows)
+/// </summary>
 internal sealed class SpriteGridView : MonoBehaviour
 {
     private readonly List<(RectTransform Rt, Image Back, Image Picture, int Index)> _cells = [];
@@ -164,21 +175,53 @@ internal sealed class SpriteGridView : MonoBehaviour
     private System.Action<string>? _pick;
     private UIText? _hover;
     private int _firstRow = -1;
+    private int _columns = SpriteGrid.Columns;
 
     internal int Count => _list.Count;
 
     internal void Init(ScrollRect scroll, RectTransform content, Color colour, System.Action<string> pick, UIText hover)
     {
         (_scroll, _content, _colour, _pick, _hover) = (scroll, content, colour, pick, hover);
-        var cells = SpriteGrid.Columns * (SpriteGrid.VisibleRows + 1);
-        for (var i = 0; i < cells; i++) {
+        Pool(SpriteGrid.Columns * (SpriteGrid.VisibleRows + 1));
+        scroll.onValueChanged.AddListener(_ => Refresh());
+    }
+
+    /// <summary>The frame changed size (laid out, or grown to the page): the columns and the cells follow</summary>
+    private void OnRectTransformDimensionsChange()
+    {
+        if (_content == null || _scroll == null) {
+            return;
+        }
+
+        var size = ((RectTransform)transform).rect.size;
+        var columns = Mathf.Max(1, Mathf.FloorToInt(size.x / SpriteGrid.CellSize));
+        Pool(columns * (Mathf.CeilToInt(size.y / SpriteGrid.CellSize) + 1));
+        if (columns != _columns) {
+            _columns = columns;
+            Show(_list);
+            return;
+        }
+
+        _firstRow = -1;
+        Refresh();
+    }
+
+    /// <summary>At least <paramref name="cells" /> cells in the pool</summary>
+    private void Pool(int cells)
+    {
+        if (_content == null) {
+            return;
+        }
+
+        while (_cells.Count < cells) {
             var go = new GameObject("Cell", typeof(RectTransform), typeof(Image), typeof(Button), typeof(EventTrigger));
-            go.transform.SetParent(content, false);
+            go.transform.SetParent(_content, false);
+            go.SetActive(false);
             var crt = (RectTransform)go.transform;
             crt.anchorMin = crt.anchorMax = crt.pivot = new(0f, 1f);
             crt.sizeDelta = new(SpriteGrid.CellSize - 4f, SpriteGrid.CellSize - 4f);
             var back = go.GetComponent<Image>();
-            back.color = new(colour.r, colour.g, colour.b, 0.35f);
+            back.color = new(_colour.r, _colour.g, _colour.b, 0.35f);
             var pic = new GameObject("Picture", typeof(RectTransform), typeof(Image));
             pic.transform.SetParent(go.transform, false);
             var prt = (RectTransform)pic.transform;
@@ -193,8 +236,6 @@ internal sealed class SpriteGridView : MonoBehaviour
             Add(trigger, EventTriggerType.PointerExit, () => Hover(-1));
             _cells.Add((crt, back, image, -1));
         }
-
-        scroll.onValueChanged.AddListener(_ => Refresh());
     }
 
     private static void Add(EventTrigger trigger, EventTriggerType type, System.Action act)
@@ -212,7 +253,7 @@ internal sealed class SpriteGridView : MonoBehaviour
             return;
         }
 
-        var rows = (list.Count + SpriteGrid.Columns - 1) / SpriteGrid.Columns;
+        var rows = (list.Count + _columns - 1) / _columns;
         _content.sizeDelta = new(0f, rows * SpriteGrid.CellSize);
         _content.anchoredPosition = Vector2.zero;
         _scroll.StopMovement();
@@ -233,9 +274,11 @@ internal sealed class SpriteGridView : MonoBehaviour
         }
 
         _firstRow = first;
+        // (the columns centred in the frame)
+        var offset = Mathf.Max(0f, (((RectTransform)transform).rect.width - _columns * SpriteGrid.CellSize) / 2f);
         for (var slot = 0; slot < _cells.Count; slot++) {
             var (rt, back, picture, _) = _cells[slot];
-            var index = first * SpriteGrid.Columns + slot;
+            var index = first * _columns + slot;
             if (index >= _list.Count) {
                 rt.gameObject.SetActive(false);
                 _cells[slot] = (rt, back, picture, -1);
@@ -243,9 +286,9 @@ internal sealed class SpriteGridView : MonoBehaviour
             }
 
             rt.gameObject.SetActive(true);
-            var row = index / SpriteGrid.Columns;
-            var col = index % SpriteGrid.Columns;
-            rt.anchoredPosition = new(col * SpriteGrid.CellSize + 2f, -row * SpriteGrid.CellSize - 2f);
+            var row = index / _columns;
+            var col = index % _columns;
+            rt.anchoredPosition = new(offset + col * SpriteGrid.CellSize + 2f, -row * SpriteGrid.CellSize - 2f);
             // (cut to its drawn part, cached: only the entries scrolled into view are read)
             var sprite = TeamBanner.Cropped(_list[index].Picture());
             picture.sprite = sprite;
