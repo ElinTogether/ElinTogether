@@ -657,13 +657,14 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.Duels, true);
         yield return (EmpConfig.Server.GuestBouts, true);
         yield return (EmpConfig.Server.DuelArena, true);
-        yield return (EmpConfig.Server.DuelBets, false);
+        yield return (EmpConfig.Server.DuelBets, true);
         yield return (EmpConfig.Server.PlayerTrade, true);
         yield return (EmpConfig.Server.Follow, true);
         yield return (EmpConfig.Server.PrivateChat, true);
         yield return (EmpConfig.Server.ChatBubbles, true);
-        // (pictures from strangers on a public server: off until there is a way to report one)
-        yield return (EmpConfig.Server.ChatImages, false);
+        // pictures and drawings in the chat: on (user 2026-11-02: the public server has the most features on); each
+        // player can mute a sender or hide all pictures in their own settings
+        yield return (EmpConfig.Server.ChatImages, true);
         yield return (EmpConfig.Server.GuestLandingPortal, true);
         // council 2026-10-28, Q4: strangers meet in the wild; the land rules, the visitor cap and the upload filter hold
         yield return (EmpConfig.Server.StrangerVisits, true);

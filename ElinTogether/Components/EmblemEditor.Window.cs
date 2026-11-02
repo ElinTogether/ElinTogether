@@ -1276,7 +1276,11 @@ internal static partial class EmblemEditor
     private static readonly Queue<(KeyCode Key, bool Ctrl, bool Shift)> _keys = new();
 
     // a text field of the window (a title, a layer's name or text, a colour's hex) has the keyboard
-    private static bool Typing => EventSystem.current?.currentSelectedGameObject?.GetComponent<InputField>() is { isFocused: true };
+    // (Unity's own null test: "?." let a destroyed field through, the picture list's search once its page was rebuilt,
+    // and the editor threw every frame, GitHub issue 69)
+    private static bool Typing =>
+        EventSystem.current is { } events && events.currentSelectedGameObject is { } selected && selected &&
+        selected.GetComponent<InputField>() is { isFocused: true };
 
     /// <summary>The bench gives a key as a player presses it ("ctrl+z", "b", "]"): read in the same pass as the keyboard</summary>
     internal static void InjectKey(string combo)
