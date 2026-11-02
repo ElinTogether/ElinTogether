@@ -28,6 +28,11 @@ internal interface IPeerHosting
     string[] AdminIds { get; }
 
     /// <summary>
+    ///     Steam ids (decimal) of the world's moderators (kick and mute only, admin extras)
+    /// </summary>
+    string[] ModeratorIds { get; }
+
+    /// <summary>
     ///     Steam ids (decimal) that may not join this world
     /// </summary>
     string[] BannedIds { get; }
@@ -66,7 +71,7 @@ internal sealed class RulesSnapshot
 /// <summary>
 ///     Stand-in for the store until P2/P3: on with the hidden setting Dev.PeerHosted or the launch argument
 ///     -emppeerhosted, and the lists and rules read from ElinMP/peer_hosting.json, as
-///     {"admins": ["7656..."], "banned": ["..."], "rules": {"settings": {"Server.Teams": "true"}, "motd": "", "rules": "",
+///     {"admins": ["7656..."], "moderators": ["..."], "banned": ["..."], "rules": {"settings": {"Server.Teams": "true"}, "motd": "", "rules": "",
 ///     "build": ""}}. The file is read again when it changes on the disk
 /// </summary>
 internal sealed class LocalPeerHosting : IPeerHosting
@@ -79,6 +84,7 @@ internal sealed class LocalPeerHosting : IPeerHosting
 
     private DateTime _readAt = DateTime.MinValue;
     private string[] _admins = [];
+    private string[] _moderators = [];
     private string[] _banned = [];
     private RulesSnapshot? _rules;
 
@@ -88,6 +94,13 @@ internal sealed class LocalPeerHosting : IPeerHosting
         get {
             Read();
             return _admins;
+        }
+    }
+
+    public string[] ModeratorIds {
+        get {
+            Read();
+            return _moderators;
         }
     }
 
@@ -115,6 +128,7 @@ internal sealed class LocalPeerHosting : IPeerHosting
 
             _readAt = stamp;
             _admins = [];
+            _moderators = [];
             _banned = [];
             _rules = null;
             if (stamp == DateTime.MinValue) {
@@ -124,6 +138,7 @@ internal sealed class LocalPeerHosting : IPeerHosting
 
             var root = JObject.Parse(File.ReadAllText(FilePath));
             _admins = Ids(root["admins"]);
+            _moderators = Ids(root["moderators"]);
             _banned = Ids(root["banned"]);
             if (root["rules"] is JObject rules) {
                 _rules = new() {
@@ -141,6 +156,7 @@ internal sealed class LocalPeerHosting : IPeerHosting
             // (a broken file is no rules at all: nothing is kept or joined on a guess)
             EmpLog.Warning(ex, "Peer-hosted world: {File} could not be read", FilePath);
             _admins = [];
+            _moderators = [];
             _banned = [];
             _rules = null;
         }
@@ -211,6 +227,8 @@ internal sealed class StorePeerHosting : IPeerHosting
     public bool Active => _local.Active;
 
     public string[] AdminIds => Docs() is { } docs ? SignedDocs.SteamIds(docs.Get("admins")?.Doc, "admins") : _local.AdminIds;
+
+    public string[] ModeratorIds => Docs() is { } docs ? SignedDocs.SteamIds(docs.Get("admins")?.Doc, "moderators") : _local.ModeratorIds;
 
     public string[] BannedIds => Docs() is { } docs ? SignedDocs.SteamIds(docs.Get("bans")?.Doc, "world") : _local.BannedIds;
 
@@ -388,6 +406,16 @@ internal static class PeerHosting
     internal static HashSet<ulong> AdminSet() => Parse(Current.AdminIds);
 
     internal static HashSet<ulong> BanSet() => Parse(Current.BannedIds);
+
+    /// <summary>
+    ///     The signed moderators, admins left out (an admin needs no moderator role)
+    /// </summary>
+    internal static HashSet<ulong> ModeratorSet()
+    {
+        var moderators = Parse(Current.ModeratorIds);
+        moderators.ExceptWith(AdminSet());
+        return moderators;
+    }
 
     internal static bool IsSignedAdmin(ulong user) => AdminSet().Contains(user);
 
