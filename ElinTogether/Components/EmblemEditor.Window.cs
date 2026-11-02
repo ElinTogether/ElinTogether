@@ -654,7 +654,8 @@ internal static partial class EmblemEditor
                 StickerRows(side);
             }
 
-            TeamBanner.BuildThingPicker(side, Dark, thing => Picked(mode, thing), drop: mode == PickLayer ? DropSticker : null);
+            TeamBanner.BuildThingPicker(side, Dark, thing => Picked(mode, thing), drop: mode == PickLayer ? DropSticker : null,
+                stickers: mode == PickLayer, cell: mode == PickLayer ? StickerCells[_stickerCell] : SpriteGrid.CellSize);
             return;
         }
 

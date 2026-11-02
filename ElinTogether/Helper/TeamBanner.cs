@@ -396,28 +396,44 @@ internal static class TeamBanner
 
     private static string _query = "";
 
-    // the source pill picked (EmblemSprites.Pills: 0 items, 1 monsters, then icons, gods, UI, tiles, portraits, places)
+    // the source pill picked (EmblemSprites.Pills: 0 items, 1 monsters, then icons, gods, UI, tiles, portraits, places),
+    // and the one of the editor's sticker grid (EmblemSprites.StickerPills)
     private static int _kind;
+    private static int _stickerKind;
 
     /// <summary>
     ///     The source pills (items, monsters, the game's icons, gods, UI icons, tiles, portraits, places) over a search
     ///     field over one scrolled grid of every picture of that source (<see cref="SpriteGrid" />: name in the
     ///     player's language, English name or id, filtered as it is typed); a click gives the typed id to
     ///     <paramref name="onPick" />; a cell dragged out of the grid is given to <paramref name="drop" /> where it is
-    ///     released (the editor's stickers)
+    ///     released (the editor's stickers). <paramref name="stickers" />: the sticker grid's sources, sieved
+    ///     (<see cref="EmblemSprites.StickerPills" />), its cells <paramref name="cell" /> wide
     /// </summary>
     internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick, bool itemsOnly = false, bool fill = false,
-        System.Func<string, Vector2, bool>? drop = null)
+        System.Func<string, Vector2, bool>? drop = null, bool stickers = false, float cell = SpriteGrid.CellSize)
     {
         SpriteGridView? grid = null;
-        void Show() => grid?.Show(SpriteGrid.Filter(SpriteGrid.All(_kind), _query));
+        var pills = stickers ? EmblemSprites.StickerPills : EmblemSprites.Pills;
+        void Show()
+        {
+            // (Unity's own null test: a grid of a page built again is destroyed)
+            if (grid != null) {
+                grid.Show(SpriteGrid.Filter(SpriteGrid.All(pills[stickers ? _stickerKind : _kind].Codes, stickers), _query));
+            }
+        }
 
         if (itemsOnly) {
             // (the Market: things only, no pills)
             _kind = 0;
+        } else if (stickers) {
+            _stickerKind = Mathf.Clamp(_stickerKind, 0, pills.Length - 1);
+            Pills(card, pills.Select(p => p.Label.lang()), _stickerKind, i => {
+                _stickerKind = i;
+                Show();
+            }, 4);
         } else {
-            _kind = Mathf.Clamp(_kind, 0, EmblemSprites.Pills.Length - 1);
-            Pills(card, EmblemSprites.Pills.Select(p => p.Label.lang()), _kind, i => {
+            _kind = Mathf.Clamp(_kind, 0, pills.Length - 1);
+            Pills(card, pills.Select(p => p.Label.lang()), _kind, i => {
                 _kind = i;
                 Show();
             }, 4);
@@ -430,7 +446,7 @@ internal static class TeamBanner
             _query = text;
             Show();
         });
-        grid = SpriteGrid.Build(card, colour, onPick, fill, drop);
+        grid = SpriteGrid.Build(card, colour, onPick, fill, drop, cell);
         Show();
     }
 

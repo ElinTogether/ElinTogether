@@ -30,6 +30,10 @@ internal static partial class EmblemEditor
     private static float _handleFrom;
     private static int _handleSize;
 
+    // the sticker grid's cell sides (lead dev 2026-11-02: bigger cells), the one picked (kept while the game runs)
+    private static readonly float[] StickerCells = [38f, 50f, 64f, 80f];
+    private static int _stickerCell;
+
     // ---------------------------------------------------------------- placing
 
     /// <summary>
@@ -273,6 +277,14 @@ internal static partial class EmblemEditor
     private static void StickerRows(YKLayout side)
     {
         side.TextSmall("emp_ui_editor_sticker_help".lang(), FontColor.Gray);
+        // the grid's pictures smaller or larger
+        var zoom = side.Row();
+        zoom.Layout.spacing = 6f;
+        var title = zoom.TextSmall("emp_ui_editor_sticker_cells".lang(), FontColor.Gray);
+        title.LayoutElement().flexibleWidth = 1f;
+        title.LayoutElement().preferredWidth = 0f;
+        zoom.SignButton("-", () => CellStep(-1), 28f).name = "EditorStickerSmaller";
+        zoom.SignButton("+", () => CellStep(1), 28f).name = "EditorStickerBigger";
         StickerRow(side, "emp_ui_editor_sticker_favourites", StickerPrefs.Favourites, "EditorStickerFavourites");
         StickerRow(side, "emp_ui_editor_sticker_recent", StickerPrefs.Recent, "EditorStickerRecent");
     }
@@ -350,6 +362,15 @@ internal static partial class EmblemEditor
         }
     }
 
+    private static void CellStep(int by)
+    {
+        var next = Mathf.Clamp(_stickerCell + by, 0, StickerCells.Length - 1);
+        if (next != _stickerCell) {
+            _stickerCell = next;
+            Fill();
+        }
+    }
+
     private static void EditNow(System.Func<EmblemLayer, EmblemLayer> change)
     {
         Edit(change);
@@ -374,6 +395,20 @@ internal static partial class EmblemEditor
     ///     The stickers' state for the bench: handles shown|the four corners (x,y;...)|the view's centre (x,y)|the
     ///     selected picture's crisp sizes (a,b,...; "-" when its handles go by whole percents)|recent (id;id...)|favourites|the selected layer's thing
     /// </summary>
+    /// <summary>The sticker grid for the bench: its cell side|the entries it lists|its scroll (the content's y); "-" without one</summary>
+    internal static string BenchStickerGrid
+    {
+        get {
+            var grid = _host != null ? _host.GetComponentInChildren<SpriteGridView>(false) : null;
+            if (grid == null || grid.GetComponent<ScrollRect>() is not { } scroll || scroll.content == null) {
+                return "-";
+            }
+
+            return string.Join("|", StickerCells[_stickerCell].ToString(CultureInfo.InvariantCulture), grid.Count,
+                scroll.content.anchoredPosition.y.ToString("0.#", CultureInfo.InvariantCulture));
+        }
+    }
+
     internal static string BenchSticker
     {
         get {

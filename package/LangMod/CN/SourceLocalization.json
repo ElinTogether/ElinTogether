@@ -1727,5 +1727,7 @@
     "LangGeneral.emp_ui_editor_sticker_unfavourite.text": "取消收藏",
     "LangGeneral.emp_ui_editor_sticker_size.text": "大小 {0} %（拖动方框的角来缩放）",
     "LangGeneral.emp_ui_editor_rotate_left.text": "向左旋转",
-    "LangGeneral.emp_ui_editor_rotate_right.text": "向右旋转"
+    "LangGeneral.emp_ui_editor_rotate_right.text": "向右旋转",
+    "LangGeneral.emp_ui_emblem_src_scenery.text": "景物",
+    "LangGeneral.emp_ui_editor_sticker_cells.text": "图片大小"
 }

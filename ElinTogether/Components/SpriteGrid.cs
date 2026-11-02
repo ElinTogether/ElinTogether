@@ -43,12 +43,18 @@ internal static class SpriteGrid
         }
     }
 
-    // a pill's entries, read once per language
-    private static readonly Dictionary<int, List<Entry>> _lists = [];
+    // a pill's entries, read once per language (by its source letters, "s:" before them for the stickers' sieved list)
+    private static readonly Dictionary<string, List<Entry>> _lists = [];
     private static string _lang = "";
 
     /// <summary>The entries of one source pill (<see cref="EmblemSprites.Pills" />), read once per language</summary>
-    internal static List<Entry> All(int pill)
+    internal static List<Entry> All(int pill) => All(EmblemSprites.Pills[Mathf.Clamp(pill, 0, EmblemSprites.Pills.Length - 1)].Codes);
+
+    /// <summary>
+    ///     The entries of those source letters, read once per language. <paramref name="stickers" />: without the
+    ///     pictures that make no sticker (blank, tiny, a strip, a flat panel, the same picture twice: <see cref="StickerSieve" />)
+    /// </summary>
+    internal static List<Entry> All(string codes, bool stickers = false)
     {
         var lang = Lang.langCode ?? "";
         if (_lang != lang) {
@@ -56,13 +62,13 @@ internal static class SpriteGrid
             _lang = lang;
         }
 
-        pill = Mathf.Clamp(pill, 0, EmblemSprites.Pills.Length - 1);
-        if (_lists.TryGetValue(pill, out var known)) {
+        var key = (stickers ? "s:" : "") + codes;
+        if (_lists.TryGetValue(key, out var known)) {
             return known;
         }
 
         var list = new List<Entry>();
-        foreach (var code in EmblemSprites.Pills[pill].Codes) {
+        foreach (var code in codes) {
             try {
                 list.AddRange(code switch {
                     't' => Read(EClass.sources.things.rows.Cast<CardRow>(), "t:"),
@@ -74,7 +80,8 @@ internal static class SpriteGrid
             }
         }
 
-        return _lists[pill] = list.OrderBy(e => e.Name).ToList();
+        list = list.OrderBy(e => e.Name).ToList();
+        return _lists[key] = stickers ? StickerSieve.Keep(list) : list;
     }
 
     /// <summary>The entries of one kind (things, or monsters)</summary>
@@ -119,10 +126,11 @@ internal static class SpriteGrid
     ///     the page leaves under it (the emblem editor: lead dev 2026-11-02, three rows over an empty half page).
     ///     Returns the view, to give it a new list as the filter changes. <paramref name="drop" />: a cell may be
     ///     dragged out of the grid (its picture follows the pointer); on release it is given the entry's id and the
-    ///     screen point, and says whether it took it
+    ///     screen point, and says whether it took it. <paramref name="cell" />: a cell's side (the stickers' grid
+    ///     shows its pictures larger on the player's ask), the frame's height stays
     /// </summary>
     internal static SpriteGridView Build(YKLayout parent, Color colour, System.Action<string> onPick, bool fill = false,
-        System.Func<string, Vector2, bool>? drop = null)
+        System.Func<string, Vector2, bool>? drop = null, float cell = Cell)
     {
         var frame = new GameObject("SpriteGrid", typeof(RectTransform), typeof(LayoutElement), typeof(RectMask2D), typeof(Image), typeof(ScrollRect));
         frame.transform.SetParent(parent.transform, false);
@@ -151,11 +159,11 @@ internal static class SpriteGrid
         scroll.viewport = (RectTransform)frame.transform;
         scroll.horizontal = false;
         scroll.movementType = ScrollRect.MovementType.Clamped;
-        scroll.scrollSensitivity = Cell;
+        scroll.scrollSensitivity = cell;
 
         var hover = parent.TextSmall("", FontColor.Gray);
         var view = frame.AddComponent<SpriteGridView>();
-        view.Init(scroll, rt, colour, onPick, hover, drop);
+        view.Init(scroll, rt, colour, onPick, hover, drop, cell);
         return view;
     }
 
@@ -184,13 +192,15 @@ internal sealed class SpriteGridView : MonoBehaviour
     private string? _dragged;
     private int _firstRow = -1;
     private int _columns = SpriteGrid.Columns;
+    private float _cell = SpriteGrid.CellSize;
 
     internal int Count => _list.Count;
 
     internal void Init(ScrollRect scroll, RectTransform content, Color colour, System.Action<string> pick, UIText hover,
-        System.Func<string, Vector2, bool>? drop = null)
+        System.Func<string, Vector2, bool>? drop = null, float cell = SpriteGrid.CellSize)
     {
         (_scroll, _content, _colour, _pick, _hover, _drop) = (scroll, content, colour, pick, hover, drop);
+        _cell = Mathf.Max(16f, cell);
         Pool(SpriteGrid.Columns * (SpriteGrid.VisibleRows + 1));
         scroll.onValueChanged.AddListener(_ => Refresh());
     }
@@ -203,8 +213,8 @@ internal sealed class SpriteGridView : MonoBehaviour
         }
 
         var size = ((RectTransform)transform).rect.size;
-        var columns = Mathf.Max(1, Mathf.FloorToInt(size.x / SpriteGrid.CellSize));
-        Pool(columns * (Mathf.CeilToInt(size.y / SpriteGrid.CellSize) + 1));
+        var columns = Mathf.Max(1, Mathf.FloorToInt(size.x / _cell));
+        Pool(columns * (Mathf.CeilToInt(size.y / _cell) + 1));
         if (columns != _columns) {
             _columns = columns;
             Show(_list);
@@ -228,7 +238,7 @@ internal sealed class SpriteGridView : MonoBehaviour
             go.SetActive(false);
             var crt = (RectTransform)go.transform;
             crt.anchorMin = crt.anchorMax = crt.pivot = new(0f, 1f);
-            crt.sizeDelta = new(SpriteGrid.CellSize - 4f, SpriteGrid.CellSize - 4f);
+            crt.sizeDelta = new(_cell - 4f, _cell - 4f);
             var back = go.GetComponent<Image>();
             back.color = new(_colour.r, _colour.g, _colour.b, 0.35f);
             var pic = new GameObject("Picture", typeof(RectTransform), typeof(Image));
@@ -289,7 +299,7 @@ internal sealed class SpriteGridView : MonoBehaviour
         go.transform.SetAsLastSibling();
         _ghost = (RectTransform)go.transform;
         _ghost.anchorMin = _ghost.anchorMax = _ghost.pivot = new(0.5f, 0.5f);
-        _ghost.sizeDelta = new(SpriteGrid.CellSize, SpriteGrid.CellSize);
+        _ghost.sizeDelta = new(_cell, _cell);
         var image = go.GetComponent<Image>();
         image.sprite = _cells[slot].Picture.sprite;
         image.enabled = image.sprite != null;
@@ -342,7 +352,7 @@ internal sealed class SpriteGridView : MonoBehaviour
         }
 
         var rows = (list.Count + _columns - 1) / _columns;
-        _content.sizeDelta = new(0f, rows * SpriteGrid.CellSize);
+        _content.sizeDelta = new(0f, rows * _cell);
         _content.anchoredPosition = Vector2.zero;
         _scroll.StopMovement();
         _firstRow = -1;
@@ -356,14 +366,14 @@ internal sealed class SpriteGridView : MonoBehaviour
             return;
         }
 
-        var first = Mathf.Max(0, Mathf.FloorToInt(_content.anchoredPosition.y / SpriteGrid.CellSize));
+        var first = Mathf.Max(0, Mathf.FloorToInt(_content.anchoredPosition.y / _cell));
         if (first == _firstRow) {
             return;
         }
 
         _firstRow = first;
         // (the columns centred in the frame)
-        var offset = Mathf.Max(0f, (((RectTransform)transform).rect.width - _columns * SpriteGrid.CellSize) / 2f);
+        var offset = Mathf.Max(0f, (((RectTransform)transform).rect.width - _columns * _cell) / 2f);
         for (var slot = 0; slot < _cells.Count; slot++) {
             var (rt, back, picture, _) = _cells[slot];
             var index = first * _columns + slot;
@@ -376,14 +386,14 @@ internal sealed class SpriteGridView : MonoBehaviour
             rt.gameObject.SetActive(true);
             var row = index / _columns;
             var col = index % _columns;
-            rt.anchoredPosition = new(offset + col * SpriteGrid.CellSize + 2f, -row * SpriteGrid.CellSize - 2f);
+            rt.anchoredPosition = new(offset + col * _cell + 2f, -row * _cell - 2f);
             // (cut to its drawn part, cached: only the entries scrolled into view are read)
             var sprite = TeamBanner.Cropped(_list[index].Picture());
             picture.sprite = sprite;
             // (a picture that does not read: an empty cell, not the white square of an image without sprite)
             picture.enabled = sprite != null;
             if (sprite != null) {
-                var inner = SpriteGrid.CellSize - 8f;
+                var inner = _cell - 8f;
                 var scale = inner / Mathf.Max(sprite.rect.width, sprite.rect.height, 1f);
                 picture.rectTransform.sizeDelta = new(sprite.rect.width * scale, sprite.rect.height * scale);
             }
