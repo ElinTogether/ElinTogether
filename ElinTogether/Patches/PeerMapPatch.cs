@@ -21,6 +21,7 @@ namespace ElinTogether.Patches;
 ///     game.txt and its maps are read the same way, whenever they are loaded
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class PeerMapPatch
 {
     // the game's biggest maps are 200-odd cells a side
