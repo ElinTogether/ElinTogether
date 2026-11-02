@@ -46,7 +46,15 @@ public class CharaDieDelta : ElinDelta
         }
 
         var element = ElementId is null ? null : Element.Create(ElementId.Value);
-        chara.Stub_Die(element, Origin, AttackSource, OriginalTarget);
+        // the stub runs none of Chara.Die's prefixes. PlayerAchievements': what the death earns is the killer's
+        // player's; without it the replay of another player's kill of a putit earned PUTIT on this account (the host
+        // sends a guest's own, AchievementDelta)
+        Helper.PlayerAchievements.OnDie(Origin, out var earnedFor);
+        try {
+            chara.Stub_Die(element, Origin, AttackSource, OriginalTarget);
+        } finally {
+            Helper.PlayerAchievements.OnDieDone(earnedFor);
+        }
 
         // stale
         if (!wasDead && chara.IsPC) {
