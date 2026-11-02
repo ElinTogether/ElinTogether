@@ -6,6 +6,7 @@ using HarmonyLib;
 namespace ElinTogether.Patches;
 
 [HarmonyPatch(typeof(Core), nameof(Core.Update))]
+[AlwaysPatched]
 internal class CoreSynchronizationContext : SynchronizationContext
 {
     [HarmonyPrefix]
