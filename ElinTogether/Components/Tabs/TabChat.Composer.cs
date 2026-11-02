@@ -113,6 +113,12 @@ internal partial class TabChat
             Destroy(_popup.gameObject);
         }
 
+        foreach (var sprite in _popupSprites) {
+            TeamEmblemBaker.Free(sprite);
+        }
+
+        _popupSprites.Clear();
+
         _popup = null;
         _popupKind = "";
     }
@@ -154,6 +160,123 @@ internal partial class TabChat
                 Insert(code);
                 ClosePopup();
             });
+        }
+    }
+
+    // ---------------------------------------------------------------- drawings
+
+    // the thumbnails of the drawings' panel, freed when it closes
+    private readonly List<Sprite> _popupSprites = [];
+    private const int DrawingsPerPage = 18;
+
+    /// <summary>
+    ///     The picture button: My drawings to pick one to send. Greyed with the reason while the host keeps pictures
+    ///     out of the chat
+    /// </summary>
+    private void BuildDrawingButton(YKHorizontal row)
+    {
+        var allowed = ChatImages.Allowed;
+        row.IconButton(EditorIcons.Tool(2), "[]", () => {
+                if (_popupKind == "drawings") {
+                    ClosePopup();
+                } else {
+                    ShowDrawings();
+                }
+            }, allowed ? "emp_tip_chat_drawings" : "emp_ui_chat_images_off",
+            allowed, size: UIHelper.RowHeight).name = "ChatDrawingsButton";
+    }
+
+    /// <summary>My drawings in a grid, newest first, a page at a time; a click sends that one where the line would go</summary>
+    private void ShowDrawings(int page = 0)
+    {
+        if (!ChatImages.Allowed) {
+            Tell("emp_ui_chat_images_off".lang());
+            return;
+        }
+
+        var all = DrawingStore.All;
+        if (all.Count == 0) {
+            if (ListPopup("drawings") is { } empty) {
+                empty.Text("emp_ui_chat_drawings_none".lang()).LayoutElement().preferredWidth = 360f;
+            }
+
+            return;
+        }
+
+        if (Popup("drawings") is not { } panel) {
+            return;
+        }
+
+        page = Mathf.Clamp(page, 0, (all.Count - 1) / DrawingsPerPage);
+        var grid = panel.gameObject.AddComponent<GridLayoutGroup>();
+        grid.cellSize = new(46f, 46f);
+        grid.spacing = new(4f, 4f);
+        grid.padding = new(8, 8, 8, 8);
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 6;
+        foreach (var (_, drawing) in all.Skip(page * DrawingsPerPage).Take(DrawingsPerPage)) {
+            Sprite sprite;
+            try {
+                var tex = Drawing.Bake(drawing);
+                sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            } catch (Exception e) {
+                EmpLog.Debug(e, "Chat: a drawing of My drawings could not be baked");
+                continue;
+            }
+
+            _popupSprites.Add(sprite);
+            var cell = new GameObject("Drawing", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            cell.transform.SetParent(panel, false);
+            var image = cell.GetComponent<Image>();
+            image.sprite = sprite;
+            image.preserveAspect = true;
+            var pick = drawing;
+            cell.GetComponent<Button>().onClick.AddListener(() => {
+                SE.ClickGeneral();
+                ClosePopup();
+                SendDrawing(pick);
+            });
+        }
+
+        // (more than a page: the last cells turn the pages)
+        if (all.Count > DrawingsPerPage) {
+            foreach (var (sign, to) in new[] { ("<", page - 1), (">", page + 1) }) {
+                var cell = new GameObject("Page" + sign, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+                cell.transform.SetParent(panel, false);
+                cell.GetComponent<Image>().color = new(0.28f, 0.22f, 0.13f, 0.15f);
+                var label = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+                label.transform.SetParent(cell.transform, false);
+                var text = label.GetComponent<Text>();
+                text.text = sign;
+                // (the writing box's own font)
+                text.font = _field != null && _field.textComponent != null ? _field.textComponent.font : Font.CreateDynamicFontFromOSFont("Arial", 22);
+                text.fontSize = 22;
+                text.alignment = TextAnchor.MiddleCenter;
+                text.color = new(0.2f, 0.15f, 0.1f);
+                var lrt = (RectTransform)label.transform;
+                (lrt.anchorMin, lrt.anchorMax, lrt.offsetMin, lrt.offsetMax) = (Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+                var button = cell.GetComponent<Button>();
+                button.interactable = to >= 0 && to * DrawingsPerPage < all.Count;
+                var target = to;
+                button.onClick.AddListener(() => {
+                    SE.ClickGeneral();
+                    ShowDrawings(target);
+                });
+            }
+        }
+    }
+
+    /// <summary>A drawing to where the line would go: everyone (or this map) or the team; never a private line</summary>
+    private void SendDrawing(Drawing drawing)
+    {
+        var target = Targets().ElementAtOrDefault(_target);
+        if (target.To != 0) {
+            Tell("emp_ui_chat_drawings_private".lang());
+            return;
+        }
+
+        if (ChatImages.SendDrawing(drawing, target.Team) is { } why) {
+            Tell(why);
         }
     }
 

@@ -1650,5 +1650,14 @@
     "LangGeneral.emp_ui_drawing_saved.text": "已保存到我的画作",
     "LangGeneral.emp_ui_drawing_full.text": "我的画作已满，或画作过大",
     "LangGeneral.emp_ui_drawing_copy_of.text": "{0}的副本",
-    "LangGeneral.emp_ui_drawing_close_sure.text": "不保存就关闭？"
+    "LangGeneral.emp_ui_drawing_close_sure.text": "不保存就关闭？",
+    "LangGeneral.emp_ui_drawing_send.text": "发送到聊天",
+    "LangGeneral.emp_ui_drawing_sent.text": "已发送到聊天。",
+    "LangGeneral.emp_ui_drawing_send_save_first.text": "发送前请先保存画作。",
+    "LangGeneral.emp_ui_chat_drawing_save.text": "保存",
+    "LangGeneral.emp_ui_chat_drawing_saved.text": "已在我的画作中",
+    "LangGeneral.emp_ui_chat_drawing_too_big.text": "这幅画太大，无法发送到聊天。",
+    "LangGeneral.emp_tip_chat_drawings.text": "画作：从我的画作中选一幅发送到聊天（署名作者）",
+    "LangGeneral.emp_ui_chat_drawings_none.text": "还没有画作：在“队伍 - 我的画作”中创作一幅。",
+    "LangGeneral.emp_ui_chat_drawings_private.text": "画作只能发给所有人或你的队伍，不能私聊发送。"
 }

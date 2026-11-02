@@ -164,6 +164,7 @@ internal partial class TabChat : TabEmpBase
             }
         });
         BuildEmoteButton(row);
+        BuildDrawingButton(row);
         row.RowButton("emp_ui_chat_send".lang(), Send).LayoutElement().flexibleWidth = 0f;
     }
 
@@ -388,11 +389,13 @@ internal partial class TabChat : TabEmpBase
         _count++;
 
         // a picture (ChatImages): under its line, unless this player hides them
-        if (line.Image != null) {
+        if (line.Image != null || line.Drawing != null) {
             if (EmpConfig.Client.HideChatImages.Value && line.Uid != EClass.pc.uid) {
                 text.text += " " + "emp_ui_chat_image_hidden".lang().TagColor(new Color(0.45f, 0.4f, 0.32f));
-            } else {
+            } else if (line.Image != null) {
                 AddPicture(line.Image);
+            } else {
+                AddDrawing(line.Drawing!);
             }
         }
     }
@@ -414,8 +417,64 @@ internal partial class TabChat : TabEmpBase
 
         texture.filterMode = FilterMode.Point;
         _pictures.Add(texture);
-        // (a row as wide as the log holding the picture at its own shape, at most 180 high, from the line's start)
-        var scale = Mathf.Min(2f, 180f / Mathf.Max(texture.width, texture.height));
+        Place(texture, Mathf.Min(2f, 180f / Mathf.Max(texture.width, texture.height)));
+    }
+
+    /// <summary>
+    ///     A drawing of the chat: baked here (its sides checked when it came), as large as fits 180 pixels at whole
+    ///     steps, "by" its creator and a Save button that keeps it in My drawings with that credit
+    /// </summary>
+    private void AddDrawing(Drawing drawing)
+    {
+        Texture2D texture;
+        try {
+            texture = Drawing.Bake(drawing);
+        } catch (System.Exception e) {
+            EmpLog.Debug(e, "Chat: a drawing of {W}x{H} could not be baked", drawing.Art.W, drawing.Art.H);
+            return;
+        }
+
+        _pictures.Add(texture);
+        var scale = 180f / Mathf.Max(texture.width, texture.height);
+        Place(texture, scale >= 1f ? Mathf.Min(4f, Mathf.Floor(scale)) : scale);
+
+        var bar = _list!.Horizontal();
+        bar.name = "ChatDrawing";
+        bar.Layout.childForceExpandWidth = false;
+        bar.Layout.childAlignment = TextAnchor.MiddleLeft;
+        bar.Layout.spacing = 8f;
+        bar.Layout.padding = new(24, 0, 0, 0);
+        // (the credit, always: lead dev 2026-11-02, a drawing stays its creator's)
+        var credit = "emp_ui_drawing_by".Loc(drawing.CreatorName);
+        if (drawing.BasedOnName.Length > 0) {
+            credit += "  ·  " + "emp_ui_drawing_based_on".Loc(drawing.BasedOnName);
+        }
+
+        bar.TextSmall((drawing.Title.Length > 0 ? ChatMarkup.Escape(drawing.Title) + "  ·  " : "") + ChatMarkup.Escape(credit), FontColor.Gray);
+        var saved = ChatImages.IsSaved(drawing);
+        UIButton? save = null;
+        save = bar.Button((saved ? "emp_ui_chat_drawing_saved" : "emp_ui_chat_drawing_save").lang(), () => {
+            if (ChatImages.SaveFromChat(drawing) is { } why) {
+                Tell(why);
+                return;
+            }
+
+            if (save != null) {
+                save.mainText.text = "emp_ui_chat_drawing_saved".lang();
+                save.interactable = false;
+            }
+        });
+        save.name = "ChatDrawingSave";
+        save.interactable = !saved;
+        var element = save.LayoutElement();
+        element.flexibleWidth = 0f;
+        element.preferredWidth = Mathf.Max(110f, (save.mainText != null ? save.mainText.preferredWidth : 0f) + 32f);
+        element.minHeight = element.preferredHeight = 26f;
+    }
+
+    // a row as wide as the log holding the picture at its own shape, from the line's start
+    private void Place(Texture2D texture, float scale)
+    {
         var size = new Vector2(texture.width * scale, texture.height * scale);
         var row = new GameObject("ChatPicture", typeof(RectTransform));
         row.transform.SetParent(_list!.transform, false);

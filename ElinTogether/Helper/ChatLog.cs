@@ -35,6 +35,9 @@ internal static class ChatLog
 
         /// <summary>A picture sent in the chat (PNG, checked by ChatImages.IsValid), drawn under the line</summary>
         public byte[]? Image { get; init; }
+
+        /// <summary>A drawing sent in the chat (checked by ChatImages.ReadDrawing), baked under the line with its credit</summary>
+        public Drawing? Drawing { get; init; }
     }
 
     private static readonly List<Line> Lines = [];
@@ -60,7 +63,7 @@ internal static class ChatLog
         UnreadMentions = 0;
     }
 
-    internal static void Add(int channel, string who, string text, bool mine = false, int uid = 0, byte[]? image = null)
+    internal static void Add(int channel, string who, string text, bool mine = false, int uid = 0, byte[]? image = null, Drawing? drawing = null)
     {
         // (a line naming this player: highlighted, a short sound of the game's chat, counted until the tab is seen)
         var mention = !mine && channel != Server && ChatMarkup.Mentions(text, MyNames());
@@ -80,6 +83,7 @@ internal static class ChatLog
             Mention = mention,
             GameTime = date != null ? $"{date.hour:00}:{date.min:00}" : "",
             Image = image,
+            Drawing = drawing,
         });
         if (Lines.Count > Capacity) {
             Lines.RemoveAt(0);

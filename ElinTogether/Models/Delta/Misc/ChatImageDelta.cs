@@ -6,8 +6,9 @@ using MessagePack;
 namespace ElinTogether.Models;
 
 /// <summary>
-///     A picture sent in the chat (ChatImages): a small PNG, to everyone as the chat rules say, or to one team. The
-///     host checks the rule, the sender, the size and the flood limit, and passes it on as it does a chat line
+///     A picture sent in the chat (ChatImages): a small PNG or a drawing of My drawings (its text, credit included, so
+///     a receiver can keep it as a drawing), to everyone as the chat rules say, or to one team. The host checks the
+///     rule, the sender, the size and the flood limit, and passes it on as it does a chat line
 /// </summary>
 [MessagePackObject]
 public class ChatImageDelta : ElinDelta
@@ -27,6 +28,14 @@ public class ChatImageDelta : ElinDelta
 
     [Key(4)]
     public byte[]? Png { get; init; }
+
+    /// <summary>A drawing's text (Drawing.Format), in place of the PNG; each game bakes it itself</summary>
+    [Key(5)]
+    public string? DrawingText { get; init; }
+
+    /// <summary>What the picture weighs for the flood budget</summary>
+    [IgnoreMember]
+    internal int Bytes => (Png?.Length ?? 0) + (DrawingText?.Length ?? 0);
 
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
@@ -54,7 +63,7 @@ public class ChatImageDelta : ElinDelta
             return "a picture for a team the sender is not in";
         }
 
-        return ChatImages.IsValid(Png) ? null : $"a picture of {Png?.Length ?? 0} bytes that is no small PNG";
+        return ChatImages.IsValidPayload(Png, DrawingText) ? null : $"a picture of {Bytes} bytes that is no small PNG or drawing";
     }
 
     /// <summary>Host: to every player (or the map's, when the chat is not global), or to the team's members</summary>
@@ -75,13 +84,16 @@ public class ChatImageDelta : ElinDelta
 
     protected override void OnApply(ElinNetBase net)
     {
-        if (ChatId == 0 || !MsgSayDelta.Remember(ChatId) || !NetSession.Instance.Rules.ChatImages || !ChatImages.IsValid(Png)) {
+        // (one picture: a PNG, or a drawing read and checked here, kept for the log)
+        var drawing = Png == null ? ChatImages.ReadDrawing(DrawingText) : null;
+        if (ChatId == 0 || !MsgSayDelta.Remember(ChatId) || !NetSession.Instance.Rules.ChatImages ||
+            (Png != null ? DrawingText != null || !ChatImages.IsValid(Png) : drawing == null)) {
             return;
         }
 
         if (net is ElinNetHost host && FromPeer) {
             // (the chat's flood limit holds only on enforced servers: pictures have their own, always, ChatImages.Admit)
-            if (host.FromMuted(OriginPeer) || host.ChatFlooded(OriginPeer) || !ChatImages.Admit(SpeakerUid, Png!.Length, 3f)) {
+            if (host.FromMuted(OriginPeer) || host.ChatFlooded(OriginPeer) || !ChatImages.Admit(SpeakerUid, Bytes, 3f)) {
                 return;
             }
 
@@ -100,6 +112,6 @@ public class ChatImageDelta : ElinDelta
         }
 
         var name = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == SpeakerUid)?.User.Name is { Length: > 0 } own ? own : Name ?? "?";
-        ChatLog.Add(Team != 0 ? ChatLog.Team : ChatLog.All, name, "", uid: SpeakerUid, image: Png);
+        ChatLog.Add(Team != 0 ? ChatLog.Team : ChatLog.All, name, "", uid: SpeakerUid, image: Png, drawing: drawing);
     }
 }

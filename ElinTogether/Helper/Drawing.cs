@@ -57,7 +57,8 @@ internal sealed record Drawing(
             !ulong.TryParse(p[7], NumberStyles.None, CultureInfo.InvariantCulture, out var basedOn) ||
             !Side(w) || !Side(h) ||
             TeamEmblem.Unhex(p[5]) is not { Length: <= 64 } creatorName || TeamEmblem.Unhex(p[8]) is not { Length: <= 64 } basedOnName ||
-            TeamEmblem.Unhex(p[9]) is not { Length: <= MaxTitle } title || title.Any(char.IsControl)) {
+            TeamEmblem.Unhex(p[9]) is not { Length: <= MaxTitle } title || title.Any(char.IsControl) ||
+            creatorName.Any(char.IsControl) || basedOnName.Any(char.IsControl)) {
             return null;
         }
 
@@ -74,6 +75,15 @@ internal sealed record Drawing(
 
         return new(art, title, creator, creatorName, created, basedOn, basedOnName);
     }
+
+    /// <summary>
+    ///     The same work as that one: the same creator, made at the same time, the same canvas and layers (its title
+    ///     may differ: a player renames what they keep)
+    /// </summary>
+    internal bool SameWork(Drawing other) =>
+        Creator == other.Creator && CreatorName == other.CreatorName && Created == other.Created && BasedOn == other.BasedOn &&
+        Art.W == other.Art.W && Art.H == other.Art.H && Art.Clip == other.Art.Clip &&
+        TeamEmblem.LayerText(Art) == TeamEmblem.LayerText(other.Art);
 
     private static bool Side(int v) => v is >= MinSide and <= MaxSide && v % SideStep == 0;
 

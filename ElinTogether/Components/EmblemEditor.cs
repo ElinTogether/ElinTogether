@@ -307,6 +307,19 @@ internal static partial class EmblemEditor
         Half(saving.Button("emp_ui_emblem_save".lang(), Save)).interactable = (_draft.Layers.Count > 0 || _doc != null) && Unsaved && fits;
         if (_doc != null) {
             Half(saving.Button((_closing ? "emp_ui_drawing_close_sure" : "emp_ui_drawing_close").lang(), CloseDrawing));
+            // (the saved drawing to the chat, its credit with it; greyed with the reason when it cannot go)
+            var sharing = side.Horizontal();
+            sharing.Layout.childForceExpandWidth = false;
+            var send = Half(sharing.Button("emp_ui_drawing_send".lang(), () => {
+                _note = ChatImages.SendDrawing(_doc) ?? "emp_ui_drawing_sent".lang();
+                Fill();
+            }));
+            send.name = "DrawingSendToChat";
+            var off = ChatImages.CantSend() ?? (Unsaved ? "emp_ui_drawing_send_save_first".lang() : null);
+            send.interactable = off == null;
+            if (off != null) {
+                side.TextSmall(off, FontColor.Gray);
+            }
         }
 
         if (!fits) {

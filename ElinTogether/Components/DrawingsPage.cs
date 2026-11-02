@@ -262,7 +262,25 @@ internal static class DrawingsPage
             _picked = null;
             Fill();
         }));
+
+        // to the chat, its credit with it (lead dev 2026-11-02); greyed with the reason when it cannot go
+        var off = ChatImages.CantSend();
+        var share = right.ButtonRow();
+        var send = Even(share.RowButton("emp_ui_drawing_send".lang(), () => {
+            _sent = ChatImages.SendDrawing(d) ?? "emp_ui_drawing_sent".lang();
+            Fill();
+        }));
+        send.name = "DrawingSendToChat";
+        send.interactable = off == null;
+        if ((off ?? _sent) is { } note) {
+            right.TextSmall(note, FontColor.Gray);
+        }
+
+        _sent = null;
     }
+
+    // what the last Send to chat said (shown once, under the buttons)
+    private static string? _sent;
 
     private static UIButton Even(UIButton button)
     {
