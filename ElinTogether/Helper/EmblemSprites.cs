@@ -38,6 +38,21 @@ internal static class EmblemSprites
         ("z", "emp_ui_emblem_src_places"),
     ];
 
+    /// <summary>
+    ///     The editor's sticker grid's sources (lead dev 2026-11-02: some categories were useless): the gods' few
+    ///     symbols with the icons, the map objects (trees, rocks, furniture) on their own; no floors nor walls (texture
+    ///     strips, still offered as a shape's texture). The list is sieved (<see cref="Components.StickerSieve" />)
+    /// </summary>
+    internal static readonly (string Codes, string Label)[] StickerPills = [
+        ("t", "emp_ui_team_banner_items"),
+        ("c", "emp_ui_team_banner_monsters"),
+        ("ear", "emp_ui_emblem_src_icons"),
+        ("uv", "emp_ui_emblem_src_ui"),
+        ("o", "emp_ui_emblem_src_scenery"),
+        ("p", "emp_ui_emblem_src_portraits"),
+        ("z", "emp_ui_emblem_src_places"),
+    ];
+
     private static HashSet<string>? _zoneImages;
 
     private static string? Sheet(char code) => code switch {

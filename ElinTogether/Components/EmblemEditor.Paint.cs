@@ -7,8 +7,9 @@ namespace ElinTogether.Components;
 
 /// <summary>
 ///     The editor's paint tools (lead dev 2026-11-02: "think of paint.net"): move, rectangle select, pencil, brush,
-///     eraser, fill, line, rectangle, ellipse, colour picker, text; a primary and a secondary colour (left and right
-///     button). The brush and the eraser have a size (1 to 32), a hardness (a soft edge) and an opacity; the shapes and
+///     eraser, fill, line, rectangle, ellipse, the other shapes (star, triangle, shield...: lead dev 2026-11-02, a tool
+///     dragged out on the canvas like the rectangle), colour picker, text; a primary and a secondary colour (left and
+///     right button). Shift keeps a shape's sides equal and a line straight or diagonal. The brush and the eraser have a size (1 to 32), a hardness (a soft edge) and an opacity; the shapes and
 ///     the bucket an opacity. A selection keeps every paint tool inside it; its pixels move with the select tool, and
 ///     copy, cut, paste and delete work on them. The paint tools draw into the selected paint layer
 ///     (<see cref="EmblemPaint" />); on another layer, a first stroke adds a paint layer over it. A stroke is one undo
@@ -17,18 +18,20 @@ namespace ElinTogether.Components;
 internal static partial class EmblemEditor
 {
     internal const int ToolMove = 0, ToolPencil = 1, ToolBrush = 2, ToolEraser = 3, ToolFill = 4, ToolLine = 5, ToolRect = 6,
-        ToolEllipse = 7, ToolPicker = 8, ToolText = 9, ToolSelect = 10;
+        ToolEllipse = 7, ToolPicker = 8, ToolText = 9, ToolSelect = 10, ToolShape = 11;
 
     // the tool column's order and each tool's key (paint.net's, with the lead dev's G for the bucket and I for the picker)
-    private static readonly int[] ToolOrder = [ToolMove, ToolSelect, ToolPencil, ToolBrush, ToolEraser, ToolFill, ToolLine, ToolRect, ToolEllipse, ToolPicker, ToolText];
+    private static readonly int[] ToolOrder = [
+        ToolMove, ToolSelect, ToolPencil, ToolBrush, ToolEraser, ToolFill, ToolLine, ToolRect, ToolEllipse, ToolShape, ToolPicker, ToolText,
+    ];
 
     private static readonly Dictionary<int, KeyCode> ToolKeys = new() {
         [ToolMove] = KeyCode.V, [ToolSelect] = KeyCode.M, [ToolPencil] = KeyCode.P, [ToolBrush] = KeyCode.B, [ToolEraser] = KeyCode.E,
         [ToolFill] = KeyCode.G, [ToolLine] = KeyCode.L, [ToolRect] = KeyCode.R, [ToolEllipse] = KeyCode.O, [ToolPicker] = KeyCode.I,
-        [ToolText] = KeyCode.T,
+        [ToolText] = KeyCode.T, [ToolShape] = KeyCode.U,
     };
 
-    private static string ToolTip(int tool) => tool == ToolSelect ? "emp_ui_editor_tool_select" : new[] {
+    private static string ToolTip(int tool) => tool == ToolSelect ? "emp_ui_editor_tool_select" : tool == ToolShape ? "emp_ui_editor_tool_shape" : new[] {
         "emp_ui_emblem_tool_move", "emp_ui_emblem_tool_pencil", "emp_ui_emblem_tool_brush", "emp_ui_emblem_tool_eraser",
         "emp_ui_emblem_tool_fill", "emp_ui_emblem_tool_line", "emp_ui_emblem_tool_rect", "emp_ui_emblem_tool_ellipse",
         "emp_ui_emblem_tool_picker", "emp_ui_emblem_tool_text",
@@ -46,6 +49,14 @@ internal static partial class EmblemEditor
     private static int _hardness = 100;
     private static int _opacity = 100;
     private static bool _filled;
+
+    // the shape tool's shape (one of the shape layers' kinds) and a star's points or a polygon's sides
+    internal static readonly string[] ToolShapes = ["star", "triangle", "diamond", "hexagon", "polygon", "shield", "banner", "rounded", "cross"];
+    private static string _shapeKind = "star";
+    private static int _shapeSides = 5;
+
+    // mirror painting: 0 off, 1 left-right, 2 top-bottom, 3 both (each paint tool draws its mirrored copies too)
+    private static int _mirror;
     private static bool _grid = true;
 
     // the stroke being drawn: its colour, the layer's pixels when it began (lines and shapes are drawn again over
@@ -72,13 +83,16 @@ internal static partial class EmblemEditor
     private static Texture2D? _gridTexture;
     private static int _gridZoom;
 
-    private static bool Paints(int tool) => tool is ToolPencil or ToolBrush or ToolEraser or ToolFill or ToolLine or ToolRect or ToolEllipse;
+    private static bool Paints(int tool) => tool is ToolPencil or ToolBrush or ToolEraser or ToolFill or ToolLine or ToolRect or ToolEllipse or ToolShape;
 
-    private static bool Sized(int tool) => tool is ToolBrush or ToolEraser or ToolLine or ToolRect or ToolEllipse;
+    private static bool Sized(int tool) => tool is ToolBrush or ToolEraser or ToolLine or ToolRect or ToolEllipse or ToolShape;
 
     private static bool Soft(int tool) => tool is ToolBrush or ToolEraser;
 
-    private static bool SeeThrough(int tool) => tool is ToolBrush or ToolEraser or ToolFill or ToolLine or ToolRect or ToolEllipse;
+    private static bool SeeThrough(int tool) => tool is ToolBrush or ToolEraser or ToolFill or ToolLine or ToolRect or ToolEllipse or ToolShape;
+
+    // the tools dragged out from where they began (Shift keeps them square or straight)
+    private static bool Dragged(int tool) => tool is ToolLine or ToolRect or ToolEllipse or ToolShape;
 
     // ---------------------------------------------------------------- textures of the canvas
 
@@ -234,7 +248,10 @@ internal static partial class EmblemEditor
         // (the list, the history and Save shown again when the pointer is released)
         _reselect = true;
         if (_tool == ToolFill) {
-            Flood(_canvas, _from);
+            foreach (var (fx, fy) in Mirrors()) {
+                Flood(_canvas, new(fx ? _pw - 1 - _from.x : _from.x, fy ? _ph - 1 - _from.y : _from.y));
+            }
+
             Commit();
             PaintUp();
             return;
@@ -279,19 +296,56 @@ internal static partial class EmblemEditor
         }
 
         var width = _tool == ToolPencil ? 1 : _brush;
-        switch (_tool) {
-            case ToolLine:
-                Restart();
-                Line(_canvas, _from, at, width);
-                break;
-            case ToolRect:
-            case ToolEllipse:
-                Restart();
-                Shape(_canvas, _from, at, width, _tool == ToolEllipse, _filled);
-                break;
-            default:
-                Line(_canvas, _last, at, width);
-                break;
+        if (Dragged(_tool) && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || _benchShift)) {
+            at = Constrained(_from, at, _tool == ToolLine);
+        }
+
+        // (a line or a shape is drawn again from the stroke's start at each move)
+        if (Dragged(_tool)) {
+            Restart();
+        }
+
+        foreach (var (fx, fy) in Mirrors()) {
+            // a point mirrored across the layer's middle; a dab of two pixels grows right and down, its copy moved back
+            // one so the two are each other's mirror
+            Vector2Int M(Vector2Int v, bool dab = false)
+            {
+                var back = dab && width == 2 ? 1 : 0;
+                return new(fx ? _pw - 1 - v.x - back : v.x, fy ? _ph - 1 - v.y - back : v.y);
+            }
+
+            switch (_tool) {
+                case ToolLine:
+                    Line(_canvas, M(_from, true), M(at, true), width);
+                    break;
+                case ToolRect:
+                case ToolEllipse:
+                    Shape(_canvas, M(_from), M(at), width, _tool == ToolEllipse, _filled);
+                    break;
+                case ToolShape:
+                    KindShape(_canvas, M(_from), M(at), width, _filled, fx, fy);
+                    break;
+                default:
+                    Line(_canvas, M(_last, true), M(at, true), width);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>The copies mirror painting draws: the stroke itself, then its mirrored ones (across, down, both)</summary>
+    private static IEnumerable<(bool X, bool Y)> Mirrors()
+    {
+        yield return (false, false);
+        if ((_mirror & 1) != 0) {
+            yield return (true, false);
+        }
+
+        if ((_mirror & 2) != 0) {
+            yield return (false, true);
+        }
+
+        if (_mirror == 3) {
+            yield return (true, true);
         }
     }
 
@@ -452,6 +506,115 @@ internal static partial class EmblemEditor
                 }
             }
         }
+    }
+
+    // the bench holds Shift down (a Debug build only)
+#if DEBUG
+    private static bool _benchShift;
+#else
+    private const bool _benchShift = false;
+#endif
+
+    /// <summary>
+    ///     Shift held: a line's end on the nearest of the eight directions from its start; a shape's box made square
+    ///     (as long as its longer side)
+    /// </summary>
+    internal static Vector2Int Constrained(Vector2Int from, Vector2Int at, bool line)
+    {
+        var d = at - from;
+        int ax = Mathf.Abs(d.x), ay = Mathf.Abs(d.y);
+        if (line) {
+            // (within about 22 degrees of an axis: along it; else the diagonal)
+            if (ay * 5 < ax * 2) {
+                return new(at.x, from.y);
+            }
+
+            if (ax * 5 < ay * 2) {
+                return new(from.x, at.y);
+            }
+        }
+
+        var side = Mathf.Max(ax, ay);
+        return new(from.x + (d.x < 0 ? -side : side), from.y + (d.y < 0 ? -side : side));
+    }
+
+    /// <summary>
+    ///     The shape tool's shape stretched over the box from a to b (as a shape layer draws its 64 square,
+    ///     <see cref="TeamEmblemBaker.Inside" />): filled, or its outline of that width (the pixels inside within width of
+    ///     its edge)
+    /// </summary>
+    private static void KindShape(Color32[] px, Vector2Int a, Vector2Int b, int width, bool filled, bool flipX = false, bool flipY = false)
+    {
+        var strength = Strength;
+        int x0 = Mathf.Min(a.x, b.x), x1 = Mathf.Max(a.x, b.x), y0 = Mathf.Min(a.y, b.y), y1 = Mathf.Max(a.y, b.y);
+        int w = x1 - x0 + 1, h = y1 - y0 + 1;
+        // (worked out once for a box: the mirrored copies and the next moves of the same size reuse it)
+        var key = string.Join("|", _shapeKind, _shapeSides, w, h, filled ? 0 : width);
+        if (_shapeKey != key || _shapeMask == null) {
+            _shapeMask = ShapeMask(_shapeKind, _shapeSides, w, h);
+            _shapeEdge = filled ? null : Edge(_shapeMask, w, h, width);
+            _shapeKey = key;
+        }
+
+        var (mask, edge) = (_shapeMask, _shapeEdge);
+        for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+                // (a mirrored copy: the shape itself turned over, a triangle pointing down under one pointing up)
+                var i = (flipY ? h - 1 - y : y) * w + (flipX ? w - 1 - x : x);
+                if (mask[i] && (edge == null || edge[i])) {
+                    Put(px, x0 + x, y0 + y, strength);
+                }
+            }
+        }
+    }
+
+    // the last shape tool's mask and outline, and what they were made for
+    private static string? _shapeKey;
+    private static bool[]? _shapeMask;
+    private static bool[]? _shapeEdge;
+
+    /// <summary>Which pixels of a w by h box the shape covers (rows top-down)</summary>
+    internal static bool[] ShapeMask(string kind, int sides, int w, int h)
+    {
+        var layer = TeamEmblem.Shape(kind, 0) with { Sides = Mathf.Clamp(sides, 3, 12) };
+        var mask = new bool[w * h];
+        for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+                // (the pixel's middle in the shape's own 64 square)
+                mask[y * w + x] = TeamEmblemBaker.Inside(layer, (x + 0.5f) * TeamEmblem.Grid / w, (y + 0.5f) * TeamEmblem.Grid / h);
+            }
+        }
+
+        return mask;
+    }
+
+    /// <summary>
+    ///     The covered pixels within <paramref name="width" /> of an uncovered one or of the box's side (the mask worn
+    ///     away that many times, four neighbours each time)
+    /// </summary>
+    internal static bool[] Edge(bool[] mask, int w, int h, int width)
+    {
+        // (two buffers worn away in turn; the box's border is never inner)
+        var inner = (bool[])mask.Clone();
+        var next = new bool[inner.Length];
+        for (var pass = 0; pass < Mathf.Max(1, width); pass++) {
+            System.Array.Clear(next, 0, next.Length);
+            for (var y = 1; y < h - 1; y++) {
+                for (var x = 1; x < w - 1; x++) {
+                    var i = y * w + x;
+                    next[i] = inner[i] && inner[i - 1] && inner[i + 1] && inner[i - w] && inner[i + w];
+                }
+            }
+
+            (inner, next) = (next, inner);
+        }
+
+        var edge = new bool[mask.Length];
+        for (var i = 0; i < mask.Length; i++) {
+            edge[i] = mask[i] && !inner[i];
+        }
+
+        return edge;
     }
 
     /// <summary>The bucket: the area of the clicked pixel's colour (4-connected, inside the selection) in the ink</summary>

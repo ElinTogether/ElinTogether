@@ -30,6 +30,9 @@ internal static partial class EmblemEditor
 
     private static TabDrawingEditor? _host;
     private static EditorCanvasView? _view;
+
+    // the canvas' view when it is alive (Unity's own null test: "?." on _view let a destroyed one through, #69's kind)
+    private static EditorCanvasView? View => _view != null ? _view : null;
     private static UIText? _zoomText;
     private static UIText? _pointerText;
     private static RectTransform? _sideContent;
@@ -412,12 +415,16 @@ internal static partial class EmblemEditor
         code = Act(bar, "emp_ui_emblem_code", () => ShowCode(code));
 
         Gap(bar, 4f, 1f);
-        bar.SignButton("-", () => ZoomStep(-1), 26f).name = "EditorZoomOut";
+        var zoomOut = bar.SignButton("-", () => ZoomStep(-1), 26f);
+        zoomOut.name = "EditorZoomOut";
+        Tip(zoomOut, "emp_ui_editor_zoom_out".lang() + " (-)");
         _zoomText = bar.Text("");
         var ze = _zoomText.LayoutElement();
         ze.minWidth = ze.preferredWidth = 56f;
         _zoomText.alignment = TextAnchor.MiddleCenter;
-        bar.SignButton("+", () => ZoomStep(1), 26f).name = "EditorZoomIn";
+        var zoomIn = bar.SignButton("+", () => ZoomStep(1), 26f);
+        zoomIn.name = "EditorZoomIn";
+        Tip(zoomIn, "emp_ui_editor_zoom_in".lang() + " (+)");
         Act(bar, "emp_ui_editor_fit", Fit, "Ctrl+0", true, "EditorFit");
         Act(bar, "emp_ui_editor_actual", Actual, "Ctrl+1", true, "EditorActual");
         var grid = Icon(bar.IconButton(EditorIcons.Grid, "#", () => {
@@ -435,7 +442,7 @@ internal static partial class EmblemEditor
         Highlight(snap, _snap);
     }
 
-    /// <summary>The tools down the left (each with its key), the two colours and their swap under them</summary>
+    /// <summary>The tools down the left, two by two (each with its key), the two colours and their swap under them</summary>
     private static void ToolColumn(YKHorizontal middle)
     {
         var column = middle.Vertical();
@@ -446,14 +453,28 @@ internal static partial class EmblemEditor
         column.Layout.childAlignment = TextAnchor.UpperCenter;
         column.Layout.spacing = 2f;
         var ce = column.LayoutElement();
-        ce.minWidth = ce.preferredWidth = 36f;
+        ce.minWidth = ce.preferredWidth = 70f;
         ce.flexibleWidth = 0f;
+        // (one tool a row, twelve of them, ran past the window's smallest height: the colours under them were cut,
+        // lead dev 2026-11-02 at 900x560; two a row take half the height)
+        var rows = (ToolOrder.Length + 1) / 2;
+        var height = rows * 34f - 2f;
+        var tools = Child(column.transform, "EditorTools", typeof(LayoutElement), typeof(GridLayoutGroup));
+        var te = tools.GetComponent<LayoutElement>();
+        (te.minWidth, te.preferredWidth, te.minHeight, te.preferredHeight) = (68f, 68f, height, height);
+        tools.sizeDelta = new(68f, height);
+        var grid = tools.GetComponent<GridLayoutGroup>();
+        grid.cellSize = new(32f, 32f);
+        grid.spacing = new(2f, 2f);
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 2;
         foreach (var t in ToolOrder) {
             var tool = t;
             var button = Icon(column.IconButton(EditorIcons.Tool(t), "?", () => {
                 _tool = tool;
                 Fill();
             }, null, true, 0f, 32f));
+            button.transform.SetParent(tools, false);
             button.name = "EditorTool" + tool;
             Tip(button, ToolTip(tool).lang() + " (" + ToolKeys[tool] + ")");
             Highlight(button, tool == _tool);
@@ -567,7 +588,22 @@ internal static partial class EmblemEditor
         Stretch(grid);
         grid.GetComponent<RawImage>().raycastTarget = false;
 
+        // mirror painting's axes, faint lines across the canvas' middle
+        var axes = new RectTransform[2];
+        for (var i = 0; i < 2; i++) {
+            var axis = Child(content, i == 0 ? "MirrorAxisX" : "MirrorAxisY", typeof(Image));
+            (axis.anchorMin, axis.anchorMax) = i == 0 ? (new Vector2(0.5f, 0f), new Vector2(0.5f, 1f)) : (new Vector2(0f, 0.5f), new Vector2(1f, 0.5f));
+            axis.pivot = new(0.5f, 0.5f);
+            axis.sizeDelta = i == 0 ? new(1f, 0f) : new(0f, 1f);
+            axis.anchoredPosition = Vector2.zero;
+            var line = axis.GetComponent<Image>();
+            line.color = new(0.75f, 0.2f, 0.15f, 0.6f);
+            line.raycastTarget = false;
+            axes[i] = axis;
+        }
+
         var input = view.gameObject.AddComponent<EditorCanvasView>();
+        input.Axes = axes;
         input.Content = content;
         input.Picture = picture;
         input.Grid = grid.GetComponent<RawImage>();
@@ -651,7 +687,8 @@ internal static partial class EmblemEditor
                 StickerRows(side);
             }
 
-            TeamBanner.BuildThingPicker(side, Dark, thing => Picked(mode, thing), drop: mode == PickLayer ? DropSticker : null);
+            TeamBanner.BuildThingPicker(side, Dark, thing => Picked(mode, thing), drop: mode == PickLayer ? DropSticker : null,
+                stickers: mode == PickLayer, cell: mode == PickLayer ? StickerCells[_stickerCell] : SpriteGrid.CellSize);
             return;
         }
 
@@ -739,10 +776,18 @@ internal static partial class EmblemEditor
         }
 
         switch (_tool) {
+            case ToolShape:
+                ShapeOptions(side);
+                goto case ToolRect;
             case ToolRect:
             case ToolEllipse:
                 var filled = side.Row().Toggle("emp_ui_emblem_filled".lang(), _filled, on => _filled = on);
                 filled.AsRow();
+                filled.name = "EditorFilled";
+                side.TextSmall("emp_ui_editor_shift_square".lang(), FontColor.Gray);
+                break;
+            case ToolLine:
+                side.TextSmall("emp_ui_editor_shift_line".lang(), FontColor.Gray);
                 break;
             case ToolSelect:
                 side.TextSmall("emp_ui_editor_select_help".lang(), FontColor.Gray);
@@ -776,8 +821,47 @@ internal static partial class EmblemEditor
         }
 
         if (Paints(_tool)) {
+            var mirror = side.Row();
+            mirror.Layout.spacing = 6f;
+            var title = mirror.Text("emp_ui_editor_mirror_paint".lang());
+            var me = title.LayoutElement();
+            (me.minWidth, me.preferredWidth, me.flexibleWidth) = (84f, 84f, 0f);
+            var choice = mirror.Dropdown(Labels("emp_ui_emblem_sym_", 4).ToList(), i => {
+                _mirror = Mathf.Clamp(i, 0, 3);
+                ApplyView();
+            }, _mirror);
+            choice.name = "EditorMirror";
+            choice.LayoutElement().flexibleWidth = 1f;
+            choice.LayoutElement().preferredHeight = UIHelper.RowHeight;
             side.TextSmall("emp_ui_editor_paint_help".lang(), FontColor.Gray);
         }
+    }
+
+    /// <summary>The shape tool's shape (a dropdown of the shapes' names), and a star's points or a polygon's sides</summary>
+    private static void ShapeOptions(YKLayout side)
+    {
+        var row = side.Row();
+        row.Layout.spacing = 6f;
+        var title = row.Text("emp_ui_editor_shape_kind".lang());
+        var te = title.LayoutElement();
+        (te.minWidth, te.preferredWidth, te.flexibleWidth) = (84f, 84f, 0f);
+        var names = ToolShapes.Select(k => ("emp_ui_emblem_" + k).lang()).ToList();
+        var dropdown = row.Dropdown(names, i => {
+            // (rebuilt only for another shape: a star's points come and go)
+            var kind = ToolShapes[Mathf.Clamp(i, 0, ToolShapes.Length - 1)];
+            if (kind != _shapeKind) {
+                _shapeKind = kind;
+                Fill();
+            }
+        }, Mathf.Max(0, System.Array.IndexOf(ToolShapes, _shapeKind)));
+        dropdown.name = "EditorShapeKind";
+        dropdown.LayoutElement().flexibleWidth = 1f;
+        dropdown.LayoutElement().preferredHeight = UIHelper.RowHeight;
+        if (_shapeKind is "star" or "polygon") {
+            Number(side, _shapeKind == "star" ? "emp_ui_emblem_points" : "emp_ui_emblem_sides", _shapeSides, 3, 12, "", v => _shapeSides = v, "EditorShapeSides");
+        }
+
+        side.TextSmall("emp_ui_editor_shape_help".lang(), FontColor.Gray);
     }
 
     /// <summary>A number of the editor (a tool's size, hardness, opacity): its title, "-", the game's slider, "+"</summary>
@@ -802,7 +886,9 @@ internal static partial class EmblemEditor
 
             now = Mathf.Clamp(v, min, max);
             set(now);
-            slider?.SetValueWithoutNotify(now);
+            if (slider != null) {
+                slider.SetValueWithoutNotify(now);
+            }
             if (shown != null) {
                 shown.text = now + unit;
             }
@@ -1099,6 +1185,19 @@ internal static partial class EmblemEditor
             }
         }
 
+        // (mirror painting's axes, with a paint tool, where the copies go: the middle of a paint layer that covers
+        // the canvas as it was made, or of the one a first stroke adds; another one mirrors across its own middle,
+        // its axes are not drawn, review 2026-11-03)
+        if (_view.Axes is { } axes) {
+            var covers = !HasSelection || !Current.IsPaint || Current.Lock != 0 || Current.Hidden != 0 ||
+                         Current.X == CW / 2 && Current.Y == CH / 2 && Current.Rotation == 0 && Current.Size == 100 * Mathf.Max(CW, CH) / EmblemPaint.N;
+            for (var i = 0; i < axes.Length; i++) {
+                if (axes[i] != null) {
+                    axes[i].gameObject.SetActive(covers && Paints(_tool) && (_mirror & (1 << i)) != 0);
+                }
+            }
+        }
+
         // (the handles keep their size on the screen at any zoom)
         ShowHandles();
     }
@@ -1169,13 +1268,13 @@ internal static partial class EmblemEditor
     /// <summary>A pixel of the canvas on the screen (the bench's pointer)</summary>
     internal static Vector2 CanvasToScreen(float x, float y)
     {
-        if (_view?.Picture is not { } picture) {
+        if (View?.Picture is not { } picture) {
             return Vector2.zero;
         }
 
         var r = picture.rect;
         var local = new Vector2(r.xMin + x / CW * r.width, r.yMax - y / CH * r.height);
-        return RectTransformUtility.WorldToScreenPoint(_view.Cam, picture.TransformPoint(local));
+        return RectTransformUtility.WorldToScreenPoint(_view!.Cam, picture.TransformPoint(local));
     }
 
     // ---------------------------------------------------------------- the pointer on the canvas
@@ -1223,7 +1322,7 @@ internal static partial class EmblemEditor
             _pointerText.text = inside ? Mathf.FloorToInt(p!.Value.x) + ", " + Mathf.FloorToInt(p.Value.y) : "";
         }
 
-        if (_view?.Brush is not { } brush) {
+        if (View?.Brush is not { } brush) {
             return;
         }
 
@@ -1250,7 +1349,7 @@ internal static partial class EmblemEditor
 
     private static void ShowSelection()
     {
-        if (_view?.Sel is not { } outline) {
+        if (View?.Sel is not { } outline) {
             return;
         }
 
@@ -1270,7 +1369,7 @@ internal static partial class EmblemEditor
         KeyCode.Z, KeyCode.Y, KeyCode.S, KeyCode.C, KeyCode.X, KeyCode.V, KeyCode.A, KeyCode.D, KeyCode.G, KeyCode.Alpha0,
         KeyCode.Keypad0, KeyCode.Alpha1, KeyCode.Keypad1, KeyCode.Equals, KeyCode.Plus, KeyCode.KeypadPlus, KeyCode.Minus,
         KeyCode.KeypadMinus, KeyCode.LeftBracket, KeyCode.RightBracket, KeyCode.Delete, KeyCode.Backspace, KeyCode.M, KeyCode.P,
-        KeyCode.B, KeyCode.E, KeyCode.L, KeyCode.R, KeyCode.O, KeyCode.I, KeyCode.T,
+        KeyCode.B, KeyCode.E, KeyCode.L, KeyCode.R, KeyCode.O, KeyCode.I, KeyCode.T, KeyCode.U,
     ];
 
     private static readonly Queue<(KeyCode Key, bool Ctrl, bool Shift)> _keys = new();
@@ -1743,6 +1842,12 @@ internal static partial class EmblemEditor
     {
         (_brush, _hardness, _opacity) = (size, hardness, opacity);
     }
+
+    /// <summary>The bench holds Shift (a shape kept square, a line straight) while it draws</summary>
+    internal static void BenchShift(bool down) => _benchShift = down;
+
+    /// <summary>The shape tool and mirror painting for the bench: shape|sides|filled|mirror</summary>
+    internal static string BenchShape => string.Join("|", _shapeKind, _shapeSides, _filled, _mirror);
 #endif
 
     /// <summary>A picture (rows top-down) shrunk or grown into 64x64, its shape kept, centred; each pixel the average of its box</summary>
@@ -1989,6 +2094,9 @@ internal sealed class EditorCanvasView : MonoBehaviour, IPointerDownHandler, IBe
     // the selected layer's four resize handles (top left, top right, bottom right, bottom left)
     internal RectTransform[]? Handles;
 
+    // mirror painting's axes: the upright one (left-right), the level one (top-bottom)
+    internal RectTransform[]? Axes;
+
     private bool _panning;
     private bool _pressed;
     private bool _hover;
@@ -1998,7 +2106,9 @@ internal sealed class EditorCanvasView : MonoBehaviour, IPointerDownHandler, IBe
     internal Camera? Cam
     {
         get {
-            var canvas = GetComponentInParent<Canvas>()?.rootCanvas;
+            // (Unity's own null test: "?." lets a destroyed object through)
+            var parent = GetComponentInParent<Canvas>();
+            var canvas = parent != null ? parent.rootCanvas : null;
             return canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
         }
     }

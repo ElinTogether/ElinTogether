@@ -1729,5 +1729,16 @@
     "LangGeneral.emp_ui_editor_rotate_left.text": "向左旋转",
     "LangGeneral.emp_ui_editor_rotate_right.text": "向右旋转",
     "LangGeneral.emp_ui_sv_cfg_return_where_left.text": "玩家回到离开的地方",
-    "LangGeneral.emp_ui_sv_desc_return_where_left.text": "回到世界的玩家从上次离开时所在的地图和格子开始，即使世界重启后也一样。如果该地图已不存在、对其关闭、被其他玩家占用或该格无法行走，或者玩家从未离开过，则按通常方式开始。"
+    "LangGeneral.emp_ui_sv_desc_return_where_left.text": "回到世界的玩家从上次离开时所在的地图和格子开始，即使世界重启后也一样。如果该地图已不存在、对其关闭、被其他玩家占用或该格无法行走，或者玩家从未离开过，则按通常方式开始。",
+    "LangGeneral.emp_ui_emblem_src_scenery.text": "景物",
+    "LangGeneral.emp_ui_editor_sticker_cells.text": "图片大小",
+    "LangGeneral.emp_ui_editor_tool_shape.text": "形状：星形、三角形、盾牌等",
+    "LangGeneral.emp_ui_editor_shape_kind.text": "形状",
+    "LangGeneral.emp_ui_editor_shape_help.text": "在画布上拖动以绘制形状。取消“填充”则绘制与大小同宽的轮廓。",
+    "LangGeneral.emp_ui_editor_shift_square.text": "按住Shift可使各边相等（正方形、正圆）。",
+    "LangGeneral.emp_ui_editor_shift_line.text": "按住Shift可画水平、垂直或斜线。",
+    "LangGeneral.emp_ui_editor_mirror_paint.text": "对称绘制",
+    "LangGeneral.emp_ui_editor_pixel_size.text": "像素倍数",
+    "LangGeneral.emp_ui_editor_zoom_out.text": "缩小",
+    "LangGeneral.emp_ui_editor_zoom_in.text": "放大"
 }

@@ -315,6 +315,23 @@ internal static class EditorIcons
             }
         }),
         8 => Art("picker", PickerArt),
+        // (the shapes: a five-pointed star's outline)
+        11 => Make("shape", px => {
+            var points = new Vector2[10];
+            for (var k = 0; k < 10; k++) {
+                var a = -Mathf.PI / 2f + k * Mathf.PI / 5f;
+                var r = k % 2 == 0 ? 7f : 3f;
+                points[k] = new(7.5f + r * Mathf.Cos(a), 8f + r * Mathf.Sin(a));
+            }
+
+            for (var k = 0; k < 10; k++) {
+                var (p, q) = (points[k], points[(k + 1) % 10]);
+                for (var t = 0f; t <= 1f; t += 0.05f) {
+                    var at = Vector2.Lerp(p, q, t);
+                    px[Mathf.Clamp(Mathf.RoundToInt(at.x), 0, N - 1), Mathf.Clamp(Mathf.RoundToInt(at.y), 0, N - 1)] = Ink;
+                }
+            }
+        }),
         10 => Make("select", px => {
             // (a dashed rectangle, the marquee)
             for (var i = 2; i <= 13; i++) {

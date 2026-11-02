@@ -30,6 +30,10 @@ internal static partial class EmblemEditor
     private static float _handleFrom;
     private static int _handleSize;
 
+    // the sticker grid's cell sides (lead dev 2026-11-02: bigger cells), the one picked (kept while the game runs)
+    private static readonly float[] StickerCells = [38f, 50f, 64f, 80f];
+    private static int _stickerCell;
+
     // ---------------------------------------------------------------- placing
 
     /// <summary>
@@ -238,7 +242,7 @@ internal static partial class EmblemEditor
     /// <summary>The handles at the selected layer's corners, the same size on the screen at any zoom; hidden without one</summary>
     private static void ShowHandles()
     {
-        if (_view?.Handles is not { } handles) {
+        if (View?.Handles is not { } handles) {
             return;
         }
 
@@ -273,6 +277,14 @@ internal static partial class EmblemEditor
     private static void StickerRows(YKLayout side)
     {
         side.TextSmall("emp_ui_editor_sticker_help".lang(), FontColor.Gray);
+        // the grid's pictures smaller or larger
+        var zoom = side.Row();
+        zoom.Layout.spacing = 6f;
+        var title = zoom.TextSmall("emp_ui_editor_sticker_cells".lang(), FontColor.Gray);
+        title.LayoutElement().flexibleWidth = 1f;
+        title.LayoutElement().preferredWidth = 0f;
+        zoom.SignButton("-", () => CellStep(-1), 28f).name = "EditorStickerSmaller";
+        zoom.SignButton("+", () => CellStep(1), 28f).name = "EditorStickerBigger";
         StickerRow(side, "emp_ui_editor_sticker_favourites", StickerPrefs.Favourites, "EditorStickerFavourites");
         StickerRow(side, "emp_ui_editor_sticker_recent", StickerPrefs.Recent, "EditorStickerRecent");
     }
@@ -340,6 +352,23 @@ internal static partial class EmblemEditor
             side.TextSmall("emp_ui_editor_sticker_size".Loc(Current.Size), FontColor.Gray);
         }
 
+        // a pixel-art picture at 1, 2, 3 or 4 canvas pixels for each of its own (lead dev 2026-11-02: size presets)
+        if (Current.IsSprite && !Current.IsPaint && TeamEmblemBaker.SourceSize(Current.Thing) is { } src && Mathf.Max(src.W, src.H) <= TeamEmblem.Grid) {
+            var native = Mathf.Max(src.W, src.H, 1);
+            var row = side.Row();
+            row.Layout.spacing = 4f;
+            var title = row.TextSmall("emp_ui_editor_pixel_size".lang(), FontColor.Gray);
+            title.LayoutElement().flexibleWidth = 1f;
+            title.LayoutElement().preferredWidth = 0f;
+            for (var k = 1; k <= 4; k++) {
+                var size = PixelSize(native, k);
+                var button = Small(row.Button(k + "x", () => EditNow(l => l with { Size = size })));
+                button.name = "EditorPixel" + k;
+                button.interactable = size <= MaxLayerSize;
+                Highlight(button, Current.Size == size);
+            }
+        }
+
         if (Current.IsSprite && !Current.IsPaint) {
             var thing = Current.Thing;
             var label = StickerPrefs.IsFavourite(thing) ? "emp_ui_editor_sticker_unfavourite" : "emp_ui_editor_sticker_favourite";
@@ -347,6 +376,18 @@ internal static partial class EmblemEditor
                 StickerPrefs.ToggleFavourite(thing);
                 Fill();
             })).name = "EditorFavourite";
+        }
+    }
+
+    /// <summary>The size (% of 64, the longer side) at which a picture of that many pixels draws each of them as k canvas pixels</summary>
+    internal static int PixelSize(int native, int k) => Mathf.Clamp(Mathf.CeilToInt(100f * native * k / TeamEmblem.Grid - 0.001f), TeamEmblem.MinSize, 100000);
+
+    private static void CellStep(int by)
+    {
+        var next = Mathf.Clamp(_stickerCell + by, 0, StickerCells.Length - 1);
+        if (next != _stickerCell) {
+            _stickerCell = next;
+            Fill();
         }
     }
 
@@ -370,6 +411,20 @@ internal static partial class EmblemEditor
     /// <summary>A grid cell's drag released over that pixel of the canvas (the screen point the input module gives)</summary>
     internal static string BenchDropSticker(string thing, float x, float y) => DropSticker(thing, CanvasToScreen(x, y)) ? "ok" : "outside";
 
+    /// <summary>The sticker grid for the bench: its cell side|the entries it lists|its scroll (the content's y); "-" without one</summary>
+    internal static string BenchStickerGrid
+    {
+        get {
+            var grid = _host != null ? _host.GetComponentInChildren<SpriteGridView>(false) : null;
+            if (grid == null || grid.GetComponent<ScrollRect>() is not { } scroll || scroll.content == null) {
+                return "-";
+            }
+
+            return string.Join("|", StickerCells[_stickerCell].ToString(CultureInfo.InvariantCulture), grid.Count,
+                scroll.content.anchoredPosition.y.ToString("0.#", CultureInfo.InvariantCulture));
+        }
+    }
+
     /// <summary>
     ///     The stickers' state for the bench: handles shown|the four corners (x,y;...)|the view's centre (x,y)|the
     ///     selected picture's crisp sizes (a,b,...; "-" when its handles go by whole percents)|recent (id;id...)|favourites|the selected layer's thing
@@ -381,7 +436,7 @@ internal static partial class EmblemEditor
             var corners = HasSelection ? string.Join(";", Enumerable.Range(0, 4).Select(i => Corner(Current, i)).Select(c => F(c.x) + "," + F(c.y))) : "-";
             var centre = ViewCentre();
             var steps = HasSelection && Steps(Current) is { Count: > 0 } list ? string.Join(",", list) : "-";
-            var shown = _view?.Handles is { } hs && hs.Any(h => h != null && h.gameObject.activeSelf);
+            var shown = View?.Handles is { } hs && hs.Any(h => h != null && h.gameObject.activeSelf);
             return string.Join("|", shown, corners, F(centre.x) + "," + F(centre.y), steps, string.Join(";", StickerPrefs.Recent),
                 string.Join(";", StickerPrefs.Favourites), HasSelection ? Current.Thing : "-");
         }
