@@ -54,9 +54,12 @@ internal static class OfficialServer
 
     /// <summary>
     ///     This game is the official server being open: the official server refuses imported characters (user,
-    ///     2026-10-27), so ImportCharacter reads off whatever the host ticked
+    ///     2026-10-27), so ImportCharacter reads off whatever the host ticked. A hidden server (started by a player's
+    ///     own visible game, -empparent) is that player's world, never the public server on its own: on the PC that
+    ///     holds the key it signed its lobby as the public server and wrote the public rules over the player's config
     /// </summary>
-    internal static bool Hosting => BenchForce || (EmpConfig.Server.PublicGame.Value || EmpServer.Requested) && CanHost();
+    internal static bool Hosting => BenchForce ||
+                                    (EmpConfig.Server.PublicGame.Value || EmpServer.Requested && !EmpServer.Hidden) && CanHost();
 
     // set by the bench through reflection: a test PC has neither the account nor the key. It only adds the official
     // server's own limits to the game that sets it (nothing is signed, see CanHost)

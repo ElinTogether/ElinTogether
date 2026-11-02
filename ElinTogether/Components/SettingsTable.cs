@@ -334,7 +334,7 @@ internal static class SettingsTable
     ///     server preset could never go back to Recommended
     /// </summary>
     internal static bool OfficialLocked =>
-        (OfficialServer.BenchForce || EmpServer.Requested && OfficialServer.CanHost()) && !Helper.PeerHosting.Active;
+        (OfficialServer.BenchForce || EmpServer.Requested && !EmpServer.Hidden && OfficialServer.CanHost()) && !Helper.PeerHosting.Active;
 
     internal static IEnumerable<SettingRow> Rows()
     {

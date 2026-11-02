@@ -33,7 +33,7 @@ internal static class PublicVouch
     private static readonly object _gate = new();
 
     internal static bool Wanted =>
-        EmpConfig.Server.VouchPlayers.Value && EmpServer.Requested && OfficialServer.CanHost() && !PeerHosting.Active &&
+        EmpConfig.Server.VouchPlayers.Value && EmpServer.Requested && !EmpServer.Hidden && OfficialServer.CanHost() && !PeerHosting.Active &&
         WorldAdmin.HasKey && WorldAdmin.Address is not null;
 
     /// <summary>

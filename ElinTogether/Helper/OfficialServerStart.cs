@@ -20,7 +20,7 @@ internal static class OfficialServerStart
     private static string Folder => Path.Combine(Application.persistentDataPath, "ElinMP");
 
     // (a peer-hosted world plays its signed rules and lists only, even kept by this PC: PeerRules, PeerHosting)
-    internal static bool Applies => EmpServer.Requested && OfficialServer.CanHost() && !PeerHosting.Active;
+    internal static bool Applies => EmpServer.Requested && !EmpServer.Hidden && OfficialServer.CanHost() && !PeerHosting.Active;
 
     /// <summary>
     ///     Called at the start of the session, before the rules are read for the players

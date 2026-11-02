@@ -576,7 +576,7 @@ public class SteamNetLobbyManager : EClass
     internal bool OpenToAll => EmpConfig.Server.PublicGame.Value && !_quiet;
 
     // a game anyone can join, hosted by the Elin Together account with its key (OfficialServer)
-    private bool Signs => (OpenToAll || EmpServer.Requested) && OfficialServer.CanHost();
+    private bool Signs => (OpenToAll || EmpServer.Requested && !EmpServer.Hidden) && OfficialServer.CanHost();
 
     /// <summary>
     ///     A session opened by itself lets the accounts of its world in. A session opened by hand never does
