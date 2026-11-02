@@ -24,6 +24,7 @@ namespace ElinTogether.Helper;
 ///     <see cref="TeamKnowledge" />
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class TeamOwnStory
 {
     /// <summary>

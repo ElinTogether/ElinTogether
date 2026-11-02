@@ -16,6 +16,7 @@ namespace ElinTogether.Helper;
 ///     all teams, so a world opened without the mod, or with the box off, keeps everything anyone learnt
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class TeamKnowledge
 {
     /// <summary>

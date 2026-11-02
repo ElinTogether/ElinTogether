@@ -6,6 +6,7 @@ using UnityEngine;
 namespace ElinTogether.Patches;
 
 [HarmonyPatch]
+[AlwaysPatched]
 internal class GameSaveLoad
 {
     [HarmonyPrefix]

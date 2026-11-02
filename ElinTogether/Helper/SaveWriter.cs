@@ -18,6 +18,7 @@ namespace ElinTogether.Helper;
 ///     waits for those writes first
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class SaveWriter
 {
     // the writes of the save being made, on the game's thread only: another thread's IO.Compress is never put off

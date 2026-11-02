@@ -25,6 +25,7 @@ namespace ElinTogether.Helper;
 ///     or a folder every player can reach (`world/` and `host.txt`, a lock by file date)
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class SaveDepot
 {
     /// <summary>
