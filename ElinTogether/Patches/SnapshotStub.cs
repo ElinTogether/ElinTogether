@@ -55,8 +55,15 @@ internal static class SnapshotStub
                 continue;
             }
 
-            instructions = transpiler(instructions);
-            held?.Add(Key(transpiler.Method));
+            // one that fails leaves the copy as it was: thrown here, it would cost the whole class its patches
+            var before = instructions.ToList();
+            try {
+                instructions = transpiler(before).ToList();
+                held?.Add(Key(transpiler.Method));
+            } catch (Exception ex) {
+                EmpLog.Warning(ex, "Snapshot stub: {Transpiler} not applied", $"{transpiler.Method.DeclaringType?.Name}.{transpiler.Method.Name}");
+                instructions = before;
+            }
         }
 
         return instructions;
@@ -102,15 +109,19 @@ internal static class SnapshotStub
     /// </summary>
     internal static void ReportMissing()
     {
-        foreach (var (original, held) in Held.Values) {
-            foreach (var transpiler in (IEnumerable<Patch>?)Harmony.GetPatchInfo(original)?.Transpilers ?? []) {
-                if (!held.Contains(Key(transpiler.PatchMethod))) {
-                    EmpLog.Warning("Transpiler {Transpiler} ({Owner}) of {Original} is missing from its snapshot stub: a replayed " +
-                                   "{Original} runs without it (apply it in the stub, see SnapshotStub)",
-                        $"{transpiler.PatchMethod.DeclaringType?.FullName}.{transpiler.PatchMethod.Name}", transpiler.owner,
-                        $"{original.DeclaringType?.Name}.{original.Name}");
+        try {
+            foreach (var (original, held) in Held.Values) {
+                foreach (var transpiler in (IEnumerable<Patch>?)Harmony.GetPatchInfo(original)?.Transpilers ?? []) {
+                    if (!held.Contains(Key(transpiler.PatchMethod))) {
+                        EmpLog.Warning("Transpiler {Transpiler} ({Owner}) of {Original} is missing from its snapshot stub, which " +
+                                       "replays the game's code without it: apply it in the stub (SnapshotStub.With)",
+                            $"{transpiler.PatchMethod.DeclaringType?.FullName}.{transpiler.PatchMethod.Name}", transpiler.owner,
+                            $"{original.DeclaringType?.Name}.{original.Name}");
+                    }
                 }
             }
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "Snapshot stubs not checked");
         }
     }
 }
