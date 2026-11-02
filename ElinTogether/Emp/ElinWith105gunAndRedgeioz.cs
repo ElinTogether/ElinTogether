@@ -44,8 +44,9 @@ internal sealed class EmpMod : BaseUnityPlugin
         SnapshotStub.Reset();
         foreach (var type in AccessTools.GetTypesFromAssembly(Assembly)) {
             try {
+                SnapshotStub.Begin(type);
                 SharedHarmony.CreateClassProcessor(type).Patch();
-                SnapshotStub.Note(type);
+                SnapshotStub.Note();
             } catch (System.Exception ex) {
                 if (!SkippedPatches.Contains(type.FullName)) {
                     SkippedPatches.Add(type.FullName);

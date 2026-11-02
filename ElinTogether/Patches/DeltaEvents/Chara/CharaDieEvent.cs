@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -58,12 +57,12 @@ internal static class CharaDieEvent
         [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
         internal void Stub_Die(Element? e, Card? origin, AttackSource attackSource, Chara? originalTarget)
         {
-            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
-                return SnapshotStub.With(instructions, original, OtherPlayerPatch.OnPlanterFinish);
+                return SnapshotStub.With(instructions, OtherPlayerPatch.OnPlanterFinish);
             }
 
-            _ = Transpiler([], null!);
+            _ = Transpiler([]);
             throw new NotImplementedException("Chara.Die");
         }
     }

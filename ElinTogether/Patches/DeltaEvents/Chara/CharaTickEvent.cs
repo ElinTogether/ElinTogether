@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using ElinTogether.Elements;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -50,12 +49,12 @@ internal static class CharaTickEvent
         [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
         internal void Stub_Tick()
         {
-            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
-                return SnapshotStub.With(instructions, original, CharaSynchronizationContext.OnCharaTick);
+                return SnapshotStub.With(instructions, CharaSynchronizationContext.OnCharaTick);
             }
 
-            _ = Transpiler([], null!);
+            _ = Transpiler([]);
             throw new NotImplementedException("Chara.Tick");
         }
     }
