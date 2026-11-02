@@ -139,6 +139,14 @@ internal sealed class EmpMod : BaseUnityPlugin
         // (the visible game waits for its hidden server with no session open: in a release build the Core.Update
         // patch is not there yet, it never joined nor timed out, issue 66)
         Helper.HiddenServer.Update();
+        // (the save depot is taken and joined from the title screen: its answers and the join's time-out come with no
+        // session open, same as issue 66)
+        Helper.SaveDepot.Update();
+        // (the peer-hosted world is opened from the title screen: the store's answers to the title card's WHO/TAKE
+        // and the claim of the lease while the hidden server starts come with no session open, same as issue 66)
+        Helper.PeerKeeper.Update();
+        // (a cross-check report answered after the link closed is still read)
+        Helper.CrossCheck.Update();
         // (-empnewworld: a new world made at the title, before any session)
         Helper.OfficialWorld.Update();
     }
