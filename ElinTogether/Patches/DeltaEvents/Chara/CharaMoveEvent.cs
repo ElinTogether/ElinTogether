@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Reflection.Emit;
 using ElinTogether.Elements;
 using ElinTogether.Helper;
@@ -74,14 +73,14 @@ internal static class CharaMoveEvent
         [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
         internal Card.MoveResult Stub_Move(Point point, Card.MoveType type)
         {
-            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
-                SnapshotStub.Without(original, RemoteTravelRegionPatch.OnRegionTravelIl);
-                return NoWorldMapStep(SnapshotStub.With(instructions, original, RemoteNoPushPatch.OnCharaMoveByForceIl,
+                SnapshotStub.Without(RemoteTravelRegionPatch.OnRegionTravelIl);
+                return NoWorldMapStep(SnapshotStub.With(instructions, RemoteNoPushPatch.OnCharaMoveByForceIl,
                     CharaSynchronizationContext.OnCharaMove));
             }
 
-            _ = Transpiler([], null!);
+            _ = Transpiler([]);
             throw new NotImplementedException("Chara.Move");
         }
 

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -102,13 +101,13 @@ internal static class CardDamageHpEvent
                                     Chara originalTarget,
                                     int resistPenetrationLevel)
         {
-            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
-                return SnapshotStub.With(instructions, original, OtherPlayerPatch.OnDamageHP, OtherPlayerPatch.OnDamageHPWeakspot,
+                return SnapshotStub.With(instructions, OtherPlayerPatch.OnDamageHP, OtherPlayerPatch.OnDamageHPWeakspot,
                     OtherPlayerPatch.OnDamageHPDialog, StrifeKillDelta.Count.OnDamageHP);
             }
 
-            _ = Transpiler([], null!);
+            _ = Transpiler([]);
             throw new NotImplementedException("Chara.DamageHP");
         }
     }

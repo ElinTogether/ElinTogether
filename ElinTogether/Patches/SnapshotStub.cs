@@ -34,22 +34,58 @@ internal static class SnapshotStub
         return held.Transpilers;
     }
 
+    // the original of the snapshot stub of the class being patched, found from the class's attributes. Not a
+    // MethodBase parameter of the stub's transpiler: HarmonyX 2.10 does not hand it the original there (null or the
+    // stub; 2026-11-02, every transpiler was reported missing, Without's included)
+    private static MethodBase? _current;
+
+    /// <summary>
+    ///     What each stub applied while the mod was patched, for a check in the game: by original, the transpilers
+    ///     and the methods the copy calls that it did not call before (proof the IL came out changed)
+    /// </summary>
+    internal static readonly Dictionary<string, List<string>> Applied = [];
+
     /// <summary>
     ///     Before the classes are patched (again): the copies are made anew
     /// </summary>
     internal static void Reset()
     {
         Held.Clear();
+        Applied.Clear();
+        _current = null;
+    }
+
+    /// <summary>
+    ///     Right before a class is patched: the original its snapshot stub copies, if it has one (the stub's own
+    ///     transpiler runs while the class is patched, With and Without apply to it)
+    /// </summary>
+    internal static void Begin(Type type)
+    {
+        _current = null;
+        try {
+            var stubs = AccessTools.GetDeclaredMethods(type).Where(m =>
+                m.GetCustomAttributes(typeof(HarmonyReversePatch), false).OfType<HarmonyReversePatch>()
+                    .Any(r => r.info.reversePatchType == HarmonyReversePatchType.Snapshot));
+            if (!stubs.Any()) {
+                return;
+            }
+
+            var target = HarmonyMethod.Merge(HarmonyMethodExtensions.GetFromType(type));
+            _current = target.methodType == MethodType.Getter
+                ? AccessTools.PropertyGetter(target.declaringType, target.methodName)
+                : AccessTools.Method(target.declaringType, target.methodName, target.argumentTypes);
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "Snapshot stub of {PatchClass} not checked", type.FullName);
+        }
     }
 
     /// <summary>
     ///     The transpilers the copy of the original lacks, applied to it (one the copy already holds is not applied twice)
     /// </summary>
     internal static IEnumerable<CodeInstruction> With(IEnumerable<CodeInstruction> instructions,
-                                                      MethodBase? original,
                                                       params Func<IEnumerable<CodeInstruction>, IEnumerable<CodeInstruction>>[] transpilers)
     {
-        var held = original is null ? null : Hold(original);
+        var held = _current is null ? null : Hold(_current);
         foreach (var transpiler in transpilers) {
             if (held?.Contains(Key(transpiler.Method)) is true) {
                 continue;
@@ -60,6 +96,17 @@ internal static class SnapshotStub
             try {
                 instructions = transpiler(before).ToList();
                 held?.Add(Key(transpiler.Method));
+                if (_current is not null) {
+                    var name = $"{transpiler.Method.DeclaringType?.Name}.{transpiler.Method.Name}";
+                    var calls = Called(instructions).Except(Called(before)).ToList();
+                    var where = $"{_current.DeclaringType?.Name}.{_current.Name}";
+                    if (!Applied.TryGetValue(where, out var list)) {
+                        Applied[where] = list = [];
+                    }
+
+                    list.Add($"{name} (+{string.Join(", ", calls)})");
+                    EmpLog.Debug("Snapshot stub of {Original}: {Transpiler} applied, new calls {Calls}", where, name, calls);
+                }
             } catch (Exception ex) {
                 EmpLog.Warning(ex, "Snapshot stub: {Transpiler} not applied", $"{transpiler.Method.DeclaringType?.Name}.{transpiler.Method.Name}");
                 instructions = before;
@@ -69,39 +116,31 @@ internal static class SnapshotStub
         return instructions;
     }
 
+    private static IEnumerable<string> Called(IEnumerable<CodeInstruction> instructions)
+    {
+        return instructions.Select(c => c.operand).OfType<MethodBase>().Select(m => $"{m.DeclaringType?.Name}.{m.Name}").Distinct();
+    }
+
     /// <summary>
     ///     A transpiler the copy must run without (said where the stub is), not reported as missing
     /// </summary>
-    internal static void Without(MethodBase? original, Func<IEnumerable<CodeInstruction>, IEnumerable<CodeInstruction>> transpiler)
+    internal static void Without(Func<IEnumerable<CodeInstruction>, IEnumerable<CodeInstruction>> transpiler)
     {
-        if (original is not null) {
-            Hold(original).Add(Key(transpiler.Method));
+        if (_current is not null) {
+            Hold(_current).Add(Key(transpiler.Method));
         }
     }
 
     /// <summary>
-    ///     Right after a class is patched: what the copies it made hold, when the stub did not apply anything itself
+    ///     Right after the class is patched: what its copy holds, when the stub did not apply anything itself
     /// </summary>
-    internal static void Note(Type type)
+    internal static void Note()
     {
-        try {
-            var stubs = AccessTools.GetDeclaredMethods(type).Where(m =>
-                m.GetCustomAttributes(typeof(HarmonyReversePatch), false).OfType<HarmonyReversePatch>()
-                    .Any(r => r.info.reversePatchType == HarmonyReversePatchType.Snapshot));
-            if (!stubs.Any()) {
-                return;
-            }
-
-            var target = HarmonyMethod.Merge(HarmonyMethodExtensions.GetFromType(type));
-            var original = target.methodType == MethodType.Getter
-                ? AccessTools.PropertyGetter(target.declaringType, target.methodName)
-                : AccessTools.Method(target.declaringType, target.methodName, target.argumentTypes);
-            if (original is not null) {
-                Hold(original);
-            }
-        } catch (Exception ex) {
-            EmpLog.Debug(ex, "Snapshot stub of {PatchClass} not checked", type.FullName);
+        if (_current is not null) {
+            Hold(_current);
         }
+
+        _current = null;
     }
 
     /// <summary>
