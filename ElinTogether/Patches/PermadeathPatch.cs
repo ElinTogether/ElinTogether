@@ -107,6 +107,7 @@ internal static class DeadBanner
 ///     world for a revive at a bartender; nothing is deleted. Without the box, or outside permadeath: the game's own
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class PermadeathPatch
 {
     [HarmonyPrefix]
