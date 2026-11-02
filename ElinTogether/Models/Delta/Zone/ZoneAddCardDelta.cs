@@ -86,6 +86,14 @@ public class ZoneAddCardDelta : ElinDelta
         // do not update it again if same position
         // we derive all other state changes to sub deltas
         if (card.parent != zone || card.pos != Pos) {
+            // a thief's loot: the host's Card.SpawnLoot clears the "stolen" mark (int 116) of what it drops, this copy
+            // kept it. Picked up, then brought to the host with this character (ReplaceRemoteChara), the item fell
+            // again at the player's death, SpawnLoot dropping every marked thing (GitHub issue 68)
+            if (net.IsClient && card is Thing && card.GetInt(116) != 0 &&
+                card.GetRootCard() is Chara { IsPC: false } holder && !holder.IsRemotePlayer) {
+                card.SetInt(116);
+            }
+
             zone.AddCard(card, Pos.X, Pos.Z);
             EmpLog.Debug("Zone add card {Uid} at {@Pos}", card.uid, Pos);
         }

@@ -319,10 +319,15 @@ public class ActionModeCombat
                 break;
 
             case CombatPhase.Deciding: {
-                var allDecided = SelfDecided && players.All(p =>
+                // a dead player (permadeath, waiting for a revive at a bartender) has no turn to decide: the round
+                // went on hold until it left the game (GitHub issue 68). The host's own death alike
+                var allDecided = (SelfDecided || EClass.pc.isDead) && players.All(p =>
                     p.CharaUid == EClass.pc.uid ||
-                    (p.FindChara() is { } chara && _decided.Contains(chara.uid)));
-                if (allDecided) {
+                    p.FindChara() is not { isDead: false } chara ||
+                    _decided.Contains(chara.uid));
+                // (every player dead: no round at all, rather than a phase change each frame)
+                var anyAlive = !EClass.pc.isDead || players.Any(p => p.FindChara() is { isDead: false });
+                if (allDecided && anyAlive) {
                     ChangePhase(net, CombatPhase.Executing);
                 }
                 break;
@@ -333,7 +338,7 @@ public class ActionModeCombat
                 // disconnected mid combat
                 var allDone = EClass.pc.HasNoGoal && players.All(p =>
                     p.CharaUid == EClass.pc.uid ||
-                    p.FindChara() is not { } chara ||
+                    p.FindChara() is not { isDead: false } chara ||
                     _done.Contains(chara.uid));
                 if (allDone) {
                     ChangePhase(net, CombatPhase.Deciding);
@@ -360,7 +365,8 @@ public class ActionModeCombat
 
     private static void UpdateDecideMessage()
     {
-        if (Phase != CombatPhase.Deciding) {
+        // (a dead player has nothing to decide: "Decide your next action" was shown under the death banner)
+        if (Phase != CombatPhase.Deciding || EClass.pc.isDead) {
             WaitForSelf = false;
             return;
         }
