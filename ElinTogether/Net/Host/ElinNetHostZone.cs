@@ -146,9 +146,13 @@ internal partial class ElinNetHost
         // move instead of add. Next to us only when nothing tells where (it joins the game), and only when we
         // stand on this map: waking up, the game may show a base our character never entered (its walk through
         // the bases, Player.SimulateFaction, stopped by a recall), and our tile is the world map's then
+        // a server's stand-in (ServerAvatar) is nobody to stand next to: the entrance, where the game puts a player
+        // walking in alone (user 2026-11-02: "players always spawn on the server's character")
         Point? pos = pc.currentZone != _zone
             ? null
-            : _zone.IsRegion
+            : ServerAvatar.Is(pc)
+                ? EntrancePoint(chara)
+                : _zone.IsRegion
                 ? WorldMapTileNextToUs(chara)
                 : pc.pos.GetNearestPoint(allowChara: false, allowInstalled: false) ?? pc.pos.Copy();
 
