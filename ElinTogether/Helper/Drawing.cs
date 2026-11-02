@@ -170,7 +170,7 @@ internal static class DrawingStore
     // the file could not be read: nothing is written over it
     private static bool _broken;
 
-    private static string Folder
+    internal static string Folder
     {
         get {
             var key = Drawing.Me.ToString(CultureInfo.InvariantCulture);
@@ -295,4 +295,84 @@ internal static class DrawingStore
     }
 
     private static string TrimTitle(string title) => new(title.Where(c => !char.IsControl(c)).Take(Drawing.MaxTitle).ToArray());
+}
+
+/// <summary>
+///     The editor's autosaved drafts (lead dev 2026-11-02: nothing drawn is lost to a crash or a closed game): the
+///     draft of each open document that differs from what is saved, as a drawing's text, in drafts.txt beside the
+///     drawings. One line per document: its key (a drawing's id, a team's emblem), the Unix time, the text
+/// </summary>
+internal static class DrawingDrafts
+{
+    private static string FilePath => Path.Combine(DrawingStore.Folder, "drafts.txt");
+
+    private static List<string[]> Lines()
+    {
+        try {
+            return File.Exists(FilePath)
+                ? File.ReadAllLines(FilePath).Select(l => l.Split(['\t'], 3)).Where(p => p.Length == 3).ToList()
+                : [];
+        } catch (System.Exception e) {
+            EmpLog.Debug(e, "Drawings: the drafts could not be read");
+            return [];
+        }
+    }
+
+    private static void Write(List<string[]> lines)
+    {
+        try {
+            Directory.CreateDirectory(DrawingStore.Folder);
+            if (lines.Count == 0) {
+                if (File.Exists(FilePath)) {
+                    File.Delete(FilePath);
+                }
+
+                return;
+            }
+
+            var tmp = FilePath + ".tmp";
+            File.WriteAllLines(tmp, lines.Select(p => string.Join("\t", p)));
+            if (File.Exists(FilePath)) {
+                File.Delete(FilePath);
+            }
+
+            File.Move(tmp, FilePath);
+        } catch (System.Exception e) {
+            EmpLog.Debug(e, "Drawings: the drafts could not be written");
+        }
+    }
+
+    /// <summary>The draft of that document kept (in place of the one before)</summary>
+    internal static void Put(string key, Drawing draft)
+    {
+        var text = draft.Format();
+        if (text.Length > Drawing.MaxText || key.IndexOfAny(['\t', '\n']) >= 0) {
+            return;
+        }
+
+        var lines = Lines().Where(p => p[0] != key).ToList();
+        lines.Add([key, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), text]);
+        Write(lines);
+    }
+
+    /// <summary>The draft kept for that document and when it was kept, null when there is none</summary>
+    internal static (Drawing Draft, long Time)? Get(string key)
+    {
+        foreach (var p in Lines()) {
+            if (p[0] == key && long.TryParse(p[1], NumberStyles.None, CultureInfo.InvariantCulture, out var time) &&
+                Drawing.Parse(p[2]) is { } d) {
+                return (d, time);
+            }
+        }
+
+        return null;
+    }
+
+    internal static void Drop(string key)
+    {
+        var lines = Lines();
+        if (lines.RemoveAll(p => p[0] == key) > 0) {
+            Write(lines);
+        }
+    }
 }
