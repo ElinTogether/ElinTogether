@@ -49,7 +49,10 @@ internal class ChatBubbleEvent
     /// </summary>
     internal static void PopChat(string who, string text)
     {
-        WidgetPopText.Say($"{who}: {text}", sprite: UIHelper.FindSprite("emo2_hint"));
+        // (the words only: a line of one emote shows that emote's icon, ChatMarkup)
+        var plain = ChatMarkup.Plain(text);
+        var sprite = ChatMarkup.AloneEmote(text) is { } emo ? ChatMarkup.EmoteSprite(emo.ToString()) : null;
+        WidgetPopText.Say(plain.Length > 0 ? $"{who}: {plain}" : who, sprite: sprite ?? UIHelper.FindSprite("emo2_hint"));
         Shown.Enqueue(text);
         while (Shown.Count > 20) {
             Shown.Dequeue();
@@ -86,7 +89,7 @@ internal class ChatBubbleEvent
             Name = EClass.pc.RemoteState?.User.Name is { Length: > 0 } me ? me : EClass.pc.Name,
         };
         MsgSayDelta.Remember(delta.ChatId);
-        ChatLog.Add(ChatLog.All, delta.Name ?? "?", text, true);
+        ChatLog.Add(ChatLog.All, delta.Name ?? "?", text, true, EClass.pc.uid);
 
         if (!NetSession.Instance.Rules.GlobalChat) {
             // map-local: the players of the map we are on (an away player without a map session has none)

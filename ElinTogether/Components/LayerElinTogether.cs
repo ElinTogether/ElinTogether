@@ -505,6 +505,10 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             var count = BadgeOf(id);
             // (plain text: the tab's label shows rich-text tags as they are)
             var want = count > 0 ? $"{label} ({count})" : label;
+            // (the Chat's lines naming this player, apart: "Chat (5, @2)")
+            if (id == TabChat.TabName && ChatLog.UnreadMentions > 0) {
+                want = $"{label} ({count}, @{ChatLog.UnreadMentions})";
+            }
             if (text.text != want) {
                 text.text = want;
             }

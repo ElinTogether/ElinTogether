@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
+using ElinTogether.Models;
 using ElinTogether.Net;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,7 +15,7 @@ namespace ElinTogether.Components;
 ///     a box to write to everyone, to one's team or to one player. A line that arrives is added under the others; the
 ///     tab is never built again for it, so a line being typed keeps its text and its focus
 /// </summary>
-internal class TabChat : TabEmpBase
+internal partial class TabChat : TabEmpBase
 {
     public const string TabName = "emp_tab_chat";
 
@@ -42,17 +43,36 @@ internal class TabChat : TabEmpBase
             return;
         }
 
-        card.DropdownRow("emp_ui_chat_show".lang(), [..Channels().Select(c => ChannelName(c))], i => {
-            _filter = Channels()[i];
-            Refill();
-        }, Mathf.Max(0, Channels().IndexOf(_filter)));
+        BuildFilter(card);
 
-        // (a fixed frame that takes the room the page leaves, once: a line that arrives only fills it)
-        _list = card.ScrollList(330f, true);
+        // (a chat app's page: the log takes all the height between the filter and the writing row, which sits at the
+        // bottom of the window; TabEmpBase.FillPage sets that height once, a line that arrives only fills the log)
+        _list = card.ScrollList(LogStartHeight, true);
         _scroll = _list.GetComponentInParent<ScrollRect>();
         Refill();
 
         BuildWriter(card);
+    }
+
+    // the log's height until the page is laid out shown and it takes the window's room
+    private const float LogStartHeight = 160f;
+
+    // a compact bar: the label and a dropdown at their own widths, on the left
+    private void BuildFilter(YKLayout card)
+    {
+        var bar = card.Horizontal();
+        bar.Layout.childForceExpandWidth = false;
+        bar.Layout.childAlignment = TextAnchor.MiddleLeft;
+        bar.Layout.spacing = 10f;
+        bar.Text("emp_ui_chat_show".lang()).SetSize(UIHelper.LabelSize);
+        var dropdown = bar.Dropdown([..Channels().Select(c => ChannelName(c))], i => {
+            _filter = Channels()[i];
+            Refill();
+        }, Mathf.Max(0, Channels().IndexOf(_filter)));
+        var element = dropdown.LayoutElement();
+        element.preferredWidth = 220f;
+        element.flexibleWidth = 0f;
+        dropdown.Rect().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, UIHelper.RowHeight);
     }
 
     // the filters this player has: a team filter only in a team
@@ -130,30 +150,12 @@ internal class TabChat : TabEmpBase
         input.field.characterLimit = 500;
         input.AllowAnyText();
         input.StyleAsSearch("emp_ui_chat_hint".lang());
-        input.field.onValueChanged.AddListener(text => _draft = text);
+        input.field.onValueChanged.AddListener(text => {
+            _draft = text;
+            OnDraftChanged(text);
+        });
         _field = input.field;
-
-        void Send()
-        {
-            var text = input.field.text.Trim();
-            if (text.Length == 0) {
-                return;
-            }
-
-            var target = Targets().ElementAtOrDefault(_target);
-            if (target.Team) {
-                ChatLog.SendTeam(text);
-            } else if (target.To != 0) {
-                PlayerWhisper.Send(target.To, target.Name, text);
-            } else {
-                // (the way the game's own chat box sends a line: the player says it on the map, the mod passes it on)
-                ActionMode.Adv.OnEnterChat(text);
-            }
-
-            _draft = "";
-            input.field.text = "";
-            input.field.ActivateInputField();
-        }
+        _writer = row;
 
         // (Enter sends, as in the game's chat box)
         input.field.onEndEdit.AddListener(_ => {
@@ -161,7 +163,50 @@ internal class TabChat : TabEmpBase
                 Send();
             }
         });
+        BuildEmoteButton(row);
         row.RowButton("emp_ui_chat_send".lang(), Send).LayoutElement().flexibleWidth = 0f;
+    }
+
+    private void Send()
+    {
+        if (_field == null) {
+            return;
+        }
+
+        var text = _field.text.Trim();
+        if (text.Length == 0) {
+            return;
+        }
+
+        ClosePopup();
+        _draft = "";
+        _field.text = "";
+        _field.ActivateInputField();
+        // (/w and the help are done here; /me goes out as it is and every game draws it as an action)
+        if (!RunCommand(text)) {
+            return;
+        }
+
+        var target = Targets().ElementAtOrDefault(_target);
+        if (target.Team) {
+            ChatLog.SendTeam(text);
+        } else if (target.To != 0) {
+            PlayerWhisper.Send(target.To, target.Name, text);
+        } else {
+            // (the way the game's own chat box sends a line: the player says it on the map, as a bubble the players
+            // there see (ChatBubbleEvent, a host rule), the mod passes it on)
+            var words = ChatMarkup.Plain(text);
+            if (NetSession.Instance.Rules.ChatBubbles && words.Length > 0) {
+                EClass.pc.SayRaw(words);
+            }
+
+            ActionMode.Adv.OnEnterChat(text);
+        }
+
+        // (a line of one emote: the game's emote over this player's character too, for the players of its map)
+        if (target.To == 0 && ChatMarkup.AloneEmote(text) is { } emo) {
+            ChatEmoteDelta.Send(emo);
+        }
     }
 
     private void Refill()
@@ -174,26 +219,128 @@ internal class TabChat : TabEmpBase
             Destroy(child.gameObject);
         }
 
+        foreach (var texture in _pictures) {
+            Destroy(texture);
+        }
+
+        _pictures.Clear();
         _count = 0;
         _shown = ChatLog.Version;
         foreach (var line in ChatLog.Entries.Where(Shows)) {
             AddLine(line);
         }
 
+        // (lines stack from the bottom of the log, the newest next to the writing row; the empty chat's words in the
+        // middle of the log)
+        _list.Layout.childAlignment = _count == 0 ? TextAnchor.MiddleCenter : TextAnchor.LowerLeft;
         if (_count == 0) {
-            _list.Text("emp_ui_chat_empty".lang(), FontColor.Gray);
+            var empty = _list.Text("emp_ui_chat_empty".lang(), FontColor.Gray);
+            empty.alignment = TextAnchor.MiddleCenter;
+            // (as wide as the log, so its words are centred in it)
+            UIHelper.WrapTexts(empty);
             // (an empty chat says what to do: the box under the list, focused in one click)
-            _list.ButtonRow().RowButton("emp_ui_chat_write_first".lang(), () => {
+            var row = _list.ButtonRow();
+            row.Layout.childAlignment = TextAnchor.MiddleCenter;
+            row.RowButton("emp_ui_chat_write_first".lang(), () => {
                 if (_field != null) {
                     _field.ActivateInputField();
                 }
             });
         }
 
+        FitLog();
         ToBottom(true);
     }
 
-    private static bool Shows(ChatLog.Line line) => _filter < 0 || line.Channel == _filter;
+    /// <summary>
+    ///     The log's content is at least as tall as the log, so its lines can sit at its bottom (and the empty chat's
+    ///     words in its middle). Follows the log's height, which the page sets once it is laid out shown
+    /// </summary>
+    private bool FitLog()
+    {
+        if (_list == null || _scroll == null || _scroll.viewport == null) {
+            return false;
+        }
+
+        var element = _list.LayoutElement();
+        var height = _scroll.viewport.rect.height;
+        if (Mathf.Abs(element.minHeight - height) < 0.5f) {
+            return false;
+        }
+
+        element.minHeight = height;
+        return true;
+    }
+
+    // (a muted player's lines are hidden, the ones already there too)
+    private static bool Shows(ChatLog.Line line) => (_filter < 0 || line.Channel == _filter) && !IsMuted(line.Uid);
+
+    // My settings changed how lines are drawn: the log is drawn again when it is next shown
+    private static bool _stale;
+
+    internal static void RefillShown() => _stale = true;
+
+    // ---------------------------------------------------------------- the players behind the lines
+
+    /// <summary>The account and name of the player whose character has that uid, here or elsewhere on the server</summary>
+    private static (ulong Steam, string Name) PlayerOf(int uid)
+    {
+        if (uid == 0) {
+            return (0, "");
+        }
+
+        if (PlayerSocial.PlayerOfUid(uid) is { } state) {
+            return ((ulong)state.User, state.User.Name);
+        }
+
+        return NetSession.Instance.ServerRoster.Find(p => p.CharaUid == uid) is { } far
+            ? (far.Steam, string.IsNullOrWhiteSpace(far.Name) ? far.CharaName : far.Name)
+            : (0, "");
+    }
+
+    /// <summary>Muted by this player (its personal ignore list, as the Social menu's "Ignore"), never itself</summary>
+    private static bool IsMuted(int uid) =>
+        uid != 0 && EClass.core.IsGameStarted && uid != EClass.pc.uid && PlayerOf(uid).Steam is var steam and not 0 && PlayerSocial.IsIgnored(steam);
+
+    /// <summary>A line's speaker in its team's colour, when teams are on and it has one</summary>
+    private static string WhoOf(ChatLog.Line line)
+    {
+        if (line.Uid == 0 || line.Channel is not (ChatLog.All or ChatLog.Team) || !NetSession.Instance.Rules.UseTeams ||
+            Teams.TeamOf(line.Uid) is var team && team == Teams.Wanderers) {
+            return line.Who;
+        }
+
+        return line.Who.RemoveAllTags().TagColor(TeamBanner.ChipColor(team));
+    }
+
+    /// <summary>What a click on another player's line offers: write to it, call it, mute or unmute it</summary>
+    private IEnumerable<(string Label, System.Action Act)> MenuOf(int uid)
+    {
+        var (steam, name) = PlayerOf(uid);
+        if (uid == EClass.pc.uid || name.Length == 0) {
+            yield break;
+        }
+
+        if (PlayerWhisper.Enabled) {
+            yield return ("emp_ui_chat_menu_whisper".Loc(name), () => {
+                if (_field != null) {
+                    _field.text = $"/w {name} ";
+                    _caret = _field.text.Length;
+                    _field.ActivateInputField();
+                    StartCoroutine(PutCaret(_caret));
+                }
+            });
+        }
+
+        yield return ("emp_ui_chat_menu_mention".Loc(name), () => Insert("@" + name));
+        if (steam != 0) {
+            var muted = PlayerSocial.IsIgnored(steam);
+            yield return ((muted ? "emp_ui_unignore" : "emp_ui_ignore").lang(), () => {
+                PlayerSocial.SetIgnored(steam, name, !muted);
+                Refill();
+            });
+        }
+    }
 
     private void AddLine(ChatLog.Line line)
     {
@@ -204,10 +351,82 @@ internal class TabChat : TabEmpBase
             _ => "",
         };
         var head = tag.Length > 0 ? $"[{tag}] ".TagColor(ChatLog.ColorOf(line.Channel)) : "";
-        var text = _list!.Text($"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{line.Who}: {line.Text}");
+        var text = _list!.Text("");
+        // (the emotes as the game's icons, the words escaped: ChatMarkup, ChatIcons)
+        var icons = new List<Sprite>();
+        var action = ChatMarkup.IsAction(line.Text);
+        var links = new List<Thing>();
+        var body = ChatMarkup.Render(action ? ChatMarkup.ActionOf(line.Text) : line.Text, text.fontSize + 4, icons, links);
+        // (an item link: the item's tooltip over the line; another player's line: its menu on a click)
+        if (links.Count > 0 || (line.Uid != 0 && line.Uid != EClass.pc.uid)) {
+            text.raycastTarget = true;
+            var pointer = text.gameObject.AddComponent<ChatLine>();
+            pointer.Thing = links.FirstOrDefault();
+            var uid = line.Uid;
+            if (uid != 0 && uid != EClass.pc.uid) {
+                pointer.Menu = () => MenuOf(uid);
+            }
+        }
+
+        // (a line naming this player stands out: a mark before it, its words in the mention colour)
+        if (line.Mention) {
+            body = body.TagColor(ChatMarkup.MentionColor);
+        }
+
+        // ("/me waves": "* Name waves", in italics; the clock of My settings' choice)
+        var who = WhoOf(line);
+        var said = action ? $"<i>* {who} {body}</i>" : $"{who}: {body}";
+        var time = EmpConfig.Client.ChatGameTime.Value && line.GameTime.Length > 0 ? line.GameTime : line.Time;
+        text.text = $"{time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{(line.Mention ? "<b>» </b>" : "")}{said}";
+        if (icons.Count > 0) {
+            text.gameObject.AddComponent<ChatIcons>().Set(icons);
+        }
+
         // (the line wraps at the log's width: its prefab's fitter sized it to the unwrapped line, wider than the log)
         UIHelper.WrapTexts(text);
         _count++;
+
+        // a picture (ChatImages): under its line, unless this player hides them
+        if (line.Image != null) {
+            if (EmpConfig.Client.HideChatImages.Value && line.Uid != EClass.pc.uid) {
+                text.text += " " + "emp_ui_chat_image_hidden".lang().TagColor(new Color(0.45f, 0.4f, 0.32f));
+            } else {
+                AddPicture(line.Image);
+            }
+        }
+    }
+
+    // the textures of the pictures shown, freed when the log is drawn again
+    private readonly List<Texture2D> _pictures = [];
+
+    private void AddPicture(byte[] png)
+    {
+        if (!ChatImages.IsValid(png)) {
+            return;
+        }
+
+        var texture = new Texture2D(2, 2);
+        if (!texture.LoadImage(png)) {
+            Destroy(texture);
+            return;
+        }
+
+        texture.filterMode = FilterMode.Point;
+        _pictures.Add(texture);
+        // (a row as wide as the log holding the picture at its own shape, at most 180 high, from the line's start)
+        var scale = Mathf.Min(2f, 180f / Mathf.Max(texture.width, texture.height));
+        var size = new Vector2(texture.width * scale, texture.height * scale);
+        var row = new GameObject("ChatPicture", typeof(RectTransform));
+        row.transform.SetParent(_list!.transform, false);
+        ((RectTransform)row.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, size.y);
+        var picture = new GameObject("Picture", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
+        picture.transform.SetParent(row.transform, false);
+        picture.GetComponent<RawImage>().texture = texture;
+        picture.GetComponent<RawImage>().raycastTarget = false;
+        var rt = (RectTransform)picture.transform;
+        rt.anchorMin = rt.anchorMax = rt.pivot = new(0f, 1f);
+        rt.anchoredPosition = new(24f, 0f);
+        rt.sizeDelta = size;
     }
 
     // the log is at its newest line (or too short to scroll): a new line keeps it there
@@ -230,8 +449,20 @@ internal class TabChat : TabEmpBase
     // a line that arrived while the tab is open: added under the others (the newest at the bottom, scrolled to)
     private void Update()
     {
+        UpdateComposer();
         if (_list == null) {
             return;
+        }
+
+        if (_stale) {
+            _stale = false;
+            Refill();
+        }
+
+        // (the log took the window's room: its content follows, still at the newest line unless scrolled up)
+        var atBottom = AtBottom();
+        if (FitLog()) {
+            ToBottom(atBottom);
         }
 
         // (shown: every line is read)

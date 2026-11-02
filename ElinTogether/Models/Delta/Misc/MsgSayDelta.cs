@@ -144,7 +144,7 @@ public class MsgSayDelta : ElinDelta
 
             if (Teams.TeamOf(pc.uid) == Team && !PlayerSocial.IsIgnoredUid(SpeakerUid)) {
                 var who = SpeakerName();
-                ChatLog.Add(ChatLog.Team, who, Text);
+                ChatLog.Add(ChatLog.Team, who, Text, uid: SpeakerUid);
                 ChatBubbleEvent.PopChat("emp_ui_chat_team_tag".Loc(who), Text);
             }
 
@@ -190,7 +190,7 @@ public class MsgSayDelta : ElinDelta
 
             // (the Chat tab keeps every line this player was shown, its bubble or its pop text)
             if (here || NetSession.Instance.Rules.GlobalChat) {
-                ChatLog.Add(ChatLog.All, SpeakerName(), Text);
+                ChatLog.Add(ChatLog.All, SpeakerName(), Text, uid: SpeakerUid);
             }
 
             return;

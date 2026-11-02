@@ -175,6 +175,20 @@ internal partial class EmpConfig
             "The newer version already announced by a message (set by itself)\n" +
             "已通过消息提示过的新版本（自动设置）");
 
+        Client.ChatGameTime = config.Bind(
+            "Client",
+            "ChatGameTime",
+            false,
+            "The Chat tab shows the game's clock beside each line instead of your computer's\n" +
+            "聊天标签页在每条消息旁显示游戏内时间，而不是电脑时间");
+
+        Client.HideChatImages = config.Bind(
+            "Client",
+            "HideChatImages",
+            false,
+            "Pictures other players send in the chat are not shown (a line says one was sent)\n" +
+            "不显示其他玩家在聊天中发送的图片（只显示一行提示）");
+
         Client.PingKeybind = config.Bind(
             "Client",
             "PingKeybind",
@@ -680,6 +694,20 @@ internal partial class EmpConfig
             "Only that player gets the lines, the host passes them on without showing them\n" +
             "对其他玩家角色选择“交谈”会打开与该玩家的私聊，无论对方在哪里；只有该玩家会收到，主机只转发不显示");
 
+        Server.ChatBubbles = config.Bind(
+            "Server",
+            "ChatBubbles",
+            true,
+            "A line written in the Chat tab also shows as a short bubble over the writer's character, for the players on its map\n" +
+            "在聊天标签页中写的消息也会以短气泡显示在写信人角色的头上，同一地图的玩家可见");
+
+        Server.ChatImages = config.Bind(
+            "Server",
+            "ChatImages",
+            false,
+            "Players can send small pictures (drawings) in the chat; each player can still hide them in My settings\n" +
+            "玩家可以在聊天中发送小图片（绘画）；每个玩家仍可在“我的设置”中隐藏它们");
+
         Server.GuestMoongate = config.Bind(
             "Server",
             "GuestMoongate",
@@ -1140,6 +1168,8 @@ internal partial class EmpConfig
     internal static class Client
     {
         internal static ConfigEntry<KeyCode> PingKeybind { get; set; } = null!;
+        internal static ConfigEntry<bool> ChatGameTime { get; set; } = null!;
+        internal static ConfigEntry<bool> HideChatImages { get; set; } = null!;
         internal static ConfigEntry<string> FirstStepsSeen { get; set; } = null!;
         internal static ConfigEntry<string> DepotPath { get; set; } = null!;
         internal static ConfigEntry<string> DepotPassword { get; set; } = null!;
@@ -1209,6 +1239,8 @@ internal partial class EmpConfig
 
         internal static ConfigEntry<bool> Follow { get; set; } = null!;
         internal static ConfigEntry<bool> PrivateChat { get; set; } = null!;
+        internal static ConfigEntry<bool> ChatBubbles { get; set; } = null!;
+        internal static ConfigEntry<bool> ChatImages { get; set; } = null!;
         internal static ConfigEntry<bool> GuestMoongate { get; set; } = null!;
 
         internal static ConfigEntry<bool> StrangerVisits { get; set; } = null!;
