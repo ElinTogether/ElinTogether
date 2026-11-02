@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using ElinTogether.Elements;
 using ElinTogether.Helper;
 using ElinTogether.Models;
@@ -75,8 +77,8 @@ internal static class CharaMoveEvent
             IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
             {
                 SnapshotStub.Without(original, RemoteTravelRegionPatch.OnRegionTravelIl);
-                return SnapshotStub.With(instructions, original, RemoteNoPushPatch.OnCharaMoveByForceIl,
-                    CharaSynchronizationContext.OnCharaMove);
+                return NoWorldMapStep(SnapshotStub.With(instructions, original, RemoteNoPushPatch.OnCharaMoveByForceIl,
+                    CharaSynchronizationContext.OnCharaMove));
             }
 
             _ = Transpiler([], null!);
@@ -97,5 +99,27 @@ internal static class CharaMoveEvent
                 lying.ForEach(t => t.ignoreAutoPick = false);
             }
         }
+    }
+
+    /// <summary>
+    ///     The copy reaches the game's "the player steps on the world map" block (the hours, a turn of conditions per
+    ///     minute for the party, the abort when hurt) only with the local player, from Place: an arrival on the world
+    ///     map (joining the host there, a soft rejoin, a resync) paid a whole world-map step, some 120 turns of
+    ///     hunger, buffs and poison for its character, each one sent to the host. The block is skipped in the copy
+    /// </summary>
+    private static IEnumerable<CodeInstruction> NoWorldMapStep(IEnumerable<CodeInstruction> instructions)
+    {
+        var currentZone = AccessTools.PropertyGetter(typeof(Chara), nameof(Chara.currentZone));
+        var isRegion = AccessTools.PropertyGetter(typeof(Spatial), nameof(Spatial.IsRegion));
+        var list = instructions.ToList();
+        var at = list.FindIndex(1, c => c.Calls(isRegion));
+        if (at < 0 || !list[at - 1].Calls(currentZone)) {
+            EmpLog.Warning("Chara._Move: no currentZone.IsRegion, a placement on the world map still pays a step");
+            return list;
+        }
+
+        // (the labels stay where they are: a branch may land on the first)
+        list.InsertRange(at + 1, new[] { new CodeInstruction(OpCodes.Pop), new CodeInstruction(OpCodes.Ldc_I4_0) });
+        return list;
     }
 }
