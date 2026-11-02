@@ -153,7 +153,10 @@ internal static class QuestZoneLeavePatch
 [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
 internal static class QuestZoneDeathPatch
 {
+    // First: CharaDieEvent's prefix (patched before this class) plays a death caused by a guest's delta right there
+    // (Stub_Die); after it, the status read here was already the failure the death set
     [HarmonyPrefix]
+    [HarmonyPriority(Priority.First)]
     internal static void OnDie(out ZoneInstance.Status? __state)
     {
         __state = null;
