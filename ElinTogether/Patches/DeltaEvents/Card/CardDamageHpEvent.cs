@@ -23,10 +23,17 @@ internal static class CardDamageHpEvent
                                         Thing weapon,
                                         Chara originalTarget,
                                         int resistPenetrationLevel,
+                                        bool __runOriginal,
                                         out CardDamageHpDelta? __state)
     {
         __state = null;
         Depth++;
+
+        // Harmony runs this prefix even after another one skipped the original (the server's stand-in cannot be
+        // hurt): no blow to tell then, or the other games played it on the stand-in (Stub_DamageHP has no prefix)
+        if (!__runOriginal) {
+            return false;
+        }
 
         if (PlayerDuel.JustEnded(__instance, origin)) {
             return false;
