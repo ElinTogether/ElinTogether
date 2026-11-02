@@ -206,7 +206,13 @@ internal sealed class SignedDocs
         var settings = (doc["rules"] as JObject)?.Properties()
             .Where(p => p.Value.Type is not (JTokenType.Object or JTokenType.Array))
             .ToDictionary(p => p.Name, p => p.Value.ToString(), StringComparer.Ordinal) ?? new(StringComparer.Ordinal);
-        return (settings, (string?)doc["motd"] ?? "", (string?)doc["text"] ?? "", (string?)doc["build"] ?? "");
+        return (settings, Text(doc["motd"]), Text(doc["text"]), Text(doc["build"]));
+    }
+
+    // (a field of another type than a text is read as its JSON text, never thrown on: the getters run every tick)
+    private static string Text(JToken? token)
+    {
+        return token is null || token.Type == JTokenType.Null ? "" : token.Type == JTokenType.String ? (string)token! : token.ToString();
     }
 
     internal static string Hex(byte[] bytes) => BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();

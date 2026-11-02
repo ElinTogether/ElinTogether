@@ -155,10 +155,11 @@ internal static class SaveDepot
     internal static (string Address, string KeyFile)? EtWorldService => EtWorld ? (Root.Substring(8), KeyFile) : null;
 
     /// <summary>
-    ///     The public half of this install's world service key (made now if there is none), whatever depot is set:
-    ///     the public server vouches for it before this player ever keeps the world (PublicVouch)
+    ///     The public half of this install's world service key (made now if there is none), whatever depot is set,
+    ///     and its signature of a message: the public server vouches for it before this player ever keeps the world
+    ///     (PublicVouch)
     /// </summary>
-    internal static string EtWorldPublicKey() => EtWorldDepot.PublicKeyOf(KeyFile);
+    internal static (string Key, string Sig) EtWorldSign(string message) => EtWorldDepot.SignWithKey(KeyFile, message);
 
     private static ulong MySteam
     {
