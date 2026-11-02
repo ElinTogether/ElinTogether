@@ -59,6 +59,10 @@ public class CharaDieDelta : ElinDelta
             Helper.PlayerAchievements.OnDieDone(earnedFor);
         }
 
+        // nor its postfixes. SleepSynchronizationContext's: a player visiting another player's zone dies there by the
+        // replay only, and the world's host was never told (it waited for the dead visitor for the night)
+        SleepSynchronizationContext.ReportAwayLife(chara);
+
         // stale
         if (!wasDead && chara.IsPC) {
             player.deathDialog = false;
