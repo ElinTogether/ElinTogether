@@ -218,6 +218,60 @@ internal static class PermadeathPatch
                EClass.player.deathDialog && pc.GetBool(PlayerRevive.DeadFlag) && PlayerRevive.Active;
     }
 
+    // inside the game's own revives of the dead of a zone or a base (Zone.Revive, the nurse of FactionBranch.DailyOutcome)
+    private static int _autoRevive;
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Zone), nameof(Zone.Revive))]
+    internal static void BeforeZoneRevive()
+    {
+        _autoRevive++;
+    }
+
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(Zone), nameof(Zone.Revive))]
+    internal static void AfterZoneRevive()
+    {
+        _autoRevive--;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(FactionBranch), nameof(FactionBranch.DailyOutcome))]
+    internal static void BeforeDailyOutcome()
+    {
+        _autoRevive++;
+    }
+
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(FactionBranch), nameof(FactionBranch.DailyOutcome))]
+    internal static void AfterDailyOutcome()
+    {
+        _autoRevive--;
+    }
+
+    /// <summary>
+    ///     GitHub issue 59: a dead player waits for a revive at a bartender, it never stands up by itself. The game revives
+    ///     the dead whose home is a zone each time that zone is entered after a while (Zone.OnVisit -> Zone.Revive), the
+    ///     host's character among them: loading the world again brought the dead host back, with the death penalty of a
+    ///     player alone (gold lost and dropped on the ground, Chara.Revive -> ApplyDeathPenalty). Not revivable there.
+    ///     (Read from the box itself, not PlayerRevive.Active: while the world loads no session is open yet, and in a
+    ///     guest's game away the session's rules hold)
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Chara), nameof(Chara.CanRevive))]
+    internal static void OnCanRevive(Chara __instance, ref bool __result)
+    {
+        if (!__result || _autoRevive <= 0 || !__instance.isDead || EClass.game?.principal is not { permadeath: true }) {
+            return;
+        }
+
+        var session = NetSession.Instance;
+        var waits = session.Transport is ElinNetClient ? session.Rules.PermadeathRevive : EmpConfig.Server.PermadeathRevive.Value;
+        if (waits && PlayerRevive.IsPlayerChara(__instance)) {
+            __result = false;
+        }
+    }
+
     /// <summary>
     ///     No game in a session deletes a save: a guest's is its copy of the world; the host's is the world, while the
     ///     box keeps its dead players waiting
