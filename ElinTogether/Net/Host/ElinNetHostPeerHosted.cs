@@ -60,8 +60,8 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
-    ///     The admins and bans of the save made the signed ones (bans made this session by a signed admin kept);
-    ///     moderators emptied (the signed lists name none yet). Players now banned are put out
+    ///     The admins, moderators and bans of the save made the signed ones (bans made this session by a signed admin
+    ///     kept). Players now banned are put out
     /// </summary>
     private static void SyncPeerModeration(ElinNetHost? host)
     {
@@ -77,8 +77,13 @@ internal partial class ElinNetHost
             changed = true;
         }
 
-        if (Moderators.Count > 0) {
+        var moderators = PeerHosting.ModeratorSet();
+        if (!new HashSet<ulong>(Moderators.Keys).SetEquals(moderators)) {
             Moderators.Clear();
+            foreach (var moderator in moderators) {
+                Moderators[moderator] = 1;
+            }
+
             changed = true;
         }
 
@@ -96,8 +101,9 @@ internal partial class ElinNetHost
             return;
         }
 
-        AdminLog($"peer-hosted: signed lists applied, {Admins.Count} admins, {Bans.Count} banned");
-        EmpLog.Information("Peer-hosted world: signed lists applied, {Admins} admins, {Bans} banned", Admins.Count, Bans.Count);
+        AdminLog($"peer-hosted: signed lists applied, {Admins.Count} admins, {Moderators.Count} moderators, {Bans.Count} banned");
+        EmpLog.Information("Peer-hosted world: signed lists applied, {Admins} admins, {Moderators} moderators, {Bans} banned", Admins.Count,
+            Moderators.Count, Bans.Count);
         if (host is null) {
             return;
         }

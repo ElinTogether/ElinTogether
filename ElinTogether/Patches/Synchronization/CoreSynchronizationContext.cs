@@ -28,11 +28,8 @@ internal class CoreSynchronizationContext : SynchronizationContext
     internal static void OnCoreUpdateEnd()
     {
         PlayerTrade.WatchSession();
-        SaveDepot.Update();
-        // (HiddenServer.Update runs from EmpMod.Update: it waits for its server with no session open, when a release
-        // build has none of these patches)
-        PeerKeeper.Update();
-        CrossCheck.Update();
+        // (SaveDepot, HiddenServer, PeerKeeper and CrossCheck.Update run from EmpMod.Update: they work with no session
+        // open, when a release build has none of these patches)
         EmpServer.Update();
         EmpAutoHost.Update();
         // (alone on a map of its own the host link is still there: the host still hears it)

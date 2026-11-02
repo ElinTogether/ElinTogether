@@ -402,6 +402,8 @@ internal static class SettingsTable
         yield return new("kick_keep_out", "joining", true, Choice: KickKeepOut);
         yield return new("members_only", "joining", true, EmpConfig.Server.MembersOnly);
         yield return new("admin_extras", "joining", true, EmpConfig.Server.AdminExtras);
+        // (the dedicated public server only: it needs the public server key and the world admin key on this PC)
+        yield return new("vouch_players", "joining", true, EmpConfig.Server.VouchPlayers, Requires: () => OfficialServer.CanHost());
         yield return new("container_log", "together", true, EmpConfig.Server.ContainerAccessLog);
         yield return new("max_characters", "joining", true, Choice: MaxCharacters);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);

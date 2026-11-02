@@ -191,6 +191,38 @@ internal static class WorldAdmin
     }
 
     /// <summary>
+    ///     The world service is told that this key is the player of this Steam id (POST /v1/admin/vouch, which
+    ///     registers it if unknown): what the public server does for the players it saw over Steam (PublicVouch).
+    ///     Off the game's thread, not through the page (no Busy, no refresh); <paramref name="done" /> gets the
+    ///     status and the service's error code (0 and the message when the service did not answer), on that thread
+    /// </summary>
+    internal static void Vouch(string key, ulong steam, Action<int, string> done)
+    {
+        // (read here, on the game's thread, as Run does)
+        if (Address is not { } address) {
+            done(0, "no world service set");
+            return;
+        }
+
+        var keyPath = KeyFile;
+        System.Threading.Tasks.Task.Run(() => {
+            try {
+                (int Status, JObject? Json) reply;
+                lock (_gate) {
+                    _keyPath = keyPath;
+                    _base = address.Base;
+                    _world = address.World;
+                }
+
+                reply = Send("POST", "/v1/admin/vouch", new JObject { ["key"] = key, ["steam"] = steam.ToString(), ["on"] = true });
+                done(reply.Status, (string?)reply.Json?["error"] ?? "");
+            } catch (Exception ex) {
+                done(0, ex.Message);
+            }
+        });
+    }
+
+    /// <summary>
     ///     One signed document, sent as the next number (the current one + 1, read just before): a list changed by
     ///     another admin meanwhile is refused, never overwritten
     /// </summary>

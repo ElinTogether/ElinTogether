@@ -32,6 +32,9 @@ internal static class EtWorldDepot
 
     private static readonly object _gate = new();
 
+    // the key file alone (made once, read): taken inside _gate or alone, never the other way round
+    private static readonly object _keyGate = new();
+
     private static string _base = "";
     private static string _world = "public";
     private static byte[]? _seed;
@@ -75,6 +78,49 @@ internal static class EtWorldDepot
     ///     The public half of this install's key, once a request was made (64 hex)
     /// </summary>
     internal static string PublicKey => _pub;
+
+    /// <summary>
+    ///     The public half (64 hex) of the key kept in <paramref name="keyFile" />, the key made there first when
+    ///     there is none (the same key the service will know this install by); no request
+    /// </summary>
+    internal static string PublicKeyOf(string keyFile) => SignWithKey(keyFile, null).Key;
+
+    /// <summary>
+    ///     The public half of the key in <paramref name="keyFile" /> (made first when there is none) and its signature
+    ///     of <paramref name="message" /> (empty when null). Under the key file's own lock only, never behind a
+    ///     request to the service (the game's thread calls it)
+    /// </summary>
+    internal static (string Key, string Sig) SignWithKey(string keyFile, string? message)
+    {
+        lock (_keyGate) {
+            var seed = LoadKey(keyFile);
+            try {
+                return (Hex(Ed25519.PublicKey(seed)),
+                    message is null ? "" : Hex(Ed25519.Sign(seed, System.Text.Encoding.UTF8.GetBytes(message))));
+            } finally {
+                Array.Clear(seed, 0, seed.Length);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     What a player signs to prove to the public server that it holds its key (PublicVouch): a nonce of the
+    ///     server's, fresh per ask
+    /// </summary>
+    internal static string VouchMessage(string nonce) => "ETVOUCH1\n" + nonce;
+
+    /// <summary>
+    ///     The signature of <see cref="VouchMessage" /> by that key checks
+    /// </summary>
+    internal static bool VouchSigned(string keyHex, string nonce, string sigHex)
+    {
+        try {
+            return keyHex.Length == 64 && sigHex.Length == 128 &&
+                   Ed25519.Verify(Unhex(keyHex), System.Text.Encoding.UTF8.GetBytes(VouchMessage(nonce)), Unhex(sigHex));
+        } catch (Exception) {
+            return false;
+        }
+    }
 
     /// <summary>
     ///     The world of the service this game uses ("public" unless the address says "#other")
@@ -182,7 +228,10 @@ internal static class EtWorldDepot
 
         if (keyFile != _keyFile || _seed is null) {
             _keyFile = keyFile;
-            _seed = LoadKey(keyFile);
+            lock (_keyGate) {
+                _seed = LoadKey(keyFile);
+            }
+
             _pub = Hex(Ed25519.PublicKey(_seed));
             _registered = false;
         }
