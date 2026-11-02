@@ -99,7 +99,9 @@ internal static class TeamStory
         }
 
         var changed = false;
-        foreach (var team in players.Where(p => p is { IsPlayer: true } || p == EClass.pc).Select(p => StoryOwner.Of(p.uid)).Distinct()) {
+        // (the stepper always counts: a player alone on its own map is no active remote chara of the host's map, so
+        // IsPlayer is false for it, and its own step was credited to nobody)
+        foreach (var team in players.Where(p => p == stepper || p is { IsPlayer: true } || p == EClass.pc).Select(p => StoryOwner.Of(p.uid)).Distinct()) {
             if (Book.TryGetValue(team, out var was) && was >= phase) {
                 continue;
             }
