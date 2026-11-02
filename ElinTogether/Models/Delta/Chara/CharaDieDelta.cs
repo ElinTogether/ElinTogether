@@ -62,6 +62,8 @@ public class CharaDieDelta : ElinDelta
         // nor its postfixes. SleepSynchronizationContext's: a player visiting another player's zone dies there by the
         // replay only, and the world's host was never told (it waited for the dead visitor for the night)
         SleepSynchronizationContext.ReportAwayLife(chara);
+        // ReportContextPatch's: a guest's bug report said nothing of its death, the host's did
+        ReportContextPatch.OnDie(chara, Origin);
 
         // stale
         if (!wasDead && chara.IsPC) {
