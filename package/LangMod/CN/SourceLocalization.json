@@ -1594,5 +1594,9 @@
     "LangGeneral.emp_ui_chat_help_more.text": ":名字: 插入表情，@名字 呼叫玩家。写消息时 Shift+点击背包中的物品即可插入物品链接",
     "LangGeneral.emp_ui_chat_cmd_unknown.text": "没有 {0} 这个命令。",
     "LangGeneral.emp_ui_chat_cmd_no_player.text": "没有名为 {0} 的玩家。",
-    "LangGeneral.emp_ui_chat_cmd_private_off.text": "这个世界关闭了私聊。"
+    "LangGeneral.emp_ui_chat_cmd_private_off.text": "这个世界关闭了私聊。",
+    "LangGeneral.emp_ui_cl_chat_game_time.text": "聊天中显示游戏时间",
+    "LangGeneral.emp_ui_cl_desc_chat_game_time.text": "每条聊天消息旁显示游戏内时间，而不是电脑时间。",
+    "LangGeneral.emp_ui_chat_menu_whisper.text": "私聊 {0}",
+    "LangGeneral.emp_ui_chat_menu_mention.text": "呼叫 @{0}"
 }

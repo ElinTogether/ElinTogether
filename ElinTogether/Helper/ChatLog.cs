@@ -29,6 +29,9 @@ internal static class ChatLog
 
         /// <summary>The line names this player (@name): drawn highlighted, counted on the tab</summary>
         public bool Mention { get; init; }
+
+        /// <summary>The game's clock when the line came ("" before a game runs): My settings shows it instead of the real one</summary>
+        public string GameTime { get; init; } = "";
     }
 
     private static readonly List<Line> Lines = [];
@@ -61,7 +64,12 @@ internal static class ChatLog
             SE.Play("click_chat");
         }
 
-        Lines.Add(new(DateTime.Now.ToString("HH:mm"), channel, who, text) { Uid = uid, Mention = mention });
+        var date = EClass.core.IsGameStarted ? EClass.world?.date : null;
+        Lines.Add(new(DateTime.Now.ToString("HH:mm"), channel, who, text) {
+            Uid = uid,
+            Mention = mention,
+            GameTime = date != null ? $"{date.hour:00}:{date.min:00}" : "",
+        });
         if (Lines.Count > Capacity) {
             Lines.RemoveAt(0);
         }

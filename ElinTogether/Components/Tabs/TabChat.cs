@@ -267,7 +267,75 @@ internal partial class TabChat : TabEmpBase
         return true;
     }
 
-    private static bool Shows(ChatLog.Line line) => _filter < 0 || line.Channel == _filter;
+    // (a muted player's lines are hidden, the ones already there too)
+    private static bool Shows(ChatLog.Line line) => (_filter < 0 || line.Channel == _filter) && !IsMuted(line.Uid);
+
+    // My settings changed how lines are drawn: the log is drawn again when it is next shown
+    private static bool _stale;
+
+    internal static void RefillShown() => _stale = true;
+
+    // ---------------------------------------------------------------- the players behind the lines
+
+    /// <summary>The account and name of the player whose character has that uid, here or elsewhere on the server</summary>
+    private static (ulong Steam, string Name) PlayerOf(int uid)
+    {
+        if (uid == 0) {
+            return (0, "");
+        }
+
+        if (PlayerSocial.PlayerOfUid(uid) is { } state) {
+            return ((ulong)state.User, state.User.Name);
+        }
+
+        return NetSession.Instance.ServerRoster.Find(p => p.CharaUid == uid) is { } far
+            ? (far.Steam, string.IsNullOrWhiteSpace(far.Name) ? far.CharaName : far.Name)
+            : (0, "");
+    }
+
+    /// <summary>Muted by this player (its personal ignore list, as the Social menu's "Ignore"), never itself</summary>
+    private static bool IsMuted(int uid) =>
+        uid != 0 && EClass.core.IsGameStarted && uid != EClass.pc.uid && PlayerOf(uid).Steam is var steam and not 0 && PlayerSocial.IsIgnored(steam);
+
+    /// <summary>A line's speaker in its team's colour, when teams are on and it has one</summary>
+    private static string WhoOf(ChatLog.Line line)
+    {
+        if (line.Uid == 0 || line.Channel is not (ChatLog.All or ChatLog.Team) || !NetSession.Instance.Rules.UseTeams ||
+            Teams.TeamOf(line.Uid) is var team && team == Teams.Wanderers) {
+            return line.Who;
+        }
+
+        return line.Who.RemoveAllTags().TagColor(TeamBanner.ChipColor(team));
+    }
+
+    /// <summary>What a click on another player's line offers: write to it, call it, mute or unmute it</summary>
+    private IEnumerable<(string Label, System.Action Act)> MenuOf(int uid)
+    {
+        var (steam, name) = PlayerOf(uid);
+        if (uid == EClass.pc.uid || name.Length == 0) {
+            yield break;
+        }
+
+        if (PlayerWhisper.Enabled) {
+            yield return ("emp_ui_chat_menu_whisper".Loc(name), () => {
+                if (_field != null) {
+                    _field.text = $"/w {name} ";
+                    _caret = _field.text.Length;
+                    _field.ActivateInputField();
+                    StartCoroutine(PutCaret(_caret));
+                }
+            });
+        }
+
+        yield return ("emp_ui_chat_menu_mention".Loc(name), () => Insert("@" + name));
+        if (steam != 0) {
+            var muted = PlayerSocial.IsIgnored(steam);
+            yield return ((muted ? "emp_ui_unignore" : "emp_ui_ignore").lang(), () => {
+                PlayerSocial.SetIgnored(steam, name, !muted);
+                Refill();
+            });
+        }
+    }
 
     private void AddLine(ChatLog.Line line)
     {
@@ -284,19 +352,27 @@ internal partial class TabChat : TabEmpBase
         var action = ChatMarkup.IsAction(line.Text);
         var links = new List<Thing>();
         var body = ChatMarkup.Render(action ? ChatMarkup.ActionOf(line.Text) : line.Text, text.fontSize + 4, icons, links);
-        // (an item link: the item's tooltip over the line)
-        if (links.Count > 0) {
+        // (an item link: the item's tooltip over the line; another player's line: its menu on a click)
+        if (links.Count > 0 || (line.Uid != 0 && line.Uid != EClass.pc.uid)) {
             text.raycastTarget = true;
-            text.gameObject.AddComponent<ChatLineTip>().Thing = links[0];
+            var pointer = text.gameObject.AddComponent<ChatLine>();
+            pointer.Thing = links.FirstOrDefault();
+            var uid = line.Uid;
+            if (uid != 0 && uid != EClass.pc.uid) {
+                pointer.Menu = () => MenuOf(uid);
+            }
         }
+
         // (a line naming this player stands out: a mark before it, its words in the mention colour)
         if (line.Mention) {
             body = body.TagColor(ChatMarkup.MentionColor);
         }
 
-        // ("/me waves": "* Name waves", in italics)
-        var said = action ? $"<i>* {line.Who} {body}</i>" : $"{line.Who}: {body}";
-        text.text = $"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{(line.Mention ? "<b>» </b>" : "")}{said}";
+        // ("/me waves": "* Name waves", in italics; the clock of My settings' choice)
+        var who = WhoOf(line);
+        var said = action ? $"<i>* {who} {body}</i>" : $"{who}: {body}";
+        var time = EmpConfig.Client.ChatGameTime.Value && line.GameTime.Length > 0 ? line.GameTime : line.Time;
+        text.text = $"{time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{(line.Mention ? "<b>» </b>" : "")}{said}";
         if (icons.Count > 0) {
             text.gameObject.AddComponent<ChatIcons>().Set(icons);
         }
@@ -329,6 +405,11 @@ internal partial class TabChat : TabEmpBase
         UpdateComposer();
         if (_list == null) {
             return;
+        }
+
+        if (_stale) {
+            _stale = false;
+            Refill();
         }
 
         // (the log took the window's room: its content follows, still at the newest line unless scrolled up)

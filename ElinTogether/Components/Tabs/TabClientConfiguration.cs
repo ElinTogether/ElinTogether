@@ -68,6 +68,13 @@ internal class TabClientConfiguration : TabEmpBase
             UpdateCheck.Begin();
             Patches.TitleButtonPatch.ShowUpdate();
         });
+
+        // the clock beside each Chat line: the computer's, or the game's
+        var gameTime = EmpConfig.Client.ChatGameTime;
+        card.ToggleRow("emp_ui_cl_chat_game_time".lang(), "emp_ui_cl_desc_chat_game_time".lang(), gameTime.Value, v => {
+            gameTime.Value = v;
+            TabChat.RefillShown();
+        });
     }
 
     // the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice

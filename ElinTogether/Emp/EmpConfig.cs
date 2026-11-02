@@ -175,6 +175,13 @@ internal partial class EmpConfig
             "The newer version already announced by a message (set by itself)\n" +
             "已通过消息提示过的新版本（自动设置）");
 
+        Client.ChatGameTime = config.Bind(
+            "Client",
+            "ChatGameTime",
+            false,
+            "The Chat tab shows the game's clock beside each line instead of your computer's\n" +
+            "聊天标签页在每条消息旁显示游戏内时间，而不是电脑时间");
+
         Client.PingKeybind = config.Bind(
             "Client",
             "PingKeybind",
@@ -1147,6 +1154,7 @@ internal partial class EmpConfig
     internal static class Client
     {
         internal static ConfigEntry<KeyCode> PingKeybind { get; set; } = null!;
+        internal static ConfigEntry<bool> ChatGameTime { get; set; } = null!;
         internal static ConfigEntry<string> FirstStepsSeen { get; set; } = null!;
         internal static ConfigEntry<string> DepotPath { get; set; } = null!;
         internal static ConfigEntry<string> DepotPassword { get; set; } = null!;
