@@ -175,9 +175,10 @@ internal partial class ElinNetClient
         // the mods of the game against ours, before anything of the world is sent: a refusal can then name them
         _mods = null;
         _modsText = request.Mods ?? "";
+        ModFetch.ClientOnly = ClientOnlyMods.Parse(request.ClientOnlyMods);
         if (_modsText.Length > 0) {
             _mods = ModList.Compare(ModListFile.Parse(_modsText), "the host", _modsText.Contains(ModList.LookOwn),
-                ClientOnlyMods.Parse(request.ClientOnlyMods));
+                ModFetch.ClientOnly);
             if (_mods.Missing.Count > 0 && ModFetch.Begin(_modsText, _mods, ReturnTo, (ulong)Host.User, Host.User.Name)) {
                 // they are fetched, Elin restarts with them and joins again by itself: nothing more is asked here
                 Socket.Disconnect(Host, EmpDisconnectInfo.ClientCancel);

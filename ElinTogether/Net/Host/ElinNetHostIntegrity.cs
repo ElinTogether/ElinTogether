@@ -94,8 +94,8 @@ internal partial class ElinNetHost
     {
         var trimmed = details?.Take(32).ToList() ?? [];
 
-        EmpLog.Warning("Rejecting {@Peer}: {RejectReason}, {MismatchCount} mismatching entries",
-            peer, reason, trimmed.Count);
+        EmpLog.Warning("Rejecting {@Peer}: {RejectReason}, {MismatchCount} mismatching entries: {MismatchEntries}",
+            peer, reason, trimmed.Count, trimmed);
 
         if (_handshakes.TryGetValue(peer.Id, out var state)) {
             state.Phase = NetHandshakePhase.Rejected;

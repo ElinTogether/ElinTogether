@@ -65,6 +65,12 @@ internal static class ModFetch
     // this run was started for a session, or tried and gave up: it never restarts Elin (again)
     private static bool _done;
     private static bool _busy;
+
+    /// <summary>
+    ///     The host's ClientOnlyMods of the last join (set by the source validation request): a session list keeps
+    ///     them as the player has them, the host neither needs nor refuses them
+    /// </summary>
+    internal static HashSet<string> ClientOnly = [];
     private static bool _applied;
     private static bool _pending;
     private static float _titleAt;
@@ -905,7 +911,8 @@ internal static class ModFetch
         foreach (var package in packages) {
             var id = BaseModPackage.NormalizeId(package.id);
             var workshop = ModList.WorkshopOf(package);
-            var on = kept.Contains(id) || (ownLooks && ModList.OnlyLook(package)) ? package.willActivate :
+            var on = kept.Contains(id) || (ownLooks && ModList.OnlyLook(package)) ||
+                     ClientOnlyMods.Lists(ClientOnly, package.id ?? "", workshop) ? package.willActivate :
                 workshop.Length > 0 ? workshops.Contains(workshop) : ids.Contains(id);
             lines.Add($"{package.dirInfo.FullName},{(on ? 1 : 0)},{package.id.Trim()}");
         }
