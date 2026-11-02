@@ -67,11 +67,15 @@ public class CardDamageHpDelta : ElinDelta
         // a fifth of its life (the game spares "the player" only), and the fear reached the guest, who could no
         // longer strike. The host's own player is never feared there
         CardDamageHpEvent.Depth++;
+        // nor CodexPatch's, which says whose blow is settled: teams learning on their own, the kill a replay counts
+        // was everyone's (killer 0), a guest's game counted the kills of other teams' players
+        CodexPatch.OnBlowBegin(origin);
         try {
             using (Simulate(net.IsHost)) {
                 card.Stub_DamageHP(Dmg, Ele, EleP, AttackSource, Origin, ShowEffect, Weapon, OriginalTarget, ResistPenetrationLevel);
             }
         } finally {
+            CodexPatch.OnBlowEnd();
             CardDamageHpEvent.Depth--;
             RemotePlayerKillPatch.Unshield(card, shield, origin);
         }
