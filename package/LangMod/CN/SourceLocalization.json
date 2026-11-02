@@ -1729,5 +1729,10 @@
     "LangGeneral.emp_ui_editor_rotate_left.text": "向左旋转",
     "LangGeneral.emp_ui_editor_rotate_right.text": "向右旋转",
     "LangGeneral.emp_ui_emblem_src_scenery.text": "景物",
-    "LangGeneral.emp_ui_editor_sticker_cells.text": "图片大小"
+    "LangGeneral.emp_ui_editor_sticker_cells.text": "图片大小",
+    "LangGeneral.emp_ui_editor_tool_shape.text": "形状：星形、三角形、盾牌等",
+    "LangGeneral.emp_ui_editor_shape_kind.text": "形状",
+    "LangGeneral.emp_ui_editor_shape_help.text": "在画布上拖动以绘制形状。取消“填充”则绘制与大小同宽的轮廓。",
+    "LangGeneral.emp_ui_editor_shift_square.text": "按住Shift可使各边相等（正方形、正圆）。",
+    "LangGeneral.emp_ui_editor_shift_line.text": "按住Shift可画水平、垂直或斜线。"
 }

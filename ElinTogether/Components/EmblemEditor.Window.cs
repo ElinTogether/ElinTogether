@@ -438,7 +438,7 @@ internal static partial class EmblemEditor
         Highlight(snap, _snap);
     }
 
-    /// <summary>The tools down the left (each with its key), the two colours and their swap under them</summary>
+    /// <summary>The tools down the left, two by two (each with its key), the two colours and their swap under them</summary>
     private static void ToolColumn(YKHorizontal middle)
     {
         var column = middle.Vertical();
@@ -449,14 +449,28 @@ internal static partial class EmblemEditor
         column.Layout.childAlignment = TextAnchor.UpperCenter;
         column.Layout.spacing = 2f;
         var ce = column.LayoutElement();
-        ce.minWidth = ce.preferredWidth = 36f;
+        ce.minWidth = ce.preferredWidth = 70f;
         ce.flexibleWidth = 0f;
+        // (one tool a row, twelve of them, ran past the window's smallest height: the colours under them were cut,
+        // lead dev 2026-11-02 at 900x560; two a row take half the height)
+        var rows = (ToolOrder.Length + 1) / 2;
+        var height = rows * 34f - 2f;
+        var tools = Child(column.transform, "EditorTools", typeof(LayoutElement), typeof(GridLayoutGroup));
+        var te = tools.GetComponent<LayoutElement>();
+        (te.minWidth, te.preferredWidth, te.minHeight, te.preferredHeight) = (68f, 68f, height, height);
+        tools.sizeDelta = new(68f, height);
+        var grid = tools.GetComponent<GridLayoutGroup>();
+        grid.cellSize = new(32f, 32f);
+        grid.spacing = new(2f, 2f);
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 2;
         foreach (var t in ToolOrder) {
             var tool = t;
             var button = Icon(column.IconButton(EditorIcons.Tool(t), "?", () => {
                 _tool = tool;
                 Fill();
             }, null, true, 0f, 32f));
+            button.transform.SetParent(tools, false);
             button.name = "EditorTool" + tool;
             Tip(button, ToolTip(tool).lang() + " (" + ToolKeys[tool] + ")");
             Highlight(button, tool == _tool);
@@ -743,10 +757,18 @@ internal static partial class EmblemEditor
         }
 
         switch (_tool) {
+            case ToolShape:
+                ShapeOptions(side);
+                goto case ToolRect;
             case ToolRect:
             case ToolEllipse:
                 var filled = side.Row().Toggle("emp_ui_emblem_filled".lang(), _filled, on => _filled = on);
                 filled.AsRow();
+                filled.name = "EditorFilled";
+                side.TextSmall("emp_ui_editor_shift_square".lang(), FontColor.Gray);
+                break;
+            case ToolLine:
+                side.TextSmall("emp_ui_editor_shift_line".lang(), FontColor.Gray);
                 break;
             case ToolSelect:
                 side.TextSmall("emp_ui_editor_select_help".lang(), FontColor.Gray);
@@ -782,6 +804,29 @@ internal static partial class EmblemEditor
         if (Paints(_tool)) {
             side.TextSmall("emp_ui_editor_paint_help".lang(), FontColor.Gray);
         }
+    }
+
+    /// <summary>The shape tool's shape (a dropdown of the shapes' names), and a star's points or a polygon's sides</summary>
+    private static void ShapeOptions(YKLayout side)
+    {
+        var row = side.Row();
+        row.Layout.spacing = 6f;
+        var title = row.Text("emp_ui_editor_shape_kind".lang());
+        var te = title.LayoutElement();
+        (te.minWidth, te.preferredWidth, te.flexibleWidth) = (84f, 84f, 0f);
+        var names = ToolShapes.Select(k => ("emp_ui_emblem_" + k).lang()).ToList();
+        var dropdown = row.Dropdown(names, i => {
+            _shapeKind = ToolShapes[Mathf.Clamp(i, 0, ToolShapes.Length - 1)];
+            Fill();
+        }, Mathf.Max(0, System.Array.IndexOf(ToolShapes, _shapeKind)));
+        dropdown.name = "EditorShapeKind";
+        dropdown.LayoutElement().flexibleWidth = 1f;
+        dropdown.LayoutElement().preferredHeight = UIHelper.RowHeight;
+        if (_shapeKind is "star" or "polygon") {
+            Number(side, _shapeKind == "star" ? "emp_ui_emblem_points" : "emp_ui_emblem_sides", _shapeSides, 3, 12, "", v => _shapeSides = v, "EditorShapeSides");
+        }
+
+        side.TextSmall("emp_ui_editor_shape_help".lang(), FontColor.Gray);
     }
 
     /// <summary>A number of the editor (a tool's size, hardness, opacity): its title, "-", the game's slider, "+"</summary>
@@ -1276,7 +1321,7 @@ internal static partial class EmblemEditor
         KeyCode.Z, KeyCode.Y, KeyCode.S, KeyCode.C, KeyCode.X, KeyCode.V, KeyCode.A, KeyCode.D, KeyCode.G, KeyCode.Alpha0,
         KeyCode.Keypad0, KeyCode.Alpha1, KeyCode.Keypad1, KeyCode.Equals, KeyCode.Plus, KeyCode.KeypadPlus, KeyCode.Minus,
         KeyCode.KeypadMinus, KeyCode.LeftBracket, KeyCode.RightBracket, KeyCode.Delete, KeyCode.Backspace, KeyCode.M, KeyCode.P,
-        KeyCode.B, KeyCode.E, KeyCode.L, KeyCode.R, KeyCode.O, KeyCode.I, KeyCode.T,
+        KeyCode.B, KeyCode.E, KeyCode.L, KeyCode.R, KeyCode.O, KeyCode.I, KeyCode.T, KeyCode.U,
     ];
 
     private static readonly Queue<(KeyCode Key, bool Ctrl, bool Shift)> _keys = new();
@@ -1749,6 +1794,12 @@ internal static partial class EmblemEditor
     {
         (_brush, _hardness, _opacity) = (size, hardness, opacity);
     }
+
+    /// <summary>The bench holds Shift (a shape kept square, a line straight) while it draws</summary>
+    internal static void BenchShift(bool down) => _benchShift = down;
+
+    /// <summary>The shape tool for the bench: shape|sides|filled</summary>
+    internal static string BenchShape => string.Join("|", _shapeKind, _shapeSides, _filled);
 #endif
 
     /// <summary>A picture (rows top-down) shrunk or grown into 64x64, its shape kept, centred; each pixel the average of its box</summary>
