@@ -153,14 +153,235 @@ internal sealed class LocalPeerHosting : IPeerHosting
 }
 
 /// <summary>
+///     The lists and rules signed by the world's admins and kept by the ETWorld service (dev/etworld/API.md 5.1),
+///     each checked against the admin keys built into the mod (SignedDocs), so neither the service nor the keeper can
+///     change them. Read when the save depot is an "etworld:" service and the mod knows at least one admin key;
+///     otherwise the local stand-in answers (no admin key is built in until the service is deployed). The documents
+///     are fetched off the game's thread at the first use and every 5 minutes, kept on the disk
+///     (ElinMP/etworld_docs_[world].json, checked again when read back); until one is held there are no rules, so the
+///     world is neither kept nor joined
+/// </summary>
+internal sealed class StorePeerHosting : IPeerHosting
+{
+    private const double RefreshSeconds = 300;
+    private const double RetrySeconds = 30;
+
+    // the public halves of the world admins' keys (dev/etworld/make_admin_key.py on the lead dev's PC), 64 hex each.
+    // Empty until the service is deployed (API.md section 9)
+    private static readonly string[] AdminKeysHex = [];
+
+    private static string[]? _adminKeys;
+
+    private readonly LocalPeerHosting _local = new();
+    private readonly object _gate = new();
+    private SignedDocs? _docs;
+    private string _cacheFile = "";
+    private double _nextRefresh;
+    private bool _refreshing;
+    private bool _triedOnce;
+    private bool _toldLocal;
+
+    /// <summary>
+    ///     The admin keys signed documents are checked against (built in; Debug builds also read the bench's
+    ///     ElinMP/etworld_admin_test.pub, one key per line)
+    /// </summary>
+    internal static IReadOnlyCollection<string> AdminKeys
+    {
+        get {
+            if (_adminKeys is not null) {
+                return _adminKeys;
+            }
+
+            var keys = new List<string>(AdminKeysHex.Select(k => k.ToLowerInvariant()));
+#if DEBUG
+            try {
+                var path = Path.Combine(Application.persistentDataPath, "ElinMP", "etworld_admin_test.pub");
+                if (File.Exists(path)) {
+                    keys.AddRange(File.ReadAllLines(path).Select(l => l.Trim().ToLowerInvariant())
+                        .Where(l => System.Text.RegularExpressions.Regex.IsMatch(l, "^[0-9a-f]{64}$")));
+                }
+            } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+                EmpLog.Warning(ex, "The bench's world admin keys could not be read");
+            }
+#endif
+            return _adminKeys = [..keys.Distinct()];
+        }
+    }
+
+    public bool Active => _local.Active;
+
+    public string[] AdminIds => Docs() is { } docs ? SignedDocs.SteamIds(docs.Get("admins")?.Doc, "admins") : _local.AdminIds;
+
+    public string[] BannedIds => Docs() is { } docs ? SignedDocs.SteamIds(docs.Get("bans")?.Doc, "world") : _local.BannedIds;
+
+    public RulesSnapshot? SignedRules
+    {
+        get {
+            if (Docs() is not { } docs) {
+                return _local.SignedRules;
+            }
+
+            if (docs.Get("rules") is not { } held) {
+                return null;
+            }
+
+            // (read every tick by the keeper's hidden server: made once per document)
+            if (_rulesOf != held) {
+                var (settings, motd, text, build) = SignedDocs.Rules(held.Doc);
+                _rules = new() {
+                    Settings = settings,
+                    Motd = motd,
+                    RulesText = text,
+                    AllowedBuild = build,
+                    Signature = $"admin {held.Signer.Substring(0, 8)} #{held.Seq}",
+                };
+                _rulesOf = held;
+            }
+
+            return _rules;
+        }
+    }
+
+    private SignedDocs.Held? _rulesOf;
+    private RulesSnapshot? _rules;
+
+    /// <summary>
+    ///     The signed documents held (a copy safe to read), a refresh started when due; null when this game reads the
+    ///     local stand-in instead (no store, or no admin key known)
+    /// </summary>
+    private SignedDocs? Docs()
+    {
+        if (SaveDepot.EtWorldService is not { } service || AdminKeys.Count == 0) {
+            if (!_toldLocal && Active) {
+                _toldLocal = true;
+                EmpLog.Information("Peer-hosted world: {Why}, the lists and rules are read from ElinMP/peer_hosting.json",
+                    AdminKeys.Count == 0 ? "no world admin key is built in" : "no world service is set");
+            }
+
+            return null;
+        }
+
+        var world = World(service.Address);
+        SignedDocs docs;
+        string cache;
+        bool now;
+        lock (_gate) {
+            if (_docs is null || _docs.World != world) {
+                _cacheFile = Path.Combine(Application.persistentDataPath, "ElinMP", $"etworld_docs_{world}.json");
+                _docs = new(world);
+                try {
+                    if (File.Exists(_cacheFile)) {
+                        foreach (var why in _docs.FromCache(File.ReadAllText(_cacheFile), AdminKeys)) {
+                            EmpLog.Warning("Peer-hosted world: a kept signed document was refused, {Why}", why);
+                        }
+                    }
+                } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+                    EmpLog.Warning(ex, "Peer-hosted world: the kept signed documents could not be read");
+                }
+
+                _nextRefresh = 0;
+            }
+
+            docs = _docs;
+            cache = _cacheFile;
+            if (_refreshing || Clock < _nextRefresh) {
+                return docs;
+            }
+
+            _refreshing = true;
+            // the hidden server holding nothing and never asked yet (a machine that never read them): asked now, on
+            // this thread, so it does not refuse to open "no rules" while the answer travels; once per process at
+            // most, bounded by the request's own time-out. Never in a visible game (no frozen screen)
+            now = !_triedOnce && EmpServer.Requested && SignedDocs.Kinds.All(k => docs.Get(k) is null);
+            _triedOnce = true;
+        }
+
+        var me = PeerKeeper.PlayerId;
+        if (now) {
+            Refresh(service, me, docs, cache);
+        } else {
+            System.Threading.Tasks.Task.Run(() => Refresh(service, me, docs, cache));
+        }
+
+        return docs;
+    }
+
+    private static readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+
+    // seconds since the mod loaded, on any thread
+    private static double Clock => _clock.Elapsed.TotalSeconds;
+
+    private static string World(string address)
+    {
+        var at = address.IndexOf('#');
+        return at >= 0 ? address.Substring(at + 1) : "public";
+    }
+
+    /// <summary>
+    ///     Off the game's thread: each document fetched and offered (a refused one is logged, the one held stays)
+    /// </summary>
+    private void Refresh((string Address, string KeyFile) service, ulong me, SignedDocs docs, string cache)
+    {
+        var ok = true;
+        try {
+            var changed = false;
+            foreach (var kind in SignedDocs.Kinds) {
+                var reply = EtWorldDepot.Request(service.Address, service.KeyFile, me, Environment.UserName, "GET", "/v1/w/{w}/doc/" + kind);
+                if (reply.Status == 404) {
+                    continue;
+                }
+
+                if (reply.Status != 200 || reply.Json is null) {
+                    ok = false;
+                    EmpLog.Debug("Peer-hosted world: the signed {Kind} could not be read ({Status})", kind, reply.Status);
+                    continue;
+                }
+
+                lock (_gate) {
+                    var before = docs.Seq(kind);
+                    if (docs.Offer(kind, reply.Json, AdminKeys) is { } why) {
+                        EmpLog.Warning("Peer-hosted world: the service's signed {Kind} was refused, {Why}", kind, why);
+                    } else if (docs.Seq(kind) != before) {
+                        changed = true;
+                        EmpLog.Information("Peer-hosted world: signed {Kind} #{Seq} taken", kind, docs.Seq(kind));
+                    }
+                }
+            }
+
+            if (changed) {
+                string text;
+                lock (_gate) {
+                    text = docs.ToCache();
+                }
+
+                File.WriteAllText(cache + ".tmp", text);
+                if (File.Exists(cache)) {
+                    File.Delete(cache);
+                }
+
+                File.Move(cache + ".tmp", cache);
+            }
+        } catch (Exception ex) {
+            ok = false;
+            EmpLog.Debug(ex, "Peer-hosted world: the signed documents could not be read");
+        } finally {
+            lock (_gate) {
+                _refreshing = false;
+                _nextRefresh = Clock + (ok ? RefreshSeconds : RetrySeconds);
+            }
+        }
+    }
+}
+
+/// <summary>
 ///     The peer-hosted mode as the rest of the mod asks about it
 /// </summary>
 internal static class PeerHosting
 {
     /// <summary>
-    ///     Replaced by the store client (P2/P3)
+    ///     The signed documents of the world service, or the local stand-in while no service or admin key is known
     /// </summary>
-    internal static IPeerHosting Current { get; set; } = new LocalPeerHosting();
+    internal static IPeerHosting Current { get; set; } = new StorePeerHosting();
 
     internal static bool Active => Current.Active;
 
