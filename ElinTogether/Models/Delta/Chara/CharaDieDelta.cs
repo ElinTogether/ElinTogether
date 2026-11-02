@@ -50,9 +50,12 @@ public class CharaDieDelta : ElinDelta
         // player's; without it the replay of another player's kill of a putit earned PUTIT on this account (the host
         // sends a guest's own, AchievementDelta)
         Helper.PlayerAchievements.OnDie(Origin, out var earnedFor);
+        // OtherPlayerPatch's: another player's death is no pet's (the statistic and the "a pet died" tutorial)
+        OtherPlayerPatch.OnDie(chara, out var allyDeath);
         try {
             chara.Stub_Die(element, Origin, AttackSource, OriginalTarget);
         } finally {
+            OtherPlayerPatch.OnDieEnd(allyDeath);
             Helper.PlayerAchievements.OnDieDone(earnedFor);
         }
 

@@ -401,9 +401,12 @@ internal static class OtherPlayerPatch
 
     /// <summary>
     ///     Another player dies in this game: the game counts it as one of "the player's" pets that died (a statistic,
-    ///     and once the tutorial about dead pets). Not a pet: the count stays as it was
+    ///     and once the tutorial about dead pets). Not a pet: the count stays as it was. First: on the host,
+    ///     CharaDieEvent's prefix (patched before this class) plays a death caused by a guest's delta right there
+    ///     (Stub_Die), a later prefix came after the death. A guest's replay calls it itself (CharaDieDelta)
     /// </summary>
     [HarmonyPrefix]
+    [HarmonyPriority(Priority.First)]
     [HarmonyPatch(typeof(Chara), nameof(Chara.Die))]
     internal static void OnDie(Chara __instance, out int __state)
     {
