@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -83,6 +85,12 @@ internal static class CardDamageHpEvent
 
     extension(Card card)
     {
+        /// <summary>
+        ///     The blow a guest's game reports on its own character runs here on the host, and every blow the host
+        ///     settled runs here on the guests. The snapshot lacks the transpilers of classes patched after this one
+        ///     (see SnapshotStub): the guest's fate (1220) was judged by the stricter rule of a non-player and its
+        ///     dialog did not save it, and the strife kill went to the host. They are applied to this copy too
+        /// </summary>
         [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
         internal void Stub_DamageHP(long dmg,
                                     int ele,
@@ -94,6 +102,13 @@ internal static class CardDamageHpEvent
                                     Chara originalTarget,
                                     int resistPenetrationLevel)
         {
+            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+            {
+                return SnapshotStub.With(instructions, original, OtherPlayerPatch.OnDamageHP, OtherPlayerPatch.OnDamageHPWeakspot,
+                    OtherPlayerPatch.OnDamageHPDialog, StrifeKillDelta.Count.OnDamageHP);
+            }
+
+            _ = Transpiler([], null!);
             throw new NotImplementedException("Chara.DamageHP");
         }
     }
