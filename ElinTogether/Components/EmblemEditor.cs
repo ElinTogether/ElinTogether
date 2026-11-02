@@ -1144,6 +1144,13 @@ internal static partial class EmblemEditor
             return;
         }
 
+        // (the draft as the host will keep it: the host normalizes what it is sent, e.g. an outline's colour with no
+        // outline goes back to the ink; sent as it was, the editor compared it with the stored one and said "unsaved"
+        // for ever after a save)
+        if (TeamEmblem.Validate(_draft, TeamBanner.Normalize) is { } kept && TeamEmblem.Format(kept) != TeamEmblem.Format(_draft)) {
+            Change(kept, false);
+        }
+
         var text = TeamEmblem.Format(_draft);
         if (text.Length > TeamEmblem.MaxText) {
             Fill();
