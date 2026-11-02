@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -33,8 +34,14 @@ internal static class PeerMapPatch
     // a game.txt of another game once unpacked (the game's own saves are a few dozen MB)
     internal const long MaxText = 512L * 1024 * 1024;
 
-    // the saves made of another game's world (WorldTakeover "world_N", SaveDepot "world_depot", the guest's "world_emp")
-    private const string PeerSavePrefix = "world_";
+    // the saves of the mod's own names that hold another game's world (SaveDepot, PeerKeeper, OfficialWorld). Not
+    // "world_": the game's own saves are world_1, world_2... (GameIO.GetNewId), and a solo game with other mods
+    // was read with the strict types (review 2026-11-02); a world taken over (WorldTakeover, "world_N" too) carries
+    // the marker below instead
+    private static readonly string[] PeerSaveIds = [SaveDepot.WorldId, PeerKeeper.SaveId, "world_official"];
+
+    // the guest's copy of the host's world ("world_emp", "world_emp_<identity>" on the bench, ResourceFetch)
+    private const string GuestCopyPrefix = "world_emp";
 
     // written in a save of the player's own once a map from another game is in it (ZoneLeaseState)
     internal const string PeerDataMarker = "emp_peer_data";
@@ -44,7 +51,7 @@ internal static class PeerMapPatch
     /// </summary>
     internal static bool IsPeerSave(string? id, string? root)
     {
-        if (id?.StartsWith(PeerSavePrefix, StringComparison.Ordinal) == true) {
+        if (id is not null && (Array.IndexOf(PeerSaveIds, id) >= 0 || id.StartsWith(GuestCopyPrefix, StringComparison.Ordinal))) {
             return true;
         }
 
