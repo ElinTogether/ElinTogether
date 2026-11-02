@@ -11,18 +11,19 @@ using YKF;
 namespace ElinTogether.Components;
 
 /// <summary>
-///     The leader's emblem creator on the Team tab's Emblem page (PLAN_team_emblem, lead dev 2026-11-01 "develop it
-///     much further"). Left page: a 3x preview where a click picks the layer under the pointer and a drag moves it (the
-///     selection with it, snapped to a 4 px grid and the centre when Snap is on), chips at 48, 24 and 16 px beside it
-///     to see how it reads small; add a shape, a picture of the game (<see cref="SpriteGrid" />, many sources) or a
-///     text; undo and redo (40 steps), save; random, templates, the emblem as a code to copy or paste; cut to the
-///     bottom layer, snap. Right page: the layers (shift-click to select several; hide, lock, up, down, remove), copy,
-///     paste, all, the align and spread buttons, then the selected layer's tools on three pills: Place (move pad, turn,
-///     flips, size, angle, opacity, duplicate, mirror), Look (text, font, alignment, spacing, curve; colours by the
-///     <see cref="ColourPicker" />, pattern, texture, points, height, thickness, outline) and Effects (name, live
-///     mirror, blend, clip to the layer below, shadow, gradient). The previews bake into the editor's own textures,
-///     at most every 50 ms while dragging, and once more when it stops. The draft stays in this game until Save asks
-///     the host
+///     The emblem and drawing editor (PLAN_team_emblem, lead dev 2026-11-01 "develop it much further", 2026-11-02 "a
+///     new dedicated window"). It shows in a window of its own (<see cref="LayerDrawingEditor" />, laid out in
+///     EmblemEditor.Window.cs; the paint tools in EmblemEditor.Paint.cs) for the team's emblem and for each drawing of
+///     My drawings; the Team tab's Emblem page only shows the emblem and opens the window. Layers: shapes, pictures of
+///     the game (<see cref="SpriteGrid" />, many sources), texts and paint layers (shift-click to select several; hide,
+///     lock, up, down, remove, duplicate, merge down), the align and spread buttons, then the selected layer's tools
+///     on three pills: Place (move pad, turn, flips, size, angle, duplicate, mirror), Look (text, font, alignment,
+///     spacing, curve; colours by the <see cref="ColourPicker" />, pattern, texture, points, height, thickness,
+///     outline) and Effects (live mirror, blend, clip to the layer below, shadow, gradient). Undo and redo (40 steps),
+///     random, templates, the emblem as a code to copy or paste, cut to the bottom layer, snap. The previews bake into
+///     the editor's own textures, at most every 50 ms while dragging, and once more when it stops. Each document keeps
+///     its draft and history in memory and on disk (DrawingDrafts) until Save asks the host (an emblem) or writes My
+///     drawings (a drawing)
 /// </summary>
 internal static partial class EmblemEditor
 {
@@ -68,9 +69,6 @@ internal static partial class EmblemEditor
     private static Vector2 _grab;
     private static bool _reselect;
 
-    private static YKLayout? _left;
-    private static YKLayout? _right;
-    private static bool _leads;
 
     // the editor's own bakes (review 2026-11-01: never the shared cache, whose LRU destroys sprites still shown)
     private static Sprite? _previewSprite;
@@ -82,46 +80,62 @@ internal static partial class EmblemEditor
     private static readonly Color Dark = new(0.2f, 0.17f, 0.13f, 1f);
 
     /// <summary>
-    ///     The Emblem page of the Team tab: the big preview and the emblem's buttons on the left page; the layers and
-    ///     the selected layer's tools (or the picture grid, or the colour picker, while open) on the right page.
-    ///     Anyone without the emblem right sees the emblem and its layers only
+    ///     The Emblem page of the Team tab: the team's emblem large and at the sizes it shows elsewhere, its layers,
+    ///     and (for those with the emblem right) the button that opens it in the editor's window
+    ///     (<see cref="OpenTeam" />). Anyone without the right sees the emblem and its layers only
     /// </summary>
     internal static void Build(YKLayout left, YKLayout right, int teamId, bool leads)
     {
-        _team = teamId;
-        _doc = null;
-        _docId = null;
-        Enter("team:" + teamId, () => Saved(teamId));
-        _left = left;
-        _right = right;
-        _leads = leads;
-        if (!leads) {
-            _draft = Saved(teamId);
+        var saved = Saved(teamId);
+        if (_launcherSprite != null) {
+            TeamEmblemBaker.Free(_launcherSprite);
         }
 
-        Fill();
-    }
-
-    /// <summary>
-    ///     A drawing of My drawings open in the same editor (<see cref="DrawingsPage" />): its own canvas size, saved
-    ///     to the player's list, closed back to the list. Every editor tool works the same
-    /// </summary>
-    internal static void BuildDrawing(YKLayout left, YKLayout right, string id, Drawing doc, System.Action close, System.Action<string> forked)
-    {
-        if (_docId != id) {
-            _closing = false;
+        _launcherSprite = TeamEmblemBaker.Into(null, saved);
+        var top = left.Horizontal();
+        top.Layout.childForceExpandWidth = false;
+        top.Layout.childAlignment = TextAnchor.UpperLeft;
+        top.Layout.spacing = 12f;
+        top.LayoutElement().minHeight = top.LayoutElement().preferredHeight = FrameSize;
+        Framed(top.transform, _launcherSprite, FrameSize, PreviewSize, true);
+        var chips = top.Horizontal();
+        chips.Layout.childForceExpandWidth = false;
+        chips.Layout.childAlignment = TextAnchor.LowerLeft;
+        chips.Layout.spacing = 10f;
+        chips.LayoutElement().minHeight = chips.LayoutElement().preferredHeight = 54f;
+        foreach (var size in new[] { 48f, 24f, 16f }) {
+            Framed(chips.transform, _launcherSprite, size + 6f, size, false);
         }
 
-        _doc = doc;
-        _docId = id;
-        _closeDoc = close;
-        _forked = forked;
-        Enter("drawing:" + id, () => doc.Art);
-        _left = left;
-        _right = right;
-        _leads = true;
-        Fill();
+        if (leads) {
+            var open = left.ButtonRow();
+            var button = Even(open.RowButton("emp_ui_editor_open_emblem".lang(), () => OpenTeam(teamId)));
+            button.name = "EmblemOpenEditor";
+            left.TextSmall("emp_ui_editor_open_emblem_help".lang(), FontColor.Gray);
+            // (a draft left in the editor: said here, it is not lost)
+            var key = TeamKey(teamId);
+            if (_session == key ? _draft.Layers.Count > 0 && TeamEmblem.Format(_draft) != TeamEmblem.Format(saved)
+                : _sessions.TryGetValue(key, out var kept) && TeamEmblem.Format(kept.Draft) != TeamEmblem.Format(saved)) {
+                left.TextSmall("emp_ui_editor_draft_waiting".lang(), FontColor.Warning);
+            }
+        } else {
+            left.TextSmall("emp_ui_team_tools_leader_only".lang(), FontColor.Gray);
+        }
+
+        right.TextSmall("emp_ui_emblem_layers".Loc(saved.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
+        if (saved.Layers.Count == 0) {
+            right.EmptyText("emp_ui_emblem_start".lang());
+            return;
+        }
+
+        var names = right.ListArea(saved.Layers.Count, 10, 26f);
+        for (var i = saved.Layers.Count - 1; i >= 0; i--) {
+            names.Text(NameOf(saved.Layers[i]));
+        }
     }
+
+    // the Emblem page's picture, owned by the page (freed when it is built again)
+    private static Sprite? _launcherSprite;
 
     // the editor's documents: the team's emblem and each open drawing keep their draft and history apart
     private sealed record Session(Emblem Draft, List<Emblem> Undo, List<Emblem> Redo, int Selected);
@@ -130,11 +144,6 @@ internal static partial class EmblemEditor
     private static string _session = "";
     private static Drawing? _doc;
     private static string? _docId;
-    private static System.Action? _closeDoc;
-    private static System.Action<string>? _forked;
-
-    // Close was clicked once on a drawing with changes not saved: a second click closes it
-    private static bool _closing;
 
     /// <summary>The document of that key in the editor: its own draft and history again, or a fresh one</summary>
     private static void Enter(string key, System.Func<Emblem> fresh)
@@ -157,17 +166,33 @@ internal static partial class EmblemEditor
         } else {
             _draft = fresh();
             _selected = 0;
+            Recover(key);
         }
 
         _multi.Clear();
         _picking = 0;
         _colourField = NoColour;
         _note = null;
-        _zoom = 0;
+        _autoFit = true;
+        _sel = null;
+        _panel = PanelNone;
+        _reduced = false;
     }
 
     /// <summary>A drawing's history forgotten (closed without saving, deleted)</summary>
-    internal static void Forget(string id) => _sessions.Remove("drawing:" + id);
+    internal static void Forget(string id)
+    {
+        var key = "drawing:" + id;
+        if (_session == key) {
+            Discard();
+            _doc = null;
+            _docId = null;
+            LayerDrawingEditor.CloseNow();
+        }
+
+        _sessions.Remove(key);
+        DrawingDrafts.Drop(key);
+    }
 
     // a layer's largest size on this canvas (200 % of 64 pixels on an emblem, twice a drawing's longer side)
     private static int MaxLayerSize => Mathf.Max(TeamEmblem.MaxSize, TeamEmblem.MaxSize * Mathf.Max(CW, CH) / TeamEmblem.Grid);
@@ -206,268 +231,6 @@ internal static partial class EmblemEditor
         }
 
         return set.OrderBy(i => i).ToList();
-    }
-
-    private static void Fill()
-    {
-        if (_left == null || _right == null) {
-            return;
-        }
-
-        Clear(_left);
-        Clear(_right);
-        _dragKey = null;
-        _moving = false;
-        var left = _left;
-        var right = _right;
-        _selected = Mathf.Clamp(_selected, 0, Mathf.Max(0, _draft.Layers.Count - 1));
-        _multi.RemoveWhere(i => i >= _draft.Layers.Count);
-        if (_draft.Layers.Count == 0) {
-            _colourField = NoColour;
-        }
-
-        // the left page (lead dev 2026-11-02: "think of paint.net"): the tool bar and the two colours; the canvas in
-        // its fixed square frame (the 64 grid at 3x, its pixels kept sharp, zoomed and scrolled inside the frame), and
-        // beside it the emblem at the sizes it shows elsewhere (a player's card, a team's chip, a list row: user
-        // 2026-10-30, 16 and 24 px 2026-11-01) or the drawing's credit, the history and Save; then the palette and
-        // the tool's options, what is added, the whole emblem's buttons
-        if (_leads) {
-            ToolBar(left);
-        }
-
-        var top = left.Horizontal();
-        top.Layout.childForceExpandWidth = false;
-        top.Layout.childAlignment = TextAnchor.UpperLeft;
-        top.Layout.spacing = 12f;
-        top.LayoutElement().minHeight = top.LayoutElement().preferredHeight = FrameSize;
-        top.LayoutElement().flexibleWidth = 1f;
-        var sprite = PreviewSprite();
-        var frame = Framed(top.transform, null, FrameSize, 0f, _zoom == 0);
-        var preview = Canvas(frame.transform, sprite);
-        var side = top.Vertical();
-        side.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        side.Layout.spacing = 6f;
-        side.Layout.childAlignment = TextAnchor.UpperLeft;
-        side.LayoutElement().flexibleWidth = 1f;
-        side.LayoutElement().preferredWidth = 0f;
-        if (_doc != null) {
-            // (the credit is always shown: who made it, whom it is based on; lead dev 2026-11-02)
-            side.Text(_doc.Title.Length > 0 ? _doc.Title : "emp_ui_drawing_untitled".lang());
-            side.TextSmall("emp_ui_drawing_by".Loc(_doc.CreatorName), FontColor.Gray);
-            if (_doc.BasedOnName.Length > 0) {
-                side.TextSmall("emp_ui_drawing_based_on".Loc(_doc.BasedOnName), FontColor.Gray);
-            }
-
-            side.TextSmall(CW + " x " + CH, FontColor.Gray);
-        } else {
-            var chips = side.Horizontal();
-            chips.Layout.childForceExpandWidth = false;
-            chips.Layout.childAlignment = TextAnchor.LowerLeft;
-            chips.Layout.spacing = 10f;
-            chips.LayoutElement().minHeight = chips.LayoutElement().preferredHeight = 54f;
-            foreach (var size in new[] { 48f, 24f, 16f }) {
-                Framed(chips.transform, sprite, size + 6f, size, false);
-            }
-
-        }
-
-        if (!_leads) {
-            right.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
-            var names = right.ListArea(_draft.Layers.Count, 10, 26f);
-            for (var i = _draft.Layers.Count - 1; i >= 0; i--) {
-                names.Text(NameOf(_draft.Layers[i]));
-            }
-
-            right.TextSmall("emp_ui_team_tools_leader_only".lang(), FontColor.Gray);
-            Laid();
-            return;
-        }
-
-        // a click on the canvas: the tool's (move picks the layer under the pointer and drags it; the paint tools draw)
-        preview.raycastTarget = true;
-        var input = preview.gameObject.AddComponent<EmblemPreviewInput>();
-        (input.W, input.H) = (CW, CH);
-        input.Down = PointerDown;
-        input.Drag = PointerDrag;
-        input.Up = PointerUp;
-        input.Tick = Tick;
-
-        // the history and Save beside the preview, the state of the draft under them
-        var history = side.Horizontal();
-        history.Layout.childForceExpandWidth = false;
-        history.Layout.spacing = 6f;
-        Half(history.Button("emp_ui_emblem_undo".lang(), Undo)).interactable = _undo.Count > 0;
-        Half(history.Button("emp_ui_emblem_redo".lang(), Redo)).interactable = _redo.Count > 0;
-        var length = _doc != null ? (_doc with { Art = _draft }).Format().Length : TeamEmblem.Format(_draft).Length;
-        var limit = _doc != null ? Drawing.MaxText : TeamEmblem.MaxText;
-        var fits = length <= limit;
-        var saving = side.Horizontal();
-        saving.Layout.childForceExpandWidth = false;
-        saving.Layout.spacing = 6f;
-        Half(saving.Button("emp_ui_emblem_save".lang(), Save)).interactable = (_draft.Layers.Count > 0 || _doc != null) && Unsaved && fits;
-        if (_doc != null) {
-            Half(saving.Button((_closing ? "emp_ui_drawing_close_sure" : "emp_ui_drawing_close").lang(), CloseDrawing));
-            // (the saved drawing to the chat, its credit with it; greyed with the reason when it cannot go)
-            var sharing = side.Horizontal();
-            sharing.Layout.childForceExpandWidth = false;
-            var send = Half(sharing.Button("emp_ui_drawing_send".lang(), () => {
-                _note = ChatImages.SendDrawing(_doc) ?? "emp_ui_drawing_sent".lang();
-                Fill();
-            }));
-            send.name = "DrawingSendToChat";
-            var off = ChatImages.CantSend() ?? (Unsaved ? "emp_ui_drawing_send_save_first".lang() : null);
-            send.interactable = off == null;
-            if (off != null) {
-                side.TextSmall(off, FontColor.Gray);
-            }
-        }
-
-        if (!fits) {
-            // (review 2026-11-01: the host refused a text past its limit without a word)
-            side.TextSmall("emp_ui_emblem_too_long".Loc(length, limit), FontColor.Warning);
-        } else if (Unsaved && (_draft.Layers.Count > 0 || _doc != null)) {
-            side.TextSmall("emp_ui_emblem_unsaved".lang(), FontColor.Warning);
-        }
-
-        if (_note != null) {
-            side.TextSmall(_note, FontColor.Gray);
-            _note = null;
-        }
-
-        PaintOptions(left);
-
-        // what is added: a shape, a picture, a text or a paint layer (equal buttons sharing the page's width)
-        var adds = left.ButtonRow();
-        var room = _draft.Layers.Count < TeamEmblem.MaxLayers;
-        UIButton? shapes = null;
-        shapes = Even(adds.RowButton("emp_ui_emblem_add_shape".lang(), () => ShowShapes(shapes)));
-        shapes.interactable = room;
-        Even(adds.RowButton("emp_ui_emblem_add_picture".lang(), () => OpenGrid(PickLayer))).interactable = room;
-        Even(adds.RowButton("emp_ui_emblem_add_text".lang(), AddText)).interactable = room;
-        Even(adds.RowButton("emp_ui_emblem_add_paint".lang(), () => AddPaintLayer())).interactable = room;
-
-        // the whole emblem at once: a random one, a template (an emblem's), the emblem or the drawing as a code
-        var more = left.ButtonRow();
-        if (_doc == null) {
-            Even(more.RowButton("emp_ui_emblem_random".lang(), () => {
-                Change(RandomEmblem());
-                Select(0);
-                _colourField = NoColour;
-                Fill();
-            }));
-            UIButton? starters = null;
-            starters = Even(more.RowButton("emp_ui_emblem_templates".lang(), () => ShowStarters(starters)));
-        }
-
-        UIButton? code = null;
-        code = Even(more.RowButton("emp_ui_emblem_code".lang(), () => ShowCode(code)));
-
-        // cut to the bottom layer (how every emblem drew before shapes became layers)
-        var clip = left.Row().Toggle("emp_ui_emblem_clip".lang(), _draft.Clip, on => {
-            Change(_draft with { Clip = on });
-            Refresh();
-        });
-        clip.LayoutElement().flexibleWidth = 1f;
-        clip.AsRow();
-        clip.SetTooltipLang("emp_ui_emblem_clip_tip");
-
-        // the right page: the picture grid, the colour picker, or the layers and the selected layer's tools
-        if (_picking != 0) {
-            right.ButtonRow().RowButton("emp_ui_emblem_add_close".lang(), () => {
-                _picking = 0;
-                Fill();
-            });
-            var mode = _picking;
-            // (the grid takes the height the page leaves: lead dev 2026-11-02, three rows over an empty half page)
-            TeamBanner.BuildThingPicker(right, Dark, thing => Picked(mode, thing), fill: true);
-        } else if (_colourField is Primary or Secondary) {
-            BuildPaintColour(right);
-        } else if (_colourField != NoColour && HasSelection) {
-            BuildColour(right);
-        } else {
-            BuildLayers(right);
-        }
-
-        Laid();
-    }
-
-    /// <summary>
-    ///     The pages laid out again by the tab (the buttons fitted to their labels, the texts wrapped, a list that
-    ///     fills the page grown to it); only the window's content moves, never the window
-    /// </summary>
-    private static void Laid()
-    {
-        if (_left == null) {
-            return;
-        }
-
-        if (_left.GetComponentInParent<TabEmpBase>() is { } tab) {
-            tab.Relayout();
-        } else if (_left.transform.parent is RectTransform spread) {
-            LayoutRebuilder.MarkLayoutForRebuild(spread);
-        }
-    }
-
-    private static void BuildLayers(YKLayout right)
-    {
-        // the title and the edit buttons on one line, over a list of a fixed height (four rows; it scrolls)
-        var head = right.Row();
-        head.Layout.spacing = 6f;
-        var title = head.TextSmall("emp_ui_emblem_layers".Loc(_draft.Layers.Count, TeamEmblem.MaxLayers), FontColor.Gray);
-        title.LayoutElement().flexibleWidth = 1f;
-        title.LayoutElement().preferredWidth = 0f;
-        Small(head.Button("emp_ui_emblem_copy".lang(), () => {
-            if (HasSelection) {
-                _clipboard = Current;
-                Fill();
-            }
-        })).interactable = HasSelection;
-        Small(head.Button("emp_ui_emblem_paste".lang(), Paste)).interactable = _clipboard != null && _draft.Layers.Count < TeamEmblem.MaxLayers;
-        Small(head.Button("emp_ui_emblem_all".lang(), () => {
-            _multi.Clear();
-            _multi.UnionWith(Enumerable.Range(0, _draft.Layers.Count));
-            Fill();
-        })).interactable = _draft.Layers.Count > 1;
-
-        if (_draft.Layers.Count == 0) {
-            // (an empty list said nothing: how to start, user 2026-10-30 "on peut faire beaucoup mieux")
-            right.EmptyText("emp_ui_emblem_start".lang());
-            return;
-        }
-
-        var layers = right.ScrollList(ListRows * (LayerRowHeight + 2f));
-        layers.Layout.spacing = 2f;
-        // (the top layer first, as a stack is seen)
-        for (var i = _draft.Layers.Count - 1; i >= 0; i--) {
-            LayerRow(layers, i);
-        }
-
-        AlignRow(right);
-        if (Current.Lock != 0) {
-            right.TextSmall("emp_ui_emblem_locked".lang(), FontColor.Gray);
-            return;
-        }
-
-        TeamBanner.Pills(right, ["emp_ui_emblem_tools_place".lang(), "emp_ui_emblem_tools_look".lang(), "emp_ui_emblem_tools_effects".lang()],
-            _toolPage, i => {
-                _toolPage = i;
-                Fill();
-            });
-        // (the tools scroll in the height the page leaves: the window keeps its size whatever the layer has)
-        var tools = right.ScrollList(120f, true);
-        // (the game's texts start a few pixels left of their box: inside the clipped frame they lost their first letter)
-        tools.Layout.padding = new(10, 14, 2, 4);
-        switch (_toolPage) {
-            case 0:
-                PlaceTools(tools);
-                break;
-            case 1:
-                LookTools(tools);
-                break;
-            default:
-                EffectTools(tools);
-                break;
-        }
     }
 
     /// <summary>A button a share of the page's width (widened only by a longer label)</summary>
@@ -697,15 +460,7 @@ internal static partial class EmblemEditor
         Icon(row.IconButton(layer.Lock != 0 ? EditorIcons.Lock : EditorIcons.Unlock, "u", () => Toggle(index, l => l with { Lock = l.Lock ^ 1 }), "emp_ui_emblem_lock", size: 24f));
         row.IconButton(icons?.up, "^", () => Move(index, 1), "emp_ui_emblem_up", index < _draft.Layers.Count - 1, size: 24f);
         row.IconButton(icons?.down, "v", () => Move(index, -1), "emp_ui_emblem_down", index > 0, size: 24f);
-        row.IconButton(icons?.trash, "x", () => {
-            Change(_draft with { Layers = _draft.Layers.Where((_, i) => i != index).ToList() });
-            _multi.Clear();
-            if (_selected >= index && _selected > 0) {
-                _selected--;
-            }
-
-            Fill();
-        }, "emp_ui_emblem_remove", layer.Lock == 0, size: 24f);
+        row.IconButton(icons?.trash, "x", () => RemoveLayer(index), "emp_ui_emblem_remove", layer.Lock == 0, size: 24f);
     }
 
     /// <summary>One layer changed from the list (hide, lock: allowed on a locked layer)</summary>
@@ -901,9 +656,6 @@ internal static partial class EmblemEditor
             (l, v) => l with { Size = v }, l => l.Size, " %");
         Stepper(root, "emp_ui_emblem_angle", layer.Rotation, 0, 359, 15,
             (l, v) => l with { Rotation = v }, l => l.Rotation, "°");
-        Stepper(root, "emp_ui_emblem_opacity", layer.Opacity, TeamEmblem.MinOpacity, 100, 10,
-            (l, v) => l with { Opacity = v }, l => l.Opacity, " %");
-
         var copies = root.ButtonRow();
         copies.RowButton("emp_ui_emblem_duplicate".lang(), Duplicate).interactable = _draft.Layers.Count < TeamEmblem.MaxLayers;
         copies.RowButton("emp_ui_emblem_mirror".lang(), Mirror).interactable = _draft.Layers.Count < TeamEmblem.MaxLayers;
@@ -1005,19 +757,8 @@ internal static partial class EmblemEditor
     /// <summary>The selected layer's effects: name, live mirror, blend, clip to the layer below, shadow, gradient</summary>
     private static void EffectTools(YKLayout root)
     {
+        // (the name is over the tools, with the opacity: the window's layer panel)
         var layer = Current;
-        var naming = root.Row();
-        naming.Text("emp_ui_emblem_name".lang());
-        var name = naming.InputText(layer.Name);
-        name.field.characterLimit = TeamEmblem.MaxName;
-        name.LayoutElement().flexibleWidth = 1f;
-        name.field.onEndEdit.AddListener(typed => {
-            var clean = new string(typed.Where(c => !char.IsControl(c)).ToArray());
-            if (clean.Length <= TeamEmblem.MaxName && clean != Current.Name) {
-                Edit(l => l with { Name = clean });
-                Fill();
-            }
-        });
 
         var modes = root.Row();
         Choice(modes, "emp_ui_emblem_sym", Labels("emp_ui_emblem_sym_", 4), layer.Sym, i => {
@@ -1395,9 +1136,19 @@ internal static partial class EmblemEditor
             return;
         }
 
+        // (the window stays open while the player plays: a team left or a right lost since it opened)
+        if (_team != MyTeam || !TeamRanks.Can(EClass.pc.uid, TeamPerm.Emblem, _team)) {
+            _note = "emp_ui_team_tools_leader_only".lang();
+            Fill();
+            return;
+        }
+
         // (the team's colour: the bottom shape's when it is one of the twelve team colours; else it stays)
         var colour = TeamEmblem.TeamColour(_draft) ?? TeamBanner.Of(_team)?.Color ?? 0;
         Teams.Ask(TeamAsk.Banner, 0, colour, text);
+        DrawingDrafts.Drop(_session);
+        _note = "emp_ui_editor_emblem_asked".lang();
+        Fill();
     }
 
     /// <summary>
@@ -1419,40 +1170,20 @@ internal static partial class EmblemEditor
         }
 
         if (id != _docId) {
-            // (the session follows the new drawing: its history goes on)
+            // (the session follows the new drawing: its history goes on; the old one's draft on disk goes)
+            DrawingDrafts.Drop(_session);
             _sessions.Remove(_session);
             _session = "drawing:" + id;
             _docId = id;
             // (the list's page follows the new drawing: it is the one open now)
-            _forked?.Invoke(id);
+            DrawingsPage.Refresh(id);
         }
 
         _doc = saved;
+        DrawingDrafts.Drop(_session);
+        DrawingsPage.Refresh();
         _note = "emp_ui_drawing_saved".lang();
         Fill();
-    }
-
-    /// <summary>Back to My drawings; what was not saved is forgotten (after a second click)</summary>
-    private static void CloseDrawing()
-    {
-        // (changes not saved: a second click, the player's work is never lost by a slip)
-        if (Unsaved && !_closing) {
-            _closing = true;
-            Fill();
-            return;
-        }
-
-        _closing = false;
-        if (_docId != null) {
-            Forget(_docId);
-            if (_session == "drawing:" + _docId) {
-                _session = "";
-            }
-        }
-
-        _doc = null;
-        _docId = null;
-        _closeDoc?.Invoke();
     }
 
     /// <summary>Copy code (the emblem's text to the clipboard, to share) and Paste code in the game's context menu</summary>
@@ -1809,6 +1540,7 @@ internal static partial class EmblemEditor
         }
 
         _draft = next;
+        _autosaveDirty = true;
     }
 
     internal static void Undo()
@@ -1821,6 +1553,7 @@ internal static partial class EmblemEditor
         _draft = _undo[_undo.Count - 1];
         _undo.RemoveAt(_undo.Count - 1);
         _multi.Clear();
+        DropSelectionOutside();
         Fill();
     }
 
@@ -1834,6 +1567,7 @@ internal static partial class EmblemEditor
         _draft = _redo[_redo.Count - 1];
         _redo.RemoveAt(_redo.Count - 1);
         _multi.Clear();
+        DropSelectionOutside();
         Fill();
     }
 
@@ -1869,63 +1603,4 @@ internal static partial class EmblemEditor
         Fill();
         return true;
     }
-}
-
-/// <summary>
-///     The emblem preview's pointer, in points of the 64 grid from the top left: pressed, dragged, released; and a
-///     tick each frame (the editor's throttled bake)
-/// </summary>
-internal sealed class EmblemPreviewInput : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler, IPointerUpHandler
-{
-    internal System.Action<Vector2, bool>? Down;
-
-    // the canvas' size in pixels (64 for an emblem)
-    internal int W = TeamEmblem.Grid, H = TeamEmblem.Grid;
-    internal System.Action<Vector2>? Drag;
-    internal System.Action? Up;
-    internal System.Action? Tick;
-
-    private Vector2 OnGrid(PointerEventData data)
-    {
-        var rt = (RectTransform)transform;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(rt, data.position, data.pressEventCamera, out var p);
-        var r = rt.rect;
-        return new((p.x - r.xMin) / Mathf.Max(1f, r.width) * W, (r.yMax - p.y) / Mathf.Max(1f, r.height) * H);
-    }
-
-    // (the middle button scrolls a zoomed canvas instead of drawing)
-    private static bool Pans(PointerEventData data) => data.button == PointerEventData.InputButton.Middle;
-
-    public void OnPointerDown(PointerEventData data)
-    {
-        if (!Pans(data)) {
-            Down?.Invoke(OnGrid(data), data.button == PointerEventData.InputButton.Right);
-        }
-    }
-
-    public void OnBeginDrag(PointerEventData data)
-    {
-    }
-
-    public void OnDrag(PointerEventData data)
-    {
-        if (!Pans(data)) {
-            Drag?.Invoke(OnGrid(data));
-            return;
-        }
-
-        if (GetComponentInParent<ScrollRect>() is { content: { } content } scroll && scroll.horizontal) {
-            // (screen pixels over the canvas' scale)
-            content.anchoredPosition += data.delta / Mathf.Max(0.01f, content.lossyScale.x);
-        }
-    }
-
-    public void OnPointerUp(PointerEventData data)
-    {
-        if (!Pans(data)) {
-            Up?.Invoke();
-        }
-    }
-
-    private void Update() => Tick?.Invoke();
 }

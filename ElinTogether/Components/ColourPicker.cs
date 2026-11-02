@@ -23,6 +23,9 @@ internal static class ColourPicker
 
     private static readonly List<uint> _recent = [];
 
+    /// <summary>The colours picked last, newest first (the editor shows them under its palette)</summary>
+    internal static IReadOnlyList<uint> Recent => _recent;
+
     // shared textures, rewritten in place (one picker shows at a time)
     private static Texture2D? _sv;
     private static Texture2D? _hue;

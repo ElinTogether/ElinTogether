@@ -12,8 +12,8 @@ namespace ElinTogether.Components;
 ///     My drawings (lead dev 2026-11-02): the player's own drawings and those kept from other players, on every server
 ///     they play (<see cref="DrawingStore" />). The left page lists them (a thumbnail, the title, "by" its creator) under
 ///     the new drawing's size and button; the right page shows the picked one large with its credit, and Open, Rename,
-///     Duplicate, Delete. An opened drawing fills both pages with the emblem editor (<see cref="EmblemEditor" />) until
-///     it is closed
+///     Duplicate, Delete. Open (and New) shows the drawing in the editor's own window (<see cref="EmblemEditor" />);
+///     the list follows what the window saves
 /// </summary>
 internal static class DrawingsPage
 {
@@ -22,7 +22,6 @@ internal static class DrawingsPage
 
     private static YKLayout? _left;
     private static YKLayout? _right;
-    private static string? _open;
     private static string? _picked;
     private static bool _renaming;
     private static bool _deleting;
@@ -53,23 +52,36 @@ internal static class DrawingsPage
 
         Clear(_left);
         Clear(_right);
-        if (_open != null && DrawingStore.Get(_open) is { } doc) {
-            EmblemEditor.BuildDrawing(_left, _right, _open, doc, () => {
-                _picked = _open;
-                _open = null;
-                Fill();
-            }, forked => {
-                // (another player's drawing saved here became a new one: that one is open now)
-                _open = forked;
-                _picked = forked;
-            });
-            return;
-        }
-
-        _open = null;
         BuildList(_left);
         BuildPicked(_right);
         Laid();
+    }
+
+    /// <summary>
+    ///     The list built again when it shows (the editor's window saved, renamed or forked a drawing); the one
+    ///     picked when <paramref name="picked" /> is given
+    /// </summary>
+    internal static void Refresh(string? picked = null)
+    {
+        if (picked != null) {
+            _picked = picked;
+        }
+
+        // (Unity: a page destroyed with its tab compares equal to null)
+        if (_left != null && _right != null && _left.gameObject.activeInHierarchy) {
+            Fill();
+        }
+    }
+
+    /// <summary>A new drawing of the size chosen on the page (64x64 at first), opened in the editor's window</summary>
+    internal static void NewDrawing()
+    {
+        var d = Drawing.New(Drawing.Sides[Mathf.Clamp(_w, 0, Drawing.Sides.Length - 1)], Drawing.Sides[Mathf.Clamp(_h, 0, Drawing.Sides.Length - 1)], "");
+        if (DrawingStore.Save(d) is { } id) {
+            _picked = id;
+            Refresh();
+            EmblemEditor.OpenDrawing(id);
+        }
     }
 
     private static void Laid()
@@ -148,14 +160,8 @@ internal static class DrawingsPage
         var hd = row.Dropdown(sizes, i => _h = i, Mathf.Clamp(_h, 0, sizes.Count - 1));
         hd.LayoutElement().preferredWidth = 74f;
         hd.LayoutElement().preferredHeight = UIHelper.RowHeight;
-        var make = row.Button("emp_ui_drawing_new".lang(), () => {
-            var d = Drawing.New(Drawing.Sides[_w], Drawing.Sides[_h], "");
-            if (DrawingStore.Save(d) is { } id) {
-                _open = id;
-                _picked = id;
-                Fill();
-            }
-        });
+        var make = row.Button("emp_ui_drawing_new".lang(), NewDrawing);
+        make.name = "DrawingNew";
         make.LayoutElement().flexibleWidth = 1f;
         make.LayoutElement().preferredWidth = 0f;
         make.interactable = all.Count < DrawingStore.MaxDrawings;
@@ -232,10 +238,9 @@ internal static class DrawingsPage
 
         var actions = right.ButtonRow();
         Even(actions.RowButton("emp_ui_drawing_open".lang(), () => {
-            _open = id;
             _renaming = _deleting = false;
-            Fill();
-        }));
+            EmblemEditor.OpenDrawing(id);
+        })).name = "DrawingOpen";
         Even(actions.RowButton("emp_ui_drawing_rename".lang(), () => {
             _renaming = !_renaming;
             _deleting = false;
@@ -299,8 +304,7 @@ internal static class DrawingsPage
     /// <summary>The bench opens a drawing as the Open button does</summary>
     internal static void OpenForBench(string id)
     {
-        _open = id;
         _picked = id;
-        Fill();
+        EmblemEditor.OpenDrawing(id);
     }
 }

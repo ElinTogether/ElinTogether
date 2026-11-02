@@ -81,6 +81,29 @@ internal static class EmblemPaint
         return Prefix + code;
     }
 
+    /// <summary>
+    ///     The code of a canvas of more than 255 colours (a soft brush, a merged layer): its colours rounded, coarser
+    ///     step by step, until they fit. Null when even the coarsest rounding has too many
+    /// </summary>
+    internal static string? EncodeReduced(Color32[] px, int w = N, int h = N)
+    {
+        foreach (var step in new[] { 8, 16, 32, 64 }) {
+            var reduced = new Color32[px.Length];
+            for (var i = 0; i < px.Length; i++) {
+                var c = px[i];
+                reduced[i] = c.a == 0 ? default : new(Round(c.r, step), Round(c.g, step), Round(c.b, step), c.a == 255 ? (byte)255 : Round(c.a, step));
+            }
+
+            if (Encode(reduced, w, h) is { } code) {
+                return code;
+            }
+        }
+
+        return null;
+
+        static byte Round(byte v, int step) => (byte)Mathf.Clamp(Mathf.RoundToInt(v / (float)step) * step, 0, 255);
+    }
+
     /// <summary>The canvas of a code (rows top-down; a fresh copy) and its size, null when it is not one</summary>
     internal static (Color32[] Px, int W, int H)? Decode(string thing)
     {
