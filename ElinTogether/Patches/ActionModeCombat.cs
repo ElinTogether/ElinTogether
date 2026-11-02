@@ -213,6 +213,34 @@ public class ActionModeCombat
         }
     }
 
+    /// <summary>
+    ///     The round state is static and Game.OnUpdate does not run on the title screen: a guest whose link dropped
+    ///     during a Deciding round kept it into its next session, where the host (Inactive, so silent) never ended it
+    ///     and every step of the guest was held as a pending decision (issue 65). Called when the connection goes.
+    /// </summary>
+    internal static void ResetForNewSession()
+    {
+        if (Phase != CombatPhase.Inactive) {
+            EmpLog.Debug("Combat phase {CombatPhase} reset with the connection", Phase);
+        }
+
+        Phase = CombatPhase.Inactive;
+        _decided.Clear();
+        _done.Clear();
+        _turnBuffer.Clear();
+        _turnBuffered = 0f;
+        _pcActedThisRound = false;
+        _pendingAi = null;
+        _applyPendingQueued = false;
+        _cancelRequested = false;
+        _lastReportedReady = null;
+        _executingTimer = 0f;
+        _executingBlockNotified = false;
+        _lastPlayerCount = 0;
+        WaitForSelf = false;
+        EnemyVisibility.Clear();
+    }
+
     internal static void ChangePhaseLocal(CombatPhase phase)
     {
         if (Phase == phase) {
