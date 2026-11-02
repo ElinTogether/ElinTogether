@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using ElinTogether.Elements;
 using ElinTogether.Helper;
 using ElinTogether.Models;
@@ -59,9 +61,25 @@ internal static class CharaMoveEvent
 
     extension(Chara chara)
     {
+        /// <summary>
+        ///     A step another game made, played here (and a placement, <see cref="Place" />). The snapshot lacks the
+        ///     transpilers of classes patched after this one (see SnapshotStub): a guest's step on the host still
+        ///     swapped places with the companion or summon it walked into (RemoteNoPushPatch: nobody else does, the
+        ///     host walks onto their tile), and an own placement took the game's actTime. Both are applied to this
+        ///     copy. RemoteTravelRegionPatch is left out on purpose: with the local player the copy only places it
+        ///     (an arrival, a resync), and its StepDate would have the hours of a world-map step passed
+        /// </summary>
         [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
         internal Card.MoveResult Stub_Move(Point point, Card.MoveType type)
         {
+            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+            {
+                SnapshotStub.Without(original, RemoteTravelRegionPatch.OnRegionTravelIl);
+                return SnapshotStub.With(instructions, original, RemoteNoPushPatch.OnCharaMoveByForceIl,
+                    CharaSynchronizationContext.OnCharaMove);
+            }
+
+            _ = Transpiler([], null!);
             throw new NotImplementedException("Chara.Move");
         }
 
