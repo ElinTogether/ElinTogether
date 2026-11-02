@@ -9,6 +9,7 @@ namespace ElinTogether.Patches;
 ///     its text wrapped and shown from the top, and Enter starts a new line there instead of closing it (Ctrl+Enter sends)
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class ReportBoxPatch
 {
     private const float Width = 640;

@@ -25,6 +25,7 @@ namespace ElinTogether.Helper;
 ///     the other as it does for any card
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class TeamBoxes
 {
     /// <summary>

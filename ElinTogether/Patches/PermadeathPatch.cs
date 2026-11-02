@@ -107,6 +107,7 @@ internal static class DeadBanner
 ///     world for a revive at a bartender; nothing is deleted. Without the box, or outside permadeath: the game's own
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class PermadeathPatch
 {
     [HarmonyPrefix]
@@ -266,7 +267,12 @@ internal static class PermadeathPatch
         }
 
         var session = NetSession.Instance;
-        var waits = session.Transport is ElinNetClient ? session.Rules.PermadeathRevive : EmpConfig.Server.PermadeathRevive.Value;
+        // with no session: only in a shared world, or for a player that died waiting for a revive (its flag is set
+        // only when PlayerRevive.Active was, and the save keeps it; the world's tables may not be read yet here). A
+        // solo permadeath game is the game's own (review 2026-11-02, the class is patched with no session now)
+        var waits = session.Transport is ElinNetClient ? session.Rules.PermadeathRevive
+            : EmpConfig.Server.PermadeathRevive.Value && (session.Transport is not null || PlayerRevive.Active ||
+                                                          __instance.GetBool(PlayerRevive.DeadFlag));
         if (waits && PlayerRevive.IsPlayerChara(__instance)) {
             __result = false;
         }

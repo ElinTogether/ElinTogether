@@ -13,6 +13,7 @@ namespace ElinTogether.Patches;
 ///     enemy (the monsters of the map), and what can happen to it
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class ServerAvatarPatch
 {
     /// <summary>

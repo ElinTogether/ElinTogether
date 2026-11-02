@@ -11,6 +11,7 @@ namespace ElinTogether.Patches;
 ///     mod sets the right one on its next frame
 /// </summary>
 [HarmonyPatch(typeof(SpriteProvider), nameof(SpriteProvider.SetSpriteIdle))]
+[AlwaysPatched]
 internal static class RideSpriteGuardPatch
 {
     [HarmonyPrefix]

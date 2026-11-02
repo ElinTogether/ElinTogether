@@ -13,6 +13,7 @@ namespace ElinTogether.Emp;
 ///     screen: what the OS cursor does is ignored while something is queued
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 public static class InputInject
 {
     private enum Kind

@@ -350,19 +350,19 @@ internal partial class ElinNetClient
         // PreparePlayerJoin
         AdvanceHandshake(NetHandshakePhase.Joined);
 
-#if !DEBUG
         // ponytail: safety net, to remove once ElinNetBase.OnDestroy is fixed (dev/PLAN_journal_invite_6_octobre.md).
         // A release build takes every patch of the mod away when any of its components is destroyed, a zone
         // session closing next to this link included: the game then runs blind (nothing sent, nothing applied
         // between two frames, no travel asked). A frame later: a zone session closed above is destroyed at the
         // end of this one
-        core.actionsNextFrame.Add(() => {
-            if (!HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
-                EmpLog.Warning("The patches of the mod were gone when the world arrived, put back");
-                EmpMod.PatchAll();
-            }
-        });
-#endif
+        if (EmpMod.PatchesPerSession) {
+            core.actionsNextFrame.Add(() => {
+                if (!HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
+                    EmpLog.Warning("The patches of the mod were gone when the world arrived, put back");
+                    EmpMod.PatchAll();
+                }
+            });
+        }
 
         var equipped = new List<(int uid, int elementId)>();
         if (Session.Player is { } previous && core.game is not null) {

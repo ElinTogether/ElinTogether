@@ -17,6 +17,7 @@ namespace ElinTogether.Helper;
 ///     teammate's quest in the local journal, kept apart from the player's own personal quests
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class TeamQuests
 {
     // a guest's copy of who shares

@@ -171,6 +171,8 @@ internal static class WorldTakeover
                 throw new InvalidDataException("the save written is not the copy");
             }
 
+            // (its name is the game's own "world_N": the marker says it is another game's world, see PeerMapPatch)
+            File.WriteAllText(Path.Combine(laying, Patches.PeerMapPatch.PeerDataMarker), "a world taken over from another game\n");
             Directory.Move(laying, target);
             return "";
         } catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException) {

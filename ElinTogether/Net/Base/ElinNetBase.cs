@@ -54,11 +54,10 @@ public abstract partial class ElinNetBase : EMono
         }
 #endif
 
-#if !DEBUG
-        if (!HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
+        // (a release build, or the bench with -empreleasepatches: the session's patches come with it)
+        if (EmpMod.PatchesPerSession && !HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
             EmpMod.PatchAll();
         }
-#endif
     }
 
     protected virtual void Update()
@@ -101,15 +100,14 @@ public abstract partial class ElinNetBase : EMono
         Stop();
         Socket.Dispose();
 
-#if !DEBUG
         // only when the last one goes: a zone session that closes leaves the link with the host, which went on
-        // without a single patch (nothing sent, nothing applied, map changes not seen) until the next component
+        // without a single patch (nothing sent, nothing applied, map changes not seen) until the next component.
+        // (those marked AlwaysPatched stay, see EmpMod.PatchesPerSession)
         var transport = Session.Transport;
         var zoneSession = Session.ZoneSession;
-        if ((transport == null || transport == this) && (zoneSession == null || zoneSession == this)) {
+        if (EmpMod.PatchesPerSession && (transport == null || transport == this) && (zoneSession == null || zoneSession == this)) {
             EmpMod.SharedHarmony.UnpatchSelf();
         }
-#endif
     }
 
     protected abstract void OnPeerConnected(ISteamNetPeer peer);

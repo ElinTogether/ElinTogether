@@ -11,6 +11,7 @@ namespace ElinTogether.Patches;
 ///     Elin sends any home branch member without a zone back home on load (Game.OnLoad): not those
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class CompanionLimboPatch
 {
     private static bool _loading;
