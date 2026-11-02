@@ -54,6 +54,9 @@ internal static partial class EmblemEditor
     internal static readonly string[] ToolShapes = ["star", "triangle", "diamond", "hexagon", "polygon", "shield", "banner", "rounded", "cross"];
     private static string _shapeKind = "star";
     private static int _shapeSides = 5;
+
+    // mirror painting: 0 off, 1 left-right, 2 top-bottom, 3 both (each paint tool draws its mirrored copies too)
+    private static int _mirror;
     private static bool _grid = true;
 
     // the stroke being drawn: its colour, the layer's pixels when it began (lines and shapes are drawn again over
@@ -245,7 +248,10 @@ internal static partial class EmblemEditor
         // (the list, the history and Save shown again when the pointer is released)
         _reselect = true;
         if (_tool == ToolFill) {
-            Flood(_canvas, _from);
+            foreach (var (fx, fy) in Mirrors()) {
+                Flood(_canvas, new(fx ? _pw - 1 - _from.x : _from.x, fy ? _ph - 1 - _from.y : _from.y));
+            }
+
             Commit();
             PaintUp();
             return;
@@ -294,23 +300,52 @@ internal static partial class EmblemEditor
             at = Constrained(_from, at, _tool == ToolLine);
         }
 
-        switch (_tool) {
-            case ToolLine:
-                Restart();
-                Line(_canvas, _from, at, width);
-                break;
-            case ToolRect:
-            case ToolEllipse:
-                Restart();
-                Shape(_canvas, _from, at, width, _tool == ToolEllipse, _filled);
-                break;
-            case ToolShape:
-                Restart();
-                KindShape(_canvas, _from, at, width, _filled);
-                break;
-            default:
-                Line(_canvas, _last, at, width);
-                break;
+        // (a line or a shape is drawn again from the stroke's start at each move)
+        if (Dragged(_tool)) {
+            Restart();
+        }
+
+        foreach (var (fx, fy) in Mirrors()) {
+            // a point mirrored across the layer's middle; a dab of two pixels grows right and down, its copy moved back
+            // one so the two are each other's mirror
+            Vector2Int M(Vector2Int v, bool dab = false)
+            {
+                var back = dab && width == 2 ? 1 : 0;
+                return new(fx ? _pw - 1 - v.x - back : v.x, fy ? _ph - 1 - v.y - back : v.y);
+            }
+
+            switch (_tool) {
+                case ToolLine:
+                    Line(_canvas, M(_from, true), M(at, true), width);
+                    break;
+                case ToolRect:
+                case ToolEllipse:
+                    Shape(_canvas, M(_from), M(at), width, _tool == ToolEllipse, _filled);
+                    break;
+                case ToolShape:
+                    KindShape(_canvas, M(_from), M(at), width, _filled, fx, fy);
+                    break;
+                default:
+                    Line(_canvas, M(_last, true), M(at, true), width);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>The copies mirror painting draws: the stroke itself, then its mirrored ones (across, down, both)</summary>
+    private static IEnumerable<(bool X, bool Y)> Mirrors()
+    {
+        yield return (false, false);
+        if ((_mirror & 1) != 0) {
+            yield return (true, false);
+        }
+
+        if ((_mirror & 2) != 0) {
+            yield return (false, true);
+        }
+
+        if (_mirror == 3) {
+            yield return (true, true);
         }
     }
 
@@ -504,7 +539,7 @@ internal static partial class EmblemEditor
     ///     <see cref="TeamEmblemBaker.Inside" />): filled, or its outline of that width (the pixels inside within width of
     ///     its edge)
     /// </summary>
-    private static void KindShape(Color32[] px, Vector2Int a, Vector2Int b, int width, bool filled)
+    private static void KindShape(Color32[] px, Vector2Int a, Vector2Int b, int width, bool filled, bool flipX = false, bool flipY = false)
     {
         var strength = Strength;
         int x0 = Mathf.Min(a.x, b.x), x1 = Mathf.Max(a.x, b.x), y0 = Mathf.Min(a.y, b.y), y1 = Mathf.Max(a.y, b.y);
@@ -513,7 +548,8 @@ internal static partial class EmblemEditor
         var edge = filled ? null : Edge(mask, w, h, width);
         for (var y = 0; y < h; y++) {
             for (var x = 0; x < w; x++) {
-                var i = y * w + x;
+                // (a mirrored copy: the shape itself turned over, a triangle pointing down under one pointing up)
+                var i = (flipY ? h - 1 - y : y) * w + (flipX ? w - 1 - x : x);
                 if (mask[i] && (edge == null || edge[i])) {
                     Put(px, x0 + x, y0 + y, strength);
                 }

@@ -352,6 +352,23 @@ internal static partial class EmblemEditor
             side.TextSmall("emp_ui_editor_sticker_size".Loc(Current.Size), FontColor.Gray);
         }
 
+        // a pixel-art picture at 1, 2, 3 or 4 canvas pixels for each of its own (lead dev 2026-11-02: size presets)
+        if (Current.IsSprite && !Current.IsPaint && TeamEmblemBaker.SourceSize(Current.Thing) is { } src && Mathf.Max(src.W, src.H) <= TeamEmblem.Grid) {
+            var native = Mathf.Max(src.W, src.H, 1);
+            var row = side.Row();
+            row.Layout.spacing = 4f;
+            var title = row.TextSmall("emp_ui_editor_pixel_size".lang(), FontColor.Gray);
+            title.LayoutElement().flexibleWidth = 1f;
+            title.LayoutElement().preferredWidth = 0f;
+            for (var k = 1; k <= 4; k++) {
+                var size = PixelSize(native, k);
+                var button = Small(row.Button(k + "x", () => EditNow(l => l with { Size = size })));
+                button.name = "EditorPixel" + k;
+                button.interactable = size <= MaxLayerSize;
+                Highlight(button, Current.Size == size);
+            }
+        }
+
         if (Current.IsSprite && !Current.IsPaint) {
             var thing = Current.Thing;
             var label = StickerPrefs.IsFavourite(thing) ? "emp_ui_editor_sticker_unfavourite" : "emp_ui_editor_sticker_favourite";
@@ -361,6 +378,9 @@ internal static partial class EmblemEditor
             })).name = "EditorFavourite";
         }
     }
+
+    /// <summary>The size (% of 64, the longer side) at which a picture of that many pixels draws each of them as k canvas pixels</summary>
+    internal static int PixelSize(int native, int k) => Mathf.Clamp(Mathf.CeilToInt(100f * native * k / TeamEmblem.Grid - 0.001f), TeamEmblem.MinSize, 100000);
 
     private static void CellStep(int by)
     {

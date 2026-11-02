@@ -415,12 +415,16 @@ internal static partial class EmblemEditor
         code = Act(bar, "emp_ui_emblem_code", () => ShowCode(code));
 
         Gap(bar, 4f, 1f);
-        bar.SignButton("-", () => ZoomStep(-1), 26f).name = "EditorZoomOut";
+        var zoomOut = bar.SignButton("-", () => ZoomStep(-1), 26f);
+        zoomOut.name = "EditorZoomOut";
+        Tip(zoomOut, "emp_ui_editor_zoom_out".lang() + " (-)");
         _zoomText = bar.Text("");
         var ze = _zoomText.LayoutElement();
         ze.minWidth = ze.preferredWidth = 56f;
         _zoomText.alignment = TextAnchor.MiddleCenter;
-        bar.SignButton("+", () => ZoomStep(1), 26f).name = "EditorZoomIn";
+        var zoomIn = bar.SignButton("+", () => ZoomStep(1), 26f);
+        zoomIn.name = "EditorZoomIn";
+        Tip(zoomIn, "emp_ui_editor_zoom_in".lang() + " (+)");
         Act(bar, "emp_ui_editor_fit", Fit, "Ctrl+0", true, "EditorFit");
         Act(bar, "emp_ui_editor_actual", Actual, "Ctrl+1", true, "EditorActual");
         var grid = Icon(bar.IconButton(EditorIcons.Grid, "#", () => {
@@ -584,7 +588,22 @@ internal static partial class EmblemEditor
         Stretch(grid);
         grid.GetComponent<RawImage>().raycastTarget = false;
 
+        // mirror painting's axes, faint lines across the canvas' middle
+        var axes = new RectTransform[2];
+        for (var i = 0; i < 2; i++) {
+            var axis = Child(content, i == 0 ? "MirrorAxisX" : "MirrorAxisY", typeof(Image));
+            (axis.anchorMin, axis.anchorMax) = i == 0 ? (new Vector2(0.5f, 0f), new Vector2(0.5f, 1f)) : (new Vector2(0f, 0.5f), new Vector2(1f, 0.5f));
+            axis.pivot = new(0.5f, 0.5f);
+            axis.sizeDelta = i == 0 ? new(1f, 0f) : new(0f, 1f);
+            axis.anchoredPosition = Vector2.zero;
+            var line = axis.GetComponent<Image>();
+            line.color = new(0.75f, 0.2f, 0.15f, 0.6f);
+            line.raycastTarget = false;
+            axes[i] = axis;
+        }
+
         var input = view.gameObject.AddComponent<EditorCanvasView>();
+        input.Axes = axes;
         input.Content = content;
         input.Picture = picture;
         input.Grid = grid.GetComponent<RawImage>();
@@ -802,6 +821,18 @@ internal static partial class EmblemEditor
         }
 
         if (Paints(_tool)) {
+            var mirror = side.Row();
+            mirror.Layout.spacing = 6f;
+            var title = mirror.Text("emp_ui_editor_mirror_paint".lang());
+            var me = title.LayoutElement();
+            (me.minWidth, me.preferredWidth, me.flexibleWidth) = (84f, 84f, 0f);
+            var choice = mirror.Dropdown(Labels("emp_ui_emblem_sym_", 4).ToList(), i => {
+                _mirror = Mathf.Clamp(i, 0, 3);
+                ApplyView();
+            }, _mirror);
+            choice.name = "EditorMirror";
+            choice.LayoutElement().flexibleWidth = 1f;
+            choice.LayoutElement().preferredHeight = UIHelper.RowHeight;
             side.TextSmall("emp_ui_editor_paint_help".lang(), FontColor.Gray);
         }
     }
@@ -816,8 +847,12 @@ internal static partial class EmblemEditor
         (te.minWidth, te.preferredWidth, te.flexibleWidth) = (84f, 84f, 0f);
         var names = ToolShapes.Select(k => ("emp_ui_emblem_" + k).lang()).ToList();
         var dropdown = row.Dropdown(names, i => {
-            _shapeKind = ToolShapes[Mathf.Clamp(i, 0, ToolShapes.Length - 1)];
-            Fill();
+            // (rebuilt only for another shape: a star's points come and go)
+            var kind = ToolShapes[Mathf.Clamp(i, 0, ToolShapes.Length - 1)];
+            if (kind != _shapeKind) {
+                _shapeKind = kind;
+                Fill();
+            }
         }, Mathf.Max(0, System.Array.IndexOf(ToolShapes, _shapeKind)));
         dropdown.name = "EditorShapeKind";
         dropdown.LayoutElement().flexibleWidth = 1f;
@@ -1147,6 +1182,15 @@ internal static partial class EmblemEditor
             if (on) {
                 _view.Grid.texture = GridTexture(Mathf.RoundToInt(_zoomF));
                 _view.Grid.uvRect = new(0f, 0f, CW, CH);
+            }
+        }
+
+        // (mirror painting's axes, with a paint tool)
+        if (_view.Axes is { } axes) {
+            for (var i = 0; i < axes.Length; i++) {
+                if (axes[i] != null) {
+                    axes[i].gameObject.SetActive(Paints(_tool) && (_mirror & (1 << i)) != 0);
+                }
             }
         }
 
@@ -1798,8 +1842,8 @@ internal static partial class EmblemEditor
     /// <summary>The bench holds Shift (a shape kept square, a line straight) while it draws</summary>
     internal static void BenchShift(bool down) => _benchShift = down;
 
-    /// <summary>The shape tool for the bench: shape|sides|filled</summary>
-    internal static string BenchShape => string.Join("|", _shapeKind, _shapeSides, _filled);
+    /// <summary>The shape tool and mirror painting for the bench: shape|sides|filled|mirror</summary>
+    internal static string BenchShape => string.Join("|", _shapeKind, _shapeSides, _filled, _mirror);
 #endif
 
     /// <summary>A picture (rows top-down) shrunk or grown into 64x64, its shape kept, centred; each pixel the average of its box</summary>
@@ -2045,6 +2089,9 @@ internal sealed class EditorCanvasView : MonoBehaviour, IPointerDownHandler, IBe
 
     // the selected layer's four resize handles (top left, top right, bottom right, bottom left)
     internal RectTransform[]? Handles;
+
+    // mirror painting's axes: the upright one (left-right), the level one (top-bottom)
+    internal RectTransform[]? Axes;
 
     private bool _panning;
     private bool _pressed;
