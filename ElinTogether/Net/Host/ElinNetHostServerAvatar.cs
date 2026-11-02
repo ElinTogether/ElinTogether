@@ -54,6 +54,7 @@ internal partial class ElinNetHost
             table[AvatarUid] = pc.uid;
             RetireServerOwnChara(game.cards.globalCharas.Find((int)table[AvatarOwnerUid]));
             MirrorOwnerStanding();
+            ParkStandIn(true);
             return false;
         }
 
@@ -99,13 +100,10 @@ internal partial class ElinNetHost
         PlayerStandings[standIn.uid] = [0, NewPlayerKarma];
         Exchange(standIn, owner, LocalUser);
 
-        // the stand-in waits at the edge of the base, where nobody walks. A owner who was elsewhere: the game puts
-        // whoever has no zone back at the base by itself (Game.OnLoad)
+        // the stand-in waits out of the way, see ParkStandIn. A owner who was elsewhere: the game puts whoever has no
+        // zone back at the base by itself (Game.OnLoad), and the next start parks it
         if (zone == home && standIn.currentZone == home) {
-            var edge = new Point(_map.bounds.x, _map.bounds.z).GetNearestPoint(allowBlock: false, allowChara: false);
-            if (edge.IsValid) {
-                standIn.pos.Set(edge);
-            }
+            ParkStandIn(false);
         } else {
             standIn.currentZone = null;
         }
@@ -130,6 +128,41 @@ internal partial class ElinNetHost
 
         EmpLog.Warning("Server: the world could not be saved after the exchange of characters, played as it is");
         return false;
+    }
+
+    /// <summary>
+    ///     The stand-in stands where no player can walk: a tile of the map outside its playable bounds (the corner of the
+    ///     margin every map has around them), else, on a map with no margin, the free tile nearest to the corner of the
+    ///     bounds. The game needs the local character on the server's map; nobody sees it (ServerAvatarPatch) and no
+    ///     player is put next to it any more (OnZoneDataReceivedResponse). Run at every start of a server, so a stand-in
+    ///     left anywhere by an older build is moved away too. <paramref name="onMap" />: the map is shown and the
+    ///     stand-in on it (moved with the map's cells), else only its tile is set (a save and a load follow)
+    /// </summary>
+    internal static void ParkStandIn(bool onMap)
+    {
+        if (!ServerAvatar.Is(pc) || _map is not { } map || pc.currentZone != _zone) {
+            return;
+        }
+
+        var bounds = map.bounds;
+        var spot = bounds.x > 0 && bounds.z > 0
+            ? new Point(0, 0)
+            : new Point(bounds.x, bounds.z).GetNearestPoint(allowBlock: false, allowChara: false);
+        if (spot is not { IsValid: true } || pc.pos.Equals(spot)) {
+            return;
+        }
+
+        try {
+            if (onMap && map.charas.Contains(pc)) {
+                map.MoveCard(spot, pc);
+            } else {
+                pc.pos.Set(spot);
+            }
+
+            EmpLog.Information("Server: the stand-in waits at {X},{Z} of {ZoneFullName}, out of the players' way", spot.x, spot.z, _zone.ZoneFullName);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Server: the stand-in could not be moved out of the players' way");
+        }
     }
 
     // schema value: the owner's character is the server's own and plays nowhere (RetireServerOwnChara)

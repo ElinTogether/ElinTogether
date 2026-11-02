@@ -1560,6 +1560,7 @@ internal partial class ElinNetHost
         _checkpointUidNext[peer.Id] = Math.Min(Math.Max(checkpoint.UidNext, start), start + MaxLeaseUids);
 
         var chara = ReplaceRemoteChara(peer.User, checkpoint.Chara);
+        NoteStoodAway(checkpoint, peer, chara);
         ClaimZoneDelta.ResolveAway(peer.Id, checkpoint, chara);
         ReplaceCompanions(checkpoint.Companions, SavedRemoteCharas.TryGetValue(peer.User, out var ownerUid) ? ownerUid : 0);
         ReplaceResidents(checkpoint.Residents, ownerUid, managed);

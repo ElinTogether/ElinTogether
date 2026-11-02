@@ -32,6 +32,25 @@ internal static class ServerAvatarPatch
         return false;
     }
 
+    /// <summary>
+    ///     What the screen draws, points at and names (BaseTileMap, the hover of a tile) asks the player, not the
+    ///     character: it said yes for any party member, and for anyone on a lit tile in sight, so the stand-in stood on
+    ///     every guest's screen and every player who joined was put next to it (user 2026-11-02: "players always spawn
+    ///     on the server's character; the server's character should not even exist")
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPriority(Priority.First)]
+    [HarmonyPatch(typeof(Player), nameof(Player.CanSee))]
+    internal static bool OnPlayerCanSee(Chara c, ref bool __result)
+    {
+        if (!ServerAvatar.Is(c)) {
+            return true;
+        }
+
+        __result = false;
+        return false;
+    }
+
     [HarmonyPrefix]
     [HarmonyPriority(Priority.First)]
     [HarmonyPatch(typeof(Chara), nameof(Chara.CanSeeLos), typeof(Card), typeof(int))]
@@ -188,6 +207,25 @@ internal static class ServerAvatarPatch
 
         EmpLog.Debug("Server: the stand-in does not travel to {ZoneFullName}", z?.ZoneFullName);
         return false;
+    }
+
+    /// <summary>
+    ///     A map shown again puts whoever stands out of its bounds back in the middle (Map.AddCardOnActivate,
+    ///     FactionBranch.OnActivateZone): the stand-in is parked again one frame later, out of the players' way
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Zone), nameof(Zone.Activate))]
+    internal static void OnZoneActivate(Zone __instance)
+    {
+        if (!ServerAvatar.Is(EClass.pc) || EClass.pc.currentZone != __instance) {
+            return;
+        }
+
+        EClass.core.actionsNextFrame.Add(() => {
+            if (EClass.core.IsGameStarted && ServerAvatar.Is(EClass.pc) && EClass._zone == __instance) {
+                ElinNetHost.ParkStandIn(true);
+            }
+        });
     }
 
     /// <summary>

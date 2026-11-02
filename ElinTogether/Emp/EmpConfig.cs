@@ -1112,6 +1112,13 @@ internal partial class EmpConfig
             "A dedicated server (-empserver) plays no character: the save owner's character becomes an ordinary player character tied to its Steam id (it joins like any guest), and the server's own player is a hidden, untouchable stand-in. Off: the owner's character stays planted at the base as before. Has no effect on a game hosted from the menu\n" +
             "专用服务器（-empserver）不扮演任何角色：存档所有者的角色变为与其 Steam ID 绑定的普通玩家角色（像其他访客一样加入），服务器自身的玩家是一个隐藏且无敌的替身；关闭：所有者的角色像以前一样留在基地。对从菜单开启的游戏无效");
 
+        Server.ReturnWhereLeft = config.Bind(
+            "Server",
+            "ReturnWhereLeft",
+            false,
+            "A player who comes back to the world starts where it left it last time (the same map and tile, kept in the world's save across restarts), when that map still exists and the tile can be walked on. Otherwise, and for a player who never left from anywhere yet, the usual start applies\n" +
+            "回到世界的玩家从上次离开的地方开始（同一张地图和同一格，保存在世界存档中，重启后仍有效），前提是该地图仍然存在且该格可以行走。否则，以及从未离开过的玩家，按通常的方式开始");
+
         Server.HiddenServer = config.Bind(
             "Server",
             "HiddenServer",
@@ -1320,5 +1327,6 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> FastJoinsAndSaves { get; set; } = null!;
         internal static ConfigEntry<bool> ServerAvatar { get; set; } = null!;
         internal static ConfigEntry<bool> HiddenServer { get; set; } = null!;
+        internal static ConfigEntry<bool> ReturnWhereLeft { get; set; } = null!;
     }
 }

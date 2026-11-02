@@ -17,6 +17,13 @@ internal class GameSaveLoad
         if (NetSession.Instance.IsHost && !NetSession.Instance.IsAway) {
             // a stack split here is held out of any bag (InvSplitThingEvent): in no save either (issue 48)
             Helper.HeldDrag.PutBack("saving");
+            // where each player stands, kept in this save for its next arrival (ReturnWhereLeft)
+            try {
+                (NetSession.Instance.Connection as ElinNetHost)?.NoteAllLeaveSpots();
+            } catch (System.Exception ex) {
+                EmpLog.Warning(ex, "Where the players stand could not be noted before the save");
+            }
+
             return true;
         }
 

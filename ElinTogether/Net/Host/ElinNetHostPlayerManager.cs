@@ -220,11 +220,8 @@ internal partial class ElinNetHost
         } else if (TrySendSoftStay(chara, peer)) {
             // zone session: a visitor that stood on this map before we ran it keeps its game (GitHub issue 46)
         } else {
-            // remote character exists
-            SendSaveProbe(chara, peer, () => {
-                SendToSpawnZone(chara, peer, false);
-                ReturnToAwayZone(peer);
-            });
+            // remote character exists: where it left, else as before (see ArriveKnown)
+            ArriveKnown(chara, peer, true);
         }
     }
 
@@ -344,7 +341,7 @@ internal partial class ElinNetHost
         }
 
         SavedRemoteCharas[peer.User] = chara.uid;
-        SendSaveProbe(chara, peer, () => SendToSpawnZone(chara, peer, false));
+        ArriveKnown(chara, peer, false);
     }
 
     /// <summary>
@@ -430,6 +427,7 @@ internal partial class ElinNetHost
         }
 
         PlayerStandings.Remove(chara.uid);
+        LeaveSpots.Remove(chara.uid);
         foreach (var companion in game.cards.globalCharas.Values.Where(c => c is not null && c.CompanionOwnerUid == chara.uid).ToList()) {
             companion.SetCompanionOwner(null);
             companion.party?.RemoveMember(companion);

@@ -289,6 +289,9 @@ internal partial class ElinNetHost : ElinNetBase
         if (IsZoneSession) {
             OnZoneGuestDisconnecting(peer);
         } else {
+            // where it leaves from, for its next arrival (ReturnWhereLeft): before its leases are given up
+            NoteLeaveSpot(peer, true);
+            _stoodAway.Remove(peer.Id);
             ReleaseLeaseOnDisconnect(peer);
         }
 

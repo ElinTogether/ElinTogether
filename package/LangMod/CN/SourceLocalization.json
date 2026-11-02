@@ -1727,5 +1727,7 @@
     "LangGeneral.emp_ui_editor_sticker_unfavourite.text": "取消收藏",
     "LangGeneral.emp_ui_editor_sticker_size.text": "大小 {0} %（拖动方框的角来缩放）",
     "LangGeneral.emp_ui_editor_rotate_left.text": "向左旋转",
-    "LangGeneral.emp_ui_editor_rotate_right.text": "向右旋转"
+    "LangGeneral.emp_ui_editor_rotate_right.text": "向右旋转",
+    "LangGeneral.emp_ui_sv_cfg_return_where_left.text": "玩家回到离开的地方",
+    "LangGeneral.emp_ui_sv_desc_return_where_left.text": "回到世界的玩家从上次离开时所在的地图和格子开始，即使世界重启后也一样。如果该地图已不存在、对其关闭、被其他玩家占用或该格无法行走，或者玩家从未离开过，则按通常方式开始。"
 }
