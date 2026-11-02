@@ -20,6 +20,7 @@ namespace ElinTogether.Helper;
 ///     the game saves. It comes back only through the import, with the matching token (see ElinNetHost)
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class CharaExport
 {
     /// <summary>
