@@ -52,6 +52,8 @@ internal static class ChatLog
     /// <summary>The lines naming this player since the Chat tab was last shown (the tab's "@" count)</summary>
     internal static int UnreadMentions { get; private set; }
 
+    private static float _mentionSoundAt = -10f;
+
     internal static void MarkSeen()
     {
         _seen = Version;
@@ -64,11 +66,16 @@ internal static class ChatLog
         var mention = !mine && channel != Server && ChatMarkup.Mentions(text, MyNames());
         if (mention) {
             UnreadMentions++;
-            SE.Play("click_chat");
+            // (once every few seconds at most: a burst of mentions is one sound)
+            if (Time.realtimeSinceStartup - _mentionSoundAt >= 3f) {
+                _mentionSoundAt = Time.realtimeSinceStartup;
+                SE.Play("click_chat");
+            }
         }
 
         var date = EClass.core.IsGameStarted ? EClass.world?.date : null;
-        Lines.Add(new(DateTime.Now.ToString("HH:mm"), channel, who, text) {
+        // (a name can carry rich text: only the colours the mod gives names are kept)
+        Lines.Add(new(DateTime.Now.ToString("HH:mm"), channel, ChatMarkup.SafeName(who), text) {
             Uid = uid,
             Mention = mention,
             GameTime = date != null ? $"{date.hour:00}:{date.min:00}" : "",

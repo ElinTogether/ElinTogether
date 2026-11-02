@@ -698,8 +698,9 @@ internal partial class EmpConfig
             "Server",
             "ChatBubbles",
             true,
-            "A line written in the Chat tab also shows as a short bubble over the writer's character, for the players on its map\n" +
-            "在聊天标签页中写的消息也会以短气泡显示在写信人角色的头上，同一地图的玩家可见");
+            "What a player writes in the chat (the Chat tab or the game's chat box) also shows as a short bubble over its character, for the players on its map\n" +
+            "Off: no bubble over a player for what it writes\n" +
+            "玩家在聊天中写的内容（聊天标签页或游戏聊天框）也会以短气泡显示在其角色头上，同一地图的玩家可见；关闭时玩家写的内容不显示气泡");
 
         Server.ChatImages = config.Bind(
             "Server",

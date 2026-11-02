@@ -303,6 +303,9 @@ internal partial class ElinNetHost : ElinNetBase
             Patches.PlayerIdle.Forget(peer.Id);
         }
 
+        // (its emote limit: a peer id comes back for the next player)
+        ChatEmoteDelta.Forget(peer.Id);
+
         // the date it leaves at: what the world does after is not taken from its own quests (stage 4)
         if (States.TryGetValue(peer.Id, out var leaving)) {
             SeePlayers(leaving);

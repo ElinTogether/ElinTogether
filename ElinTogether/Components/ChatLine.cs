@@ -24,7 +24,17 @@ internal sealed class ChatLine : MonoBehaviour, IPointerEnterHandler, IPointerEx
         TooltipManager.Instance.ShowTooltip(new() {
             enable = true,
             id = "note",
-            onShowTooltip = tip => thing.WriteNote(tip.note),
+            // (a copy that belongs nowhere: a note that cannot be written is a plain name, never an error)
+            onShowTooltip = tip => {
+                try {
+                    thing.WriteNote(tip.note);
+                } catch (Exception ex) {
+                    EmpLog.Debug(ex, "Chat item link tooltip of {Id} could not be written", thing.id);
+                    tip.note.Clear();
+                    tip.note.AddText(thing.Name);
+                    tip.note.Build();
+                }
+            },
         }, transform);
     }
 

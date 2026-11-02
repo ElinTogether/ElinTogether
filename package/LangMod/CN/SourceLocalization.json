@@ -1587,8 +1587,8 @@
     "LangGeneral.emp_ui_emblem_src_portraits.text": "肖像",
     "LangGeneral.emp_ui_emblem_src_places.text": "地点",
     "LangGeneral.emp_tip_chat_emotes.text": "表情：在消息中插入游戏的表情。只有一个表情的消息也会显示在你的角色头上",
-    "LangGeneral.emp_ui_sv_cfg_chat_bubbles.text": "聊天消息也以气泡显示",
-    "LangGeneral.emp_ui_sv_desc_chat_bubbles.text": "在聊天标签页中写的消息也会以短气泡显示在写信人角色的头上，同一地图的玩家可见。",
+    "LangGeneral.emp_ui_sv_cfg_chat_bubbles.text": "聊天也以气泡显示",
+    "LangGeneral.emp_ui_sv_desc_chat_bubbles.text": "玩家在聊天中写的内容（聊天标签页或游戏聊天框）也会以短气泡显示在其角色头上，同一地图的玩家可见。关闭：玩家写的内容不显示气泡。",
     "LangGeneral.emp_ui_chat_help_me.text": "/me 动作 … 描述你的角色在做什么",
     "LangGeneral.emp_ui_chat_help_w.text": "/w 名字 消息 … 发给一名玩家的私聊",
     "LangGeneral.emp_ui_chat_help_more.text": ":名字: 插入表情，@名字 呼叫玩家。写消息时 Shift+点击背包中的物品即可插入物品链接",
@@ -1605,5 +1605,7 @@
     "LangGeneral.emp_ui_cl_desc_hide_chat_images.text": "不显示其他玩家在聊天中发送的图片，只用一行提示有人发送了图片。",
     "LangGeneral.emp_ui_chat_image_hidden.text": "（发送了一张图片，已在“我的设置”中隐藏）",
     "LangGeneral.emp_ui_chat_images_off.text": "这个世界关闭了聊天图片。",
-    "LangGeneral.emp_ui_chat_image_too_big.text": "图片必须是 PNG，每边最多 {0} 像素，大小不超过 {1} KB。"
+    "LangGeneral.emp_ui_chat_image_too_big.text": "图片必须是 PNG，每边最多 {0} 像素，大小不超过 {1} KB。",
+    "LangGeneral.emp_ui_chat_cmd_empty.text": "发给 {0} 的私聊没有内容。",
+    "LangGeneral.emp_ui_chat_image_wait.text": "{0} 秒后才能再发送图片。"
 }

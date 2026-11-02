@@ -25,6 +25,12 @@ internal class ChatBubbleEvent
         }
 
         if ((connection.IsHost && !chara.IsRemotePlayer) || chara.IsPC) {
+            // (a player's own lines make no bubble for the others when the host's rule says so; the same for every
+            // player, the host's too)
+            if (chara.IsPC && !NetSession.Instance.Rules.ChatBubbles) {
+                return true;
+            }
+
             connection.Delta.AddRemote(new CardRendererTalkDelta {
                 Card = chara,
                 Text = text,
@@ -50,7 +56,9 @@ internal class ChatBubbleEvent
     internal static void PopChat(string who, string text)
     {
         // (the words only: a line of one emote shows that emote's icon, ChatMarkup)
-        var plain = ChatMarkup.Plain(text);
+        // (the pop text draws rich text: a name keeps only its colour, the words none of their tags)
+        who = ChatMarkup.SafeName(who);
+        var plain = ChatMarkup.Escape(ChatMarkup.Plain(text));
         var sprite = ChatMarkup.AloneEmote(text) is { } emo ? ChatMarkup.EmoteSprite(emo.ToString()) : null;
         WidgetPopText.Say(plain.Length > 0 ? $"{who}: {plain}" : who, sprite: sprite ?? UIHelper.FindSprite("emo2_hint"));
         Shown.Enqueue(text);

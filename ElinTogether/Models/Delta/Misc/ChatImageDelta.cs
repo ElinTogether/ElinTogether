@@ -34,7 +34,19 @@ public class ChatImageDelta : ElinDelta
             return "pictures in the chat are off";
         }
 
-        if (sender?.uid != SpeakerUid) {
+        if (sender is null) {
+            return "a picture from no player";
+        }
+
+        if (sender.uid == SpeakerUid) {
+            // (the sender's own name, as a private line's: security review 2026-11-02)
+            if (Name is not null && Name != sender.Name && !(host.States.TryGetValue(OriginPeer, out var state) && Name == state.User.Name)) {
+                return $"a picture signed {Name}";
+            }
+        } else if (SpeakerUid == EClass.pc.uid || host.ActiveRemoteCharas.Any(p => p.Key != OriginPeer && p.Value.uid == SpeakerUid) ||
+                   Name is { Length: > 32 }) {
+            // (a player holding a map passes its visitors' pictures up, as their chat lines: never under the host's or
+            // another present player's name)
             return "a picture sent as another player";
         }
 
@@ -68,11 +80,19 @@ public class ChatImageDelta : ElinDelta
         }
 
         if (net is ElinNetHost host && FromPeer) {
-            if (host.FromMuted(OriginPeer) || host.ChatFlooded(OriginPeer)) {
+            // (the chat's flood limit holds only on enforced servers: pictures have their own, always, ChatImages.Admit)
+            if (host.FromMuted(OriginPeer) || host.ChatFlooded(OriginPeer) || !ChatImages.Admit(SpeakerUid, Png!.Length, 3f)) {
                 return;
             }
 
             Relay(host, OriginPeer);
+
+            // a guest holding its own map is a host for the players there: their pictures go up to the real host too,
+            // which passes them to the whole world as their chat lines (the id keeps anyone from drawing one twice)
+            if (host.IsZoneSession && (Team != 0 || NetSession.Instance.Rules.GlobalChat) &&
+                NetSession.Instance.Transport is ElinNetClient up) {
+                up.SendWhileAway(this);
+            }
         }
 
         if (SpeakerUid == EClass.pc.uid || PlayerSocial.IsIgnoredUid(SpeakerUid) || (Team != 0 && Teams.TeamOf(EClass.pc.uid) != Team)) {

@@ -203,8 +203,9 @@ internal partial class TabChat : TabEmpBase
             ActionMode.Adv.OnEnterChat(text);
         }
 
-        // (a line of one emote: the game's emote over this player's character too, for the players of its map)
-        if (target.To == 0 && ChatMarkup.AloneEmote(text) is { } emo) {
+        // (an everyone line of one emote: the game's emote over this player's character too, for the players of its
+        // map; a team or private one stays in its channel)
+        if (target.To == 0 && !target.Team && ChatMarkup.AloneEmote(text) is { } emo) {
             ChatEmoteDelta.Send(emo);
         }
     }
@@ -310,7 +311,7 @@ internal partial class TabChat : TabEmpBase
             return line.Who;
         }
 
-        return line.Who.RemoveAllTags().TagColor(TeamBanner.ChipColor(team));
+        return ChatMarkup.Escape(line.Who.RemoveAllTags()).TagColor(TeamBanner.ChipColor(team));
     }
 
     /// <summary>What a click on another player's line offers: write to it, call it, mute or unmute it</summary>

@@ -42,6 +42,11 @@ public class CardRendererTalkDelta : ElinDelta
             return;
         }
 
+        // the host's rule against players' chat bubbles holds on the host too (a game that does not follow it)
+        if (card is Chara { IsPlayer: true } && net is ElinNetHost && FromPeer && !NetSession.Instance.Rules.ChatBubbles) {
+            return;
+        }
+
         // relay
         if (net.IsHost) {
             net.Delta.AddRemote(this);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.Net;
 using MessagePack;
@@ -21,8 +22,11 @@ public class ChatEmoteDelta : ElinDelta
     [Key(1)]
     public int Emo { get; init; }
 
-    // peer -> when its last emote was shown: one a second at most (the line itself has the chat's flood limit)
+    // peer -> when its last emote was shown: one a second at most (the line itself has the chat's flood limit); a peer
+    // is forgotten when it leaves (ElinNetHost) and old entries when a new one comes, so the table never grows
     private static readonly Dictionary<int, float> LastByPeer = [];
+
+    internal static void Forget(int peer) => LastByPeer.Remove(peer);
 
     /// <summary>The speaker's own character, one of the game's emotes</summary>
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
@@ -48,7 +52,12 @@ public class ChatEmoteDelta : ElinDelta
                 return;
             }
 
-            LastByPeer[OriginPeer] = Time.realtimeSinceStartup;
+            var now = Time.realtimeSinceStartup;
+            foreach (var old in LastByPeer.Where(p => now - p.Value > 60f).Select(p => p.Key).ToList()) {
+                LastByPeer.Remove(old);
+            }
+
+            LastByPeer[OriginPeer] = now;
         }
 
         // relay to the players of this map
