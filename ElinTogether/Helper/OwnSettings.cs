@@ -110,6 +110,7 @@ internal static class OwnSettings
                 LuckyCoin = player.luckycoin,
                 LastFelmeraReward = player.lastFelmeraReward,
                 GiftJure = player.giftJure,
+                PrayedDay = player.prayed ? EClass.world.date.GetRawDay() : null,
                 FishArtifact = player.fishArtifact,
                 SeedShrine = player.seedShrine,
                 LittleSaved = player.little_saved,
@@ -264,6 +265,10 @@ internal static class OwnSettings
             // opened, the little ones saved and lost. A world fact stays the host's: the stats.* counts
             player.lastFelmeraReward = kept?.LastFelmeraReward ?? 0;
             player.giftJure = kept?.GiftJure ?? 0;
+            // and its daily prayer: the copy holds whether the host prayed today, so a host who had prayed made the
+            // guest's god ignore it (no faith experience), and one who had not let the guest pray twice after a
+            // rejoin. Prayed only if noted on this very day (WorldDateAdvanceDelta clears it at each new day)
+            player.prayed = kept?.PrayedDay is { } prayedDay && EClass.game.world?.date?.GetRawDay() == prayedDay;
             player.fishArtifact = kept?.FishArtifact ?? 0;
             player.seedShrine = kept?.SeedShrine ?? 0;
             player.little_saved = kept?.LittleSaved ?? 0;
@@ -575,6 +580,9 @@ internal static class OwnSettings
         public int LuckyCoin;
         public int LastFelmeraReward;
         public int GiftJure;
+
+        // the day this player last prayed (Player.prayed, Date.GetRawDay), none if not today when noted
+        public int? PrayedDay;
         public int FishArtifact;
         public int SeedShrine;
         public int LittleSaved;
