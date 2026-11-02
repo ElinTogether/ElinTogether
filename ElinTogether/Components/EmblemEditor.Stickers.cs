@@ -238,7 +238,7 @@ internal static partial class EmblemEditor
     /// <summary>The handles at the selected layer's corners, the same size on the screen at any zoom; hidden without one</summary>
     private static void ShowHandles()
     {
-        if (_view?.Handles is not { } handles) {
+        if (View?.Handles is not { } handles) {
             return;
         }
 
@@ -381,7 +381,7 @@ internal static partial class EmblemEditor
             var corners = HasSelection ? string.Join(";", Enumerable.Range(0, 4).Select(i => Corner(Current, i)).Select(c => F(c.x) + "," + F(c.y))) : "-";
             var centre = ViewCentre();
             var steps = HasSelection && Steps(Current) is { Count: > 0 } list ? string.Join(",", list) : "-";
-            var shown = _view?.Handles is { } hs && hs.Any(h => h != null && h.gameObject.activeSelf);
+            var shown = View?.Handles is { } hs && hs.Any(h => h != null && h.gameObject.activeSelf);
             return string.Join("|", shown, corners, F(centre.x) + "," + F(centre.y), steps, string.Join(";", StickerPrefs.Recent),
                 string.Join(";", StickerPrefs.Favourites), HasSelection ? Current.Thing : "-");
         }

@@ -30,6 +30,9 @@ internal static partial class EmblemEditor
 
     private static TabDrawingEditor? _host;
     private static EditorCanvasView? _view;
+
+    // the canvas' view when it is alive (Unity's own null test: "?." on _view let a destroyed one through, #69's kind)
+    private static EditorCanvasView? View => _view != null ? _view : null;
     private static UIText? _zoomText;
     private static UIText? _pointerText;
     private static RectTransform? _sideContent;
@@ -802,7 +805,9 @@ internal static partial class EmblemEditor
 
             now = Mathf.Clamp(v, min, max);
             set(now);
-            slider?.SetValueWithoutNotify(now);
+            if (slider != null) {
+                slider.SetValueWithoutNotify(now);
+            }
             if (shown != null) {
                 shown.text = now + unit;
             }
@@ -1169,13 +1174,13 @@ internal static partial class EmblemEditor
     /// <summary>A pixel of the canvas on the screen (the bench's pointer)</summary>
     internal static Vector2 CanvasToScreen(float x, float y)
     {
-        if (_view?.Picture is not { } picture) {
+        if (View?.Picture is not { } picture) {
             return Vector2.zero;
         }
 
         var r = picture.rect;
         var local = new Vector2(r.xMin + x / CW * r.width, r.yMax - y / CH * r.height);
-        return RectTransformUtility.WorldToScreenPoint(_view.Cam, picture.TransformPoint(local));
+        return RectTransformUtility.WorldToScreenPoint(_view!.Cam, picture.TransformPoint(local));
     }
 
     // ---------------------------------------------------------------- the pointer on the canvas
@@ -1223,7 +1228,7 @@ internal static partial class EmblemEditor
             _pointerText.text = inside ? Mathf.FloorToInt(p!.Value.x) + ", " + Mathf.FloorToInt(p.Value.y) : "";
         }
 
-        if (_view?.Brush is not { } brush) {
+        if (View?.Brush is not { } brush) {
             return;
         }
 
@@ -1250,7 +1255,7 @@ internal static partial class EmblemEditor
 
     private static void ShowSelection()
     {
-        if (_view?.Sel is not { } outline) {
+        if (View?.Sel is not { } outline) {
             return;
         }
 
@@ -1998,7 +2003,9 @@ internal sealed class EditorCanvasView : MonoBehaviour, IPointerDownHandler, IBe
     internal Camera? Cam
     {
         get {
-            var canvas = GetComponentInParent<Canvas>()?.rootCanvas;
+            // (Unity's own null test: "?." lets a destroyed object through)
+            var parent = GetComponentInParent<Canvas>();
+            var canvas = parent != null ? parent.rootCanvas : null;
             return canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
         }
     }

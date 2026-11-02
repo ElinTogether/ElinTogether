@@ -247,6 +247,9 @@ internal sealed class SpriteGridView : MonoBehaviour
             Add(trigger, EventTriggerType.BeginDrag, data => BeginDrag(slot, data));
             Add(trigger, EventTriggerType.Drag, Dragging);
             Add(trigger, EventTriggerType.EndDrag, EndDrag);
+            // (an EventTrigger takes every event, the wheel too: over a cell the grid did not scroll, lead dev
+            // 2026-11-02. The wheel is handed on to the grid's scroll view)
+            Add(trigger, EventTriggerType.Scroll, Scrolled);
             _cells.Add((crt, back, image, -1));
         }
     }
@@ -260,6 +263,13 @@ internal sealed class SpriteGridView : MonoBehaviour
         trigger.triggers.Add(entry);
     }
 
+    private void Scrolled(BaseEventData data)
+    {
+        if (_scroll != null && data is PointerEventData pointer) {
+            _scroll.OnScroll(pointer);
+        }
+    }
+
     private string? EntryOf(int slot) => _cells[slot].Index is var i and >= 0 && i < _list.Count ? _list[i].Value : null;
 
     /// <summary>A cell dragged (when the grid has a drop): its picture follows the pointer over the whole screen</summary>
@@ -267,7 +277,10 @@ internal sealed class SpriteGridView : MonoBehaviour
     {
         DropGhost();
         _dragged = EntryOf(slot);
-        if (_drop == null || _dragged == null || GetComponentInParent<Canvas>()?.rootCanvas is not { } root) {
+        // (Unity's own null test: "?." lets a destroyed object through)
+        var canvas = GetComponentInParent<Canvas>();
+        var root = canvas != null ? canvas.rootCanvas : null;
+        if (_drop == null || _dragged == null || root == null) {
             return;
         }
 

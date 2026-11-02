@@ -947,7 +947,9 @@ internal static partial class EmblemEditor
 
         row.SignButton("-", () => {
             Edit(l => set(l, Mathf.Clamp(get(l) - step, min, max)));
-            slider?.SetValueWithoutNotify(get(Current));
+            if (slider != null) {
+                slider.SetValueWithoutNotify(get(Current));
+            }
             Show(get(Current));
         }, 28f);
         // (the game's SetSlider sets the range before the value: the prefab's value clamped to the new minimum fired
