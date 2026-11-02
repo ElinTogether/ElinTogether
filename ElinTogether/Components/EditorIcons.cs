@@ -328,6 +328,28 @@ internal static class EditorIcons
         }
     });
 
+    private static readonly string[] MagnetArt = [
+        "................",
+        "..####....####..",
+        "..####....####..",
+        "................",
+        "..##........##..",
+        "..##........##..",
+        "..##........##..",
+        "..##........##..",
+        "..###......###..",
+        "...###....###...",
+        "....########....",
+        ".....######.....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+
+    /// <summary>Snap to the grid on or off</summary>
+    internal static Sprite Magnet => Art("magnet", MagnetArt);
+
     /// <summary>The two colours swapped</summary>
     internal static Sprite Swap => Art("swap", SwapArt);
 

@@ -149,6 +149,13 @@ internal class TabTeam : TabEmpBase
             }
         }
 
+        // the player's own drawings, shared by every server (lead dev 2026-11-02); last, so the other pages keep
+        // their places
+        pages.Add(("emp_ui_drawing_tab".lang(), page => {
+            var (left, right) = page.Book();
+            DrawingsPage.Build(left, right);
+        }));
+
         SubTabs("team", pages);
     }
 

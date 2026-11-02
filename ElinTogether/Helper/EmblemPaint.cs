@@ -6,34 +6,35 @@ using UnityEngine;
 namespace ElinTogether.Helper;
 
 /// <summary>
-///     A paint layer of a team emblem (lead dev 2026-11-02: "think of paint.net"): 64x64 pixels drawn in the editor,
-///     kept in the layer's typed id as <c>d:</c> and the deflated bytes in URL-safe base64 (no separator of the emblem
-///     text can be in it). The bytes: the palette's size n (1..255), n colours RGBA, then 4096 palette indices, rows
-///     top-down (index 0 and any colour of alpha 0 are clear). The baker draws it as a 64 px picture, so it moves,
-///     turns, tints, outlines and shadows as any picture of the game. An older game's reader refuses the emblem and
-///     draws the team's fallback mark, as for every field e3 gained
+///     A paint layer (lead dev 2026-11-02: "think of paint.net"): pixels drawn in the editor, kept in the layer's typed
+///     id as <c>d:</c> and the deflated bytes in URL-safe base64 (no separator of the emblem text can be in it). The
+///     bytes: the palette's size n (1..255), n colours RGBA, then one palette index per pixel, rows top-down (index 0
+///     is clear); a canvas that is not 64x64 starts with 0, its width - 1 and its height - 1 (a drawing's, up to
+///     256x256). The baker draws it as a picture of that many pixels, so it moves, turns, tints, outlines and shadows
+///     as any picture of the game. An older game's reader refuses the emblem and draws the team's fallback mark, as for
+///     every field e3 gained
 /// </summary>
 internal static class EmblemPaint
 {
     internal const int N = TeamEmblem.Grid;
     internal const string Prefix = "d:";
 
-    // the longest code a paint layer may have (the whole emblem's text is held to TeamEmblem.MaxText)
-    private const int MaxCode = 3600;
+    // the longest code a paint layer may have (a drawing's whole text is held to Drawing.MaxText)
+    internal const int MaxCode = 60000;
 
-    private static readonly Dictionary<string, Color32[]?> _decoded = [];
+    private static readonly Dictionary<string, (Color32[] Px, int W, int H)?> _decoded = [];
 
     internal static bool Is(string thing) => thing.StartsWith(Prefix);
 
     /// <summary>A clear canvas</summary>
-    internal static Color32[] Blank() => new Color32[N * N];
+    internal static Color32[] Blank(int w = N, int h = N) => new Color32[w * h];
 
     /// <summary>The code of a canvas (rows top-down), null when it has more than 255 colours</summary>
-    internal static string? Encode(Color32[] px)
+    internal static string? Encode(Color32[] px, int w = N, int h = N)
     {
         var palette = new List<Color32> { new(0, 0, 0, 0) };
         var index = new Dictionary<uint, byte>();
-        var bytes = new byte[N * N];
+        var bytes = new byte[w * h];
         for (var i = 0; i < bytes.Length; i++) {
             var c = px[i];
             if (c.a == 0) {
@@ -55,6 +56,12 @@ internal static class EmblemPaint
         }
 
         using var raw = new MemoryStream();
+        if (w != N || h != N) {
+            raw.WriteByte(0);
+            raw.WriteByte((byte)(w - 1));
+            raw.WriteByte((byte)(h - 1));
+        }
+
         raw.WriteByte((byte)palette.Count);
         foreach (var c in palette) {
             raw.WriteByte(c.r);
@@ -74,25 +81,25 @@ internal static class EmblemPaint
         return Prefix + code;
     }
 
-    /// <summary>The canvas of a code (rows top-down; a fresh copy), null when it is not one</summary>
-    internal static Color32[]? Decode(string thing)
+    /// <summary>The canvas of a code (rows top-down; a fresh copy) and its size, null when it is not one</summary>
+    internal static (Color32[] Px, int W, int H)? Decode(string thing)
     {
-        if (!_decoded.TryGetValue(thing, out var px)) {
-            px = Read(thing);
+        if (!_decoded.TryGetValue(thing, out var got)) {
+            got = Read(thing);
             if (_decoded.Count > 64) {
                 _decoded.Clear();
             }
 
-            _decoded[thing] = px;
+            _decoded[thing] = got;
         }
 
-        return px == null ? null : (Color32[])px.Clone();
+        return got is { } g ? ((Color32[])g.Px.Clone(), g.W, g.H) : null;
     }
 
-    /// <summary>A code reads as a canvas (the host's check before it keeps an emblem)</summary>
-    internal static bool Valid(string thing) => Decode(thing) != null;
+    /// <summary>A code reads as a canvas no larger than <paramref name="maxSide" /> (the host's check before it keeps an emblem)</summary>
+    internal static bool Valid(string thing, int maxSide = N) => Decode(thing) is { } d && d.W <= maxSide && d.H <= maxSide;
 
-    private static Color32[]? Read(string thing)
+    private static (Color32[] Px, int W, int H)? Read(string thing)
     {
         if (!Is(thing) || thing.Length > Prefix.Length + MaxCode || thing.Length <= Prefix.Length) {
             return null;
@@ -109,8 +116,8 @@ internal static class EmblemPaint
             b64 = b64.PadRight(b64.Length + (4 - b64.Length % 4) % 4, '=');
             using var packed = new MemoryStream(System.Convert.FromBase64String(b64));
             using var deflate = new DeflateStream(packed, CompressionMode.Decompress);
-            // (never more than the palette and the pixels: a crafted code cannot blow up)
-            var limit = 1 + 255 * 4 + N * N;
+            // (never more than a 256x256 canvas: a crafted code cannot blow up)
+            var limit = 4 + 255 * 4 + Drawing.MaxSide * Drawing.MaxSide;
             var buffer = new byte[limit + 1];
             var read = 0;
             int got;
@@ -122,29 +129,39 @@ internal static class EmblemPaint
                 return null;
             }
 
-            int n = buffer[0];
-            if (n < 1 || read != 1 + n * 4 + N * N) {
+            int w = N, h = N, at = 0;
+            if (buffer[0] == 0) {
+                if (read < 4) {
+                    return null;
+                }
+
+                (w, h, at) = (buffer[1] + 1, buffer[2] + 1, 3);
+            }
+
+            int n = buffer[at];
+            if (n < 1 || read != at + 1 + n * 4 + w * h) {
                 return null;
             }
 
             var palette = new Color32[n];
             for (var i = 0; i < n; i++) {
-                palette[i] = new(buffer[1 + i * 4], buffer[2 + i * 4], buffer[3 + i * 4], buffer[4 + i * 4]);
+                var o = at + 1 + i * 4;
+                palette[i] = new(buffer[o], buffer[o + 1], buffer[o + 2], buffer[o + 3]);
             }
 
             palette[0] = new(0, 0, 0, 0);
-            var px = new Color32[N * N];
-            var start = 1 + n * 4;
+            var px = new Color32[w * h];
+            var start = at + 1 + n * 4;
             for (var i = 0; i < px.Length; i++) {
-                var at = buffer[start + i];
-                if (at >= n) {
+                var k = buffer[start + i];
+                if (k >= n) {
                     return null;
                 }
 
-                px[i] = palette[at];
+                px[i] = palette[k];
             }
 
-            return px;
+            return (px, w, h);
         } catch (System.Exception e) {
             EmpLog.Debug(e, "Team emblem: a paint layer could not be read");
             return null;
@@ -154,15 +171,25 @@ internal static class EmblemPaint
     /// <summary>The canvas as the baker's source (rows bottom-up, as a texture holds them)</summary>
     internal static (Color32[] Pixels, int W, int H)? Source(string thing)
     {
-        if (Decode(thing) is not { } px) {
+        if (Decode(thing) is not { } d) {
             return null;
         }
 
-        var flipped = new Color32[N * N];
-        for (var y = 0; y < N; y++) {
-            System.Array.Copy(px, y * N, flipped, (N - 1 - y) * N, N);
+        var flipped = new Color32[d.W * d.H];
+        for (var y = 0; y < d.H; y++) {
+            System.Array.Copy(d.Px, y * d.W, flipped, (d.H - 1 - y) * d.W, d.W);
         }
 
-        return (flipped, N, N);
+        return (flipped, d.W, d.H);
+    }
+
+    /// <summary>A paint layer covering a whole canvas of that size, clear (its size: the canvas' longer side)</summary>
+    internal static EmblemLayer? Layer(int w, int h)
+    {
+        if (Encode(Blank(w, h), w, h) is not { } code) {
+            return null;
+        }
+
+        return new(code, w / 2, h / 2, 100 * Mathf.Max(w, h) / N, 0, 0, TeamEmblem.Own);
     }
 }

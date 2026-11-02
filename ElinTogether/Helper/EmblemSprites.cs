@@ -158,7 +158,8 @@ internal static class EmblemSprites
                     return floor.GetName() is { Length: > 0 } fn ? fn : id;
                 // (lead dev 2026-11-02: a layer list of "default", "c_f-1", "0" said nothing)
                 case 'z':
-                    return EClass.sources.zones.rows.FirstOrDefault(z => z.image == id)?.GetName() is { Length: > 0 } zn
+                    // (a zone row without a name of its own reads as a number: the place's picture id then)
+                    return EClass.sources.zones.rows.FirstOrDefault(z => z.image == id)?.GetName() is { Length: > 0 } zn && !zn.All(char.IsDigit)
                         ? zn
                         : "emp_ui_emblem_name_place".Loc(id);
                 case 'p':

@@ -64,20 +64,20 @@ internal static class TeamEmblemBaker
     internal static Sprite Into(Sprite? reuse, Emblem emblem)
     {
         var pixels = Bake(emblem);
-        if (reuse != null && reuse.texture != null) {
+        if (reuse != null && reuse.texture != null && reuse.texture.width == emblem.W && reuse.texture.height == emblem.H) {
             reuse.texture.SetPixels32(pixels);
             reuse.texture.Apply(false, false);
             return reuse;
         }
 
-        var tex = new Texture2D(N, N, TextureFormat.RGBA32, false) {
+        var tex = new Texture2D(emblem.W, emblem.H, TextureFormat.RGBA32, false) {
             filterMode = FilterMode.Point,
             wrapMode = TextureWrapMode.Clamp,
             name = "emp_emblem",
         };
         tex.SetPixels32(pixels);
         tex.Apply(false, false);
-        return Sprite.Create(tex, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+        return Sprite.Create(tex, new Rect(0, 0, emblem.W, emblem.H), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
     }
 
     /// <summary>A sprite of <see cref="Into" /> destroyed with its texture</summary>
@@ -141,9 +141,12 @@ internal static class TeamEmblemBaker
         return image;
     }
 
-    /// <summary>The 64x64 pixels, rows bottom-up as a texture holds them</summary>
+    /// <summary>The canvas' pixels (64x64 for an emblem), rows bottom-up as a texture holds them</summary>
     internal static Color32[] Bake(Emblem emblem) =>
-        TeamEmblem.ToLegacy(emblem) is { } old ? BakeLegacy(old) : BakeLayers(emblem);
+        emblem.W == N && emblem.H == N && TeamEmblem.ToLegacy(emblem) is { } old ? BakeLegacy(old) : BakeLayers(emblem);
+
+    // the canvas being baked by the layer drawing (a drawing's may be up to 256x256; a layer's own square stays N)
+    private static int _w = N, _h = N;
 
     // ---------------------------------------------------------------- the layer drawing (e3)
 
@@ -152,9 +155,9 @@ internal static class TeamEmblemBaker
     ///     of two billion pixels froze the game)
     /// </summary>
     private static EmblemLayer Safe(EmblemLayer l) => l with {
-        X = Mathf.Clamp(l.X, TeamEmblem.MinPos, TeamEmblem.MaxPos),
-        Y = Mathf.Clamp(l.Y, TeamEmblem.MinPos, TeamEmblem.MaxPos),
-        Size = Mathf.Clamp(l.Size, TeamEmblem.MinSize, TeamEmblem.MaxSize),
+        X = Mathf.Clamp(l.X, -_w / 2, _w + _w / 2),
+        Y = Mathf.Clamp(l.Y, -_h / 2, _h + _h / 2),
+        Size = Mathf.Clamp(l.Size, TeamEmblem.MinSize, Mathf.Max(TeamEmblem.MaxSize, TeamEmblem.MaxSize * Mathf.Max(_w, _h) / N)),
         Rotation = ((l.Rotation % 360) + 360) % 360,
         Flip = l.Flip & 3,
         Opacity = Mathf.Clamp(l.Opacity, TeamEmblem.MinOpacity, 100),
@@ -177,8 +180,8 @@ internal static class TeamEmblemBaker
     private static IEnumerable<EmblemLayer> Copies(EmblemLayer l)
     {
         yield return l;
-        var h = l with { X = N - l.X, Flip = l.Flip ^ 1, Rotation = (360 - l.Rotation) % 360 };
-        var v = l with { Y = N - l.Y, Flip = l.Flip ^ 2, Rotation = (360 - l.Rotation) % 360 };
+        var h = l with { X = _w - l.X, Flip = l.Flip ^ 1, Rotation = (360 - l.Rotation) % 360 };
+        var v = l with { Y = _h - l.Y, Flip = l.Flip ^ 2, Rotation = (360 - l.Rotation) % 360 };
         if ((l.Sym & 1) != 0) {
             yield return h;
         }
@@ -188,17 +191,18 @@ internal static class TeamEmblemBaker
         }
 
         if (l.Sym == 3) {
-            yield return h with { Y = N - l.Y, Flip = l.Flip ^ 3, Rotation = l.Rotation };
+            yield return h with { Y = _h - l.Y, Flip = l.Flip ^ 3, Rotation = l.Rotation };
         }
     }
 
     private static Color32[] BakeLayers(Emblem emblem)
     {
+        (_w, _h) = (Mathf.Clamp(emblem.W, 1, Drawing.MaxSide), Mathf.Clamp(emblem.H, 1, Drawing.MaxSide));
         // (top-down while drawing) a clear canvas, each layer over it
-        var px = new Color[N * N];
-        var cover = new float[N * N];
-        var colour = new Color[N * N];
-        var mask = new bool[N * N];
+        var px = new Color[_w * _h];
+        var cover = new float[_w * _h];
+        var colour = new Color[_w * _h];
+        var mask = new bool[_w * _h];
         bool[]? clip = null;
         bool[]? below = null;
         foreach (var (raw, index) in emblem.Layers.Take(TeamEmblem.MaxLayers).Select((l, i) => (l, i))) {
@@ -213,7 +217,7 @@ internal static class TeamEmblemBaker
             var ring = drawn && layer.Outline > 0 ? Ring(mask, layer.Outline) : null;
             if (index == 0 && emblem.Clip) {
                 // (what the bottom layer covers, its border included, is the emblem's outline; hidden or not)
-                clip = new bool[N * N];
+                clip = new bool[_w * _h];
                 for (var i = 0; i < clip.Length; i++) {
                     clip[i] = mask[i] || cover[i] > 0f || (ring != null && ring[i]);
                 }
@@ -242,18 +246,18 @@ internal static class TeamEmblemBaker
                 // the shadow first: what the layer covers, moved down and right
                 var shade = ToColor(layer.ShadowColor);
                 var s = layer.Shadow;
-                for (var y = s; y < N; y++) {
-                    for (var x = s; x < N; x++) {
-                        var j = (y - s) * N + x - s;
+                for (var y = s; y < _h; y++) {
+                    for (var x = s; x < _w; x++) {
+                        var j = (y - s) * _w + x - s;
                         var a = Mathf.Max(cover[j], ring != null && ring[j] ? 1f : 0f);
-                        if (a > 0f && (layer.ClipBelow == 0 || below == null || below[y * N + x])) {
-                            Over(ref px[y * N + x], shade, shade.a * a * opacity);
+                        if (a > 0f && (layer.ClipBelow == 0 || below == null || below[y * _w + x])) {
+                            Over(ref px[y * _w + x], shade, shade.a * a * opacity);
                         }
                     }
                 }
             }
 
-            var mine = new bool[N * N];
+            var mine = new bool[_w * _h];
             for (var i = 0; i < px.Length; i++) {
                 if (cover[i] > 0f) {
                     Over(ref px[i], Blend(px[i], colour[i], layer.Blend), cover[i] * opacity);
@@ -267,16 +271,16 @@ internal static class TeamEmblemBaker
             below = mine;
         }
 
-        var output = new Color32[N * N];
-        for (var dy = 0; dy < N; dy++) {
-            for (var dx = 0; dx < N; dx++) {
-                var i = dy * N + dx;
+        var output = new Color32[_w * _h];
+        for (var dy = 0; dy < _h; dy++) {
+            for (var dx = 0; dx < _w; dx++) {
+                var i = dy * _w + dx;
                 var c = (Color32)px[i];
                 if (clip != null && !clip[i]) {
                     c.a = 0;
                 }
 
-                output[(N - 1 - dy) * N + dx] = c;
+                output[(_h - 1 - dy) * _w + dx] = c;
             }
         }
 
@@ -416,8 +420,8 @@ internal static class TeamEmblemBaker
         // keeps the nearest pixel, as before
         var k = Mathf.Clamp(Mathf.FloorToInt(1f / Mathf.Max(scale, 0.01f)), 1, 4);
         var weight = 1f / (k * k);
-        for (var dy = 0; dy < N; dy++) {
-            for (var dx = 0; dx < N; dx++) {
+        for (var dy = 0; dy < _h; dy++) {
+            for (var dx = 0; dx < _w; dx++) {
                 Color sum = default;
                 float alpha = 0f, solid = 0f;
                 for (var sy = 0; sy < k; sy++) {
@@ -450,7 +454,7 @@ internal static class TeamEmblemBaker
                     continue;
                 }
 
-                var i = dy * N + dx;
+                var i = dy * _w + dx;
                 var a = alpha * weight;
                 cover[i] = a;
                 colour[i] = new(sum.r / alpha, sum.g / alpha, sum.b / alpha, a);
@@ -481,8 +485,8 @@ internal static class TeamEmblemBaker
             2 => src.W,
             _ => src.W / 2f,
         };
-        for (var dy = 0; dy < N; dy++) {
-            for (var dx = 0; dx < N; dx++) {
+        for (var dy = 0; dy < _h; dy++) {
+            for (var dx = 0; dx < _w; dx++) {
                 var p = map.At(dx, dy);
                 var sx = Mathf.FloorToInt(p.x + anchor);
                 var syTop = Mathf.FloorToInt(p.y / aspect + src.H / 2f);
@@ -497,7 +501,7 @@ internal static class TeamEmblemBaker
 
                 var c = FillAt(layer, fill, end, (sx + 0.5f) * N / src.W, (syTop + 0.5f) * N / src.H);
                 c.a *= a;
-                var i = dy * N + dx;
+                var i = dy * _w + dx;
                 cover[i] = c.a;
                 colour[i] = c;
                 mask[i] = a >= 0.5f;
@@ -514,15 +518,15 @@ internal static class TeamEmblemBaker
         var end = ToColor(layer.GradColor);
         var texture = layer.Texture.Length > 0 ? Source(layer.Texture) ?? Placeholder : ((Color32[] Pixels, int W, int H)?)null;
         var map = new Inverse(layer, layer.Size / 100f);
-        for (var dy = 0; dy < N; dy++) {
-            for (var dx = 0; dx < N; dx++) {
+        for (var dy = 0; dy < _h; dy++) {
+            for (var dx = 0; dx < _w; dx++) {
                 var p = map.At(dx, dy);
                 var (lx, ly) = (p.x + N / 2f, p.y + N / 2f);
                 if (!Inside(layer, lx, ly)) {
                     continue;
                 }
 
-                var i = dy * N + dx;
+                var i = dy * _w + dx;
                 Color c;
                 if (layer.Pattern != 0 && Second(layer, lx, ly)) {
                     c = second;
@@ -550,19 +554,19 @@ internal static class TeamEmblemBaker
     private static bool[] Ring(bool[] mask, int width)
     {
         width = Mathf.Clamp(width, 0, TeamEmblem.MaxOutline);
-        var ring = new bool[N * N];
+        var ring = new bool[_w * _h];
         var r2 = width * width;
-        for (var y = 0; y < N; y++) {
-            for (var x = 0; x < N; x++) {
-                if (mask[y * N + x]) {
+        for (var y = 0; y < _h; y++) {
+            for (var x = 0; x < _w; x++) {
+                if (mask[y * _w + x]) {
                     continue;
                 }
 
-                for (var oy = -width; oy <= width && !ring[y * N + x]; oy++) {
+                for (var oy = -width; oy <= width && !ring[y * _w + x]; oy++) {
                     for (var ox = -width; ox <= width; ox++) {
                         var (nx, ny) = (x + ox, y + oy);
-                        if (ox * ox + oy * oy <= r2 && nx >= 0 && ny >= 0 && nx < N && ny < N && mask[ny * N + nx]) {
-                            ring[y * N + x] = true;
+                        if (ox * ox + oy * oy <= r2 && nx >= 0 && ny >= 0 && nx < _w && ny < _h && mask[ny * _w + nx]) {
+                            ring[y * _w + x] = true;
                             break;
                         }
                     }
