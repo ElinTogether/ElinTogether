@@ -386,3 +386,132 @@ internal static class DrawingDrafts
         }
     }
 }
+
+/// <summary>
+///     The editor's stickers kept by this player (lead dev 2026-11-02): the last ones placed and the favourites, as
+///     typed ids, in stickers.txt beside the drawings. One line each: "r" (recent, newest first) or "f" (a favourite),
+///     a tab, the id
+/// </summary>
+internal static class StickerPrefs
+{
+    internal const int RecentMax = 12;
+    internal const int FavouriteMax = 24;
+
+    private static readonly List<string> _recent = [];
+    private static readonly List<string> _favourites = [];
+
+    // the folder the lists were read from (another player's on the bench, or none yet)
+    private static string? _folder;
+
+    private static string FilePath => Path.Combine(DrawingStore.Folder, "stickers.txt");
+
+    /// <summary>The stickers placed last, newest first</summary>
+    internal static IReadOnlyList<string> Recent
+    {
+        get {
+            Load();
+            return _recent;
+        }
+    }
+
+    internal static IReadOnlyList<string> Favourites
+    {
+        get {
+            Load();
+            return _favourites;
+        }
+    }
+
+    internal static bool IsFavourite(string thing) => Favourites.Contains(thing);
+
+    /// <summary>A sticker placed: first in the recent row</summary>
+    internal static void Used(string thing)
+    {
+        Load();
+        if (!Fits(thing)) {
+            return;
+        }
+
+        _recent.Remove(thing);
+        _recent.Insert(0, thing);
+        if (_recent.Count > RecentMax) {
+            _recent.RemoveRange(RecentMax, _recent.Count - RecentMax);
+        }
+
+        Write();
+    }
+
+    /// <summary>A sticker made a favourite, or no longer one</summary>
+    internal static void ToggleFavourite(string thing)
+    {
+        Load();
+        if (!_favourites.Remove(thing)) {
+            if (!Fits(thing)) {
+                return;
+            }
+
+            _favourites.Add(thing);
+            if (_favourites.Count > FavouriteMax) {
+                _favourites.RemoveAt(0);
+            }
+        }
+
+        Write();
+    }
+
+    // (a typed id of one line: the file's format)
+    private static bool Fits(string thing) => thing.Length is > 0 and <= 200 && thing.IndexOfAny(['\t', '\n', '\r']) < 0;
+
+    private static void Load()
+    {
+        string folder;
+        try {
+            folder = DrawingStore.Folder;
+        } catch {
+            return;
+        }
+
+        if (_folder == folder) {
+            return;
+        }
+
+        _folder = folder;
+        _recent.Clear();
+        _favourites.Clear();
+        try {
+            if (!File.Exists(FilePath)) {
+                return;
+            }
+
+            foreach (var line in File.ReadAllLines(FilePath)) {
+                var p = line.Split(['\t'], 2);
+                if (p.Length != 2 || !Fits(p[1])) {
+                    continue;
+                }
+
+                var list = p[0] == "r" ? _recent : p[0] == "f" ? _favourites : null;
+                if (list != null && !list.Contains(p[1]) && list.Count < (list == _recent ? RecentMax : FavouriteMax)) {
+                    list.Add(p[1]);
+                }
+            }
+        } catch (System.Exception e) {
+            EmpLog.Debug(e, "Drawings: the stickers could not be read");
+        }
+    }
+
+    private static void Write()
+    {
+        try {
+            Directory.CreateDirectory(DrawingStore.Folder);
+            var tmp = FilePath + ".tmp";
+            File.WriteAllLines(tmp, _recent.Select(t => "r\t" + t).Concat(_favourites.Select(t => "f\t" + t)));
+            if (File.Exists(FilePath)) {
+                File.Delete(FilePath);
+            }
+
+            File.Move(tmp, FilePath);
+        } catch (System.Exception e) {
+            EmpLog.Debug(e, "Drawings: the stickers could not be written");
+        }
+    }
+}

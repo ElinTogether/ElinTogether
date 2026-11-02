@@ -1717,5 +1717,15 @@
     "LangGeneral.emp_ui_editor_open_emblem.text": "编辑徽章",
     "LangGeneral.emp_ui_editor_open_emblem_help.text": "徽章会在绘图编辑器的独立窗口中打开。",
     "LangGeneral.emp_ui_editor_draft_waiting.text": "编辑器中有未保存的更改。",
-    "LangGeneral.emp_ui_editor_new_drawing.text": "画一幅新的"
+    "LangGeneral.emp_ui_editor_new_drawing.text": "画一幅新的",
+    "LangGeneral.emp_ui_editor_stickers.text": "贴纸",
+    "LangGeneral.emp_ui_editor_stickers_tip.text": "把游戏中的图片（物品、怪物、图标等）作为图层贴上。",
+    "LangGeneral.emp_ui_editor_sticker_help.text": "点击贴纸即可放到视图中央，也可以把它拖到画布上。",
+    "LangGeneral.emp_ui_editor_sticker_recent.text": "最近使用的贴纸",
+    "LangGeneral.emp_ui_editor_sticker_favourites.text": "收藏",
+    "LangGeneral.emp_ui_editor_sticker_favourite.text": "加入收藏",
+    "LangGeneral.emp_ui_editor_sticker_unfavourite.text": "取消收藏",
+    "LangGeneral.emp_ui_editor_sticker_size.text": "大小 {0} %（拖动方框的角来缩放）",
+    "LangGeneral.emp_ui_editor_rotate_left.text": "向左旋转",
+    "LangGeneral.emp_ui_editor_rotate_right.text": "向右旋转"
 }
