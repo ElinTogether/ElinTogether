@@ -29,7 +29,8 @@ internal static class ModList
     internal const string LookOwn = "# Mods that only change the look are not in this list: every player keeps their own";
 
     // what a mod that only changes the look has: the folders the game reads pictures, sounds and texts from
-    private static readonly string[] _lookFolders = ["texture", "texture replace", "portrait", "sound", "lang", "talktext"];
+    // (Actor: the game's character sprite parts, PCC, drawn only; user 2026-11-02, display mods kept by each player)
+    private static readonly string[] _lookFolders = ["texture", "texture replace", "portrait", "sound", "lang", "talktext", "actor"];
 
     private static string? _text;
     private static string? _lean;
