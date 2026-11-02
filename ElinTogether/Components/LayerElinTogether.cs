@@ -222,8 +222,20 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
 
     public void Reopen()
     {
+        // the windows above the menu (the drawing editor opened from it) stay above it: rebuilt, the menu came back on
+        // top of the editor at every team change, its own save included
+        var above = ui.layers.SkipWhile(l => l != this).Skip(1).Where(l => l != null).ToList();
         ui.RemoveLayer(this);
         OpenPanelSesame(_lastOpenedTab);
+        foreach (var layer in above) {
+            if (layer == null || !ui.layers.Contains(layer)) {
+                continue;
+            }
+
+            ui.layers.Remove(layer);
+            ui.layers.Add(layer);
+            layer.transform.SetAsLastSibling();
+        }
     }
 
     [ElinContextMenuEntry("emp_ui_title")]
