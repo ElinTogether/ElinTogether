@@ -58,6 +58,10 @@ internal static partial class EmblemEditor
     private static bool _snap = true;
     private static EmblemLayer? _clipboard;
     private static string? _note;
+
+    // the "brought back" note of a draft recovered from the disk: shown until the next change (a one-shot note was
+    // gone at the window's next rebuild, before the player could read it)
+    private static string? _recovered;
     private static readonly List<Emblem> _undo = [];
     private static readonly List<Emblem> _redo = [];
 
@@ -159,6 +163,8 @@ internal static partial class EmblemEditor
         _session = key;
         _undo.Clear();
         _redo.Clear();
+        _note = null;
+        _recovered = null;
         if (_sessions.TryGetValue(key, out var s)) {
             (_draft, _selected) = (s.Draft, s.Selected);
             _undo.AddRange(s.Undo);
@@ -172,7 +178,6 @@ internal static partial class EmblemEditor
         _multi.Clear();
         _picking = 0;
         _colourField = NoColour;
-        _note = null;
         _autoFit = true;
         _sel = null;
         _panel = PanelNone;
@@ -1540,6 +1545,7 @@ internal static partial class EmblemEditor
         }
 
         _draft = next;
+        _recovered = null;
         _autosaveDirty = true;
     }
 
@@ -1550,6 +1556,7 @@ internal static partial class EmblemEditor
         }
 
         _redo.Add(_draft);
+        _recovered = null;
         _draft = _undo[_undo.Count - 1];
         _undo.RemoveAt(_undo.Count - 1);
         _multi.Clear();
@@ -1564,6 +1571,7 @@ internal static partial class EmblemEditor
         }
 
         _undo.Add(_draft);
+        _recovered = null;
         _draft = _redo[_redo.Count - 1];
         _redo.RemoveAt(_redo.Count - 1);
         _multi.Clear();

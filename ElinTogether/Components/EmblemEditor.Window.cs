@@ -229,7 +229,7 @@ internal static partial class EmblemEditor
         // (one undo step back to the saved one)
         Change(art);
         var when = System.DateTimeOffset.FromUnixTimeSeconds(kept.Time).ToLocalTime();
-        _note = "emp_ui_editor_recovered".Loc(when.ToString("yyyy-MM-dd HH:mm"));
+        _recovered = "emp_ui_editor_recovered".Loc(when.ToString("yyyy-MM-dd HH:mm"));
     }
 
     private static void Autosave(bool now = false)
@@ -315,6 +315,14 @@ internal static partial class EmblemEditor
         CanvasArea(middle, sprite);
         SidePanel(middle, sprite);
         StatusBar(_host);
+        // (YK's rows and columns come at a scale of 1.05: laid out at the window's width they spilled 5 % past both
+        // edges, the tool column and the side panel cut; the editor measures everything at 1)
+        foreach (var layout in _host.GetComponentsInChildren<YKLayout>(true)) {
+            if (layout.transform != _host.transform) {
+                layout.transform.localScale = Vector3.one;
+            }
+        }
+
         _host.Relayout();
         if (_sideContent != null) {
             _sideContent.anchoredPosition = new(_sideContent.anchoredPosition.x, _sideScroll);
@@ -655,8 +663,9 @@ internal static partial class EmblemEditor
 
         ToolSection(side);
         ColourSection(side);
-        PreviewSection(side, sprite);
+        // (the layers before the preview: seen without scrolling the panel in a window of the smallest size)
         LayerSection(side);
+        PreviewSection(side, sprite);
     }
 
     private static void Head(YKLayout side, string text)
@@ -809,9 +818,10 @@ internal static partial class EmblemEditor
     private static void ColourSection(YKLayout side)
     {
         Head(side, "emp_ui_editor_colours".lang());
-        var pair = side.Row();
-        pair.Layout.spacing = 6f;
         foreach (var (field, colour, label) in new[] { (Primary, _primary, "emp_ui_emblem_primary"), (Secondary, _secondary, "emp_ui_emblem_secondary") }) {
+            // (one row each: two long labels side by side spilled over their swatches)
+            var pair = side.Row();
+            pair.Layout.spacing = 6f;
             var f = field;
             void Open()
             {
@@ -1033,11 +1043,11 @@ internal static partial class EmblemEditor
         var (length, limit) = TextSize();
         bar.TextSmall("emp_ui_editor_text_size".Loc(length, limit), length > limit ? FontColor.Warning : FontColor.Gray).name = "EditorTextSize";
 
-        var note = _note ?? (length > limit ? "emp_ui_emblem_too_long".Loc(length, limit)
+        var note = _note ?? _recovered ?? (length > limit ? "emp_ui_emblem_too_long".Loc(length, limit)
             : _reduced ? "emp_ui_editor_reduced".lang()
             : Unsaved && (_draft.Layers.Count > 0 || _doc != null) ? "emp_ui_emblem_unsaved".lang()
             : _doc != null ? "emp_ui_editor_saved_state".lang() : "");
-        var shown = bar.TextSmall(note, _note == null && Unsaved ? FontColor.Warning : FontColor.Default);
+        var shown = bar.TextSmall(note, _note == null && _recovered == null && Unsaved ? FontColor.Warning : FontColor.Default);
         shown.name = "EditorNote";
         shown.LayoutElement().flexibleWidth = 1f;
         shown.alignment = TextAnchor.MiddleRight;
@@ -1641,7 +1651,9 @@ internal static partial class EmblemEditor
         }
 
         var data = new PointerEventData(EventSystem.current) {
-            position = CanvasToScreen(x, y),
+            // (the pixel's middle: its top left corner is on the edge of its neighbours, where a rounding of the
+            // scaled window picked the pixel above or to the left)
+            position = CanvasToScreen(x + 0.5f, y + 0.5f),
             button = (PointerEventData.InputButton)button,
             scrollDelta = new(0f, wheel),
         };
@@ -1824,7 +1836,18 @@ internal sealed class LayerDrawingEditor : YKLayer<LayerCreationData>
         }
     }
 
-    public override void OnUpdateInput() => EmblemEditor.Keys();
+    public override void OnUpdateInput()
+    {
+        // (resized by its edges or by code: never larger than the screen, never smaller than its least)
+        var screen = ScreenSize();
+        var size = Window.RectTransform.sizeDelta;
+        var kept = new Vector2(Mathf.Clamp(size.x, Mathf.Min(MinW, screen.x), screen.x), Mathf.Clamp(size.y, Mathf.Min(MinH, screen.y), screen.y));
+        if (kept != size) {
+            Window.RectTransform.sizeDelta = kept;
+        }
+
+        EmblemEditor.Keys();
+    }
 
     // (the right button paints the secondary colour: it never closes the window)
     public override void OnRightClick()
