@@ -773,7 +773,7 @@
     "LangGeneral.emp_hidden_why_mutex.text": "游戏无法解除单实例限制",
     "LangGeneral.emp_hidden_why_launch.text": "无法启动隐藏游戏",
     "LangGeneral.emp_hidden_why_exit.text": "隐藏游戏中途自行停止",
-    "LangGeneral.emp_hidden_why_timeout.text": "2 分钟内未能启动",
+    "LangGeneral.emp_hidden_why_timeout.text": "启动时间过长",
     "LangGeneral.emp_hidden_why_cancel.text": "已取消启动",
     "LangGeneral.emp_travel_hidden_owner.text": "在隐藏服务器上游玩时无法独自持有地图：请与他人一同行动。",
     "LangGeneral.emp_dc_owner_seat.text": "此席位仅限隐藏服务器的所有者使用。",

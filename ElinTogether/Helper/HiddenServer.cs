@@ -25,9 +25,17 @@ namespace ElinTogether.Helper;
 internal static class HiddenServer
 {
     /// <summary>
-    ///     How long the hidden game has to be up before the world is hosted the classic way
+    ///     How long the hidden game has to say it is loading (its mod loaded, EmpServer.OnModLoaded) before the world is
+    ///     hosted the classic way
     /// </summary>
     private const float StartSeconds = 120f;
+
+    /// <summary>
+    ///     How long once the hidden game said it is loading (or running, waiting for its lobby): loading the world and
+    ///     opening the session (a release build patches the whole mod then) takes minutes on a slow PC, and the classic
+    ///     hosting it would fall back to is no faster. The player can still cancel the progress window
+    /// </summary>
+    private const float LoadingSeconds = 420f;
 
     // the game's Steam app id: a second Elin started by this one has no steam_appid.txt to tell it
     private const string AppId = "2135150";
@@ -234,13 +242,14 @@ internal static class HiddenServer
             return;
         }
 
-        if (Time.unscaledTime - _startedAt > StartSeconds) {
+        var state = ReadState("state");
+        if (Time.unscaledTime - _startedAt > (state is "loading" or "running" ? LoadingSeconds : StartSeconds)) {
             Fail("emp_hidden_why_timeout".lang());
             return;
         }
 
         // up when the session is open; its Steam lobby (the way friends come in) a moment later, not waited for long
-        if (ReadState("state") != "running") {
+        if (state != "running") {
             return;
         }
 

@@ -117,6 +117,7 @@ internal sealed class EmpMod : BaseUnityPlugin
         // one started again after a crash, is not held up by it (see SingleInstance)
         if (EmpServer.Requested) {
             SingleInstance.Release();
+            EmpServer.OnModLoaded();
         }
 
         // the game has read its mod list: the player's own goes back on the disk if this run is a session's

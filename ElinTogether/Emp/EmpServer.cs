@@ -90,6 +90,26 @@ internal static class EmpServer
     /// <summary>
     ///     Called every frame
     /// </summary>
+    /// <summary>
+    ///     The mod is loaded in the server's game (EmpMod.Awake): told at once, so that the visible game that started it
+    ///     knows it is on its way (HiddenServer waits longer for a server that said so) before the engine has even
+    ///     reached the title screen, which takes minutes on a slow PC. Only the state and the save: nothing of the
+    ///     game or of the session's types is touched this early (Tell reads the host's lists)
+    /// </summary>
+    internal static void OnModLoaded()
+    {
+        if (!Requested) {
+            return;
+        }
+
+        try {
+            Directory.CreateDirectory(_folder);
+            File.WriteAllLines(Path.Combine(_folder, "server.txt"), ["state=loading", "save=" + _save]);
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "Server: could not say it is loading");
+        }
+    }
+
     internal static void Update()
     {
         // every frame, not on the 2-second tick: a player who connects to a resting server is served at full rate
