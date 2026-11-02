@@ -728,16 +728,16 @@ internal static class EmpUi
 
     /// <summary>
     ///     A clipped frame of a fixed height holding a list that scrolls by wheel or drag (the Other teams list); returns
-    ///     the list to fill. <paramref name="fillPage" />: the frame also takes, once, the height the page leaves
-    ///     empty under it in the window (TabEmpBase.FillPage)
+    ///     the list to fill. On a tab the frame shrinks, once, when its page runs past the fixed window and shrinking
+    ///     makes it fit; <paramref name="fillPage" />: it also takes the height the page leaves empty under it
+    ///     (TabEmpBase.FillPage)
     /// </summary>
     public static YKVertical ScrollList(this YKLayout parent, float height, bool fillPage = false)
     {
         var frame = new GameObject("ScrollList", typeof(RectTransform), typeof(LayoutElement), typeof(RectMask2D), typeof(Image), typeof(ScrollRect));
         frame.transform.SetParent(parent.transform, false);
-        if (fillPage) {
-            frame.AddComponent<TabEmpBase.FillsPage>();
-        }
+        // (every frame shrinks to keep its page inside the fixed window; fillPage: it also grows into the room left)
+        frame.AddComponent<TabEmpBase.FillsPage>().Grows = fillPage;
         var element = frame.GetComponent<LayoutElement>();
         element.minHeight = element.preferredHeight = height;
         element.flexibleWidth = 1f;

@@ -97,7 +97,8 @@ public class MsgSayDelta : ElinDelta
     /// </summary>
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
-        return Notice ? "a server notice written by a guest" : null;
+        // (a name longer than a Steam name is a forged one: security review 2026-11-02)
+        return Notice ? "a server notice written by a guest" : Name is { Length: > 32 } ? $"a line signed with {Name.Length} characters" : null;
     }
 
     /// <summary>

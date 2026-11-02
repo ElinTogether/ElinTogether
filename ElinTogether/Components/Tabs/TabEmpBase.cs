@@ -373,15 +373,19 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
     internal sealed class FillsPage : MonoBehaviour
     {
         public bool Done;
+
+        /// <summary>Also takes the room left empty under the page (the Chat log, the Market board); else only shrinks</summary>
+        public bool Grows;
     }
 
     /// <summary>
-    ///     The first time a page with a filling list is laid out shown, the list takes the height that makes the page
-    ///     exactly as tall as the window's view (the Chat log, the Market board): it grows into the room left empty
-    ///     under the page, or shrinks (down to MinFill) when the page ran past the view, so what comes after the list
-    ///     (the Chat's writing row) sits at the bottom of the window. The height is set once, so it never changes
-    ///     again while the page is open (lead dev 2026-11-01: wasted space, menus that change size). True when a
-    ///     list changed
+    ///     The first time a page with scrolled lists is laid out shown, they take the height that makes the page as
+    ///     tall as the window's view. A page shorter than the view: the lists that grow (the Chat log, the Market
+    ///     board) take the room left under it, so what comes after them (the Chat's writing row) sits at the bottom.
+    ///     A page taller than the view: every list shrinks (down to MinFill, each by its share of the room it has) when
+    ///     that makes the page fit; a page that would still run past the view keeps its lists and scrolls as before.
+    ///     The heights are set once, so they never change again while the page is open (lead dev 2026-11-01: wasted
+    ///     space, menus that change size). True when a list changed
     /// </summary>
     private bool FillPage()
     {
@@ -401,9 +405,17 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
             return false;
         }
 
-        foreach (var list in lists) {
+        static float HeightOf(FillsPage list) => ((RectTransform)list.transform).rect.height;
+        var growing = lists.Where(l => l.Grows).ToList();
+        var room = lists.Sum(l => Mathf.Max(0f, HeightOf(l) - MinFill));
+        if ((spare > 0f && growing.Count == 0) || (spare < 0f && room < -spare)) {
+            return false;
+        }
+
+        foreach (var list in spare > 0f ? growing : lists) {
             var rect = (RectTransform)list.transform;
-            var height = Mathf.Max(MinFill, rect.rect.height + Mathf.Floor(spare / lists.Count));
+            var change = spare > 0f ? Mathf.Floor(spare / growing.Count) : Mathf.Floor(spare * Mathf.Max(0f, HeightOf(list) - MinFill) / room);
+            var height = Mathf.Max(Mathf.Min(MinFill, HeightOf(list)), HeightOf(list) + change);
             var element = list.GetComponent<LayoutElement>();
             element.minHeight = element.preferredHeight = height;
             // (YK's layouts stack the frame at its rect height and never set it: the LayoutElement alone did nothing,

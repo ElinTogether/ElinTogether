@@ -46,6 +46,22 @@ internal static class ChatMarkup
     /// </summary>
     internal static string Escape(string text) => text.Replace("<", "<<b></b>");
 
+    // a rich-text tag that is not a colour, bold or italics (size, quad, material...)
+    private static readonly Regex OtherTag = new(@"<(?!/?(?:color|b|i)\b)[^<>]*>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex StrayOpen = new(@"<(?!/?(?:color|b|i)\b[^<>]*>)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    ///     A speaker's name as the log draws it: the colours the mod gives names stay, any other tag a name carries (a
+    ///     Steam name or a forged line's "&lt;size=300&gt;", "&lt;quad&gt;") is taken out; 48 characters at most
+    /// </summary>
+    internal static string SafeName(string who)
+    {
+        // (and a "<" left that opens no colour, bold or italics is escaped: it can never join the words after it)
+        var safe = StrayOpen.Replace(OtherTag.Replace(who, ""), "<<b></b>");
+        return safe.RemoveAllTags().Length > 48 ? Escape(safe.RemoveAllTags().Substring(0, 48)) + "…" : safe;
+    }
+
     /// <summary>
     ///     A line for the Chat tab: the words escaped, each emote a blank of <paramref name="size" /> (a quad) that
     ///     ChatIcons fills with the icon, in the order of <paramref name="icons" />
@@ -111,6 +127,18 @@ internal static class ChatMarkup
     private static readonly Dictionary<string, Thing> LinkCopies = [];
     private static readonly Queue<string> LinkOrder = new();
 
+    private static readonly HashSet<string> LinkFailed = [];
+    private const int MaxLinkLevel = 100;
+
+    private static void Failed(string code)
+    {
+        if (LinkFailed.Count > 256) {
+            LinkFailed.Clear();
+        }
+
+        LinkFailed.Add(code);
+    }
+
     internal static readonly Color LinkColor = new(0.1f, 0.3f, 0.6f);
 
     /// <summary>The code of a link to this thing, as Shift+click in the inventory writes it</summary>
@@ -127,17 +155,26 @@ internal static class ChatMarkup
             return known;
         }
 
+        // (a code that failed once is never tried again)
+        if (LinkFailed.Contains(code.Value)) {
+            return null;
+        }
+
         var id = code.Groups[1].Value;
         var material = int.Parse(code.Groups[2].Value);
-        if (!EClass.core.IsGameStarted || !EClass.sources.things.map.ContainsKey(id) || !EClass.sources.materials.map.ContainsKey(material)) {
+        // (only an item of the game's thing table, of a known material)
+        if (!EClass.core.IsGameStarted || !EClass.sources.things.map.TryGetValue(id, out var row) || row == null ||
+            !EClass.sources.materials.map.ContainsKey(material)) {
+            Failed(code.Value);
             return null;
         }
 
         Thing thing;
         try {
-            // (quiet: a card made for this game's eyes only is neither sent nor given a world uid, as the trade window's copies)
+            // (quiet: a card made for this game's eyes only is neither sent nor given a world uid, as the trade window's
+            // copies; the level is capped: a display copy needs no more)
             using (Models.ElinDelta.Quiet()) {
-                thing = ThingGen.Create(id, material, Mathf.Clamp(int.Parse(code.Groups[3].Value), 1, 9999));
+                thing = ThingGen.Create(id, material, Mathf.Clamp(int.Parse(code.Groups[3].Value), 1, MaxLinkLevel));
             }
 
             thing.encLV = Mathf.Clamp(int.Parse(code.Groups[4].Value), -10, 99);
@@ -150,6 +187,7 @@ internal static class ChatMarkup
             thing.c_IDTState = 0;
         } catch (Exception ex) {
             EmpLog.Debug(ex, "Chat item link {Code} could not be shown", code.Value);
+            Failed(code.Value);
             return null;
         }
 
@@ -174,7 +212,10 @@ internal static class ChatMarkup
     /// </summary>
     internal static string Plain(string text)
     {
-        var source = ItemCode.Replace(IsAction(text) ? ActionOf(text) : text, match => LinkedThing(match) is { } thing ? $"[{thing.Name}]" : "[?]");
+        // (three links at most are made, as in the log: a line full of codes costs no more)
+        var linked = 0;
+        var source = ItemCode.Replace(IsAction(text) ? ActionOf(text) : text,
+            match => ++linked <= MaxLinks && LinkedThing(match) is { } thing ? $"[{thing.Name.RemoveAllTags()}]" : "[?]");
         var words = EmoteCode.Replace(source, match => IsEmote(match.Groups[1].Value) ? "" : match.Value).Trim();
         return IsAction(text) && words.Length > 0 ? $"*{words}*" : words;
     }

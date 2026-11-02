@@ -242,7 +242,9 @@ internal partial class TabChat
             }
 
             // (the longest player name the words start with: a name may hold spaces)
-            var to = PrivateTargets().Where(t => rest.StartsWith(t.Name + " ", StringComparison.OrdinalIgnoreCase))
+            // (the name alone, "/w Bob", is a line with no words: said as such, not as an unknown player)
+            var to = PrivateTargets().Where(t => t.Name.Length > 0 && (rest.StartsWith(t.Name + " ", StringComparison.OrdinalIgnoreCase) ||
+                                                                       string.Equals(rest, t.Name, StringComparison.OrdinalIgnoreCase)))
                 .OrderByDescending(t => t.Name.Length).FirstOrDefault();
             if (to.Uid == 0) {
                 var asked = rest.Split(' ')[0];
@@ -251,7 +253,9 @@ internal partial class TabChat
             }
 
             var words = rest.Substring(to.Name.Length).Trim();
-            if (words.Length > 0) {
+            if (words.Length == 0) {
+                Tell("emp_ui_chat_cmd_empty".Loc(to.Name));
+            } else {
                 PlayerWhisper.Send(to.Uid, to.Name, words);
             }
 

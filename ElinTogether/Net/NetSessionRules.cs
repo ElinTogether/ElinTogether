@@ -546,8 +546,9 @@ public class NetSessionRules
     public string? ClientOnlyMods { get; set; }
 
     /// <summary>
-    ///     Host setting "Chat lines show as bubbles": a line written in the Chat tab is also a short bubble over the
-    ///     writer's character, for the players of its map (the game's chat box always makes one)
+    ///     Host setting "Chat lines show as bubbles": what a player writes (the Chat tab or the game's chat box) is also a
+    ///     short bubble over its character, for the players of its map. Off: no bubble over a player for its lines,
+    ///     checked by each game and by the host (ChatBubbleEvent, CardRendererTalkDelta)
     /// </summary>
     [Key(159)]
     public bool ChatBubbles { get; set; } = true;

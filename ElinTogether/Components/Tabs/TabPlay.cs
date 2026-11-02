@@ -541,7 +541,8 @@ internal class TabPlay : TabEmpBase
     {
         var card = page.Card("emp_ui_play_public_title".lang());
         var status = card.TextSmall("emp_ui_play_searching".lang(), FontColor.Gray);
-        var list = card.ScrollList(380f);
+        // (as tall as the page leaves it in the fixed window, TabEmpBase.FillPage)
+        var list = card.ScrollList(380f, true);
         list.Layout.spacing = UIHelper.RowSpacing * 2f;
 
         NetSession.Instance.Lobby.GetOnlineLobbies(SetupLobbyDisplay);
