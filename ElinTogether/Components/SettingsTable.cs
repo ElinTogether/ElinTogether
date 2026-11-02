@@ -406,6 +406,7 @@ internal static class SettingsTable
         yield return new("vouch_players", "joining", true, EmpConfig.Server.VouchPlayers, Requires: () => OfficialServer.CanHost());
         yield return new("container_log", "together", true, EmpConfig.Server.ContainerAccessLog);
         yield return new("max_characters", "joining", true, Choice: MaxCharacters);
+        yield return new("return_where_left", "joining", true, EmpConfig.Server.ReturnWhereLeft);
         yield return new("teams", "together", true, EmpConfig.Server.Teams);
         yield return new("team_bases", "together", true, EmpConfig.Server.TeamBases, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("team_approval", "together", true, EmpConfig.Server.TeamApproval, Requires: () => EmpConfig.Server.Teams.Value);
@@ -597,6 +598,9 @@ internal static class SettingsTable
         (EmpConfig.Server.PlayerKill, false),
         // council 2026-10-28: maps from the internet in a persistent shared world are unmoderated, with no undo
         (EmpConfig.Server.GuestMoongate, false),
+        // a player who comes back starts where it left (user 2026-11-02: "players should come back to the position
+        // where they left the server last time"). Fixed, so that the running public server gets it at its next start
+        (EmpConfig.Server.ReturnWhereLeft, true),
         ..Fallbacks().Select(e => ((ConfigEntryBase)e, (object)true)),
     ];
 
