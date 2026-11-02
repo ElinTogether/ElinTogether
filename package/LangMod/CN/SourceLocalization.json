@@ -1461,7 +1461,7 @@
     "LangGeneral.emp_ui_team_offer_title.text": "已接受",
     "LangGeneral.emp_ui_emblem_add_shape.text": "添加图形",
     "LangGeneral.emp_ui_emblem_add_picture.text": "添加图片",
-    "LangGeneral.emp_ui_emblem_clip.text": "按最底层裁剪",
+    "LangGeneral.emp_ui_emblem_clip.text": "只显示最底层图层以内的部分",
     "LangGeneral.emp_ui_emblem_rounded.text": "圆角方形",
     "LangGeneral.emp_ui_emblem_triangle.text": "三角形",
     "LangGeneral.emp_ui_emblem_star.text": "星形",
@@ -1531,7 +1531,7 @@
     "LangGeneral.emp_ui_emblem_code_copied.text": "代码已复制",
     "LangGeneral.emp_ui_emblem_code_bad.text": "不是徽章代码",
     "LangGeneral.emp_ui_emblem_too_long.text": "太大，无法保存（{0}/{1}）",
-    "LangGeneral.emp_ui_emblem_snap.text": "吸附",
+    "LangGeneral.emp_ui_emblem_snap.text": "拖动时吸附到网格",
     "LangGeneral.emp_ui_emblem_tools_effects.text": "效果",
     "LangGeneral.emp_ui_emblem_text.text": "文字",
     "LangGeneral.emp_ui_emblem_font.text": "字体",
@@ -1585,5 +1585,11 @@
     "LangGeneral.emp_ui_emblem_src_ui.text": "界面",
     "LangGeneral.emp_ui_emblem_src_tiles.text": "地块",
     "LangGeneral.emp_ui_emblem_src_portraits.text": "肖像",
-    "LangGeneral.emp_ui_emblem_src_places.text": "地点"
+    "LangGeneral.emp_ui_emblem_src_places.text": "地点",
+    "LangGeneral.emp_ui_emblem_small.text": "缩小后的样子",
+    "LangGeneral.emp_ui_emblem_whole.text": "整个纹章",
+    "LangGeneral.emp_ui_emblem_clip_tip.text": "超出最底层图层形状的部分不会显示。",
+    "LangGeneral.emp_ui_emblem_name_portrait.text": "肖像 {0}",
+    "LangGeneral.emp_ui_emblem_name_icon.text": "图标 {0}",
+    "LangGeneral.emp_ui_emblem_name_place.text": "地点 {0}"
 }

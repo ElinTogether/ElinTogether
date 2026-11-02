@@ -367,9 +367,12 @@ internal static class TeamEmblemBaker
         }
 
         /// <summary>Centred on the layer, in its own pixels</summary>
-        internal Vector2 At(int dx, int dy)
+        internal Vector2 At(int dx, int dy) => At(dx + 0.5f, dy + 0.5f);
+
+        /// <summary>A point of the canvas (not only a pixel's centre) in the layer's own pixels</summary>
+        internal Vector2 At(float cx, float cy)
         {
-            float x0 = dx + 0.5f - _x, y0 = dy + 0.5f - _y;
+            float x0 = cx - _x, y0 = cy - _y;
             var u = x0 * _cos + y0 * _sin;
             var v = -x0 * _sin + y0 * _cos;
             if ((_flip & 1) != 0) {
@@ -405,30 +408,53 @@ internal static class TeamEmblemBaker
     {
         var src = Source(layer.Thing) ?? Placeholder;
         Color? tint = layer.Color != TeamEmblem.Own ? ToColor(layer.Color) : null;
-        var map = new Inverse(layer, N * layer.Size / 100f / Mathf.Max(src.W, src.H, 1));
+        var scale = N * layer.Size / 100f / Mathf.Max(src.W, src.H, 1);
+        var map = new Inverse(layer, scale);
+        // a picture shrunk to a few canvas pixels (a portrait, a place: 100 to 256 pixels into 64) is averaged over
+        // the source pixels each canvas pixel covers, up to 4x4 samples; nearest alone kept one pixel in four and the
+        // portrait became noise (lead dev 2026-11-02). A picture drawn at its size or larger (the items, the icons)
+        // keeps the nearest pixel, as before
+        var k = Mathf.Clamp(Mathf.FloorToInt(1f / Mathf.Max(scale, 0.01f)), 1, 4);
+        var weight = 1f / (k * k);
         for (var dy = 0; dy < N; dy++) {
             for (var dx = 0; dx < N; dx++) {
-                var p = map.At(dx, dy);
-                var sx = Mathf.FloorToInt(p.x + src.W / 2f);
-                var syTop = Mathf.FloorToInt(p.y + src.H / 2f);
-                if (sx < 0 || sx >= src.W || syTop < 0 || syTop >= src.H) {
-                    continue;
+                Color sum = default;
+                float alpha = 0f, solid = 0f;
+                for (var sy = 0; sy < k; sy++) {
+                    for (var sx = 0; sx < k; sx++) {
+                        var p = k == 1 ? map.At(dx, dy) : map.At(dx + (sx + 0.5f) / k, dy + (sy + 0.5f) / k);
+                        var px = Mathf.FloorToInt(p.x + src.W / 2f);
+                        var pyTop = Mathf.FloorToInt(p.y + src.H / 2f);
+                        if (px < 0 || px >= src.W || pyTop < 0 || pyTop >= src.H) {
+                            continue;
+                        }
+
+                        var c = (Color)src.Pixels[(src.H - 1 - pyTop) * src.W + px];
+                        if (c.a <= 0f) {
+                            continue;
+                        }
+
+                        if (tint is { } t) {
+                            var l = 0.3f + 0.7f * (0.299f * c.r + 0.587f * c.g + 0.114f * c.b);
+                            c = new(t.r * l, t.g * l, t.b * l, c.a * t.a);
+                        }
+
+                        // (premultiplied, so a transparent sample darkens nothing)
+                        sum += new Color(c.r * c.a, c.g * c.a, c.b * c.a, 0f);
+                        alpha += c.a;
+                        solid += c.a >= 0.5f ? 1f : 0f;
+                    }
                 }
 
-                var c = (Color)src.Pixels[(src.H - 1 - syTop) * src.W + sx];
-                if (c.a <= 0f) {
+                if (alpha <= 0f) {
                     continue;
-                }
-
-                if (tint is { } t) {
-                    var l = 0.3f + 0.7f * (0.299f * c.r + 0.587f * c.g + 0.114f * c.b);
-                    c = new(t.r * l, t.g * l, t.b * l, c.a * t.a);
                 }
 
                 var i = dy * N + dx;
-                cover[i] = c.a;
-                colour[i] = c;
-                mask[i] = c.a >= 0.5f;
+                var a = alpha * weight;
+                cover[i] = a;
+                colour[i] = new(sum.r / alpha, sum.g / alpha, sum.b / alpha, a);
+                mask[i] = solid * weight >= 0.5f;
             }
         }
 
@@ -843,7 +869,10 @@ internal static class TeamEmblemBaker
 
         (Color32[] Pixels, int W, int H)? result = null;
         try {
-            if (TeamBanner.SpriteOf(thing) is { } sprite) {
+            if (EmblemPaint.Is(thing)) {
+                // (a paint layer keeps its whole 64 square: never cut to its drawn part)
+                result = EmblemPaint.Source(thing);
+            } else if (TeamBanner.SpriteOf(thing) is { } sprite) {
                 var src = Patches.MultiplayerHubPatch.Read(sprite);
                 var box = Patches.MultiplayerHubPatch.AlphaBox(src.Pixels, src.W, src.H);
                 var cut = new Color32[box.width * box.height];

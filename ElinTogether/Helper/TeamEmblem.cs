@@ -81,6 +81,9 @@ internal readonly record struct EmblemLayer(
     /// <summary>A picture of the game (a thing, a monster, an icon, a tile, a portrait...)</summary>
     internal bool IsSprite => !IsShape && !IsText;
 
+    /// <summary>A paint layer: 64x64 pixels drawn in the editor (<see cref="EmblemPaint" />), drawn as a picture</summary>
+    internal bool IsPaint => EmblemPaint.Is(Thing);
+
     /// <summary>A text layer's text</summary>
     internal string Text => IsText ? TeamEmblem.Unhex(Thing.Substring(2)) ?? "" : "";
 
@@ -361,7 +364,7 @@ internal static class TeamEmblem
 
     // a typed id of the e3 form: a sprite of a known source, a shape or a text (the ids themselves are checked later)
     private static bool Typed(string thing) =>
-        thing.Length >= 3 && thing[1] == ':' && (thing[0] is 'g' or 'x' || EmblemSprites.Codes.IndexOf(thing[0]) >= 0);
+        thing.Length >= 3 && thing[1] == ':' && (thing[0] is 'g' or 'x' or 'd' || EmblemSprites.Codes.IndexOf(thing[0]) >= 0);
 
     private static Emblem? ParseThird(string text)
     {
@@ -550,7 +553,9 @@ internal static class TeamEmblem
                 continue;
             }
 
-            if (normalize(l.Thing) is not { } typed) {
+            // (a paint layer: its pixels must read; it is a picture for every other field)
+            var typed = l.IsPaint ? EmblemPaint.Valid(l.Thing) ? l.Thing : null : normalize(l.Thing);
+            if (typed == null) {
                 return null;
             }
 

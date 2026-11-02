@@ -741,6 +741,8 @@ internal static class EmpUi
         var element = frame.GetComponent<LayoutElement>();
         element.minHeight = element.preferredHeight = height;
         element.flexibleWidth = 1f;
+        // (also by hand: a YK page does not control its children's height, and the frame kept Unity's 100, 2026-11-02)
+        ((RectTransform)frame.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
         frame.GetComponent<Image>().color = new(0f, 0f, 0f, 0.001f);
 
         var content = parent.Vertical();

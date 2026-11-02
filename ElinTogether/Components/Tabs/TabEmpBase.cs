@@ -394,15 +394,50 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
             list.Done = true;
         }
 
-        if (spare < 8f) {
-            return false;
+        // (a list on the shorter page of a book also takes what the longer page leaves under it: the emblem editor's
+        // tools stopped halfway down beside a taller left page, lead dev 2026-11-02)
+        var grown = false;
+        foreach (var group in lists.GroupBy(PageOf)) {
+            var room = spare + BookSlack(group.Key);
+            if (room < 8f) {
+                continue;
+            }
+
+            var count = group.Count();
+            foreach (var list in group) {
+                var element = list.GetComponent<LayoutElement>();
+                element.minHeight = element.preferredHeight = element.preferredHeight + Mathf.Floor(room / count);
+                // (a YK page does not control its children's height: the frame's own height too)
+                ((RectTransform)list.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, element.preferredHeight);
+            }
+
+            grown = true;
         }
 
-        foreach (var list in lists) {
-            var element = list.GetComponent<LayoutElement>();
-            element.minHeight = element.preferredHeight = element.preferredHeight + Mathf.Floor(spare / lists.Count);
+        return grown;
+    }
+
+    /// <summary>The page of a book (EmpUi.Book) that holds this list, or null when it is in none</summary>
+    private static Transform? PageOf(FillsPage list)
+    {
+        for (var t = list.transform; t.parent != null; t = t.parent) {
+            if (t.parent.Find("Fold") != null && t.parent.GetComponent<HorizontalLayoutGroup>() != null) {
+                return t;
+            }
         }
 
-        return true;
+        return null;
+    }
+
+    /// <summary>How much taller the book's longest page is than this one (0 outside a book)</summary>
+    private static float BookSlack(Transform? page)
+    {
+        if (page == null || page.parent is not RectTransform spread) {
+            return 0f;
+        }
+
+        var own = LayoutUtility.GetPreferredHeight((RectTransform)page);
+        var longest = spread.Cast<Transform>().OfType<RectTransform>().Where(p => p.name != "Fold").Max(p => LayoutUtility.GetPreferredHeight(p));
+        return Mathf.Max(0f, longest - own);
     }
 }
