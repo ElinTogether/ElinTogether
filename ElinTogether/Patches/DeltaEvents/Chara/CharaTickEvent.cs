@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using ElinTogether.Elements;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -40,9 +42,20 @@ internal static class CharaTickEvent
 
     extension(Chara chara)
     {
+        /// <summary>
+        ///     Another player's turn played on its copy here. The snapshot lacks CharaSynchronizationContext's pace
+        ///     (patched later, see SnapshotStub): the copy took the game's actTime, measured on this game's player's
+        ///     speed, and its steps were drawn slower or faster than they are walked. Applied to this copy too
+        /// </summary>
         [HarmonyReversePatch(HarmonyReversePatchType.Snapshot)]
         internal void Stub_Tick()
         {
+            IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+            {
+                return SnapshotStub.With(instructions, original, CharaSynchronizationContext.OnCharaTick);
+            }
+
+            _ = Transpiler([], null!);
             throw new NotImplementedException("Chara.Tick");
         }
     }
