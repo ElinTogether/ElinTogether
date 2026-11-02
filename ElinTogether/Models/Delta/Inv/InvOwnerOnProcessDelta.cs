@@ -137,6 +137,17 @@ public class InvOwnerOnProcessDelta : ElinDelta
                 }
 
                 return;
+            // InvOwnerBlend: a client's game plays the dip itself, but its ModNum(-1) of the potion, water or dye
+            // (a host card) does nothing there: the host uses it up (GitHub issue 61, blessed water never spent)
+            case TraitDrink or TraitDye or TraitDreamBug:
+                if (net is ElinNetHost blendHost && dest is Thing { isDestroyed: false } blend &&
+                    blendHost.ActiveRemoteCharas.TryGetValue(OriginPeer, out var blender) &&
+                    NotReachable(blender, Dest) is null && blend.trait.CanBlend(thing)) {
+                    using var blendSimulate = Simulate();
+                    blend.ModNum(-1);
+                }
+
+                return;
         }
 
         InvOwnerDraglet? destInv = null;
