@@ -865,6 +865,12 @@ internal static class TeamEmblemBaker
         }
     }
 
+    /// <summary>
+    ///     A picture layer's pixels as the bake scales them (cut to their drawn part), null when it does not read: the
+    ///     editor's resize handles keep its pixels whole with it
+    /// </summary>
+    internal static (int W, int H)? SourceSize(string thing) => Source(thing) is { } s ? (s.W, s.H) : null;
+
     private static (Color32[] Pixels, int W, int H)? Source(string thing)
     {
         if (_sources.TryGetValue(thing, out var known)) {

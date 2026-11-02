@@ -403,9 +403,11 @@ internal static class TeamBanner
     ///     The source pills (items, monsters, the game's icons, gods, UI icons, tiles, portraits, places) over a search
     ///     field over one scrolled grid of every picture of that source (<see cref="SpriteGrid" />: name in the
     ///     player's language, English name or id, filtered as it is typed); a click gives the typed id to
-    ///     <paramref name="onPick" />
+    ///     <paramref name="onPick" />; a cell dragged out of the grid is given to <paramref name="drop" /> where it is
+    ///     released (the editor's stickers)
     /// </summary>
-    internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick, bool itemsOnly = false, bool fill = false)
+    internal static void BuildThingPicker(YKLayout card, Color colour, System.Action<string> onPick, bool itemsOnly = false, bool fill = false,
+        System.Func<string, Vector2, bool>? drop = null)
     {
         SpriteGridView? grid = null;
         void Show() => grid?.Show(SpriteGrid.Filter(SpriteGrid.All(_kind), _query));
@@ -428,7 +430,7 @@ internal static class TeamBanner
             _query = text;
             Show();
         });
-        grid = SpriteGrid.Build(card, colour, onPick, fill);
+        grid = SpriteGrid.Build(card, colour, onPick, fill, drop);
         Show();
     }
 

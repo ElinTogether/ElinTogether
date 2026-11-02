@@ -369,10 +369,14 @@ internal static partial class EmblemEditor
         return sprite;
     }
 
-    /// <summary>The draft changed: the preview is baked now, or at the next tick when one was baked under 50 ms ago</summary>
+    /// <summary>
+    ///     The draft changed: the preview is baked now, or at the next tick when one was baked under 50 ms ago; the
+    ///     resize handles follow the layer at once
+    /// </summary>
     private static void Refresh()
     {
         _dirty = true;
+        ShowHandles();
         if (Time.realtimeSinceStartup - _lastBake >= BakeEvery) {
             BakeNow();
         }
@@ -1083,15 +1087,22 @@ internal static partial class EmblemEditor
         Fill();
     }
 
-    private static void Add(EmblemLayer layer)
+    private static void Add(EmblemLayer layer) => Push(Fitted(layer));
+
+    /// <summary>A new layer made for this canvas: on a drawing, in its middle, as large for it as it would be on an emblem</summary>
+    private static EmblemLayer Fitted(EmblemLayer layer)
     {
         if (CW != TeamEmblem.Grid || CH != TeamEmblem.Grid) {
-            // (on a drawing: in its middle, as large for it as it would be on an emblem)
             var scale = Mathf.Min(CW, CH) / (float)TeamEmblem.Grid;
-            var top = Mathf.Max(TeamEmblem.MaxSize, TeamEmblem.MaxSize * Mathf.Max(CW, CH) / TeamEmblem.Grid);
-            layer = layer with { X = CW / 2, Y = CH / 2, Size = Mathf.Clamp(Mathf.RoundToInt(layer.Size * scale), TeamEmblem.MinSize, top) };
+            layer = layer with { X = CW / 2, Y = CH / 2, Size = Mathf.Clamp(Mathf.RoundToInt(layer.Size * scale), TeamEmblem.MinSize, MaxLayerSize) };
         }
 
+        return layer;
+    }
+
+    /// <summary>A layer on top of the others, selected</summary>
+    private static void Push(EmblemLayer layer)
+    {
         Change(_draft with { Layers = [.._draft.Layers, layer] });
         Select(_draft.Layers.Count - 1);
         _picking = 0;
@@ -1106,7 +1117,7 @@ internal static partial class EmblemEditor
         Fill();
     }
 
-    /// <summary>A picture picked in the grid: a new layer, or the selected shape's texture</summary>
+    /// <summary>A picture picked in the grid: a new layer (a sticker, <see cref="PickSticker" />), or the selected shape's texture</summary>
     private static void Picked(int mode, string thing)
     {
         if (mode == PickTexture) {
@@ -1116,9 +1127,7 @@ internal static partial class EmblemEditor
             return;
         }
 
-        if (_draft.Layers.Count < TeamEmblem.MaxLayers) {
-            Add(TeamEmblem.Layer(thing));
-        }
+        PickSticker(thing);
     }
 
     // ---------------------------------------------------------------- the emblem as a code, saving
@@ -1272,6 +1281,11 @@ internal static partial class EmblemEditor
             return;
         }
 
+        // (a corner handle of the selected layer's box resizes it)
+        if (!right && HandleDown(p)) {
+            return;
+        }
+
         // (the selected layer keeps the pointer while it is under it, even under another one)
         var keep = HasSelection && Current.Lock == 0 && Holds(Current, p);
         var hit = keep ? _selected : LayerAt(p);
@@ -1306,6 +1320,11 @@ internal static partial class EmblemEditor
             return;
         }
 
+        if (_handle >= 0) {
+            HandleDrag(p);
+            return;
+        }
+
         if (!_moving || !HasSelection) {
             return;
         }
@@ -1336,6 +1355,12 @@ internal static partial class EmblemEditor
         }
 
         _moving = false;
+        if (_handle >= 0) {
+            // (the panel's size line shown again after a resize)
+            _handle = -1;
+            _reselect = true;
+        }
+
         _dragKey = null;
         // (the drag's last position baked at once)
         BakeNow();

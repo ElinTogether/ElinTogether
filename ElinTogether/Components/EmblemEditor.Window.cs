@@ -129,6 +129,7 @@ internal static partial class EmblemEditor
         _pointerText = null;
         _sideContent = null;
         _painting = _moving = _selecting = _selMoving = false;
+        _handle = -1;
     }
 
     /// <summary>Save refused from the close question (too long for the network): said in the status line</summary>
@@ -254,7 +255,7 @@ internal static partial class EmblemEditor
     {
         Tick();
         Autosave();
-        if (Time.realtimeSinceStartup < _nextPoll || _painting || _moving || _selMoving || _selecting || Typing) {
+        if (Time.realtimeSinceStartup < _nextPoll || _painting || _moving || _handle >= 0 || _selMoving || _selecting || Typing) {
             return;
         }
 
@@ -280,6 +281,7 @@ internal static partial class EmblemEditor
         Clear(_host);
         _dragKey = null;
         _moving = false;
+        _handle = -1;
         // (the old canvas view is gone with its pointer: what it was doing ends here)
         _painting = _selecting = _selMoving = false;
         _canvas = _strokeBase = _lifted = _liftBase = null;
@@ -564,6 +566,7 @@ internal static partial class EmblemEditor
         input.Sel = Outline(content, "Selection", new(0.1f, 0.08f, 0.06f, 0.95f), new(1f, 1f, 1f, 0.95f));
         input.Brush = Outline(content, "BrushOutline", new(0.1f, 0.08f, 0.06f, 0.6f), new(1f, 1f, 1f, 0.6f));
         input.Brush.gameObject.SetActive(false);
+        input.Handles = Handles(content);
         _view = input;
     }
 
@@ -628,13 +631,19 @@ internal static partial class EmblemEditor
 
         if (_picking != 0) {
             var head = side.Row();
-            head.Text((_picking == PickTexture ? "emp_ui_emblem_texture" : "emp_ui_emblem_add_picture").lang()).LayoutElement().flexibleWidth = 1f;
+            var heading = head.Text((_picking == PickTexture ? "emp_ui_emblem_texture" : "emp_ui_editor_stickers").lang());
+            heading.LayoutElement().flexibleWidth = 1f;
+            heading.name = _picking == PickTexture ? "EditorTextureHead" : "EditorStickersHead";
             Act(head, "emp_ui_emblem_add_close", () => {
                 _picking = 0;
                 Fill();
-            });
+            }, null, true, "EditorPickClose");
             var mode = _picking;
-            TeamBanner.BuildThingPicker(side, Dark, thing => Picked(mode, thing));
+            if (mode == PickLayer) {
+                StickerRows(side);
+            }
+
+            TeamBanner.BuildThingPicker(side, Dark, thing => Picked(mode, thing), drop: mode == PickLayer ? DropSticker : null);
             return;
         }
 
@@ -653,6 +662,7 @@ internal static partial class EmblemEditor
             return;
         }
 
+        StickerSection(side);
         ToolSection(side);
         ColourSection(side);
         PreviewSection(side, sprite);
@@ -749,6 +759,7 @@ internal static partial class EmblemEditor
                 break;
             case ToolMove:
                 side.TextSmall("emp_ui_editor_move_help".lang(), FontColor.Gray);
+                MoveOptions(side);
                 break;
             case ToolText:
                 side.TextSmall("emp_ui_editor_text_help".lang(), FontColor.Gray);
@@ -1077,6 +1088,9 @@ internal static partial class EmblemEditor
                 _view.Grid.uvRect = new(0f, 0f, CW, CH);
             }
         }
+
+        // (the handles keep their size on the screen at any zoom)
+        ShowHandles();
     }
 
     /// <summary>The view's size changed (built, the window resized): the canvas fitted again unless the player zoomed</summary>
@@ -1302,7 +1316,7 @@ internal static partial class EmblemEditor
 
     private static void Key(KeyCode key, bool ctrl, bool shift)
     {
-        if (_painting || _moving || _selMoving) {
+        if (_painting || _moving || _handle >= 0 || _selMoving) {
             return;
         }
 
@@ -1622,13 +1636,16 @@ internal static partial class EmblemEditor
 
     /// <summary>
     ///     The window's state in one line for the bench: tool|zoom|pan|selection|layers|selected|WxH|unsaved|undo/redo|
-    ///     brush|hardness|opacity|primary|secondary|grid|panel|picking|colourField|session
+    ///     brush|hardness|opacity|primary|secondary|grid|panel|picking|colourField|session|open, then the selected
+    ///     layer's X|Y|Size|Rotation|Flip ("-" each without one)
     /// </summary>
     internal static string BenchState =>
         string.Join("|", _tool, _zoomF.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture),
             Mathf.RoundToInt(_pan.x) + "," + Mathf.RoundToInt(_pan.y), _sel is { } s ? s.x + "," + s.y + "," + s.width + "," + s.height : "-",
             _draft.Layers.Count, _selected, CW + "x" + CH, Unsaved, _undo.Count + "/" + _redo.Count, _brush, _hardness, _opacity,
-            TeamEmblem.HexText(_primary), TeamEmblem.HexText(_secondary), _grid, _panel, _picking, _colourField, _session, _host != null);
+            TeamEmblem.HexText(_primary), TeamEmblem.HexText(_secondary), _grid, _panel, _picking, _colourField, _session, _host != null,
+            HasSelection ? Current.X.ToString() : "-", HasSelection ? Current.Y.ToString() : "-", HasSelection ? Current.Size.ToString() : "-",
+            HasSelection ? Current.Rotation.ToString() : "-", HasSelection ? Current.Flip.ToString() : "-");
 
     /// <summary>
     ///     A pointer event given to the canvas' own handler as the input module gives it: a press, a drag or a release
@@ -1941,6 +1958,9 @@ internal sealed class EditorCanvasView : MonoBehaviour, IPointerDownHandler, IBe
     internal RawImage? Grid;
     internal RectTransform? Sel;
     internal RectTransform? Brush;
+
+    // the selected layer's four resize handles (top left, top right, bottom right, bottom left)
+    internal RectTransform[]? Handles;
 
     private bool _panning;
     private bool _pressed;

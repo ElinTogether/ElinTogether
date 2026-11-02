@@ -117,9 +117,12 @@ internal static class SpriteGrid
     ///     The grid in a frame of six rows, its hover line under it; a click gives the entry's typed id to
     ///     <paramref name="onPick" />. <paramref name="fill" />: the frame takes the page's width and, once, the height
     ///     the page leaves under it (the emblem editor: lead dev 2026-11-02, three rows over an empty half page).
-    ///     Returns the view, to give it a new list as the filter changes
+    ///     Returns the view, to give it a new list as the filter changes. <paramref name="drop" />: a cell may be
+    ///     dragged out of the grid (its picture follows the pointer); on release it is given the entry's id and the
+    ///     screen point, and says whether it took it
     /// </summary>
-    internal static SpriteGridView Build(YKLayout parent, Color colour, System.Action<string> onPick, bool fill = false)
+    internal static SpriteGridView Build(YKLayout parent, Color colour, System.Action<string> onPick, bool fill = false,
+        System.Func<string, Vector2, bool>? drop = null)
     {
         var frame = new GameObject("SpriteGrid", typeof(RectTransform), typeof(LayoutElement), typeof(RectMask2D), typeof(Image), typeof(ScrollRect));
         frame.transform.SetParent(parent.transform, false);
@@ -152,7 +155,7 @@ internal static class SpriteGrid
 
         var hover = parent.TextSmall("", FontColor.Gray);
         var view = frame.AddComponent<SpriteGridView>();
-        view.Init(scroll, rt, colour, onPick, hover);
+        view.Init(scroll, rt, colour, onPick, hover, drop);
         return view;
     }
 
@@ -174,14 +177,20 @@ internal sealed class SpriteGridView : MonoBehaviour
     private Color _colour;
     private System.Action<string>? _pick;
     private UIText? _hover;
+    private System.Func<string, Vector2, bool>? _drop;
+    private RectTransform? _ghost;
+
+    // the entry being dragged (kept from the drag's start: the wheel may scroll its cell to another entry meanwhile)
+    private string? _dragged;
     private int _firstRow = -1;
     private int _columns = SpriteGrid.Columns;
 
     internal int Count => _list.Count;
 
-    internal void Init(ScrollRect scroll, RectTransform content, Color colour, System.Action<string> pick, UIText hover)
+    internal void Init(ScrollRect scroll, RectTransform content, Color colour, System.Action<string> pick, UIText hover,
+        System.Func<string, Vector2, bool>? drop = null)
     {
-        (_scroll, _content, _colour, _pick, _hover) = (scroll, content, colour, pick, hover);
+        (_scroll, _content, _colour, _pick, _hover, _drop) = (scroll, content, colour, pick, hover, drop);
         Pool(SpriteGrid.Columns * (SpriteGrid.VisibleRows + 1));
         scroll.onValueChanged.AddListener(_ => Refresh());
     }
@@ -234,16 +243,82 @@ internal sealed class SpriteGridView : MonoBehaviour
             var trigger = go.GetComponent<EventTrigger>();
             Add(trigger, EventTriggerType.PointerEnter, () => Hover(slot));
             Add(trigger, EventTriggerType.PointerExit, () => Hover(-1));
+            // (the cell's trigger already takes the drag from the scroll view: a drag out of the grid drops the entry)
+            Add(trigger, EventTriggerType.BeginDrag, data => BeginDrag(slot, data));
+            Add(trigger, EventTriggerType.Drag, Dragging);
+            Add(trigger, EventTriggerType.EndDrag, EndDrag);
             _cells.Add((crt, back, image, -1));
         }
     }
 
-    private static void Add(EventTrigger trigger, EventTriggerType type, System.Action act)
+    private static void Add(EventTrigger trigger, EventTriggerType type, System.Action act) => Add(trigger, type, _ => act());
+
+    private static void Add(EventTrigger trigger, EventTriggerType type, System.Action<BaseEventData> act)
     {
         var entry = new EventTrigger.Entry { eventID = type };
-        entry.callback.AddListener(_ => act());
+        entry.callback.AddListener(data => act(data));
         trigger.triggers.Add(entry);
     }
+
+    private string? EntryOf(int slot) => _cells[slot].Index is var i and >= 0 && i < _list.Count ? _list[i].Value : null;
+
+    /// <summary>A cell dragged (when the grid has a drop): its picture follows the pointer over the whole screen</summary>
+    private void BeginDrag(int slot, BaseEventData data)
+    {
+        DropGhost();
+        _dragged = EntryOf(slot);
+        if (_drop == null || _dragged == null || GetComponentInParent<Canvas>()?.rootCanvas is not { } root) {
+            return;
+        }
+
+        var go = new GameObject("StickerGhost", typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(root.transform, false);
+        go.transform.SetAsLastSibling();
+        _ghost = (RectTransform)go.transform;
+        _ghost.anchorMin = _ghost.anchorMax = _ghost.pivot = new(0.5f, 0.5f);
+        _ghost.sizeDelta = new(SpriteGrid.CellSize, SpriteGrid.CellSize);
+        var image = go.GetComponent<Image>();
+        image.sprite = _cells[slot].Picture.sprite;
+        image.enabled = image.sprite != null;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        image.color = new(1f, 1f, 1f, 0.8f);
+        Dragging(data);
+    }
+
+    private void Dragging(BaseEventData data)
+    {
+        if (_ghost == null || data is not PointerEventData pointer || _ghost.parent is not RectTransform root) {
+            return;
+        }
+
+        var canvas = root.GetComponent<Canvas>();
+        var cam = canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(root, pointer.position, cam, out var local)) {
+            _ghost.localPosition = local;
+        }
+    }
+
+    /// <summary>The drag released: the entry given to the drop, which takes it when it is over its place</summary>
+    private void EndDrag(BaseEventData data)
+    {
+        DropGhost();
+        var value = _dragged;
+        _dragged = null;
+        if (_drop != null && data is PointerEventData pointer && value != null && _drop(value, pointer.position)) {
+            SE.ClickGeneral();
+        }
+    }
+
+    private void DropGhost()
+    {
+        if (_ghost != null) {
+            Destroy(_ghost.gameObject);
+            _ghost = null;
+        }
+    }
+
+    private void OnDisable() => DropGhost();
 
     /// <summary>A new list (the filter changed): back to the top</summary>
     internal void Show(List<SpriteGrid.Entry> list)
@@ -306,9 +381,9 @@ internal sealed class SpriteGridView : MonoBehaviour
 
     private void Click(int slot)
     {
-        if (_cells[slot].Index is var i and >= 0 && i < _list.Count) {
+        if (EntryOf(slot) is { } value) {
             SE.ClickGeneral();
-            _pick?.Invoke(_list[i].Value);
+            _pick?.Invoke(value);
         }
     }
 
