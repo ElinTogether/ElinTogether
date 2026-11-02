@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.26.1829",
+    "date": "2026-11-02",
+    "title": "drawing editor window, stickers, New world from the Play tab, issues #56 #65 #66 #67, release-build fixes",
+    "bullets": [
+      "Drawing and emblem editor in its own window: a resizable window that fits your screen, tools on the left, colours, layers and preview on the right, unsaved drafts kept on disk and brought back, Ctrl+S to save.",
+      "Stickers: a Stickers button opens every picture of the game (items, monsters, icons, gods, interface, floors, portraits, places) with a search.",
+      "#56 New world: the Play tab can start a new world and hosts it once its land is claimed.",
+      "#65: a guest no longer rejoins stuck in a turn-combat round (could not walk).",
+      "#66: joining your own hidden server is much faster and no longer falls back to classic hosting.",
+      "#67: a new story claiming the land no longer restarts Ash's quests.",
+      "Release-build fixes: several things that only worked in test builds now work in the released mod (shared worlds played alone, permadeath worlds, characters taken home, repairs when a world loads, the Multiplayer button and the report box with no game open)."
+    ]
+  },
+  {
     "version": "0.26.1791",
     "date": "2026-11-02",
     "title": "chat, drawings, emblem editor 2, issues #57-#64, equality fixes",
