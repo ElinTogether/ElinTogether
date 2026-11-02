@@ -1185,11 +1185,15 @@ internal static partial class EmblemEditor
             }
         }
 
-        // (mirror painting's axes, with a paint tool)
+        // (mirror painting's axes, with a paint tool, where the copies go: the middle of a paint layer that covers
+        // the canvas as it was made, or of the one a first stroke adds; another one mirrors across its own middle,
+        // its axes are not drawn, review 2026-11-03)
         if (_view.Axes is { } axes) {
+            var covers = !HasSelection || !Current.IsPaint || Current.Lock != 0 || Current.Hidden != 0 ||
+                         Current.X == CW / 2 && Current.Y == CH / 2 && Current.Rotation == 0 && Current.Size == 100 * Mathf.Max(CW, CH) / EmblemPaint.N;
             for (var i = 0; i < axes.Length; i++) {
                 if (axes[i] != null) {
-                    axes[i].gameObject.SetActive(Paints(_tool) && (_mirror & (1 << i)) != 0);
+                    axes[i].gameObject.SetActive(covers && Paints(_tool) && (_mirror & (1 << i)) != 0);
                 }
             }
         }

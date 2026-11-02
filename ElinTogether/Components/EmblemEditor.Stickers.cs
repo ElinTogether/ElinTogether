@@ -411,10 +411,6 @@ internal static partial class EmblemEditor
     /// <summary>A grid cell's drag released over that pixel of the canvas (the screen point the input module gives)</summary>
     internal static string BenchDropSticker(string thing, float x, float y) => DropSticker(thing, CanvasToScreen(x, y)) ? "ok" : "outside";
 
-    /// <summary>
-    ///     The stickers' state for the bench: handles shown|the four corners (x,y;...)|the view's centre (x,y)|the
-    ///     selected picture's crisp sizes (a,b,...; "-" when its handles go by whole percents)|recent (id;id...)|favourites|the selected layer's thing
-    /// </summary>
     /// <summary>The sticker grid for the bench: its cell side|the entries it lists|its scroll (the content's y); "-" without one</summary>
     internal static string BenchStickerGrid
     {
@@ -429,6 +425,10 @@ internal static partial class EmblemEditor
         }
     }
 
+    /// <summary>
+    ///     The stickers' state for the bench: handles shown|the four corners (x,y;...)|the view's centre (x,y)|the
+    ///     selected picture's crisp sizes (a,b,...; "-" when its handles go by whole percents)|recent (id;id...)|favourites|the selected layer's thing
+    /// </summary>
     internal static string BenchSticker
     {
         get {

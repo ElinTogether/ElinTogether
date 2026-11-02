@@ -20,23 +20,28 @@ internal static class StickerSieve
     // the sources sieved (t things, c monsters, e a icons, u v UI icons, o map objects)
     private const string Sieved = "tceauvo";
 
-    // a texture read whole costs a GPU round trip: past that many textures in one list, its pictures stay unjudged
+    // a texture read whole costs a GPU round trip: a list of more textures than that is not judged (all kept)
     private const int MaxTextures = 64;
 
-    // nor more than this long for one list (the rest stays unjudged, kept)
-    private const long BudgetMs = 1500;
+    // nor more than this long at once on the game's thread (review 2026-11-03): the rest is judged at the next call
+    private const long BudgetMs = 400;
 
     // each picture's verdict by its typed id: its pixels' hash, 0 when it makes no sticker
     private static readonly Dictionary<string, ulong> _hash = [];
 
-    /// <summary>The list without the pictures that make no sticker, in its order (the first of the same pictures stays)</summary>
-    internal static List<SpriteGrid.Entry> Keep(List<SpriteGrid.Entry> list)
+    /// <summary>
+    ///     The list without the pictures that make no sticker, in its order (the first of the same pictures stays).
+    ///     <paramref name="complete" />: every picture was judged (a list cut by the time budget is judged further at
+    ///     the next call; the caller keeps only a complete one)
+    /// </summary>
+    internal static List<SpriteGrid.Entry> Keep(List<SpriteGrid.Entry> list, out bool complete)
     {
         var clock = Stopwatch.StartNew();
         try {
-            Judge(list, clock);
+            complete = Judge(list, clock);
         } catch (System.Exception e) {
             EmpLog.Debug(e, "Sticker sieve: the pictures could not be judged");
+            complete = true;
         }
 
         var kept = new List<SpriteGrid.Entry>(list.Count);
@@ -49,17 +54,26 @@ internal static class StickerSieve
             kept.Add(e);
         }
 
-        EmpLog.Debug("Sticker sieve: {Kept} of {All} pictures kept in {Ms} ms", kept.Count, list.Count, clock.ElapsedMilliseconds);
+        EmpLog.Debug("Sticker sieve: {Kept} of {All} pictures kept in {Ms} ms (complete: {Complete})", kept.Count, list.Count,
+            clock.ElapsedMilliseconds, complete);
         return kept;
     }
 
-    /// <summary>The verdicts of the list's pictures not judged yet, texture by texture</summary>
-    private static void Judge(List<SpriteGrid.Entry> list, Stopwatch clock)
+    /// <summary>
+    ///     The verdicts of the list's pictures not judged yet, texture by texture, within the time budget: true when
+    ///     none is left
+    /// </summary>
+    private static bool Judge(List<SpriteGrid.Entry> list, Stopwatch clock)
     {
         var todo = new Dictionary<Texture2D, List<(string Value, Rect Rect)>>();
         foreach (var e in list) {
             if (Sieved.IndexOf(e.Value[0]) < 0 || _hash.ContainsKey(e.Value)) {
                 continue;
+            }
+
+            // (reading the pictures of a lazily read source takes time too)
+            if (clock.ElapsedMilliseconds > BudgetMs) {
+                return false;
             }
 
             var sprite = e.Picture();
@@ -82,30 +96,40 @@ internal static class StickerSieve
             }
 
             if (!todo.TryGetValue(tex, out var items)) {
-                if (todo.Count >= MaxTextures) {
-                    continue;
-                }
-
                 todo[tex] = items = [];
             }
 
             items.Add((e.Value, rect));
         }
 
+        if (todo.Count > MaxTextures) {
+            // (pictures each on a texture of their own: too many reads, all kept as they are, each its own picture)
+            foreach (var items in todo.Values) {
+                foreach (var (value, _) in items) {
+                    _hash[value] = Unique(value);
+                }
+            }
+
+            return true;
+        }
+
         foreach (var (tex, items) in todo) {
             if (clock.ElapsedMilliseconds > BudgetMs) {
-                return;
+                return false;
             }
 
-            if (ReadAll(tex) is not { } px) {
-                continue;
-            }
-
+            var px = ReadAll(tex);
             foreach (var (value, rect) in items) {
-                _hash[value] = Verdict(px, tex.width, tex.height, rect);
+                // (a texture that cannot be read: its pictures kept)
+                _hash[value] = px != null ? Verdict(px, tex.width, tex.height, rect) : Unique(value);
             }
         }
+
+        return true;
     }
+
+    // a kept picture's own hash (never 0, never a pixels' one in practice): from its id
+    private static ulong Unique(string value) => 0x8000000000000000UL | (uint)value.GetHashCode();
 
     /// <summary>A texture's pixels (rows bottom-up), through a render texture when it is not readable; null when it cannot be read</summary>
     private static Color32[]? ReadAll(Texture2D tex)

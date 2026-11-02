@@ -508,8 +508,12 @@ internal static partial class EmblemEditor
         }
     }
 
-    // the bench holds Shift down
+    // the bench holds Shift down (a Debug build only)
+#if DEBUG
     private static bool _benchShift;
+#else
+    private const bool _benchShift = false;
+#endif
 
     /// <summary>
     ///     Shift held: a line's end on the nearest of the eight directions from its start; a shape's box made square
@@ -544,8 +548,15 @@ internal static partial class EmblemEditor
         var strength = Strength;
         int x0 = Mathf.Min(a.x, b.x), x1 = Mathf.Max(a.x, b.x), y0 = Mathf.Min(a.y, b.y), y1 = Mathf.Max(a.y, b.y);
         int w = x1 - x0 + 1, h = y1 - y0 + 1;
-        var mask = ShapeMask(_shapeKind, _shapeSides, w, h);
-        var edge = filled ? null : Edge(mask, w, h, width);
+        // (worked out once for a box: the mirrored copies and the next moves of the same size reuse it)
+        var key = string.Join("|", _shapeKind, _shapeSides, w, h, filled ? 0 : width);
+        if (_shapeKey != key || _shapeMask == null) {
+            _shapeMask = ShapeMask(_shapeKind, _shapeSides, w, h);
+            _shapeEdge = filled ? null : Edge(_shapeMask, w, h, width);
+            _shapeKey = key;
+        }
+
+        var (mask, edge) = (_shapeMask, _shapeEdge);
         for (var y = 0; y < h; y++) {
             for (var x = 0; x < w; x++) {
                 // (a mirrored copy: the shape itself turned over, a triangle pointing down under one pointing up)
@@ -556,6 +567,11 @@ internal static partial class EmblemEditor
             }
         }
     }
+
+    // the last shape tool's mask and outline, and what they were made for
+    private static string? _shapeKey;
+    private static bool[]? _shapeMask;
+    private static bool[]? _shapeEdge;
 
     /// <summary>Which pixels of a w by h box the shape covers (rows top-down)</summary>
     internal static bool[] ShapeMask(string kind, int sides, int w, int h)
@@ -578,9 +594,11 @@ internal static partial class EmblemEditor
     /// </summary>
     internal static bool[] Edge(bool[] mask, int w, int h, int width)
     {
+        // (two buffers worn away in turn; the box's border is never inner)
         var inner = (bool[])mask.Clone();
+        var next = new bool[inner.Length];
         for (var pass = 0; pass < Mathf.Max(1, width); pass++) {
-            var next = new bool[inner.Length];
+            System.Array.Clear(next, 0, next.Length);
             for (var y = 1; y < h - 1; y++) {
                 for (var x = 1; x < w - 1; x++) {
                     var i = y * w + x;
@@ -588,7 +606,7 @@ internal static partial class EmblemEditor
                 }
             }
 
-            inner = next;
+            (inner, next) = (next, inner);
         }
 
         var edge = new bool[mask.Length];

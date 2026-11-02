@@ -81,7 +81,17 @@ internal static class SpriteGrid
         }
 
         list = list.OrderBy(e => e.Name).ToList();
-        return _lists[key] = stickers ? StickerSieve.Keep(list) : list;
+        if (!stickers) {
+            return _lists[key] = list;
+        }
+
+        // (a list the sieve's time budget cut is not kept: the next call judges the rest, the verdicts so far kept)
+        var kept = StickerSieve.Keep(list, out var complete);
+        if (complete) {
+            _lists[key] = kept;
+        }
+
+        return kept;
     }
 
     /// <summary>The entries of one kind (things, or monsters)</summary>
