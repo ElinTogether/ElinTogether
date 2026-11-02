@@ -26,7 +26,7 @@ public class CharaRemoveFromGameDelta : ElinDelta
             return;
         }
 
-        pc.party.Stub_RemoveMember(chara);
+        pc.party.RemoveMemberHere(chara);
         game.cards.globalCharas.Remove(chara);
         if (chara.currentZone == _zone && _map.charas.Contains(chara)) {
             _zone.RemoveCard(chara);

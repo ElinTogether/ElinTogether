@@ -530,7 +530,7 @@ internal partial class ElinNetClient
             }
 
             if (pc.party is { } party && party.members.Contains(chara)) {
-                party.Stub_RemoveMember(chara);
+                party.RemoveMemberHere(chara);
             }
 
             game.cards.globalCharas.Remove(chara);

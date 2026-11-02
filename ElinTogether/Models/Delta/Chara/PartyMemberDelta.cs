@@ -69,7 +69,7 @@ public class PartyMemberDelta : ElinDelta
         }
 
         if (chara.party is { } party && party.members.Contains(chara)) {
-            party.Stub_RemoveMember(chara);
+            party.RemoveMemberHere(chara);
         }
 
         if (DestZoneUid == 0 || chara.currentZone?.uid == DestZoneUid ||

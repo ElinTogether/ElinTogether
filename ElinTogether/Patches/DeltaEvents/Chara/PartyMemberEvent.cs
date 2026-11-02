@@ -49,5 +49,16 @@ internal static class PartyMemberEvent
         {
             throw new NotImplementedException("Party.RemoveMember");
         }
+
+        /// <summary>
+        ///     The removal another game decided, played here. The stub runs no postfix: CompanionAllyLimitPatch's
+        ///     refreshes the speed of the members left (the exceeded party malus of the owner's companions), which a
+        ///     guest's game otherwise kept as it was until something else refreshed them
+        /// </summary>
+        internal void RemoveMemberHere(Chara c)
+        {
+            party.Stub_RemoveMember(c);
+            CompanionAllyLimitPatch.OnRemoveMember(party);
+        }
     }
 }
