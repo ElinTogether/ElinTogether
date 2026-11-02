@@ -167,7 +167,7 @@ internal partial class TabChat
 
     // the thumbnails of the drawings' panel, freed when it closes
     private readonly List<Sprite> _popupSprites = [];
-    private const int DrawingsPerPage = 18;
+    private const int DrawingsPerPage = 17;
 
     /// <summary>
     ///     The picture button: My drawings to pick one to send. Greyed with the reason while the host keeps pictures
@@ -198,6 +198,13 @@ internal partial class TabChat
         if (all.Count == 0) {
             if (ListPopup("drawings") is { } empty) {
                 empty.Text("emp_ui_chat_drawings_none".lang()).LayoutElement().preferredWidth = 360f;
+                // (a drawing made here, in the editor's window: it is sent from there or from this list)
+                var draw = empty.Button("emp_ui_editor_new_drawing".lang(), () => {
+                    ClosePopup();
+                    DrawingsPage.NewDrawing();
+                });
+                draw.name = "ChatNewDrawing";
+                draw.LayoutElement().minHeight = draw.LayoutElement().preferredHeight = UIHelper.RowHeight;
             }
 
             return;
@@ -214,6 +221,20 @@ internal partial class TabChat
         grid.padding = new(8, 8, 8, 8);
         grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
         grid.constraintCount = 6;
+        // the first cell draws a new one in the editor's window
+        var add = new GameObject("ChatNewDrawing", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        add.transform.SetParent(panel, false);
+        add.GetComponent<Image>().color = new(0.28f, 0.22f, 0.13f, 0.15f);
+        var plus = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        plus.transform.SetParent(add.transform, false);
+        plus.GetComponent<Image>().sprite = EditorIcons.Tool(EmblemEditor.ToolBrush);
+        plus.GetComponent<Image>().preserveAspect = true;
+        ((RectTransform)plus.transform).sizeDelta = new(24f, 24f);
+        add.GetComponent<Button>().onClick.AddListener(() => {
+            SE.ClickGeneral();
+            ClosePopup();
+            DrawingsPage.NewDrawing();
+        });
         foreach (var (_, drawing) in all.Skip(page * DrawingsPerPage).Take(DrawingsPerPage)) {
             Sprite sprite;
             try {

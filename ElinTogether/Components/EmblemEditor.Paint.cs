@@ -1,53 +1,70 @@
 using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Helper;
-using ElinTogether.LangMod;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
-using YKF;
 
 namespace ElinTogether.Components;
 
 /// <summary>
-///     The editor's paint tools (lead dev 2026-11-02: "think of paint.net"): a tool bar (move, pencil, brush, eraser,
-///     fill, line, rectangle, ellipse, colour picker, text), a primary and a secondary colour (left and right button)
-///     with a palette under the canvas, the brush's size, filled shapes, the canvas' zoom and its pixel grid. The
-///     paint tools draw into the selected paint layer (<see cref="EmblemPaint" />); on another layer, a first stroke
-///     adds a paint layer over it. A stroke is one undo step
+///     The editor's paint tools (lead dev 2026-11-02: "think of paint.net"): move, rectangle select, pencil, brush,
+///     eraser, fill, line, rectangle, ellipse, colour picker, text; a primary and a secondary colour (left and right
+///     button). The brush and the eraser have a size (1 to 32), a hardness (a soft edge) and an opacity; the shapes and
+///     the bucket an opacity. A selection keeps every paint tool inside it; its pixels move with the select tool, and
+///     copy, cut, paste and delete work on them. The paint tools draw into the selected paint layer
+///     (<see cref="EmblemPaint" />); on another layer, a first stroke adds a paint layer over it. A stroke is one undo
+///     step
 /// </summary>
 internal static partial class EmblemEditor
 {
     internal const int ToolMove = 0, ToolPencil = 1, ToolBrush = 2, ToolEraser = 3, ToolFill = 4, ToolLine = 5, ToolRect = 6,
-        ToolEllipse = 7, ToolPicker = 8, ToolText = 9;
+        ToolEllipse = 7, ToolPicker = 8, ToolText = 9, ToolSelect = 10;
 
-    private const int ToolCount = 10;
+    // the tool column's order and each tool's key (paint.net's, with the lead dev's G for the bucket and I for the picker)
+    private static readonly int[] ToolOrder = [ToolMove, ToolSelect, ToolPencil, ToolBrush, ToolEraser, ToolFill, ToolLine, ToolRect, ToolEllipse, ToolPicker, ToolText];
 
-    private static readonly string[] ToolTips = [
+    private static readonly Dictionary<int, KeyCode> ToolKeys = new() {
+        [ToolMove] = KeyCode.V, [ToolSelect] = KeyCode.M, [ToolPencil] = KeyCode.P, [ToolBrush] = KeyCode.B, [ToolEraser] = KeyCode.E,
+        [ToolFill] = KeyCode.G, [ToolLine] = KeyCode.L, [ToolRect] = KeyCode.R, [ToolEllipse] = KeyCode.O, [ToolPicker] = KeyCode.I,
+        [ToolText] = KeyCode.T,
+    };
+
+    private static string ToolTip(int tool) => tool == ToolSelect ? "emp_ui_editor_tool_select" : new[] {
         "emp_ui_emblem_tool_move", "emp_ui_emblem_tool_pencil", "emp_ui_emblem_tool_brush", "emp_ui_emblem_tool_eraser",
         "emp_ui_emblem_tool_fill", "emp_ui_emblem_tool_line", "emp_ui_emblem_tool_rect", "emp_ui_emblem_tool_ellipse",
         "emp_ui_emblem_tool_picker", "emp_ui_emblem_tool_text",
-    ];
+    }[tool];
+
+    internal const int MaxBrush = 32;
 
     // the colour fields of the pair (beside the layer's own, NoColour..GradColour)
     private const int Primary = 10, Secondary = 11;
 
-    private static int _tool = ToolMove;
+    private static int _tool = ToolBrush;
     private static uint _primary = 0x1A140FFFu;
     private static uint _secondary = 0xFFFFFFFFu;
-    private static int _brush = 1;
+    private static int _brush = 3;
+    private static int _hardness = 100;
+    private static int _opacity = 100;
     private static bool _filled;
-    private static int _zoom;
     private static bool _grid = true;
 
-    // the stroke being drawn: its colour, the canvas when it began (lines and shapes are drawn again over it), where
-    // it began and where the pointer last was, in the layer's pixels
+    // the stroke being drawn: its colour, the layer's pixels when it began (lines and shapes are drawn again over
+    // them), how much of the ink each pixel got (a soft or see-through stroke never darkens where it passes twice),
+    // where it began and where the pointer last was, in the layer's pixels
     private static bool _painting;
+    private static bool _erasing;
     private static Color32 _ink;
     private static Color32[]? _canvas;
     private static Color32[]? _strokeBase;
+    private static float[]? _cover;
     private static Vector2Int _from;
     private static Vector2Int _last;
+
+    // a selection keeps the stroke inside it (in the layer's pixels while a stroke is drawn)
+    private static RectInt? _strokeClip;
+
+    // the last commit had more than 255 colours: they were rounded (said in the status line)
+    private static bool _reduced;
 
     // the paint layer's size in pixels while a stroke is drawn
     private static int _pw = EmblemPaint.N, _ph = EmblemPaint.N;
@@ -55,257 +72,15 @@ internal static partial class EmblemEditor
     private static Texture2D? _gridTexture;
     private static int _gridZoom;
 
-    /// <summary>
-    ///     The zooms the canvas offers: the one that fits it in its frame (3x for an emblem; under 1 for a large
-    ///     drawing), then the whole ones above it
-    /// </summary>
-    private static float[] Zooms
-    {
-        get {
-            var fit = (FrameSize - 8f) / Mathf.Max(CW, CH);
-            if (fit >= 1f) {
-                fit = Mathf.Floor(fit);
-            }
-
-            return new[] { fit }.Concat(new[] { 1f, 2f, 3f, 4f, 6f, 8f }.Where(z => z > fit + 0.01f)).ToArray();
-        }
-    }
-
-    private static float Zoom => Zooms[Mathf.Clamp(_zoom, 0, Zooms.Length - 1)];
-
     private static bool Paints(int tool) => tool is ToolPencil or ToolBrush or ToolEraser or ToolFill or ToolLine or ToolRect or ToolEllipse;
 
-    // ---------------------------------------------------------------- the bars
+    private static bool Sized(int tool) => tool is ToolBrush or ToolEraser or ToolLine or ToolRect or ToolEllipse;
 
-    /// <summary>The tool bar, and the primary and secondary colours at its end (paint.net's two squares)</summary>
-    private static void ToolBar(YKLayout parent)
-    {
-        var bar = parent.Horizontal();
-        bar.Layout.childForceExpandWidth = false;
-        bar.Layout.childAlignment = TextAnchor.MiddleLeft;
-        bar.Layout.spacing = 2f;
-        bar.LayoutElement().minHeight = bar.LayoutElement().preferredHeight = 28f;
-        for (var t = 0; t < ToolCount; t++) {
-            var tool = t;
-            var button = Icon(bar.IconButton(EditorIcons.Tool(t), "?", () => {
-                _tool = tool;
-                Fill();
-            }, ToolTips[t], true, 0f, 28f));
-            Highlight(button, tool == _tool);
-        }
+    private static bool Soft(int tool) => tool is ToolBrush or ToolEraser;
 
-        var gap = new GameObject("Gap", typeof(RectTransform), typeof(LayoutElement));
-        gap.transform.SetParent(bar.transform, false);
-        gap.GetComponent<LayoutElement>().flexibleWidth = 1f;
+    private static bool SeeThrough(int tool) => tool is ToolBrush or ToolEraser or ToolFill or ToolLine or ToolRect or ToolEllipse;
 
-        // the two colours: the primary over the secondary, a click opens the picker for it
-        var pair = new GameObject("Colours", typeof(RectTransform), typeof(LayoutElement));
-        pair.transform.SetParent(bar.transform, false);
-        var element = pair.GetComponent<LayoutElement>();
-        element.minWidth = element.preferredWidth = 34f;
-        element.minHeight = element.preferredHeight = 28f;
-        ((RectTransform)pair.transform).sizeDelta = new(34f, 28f);
-        ColourSquare(pair.transform, _secondary, new(14f, -10f), Secondary);
-        ColourSquare(pair.transform, _primary, new(0f, 0f), Primary);
-        Icon(bar.IconButton(EditorIcons.Swap, "<>", () => {
-            (_primary, _secondary) = (_secondary, _primary);
-            Fill();
-        }, "emp_ui_emblem_swap", true, 0f, 22f));
-    }
-
-    /// <summary>A colour square of the pair: framed in ink, a click picks its colour</summary>
-    private static void ColourSquare(Transform parent, uint colour, Vector2 at, int field)
-    {
-        var go = new GameObject("Colour", typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent, false);
-        var rt = (RectTransform)go.transform;
-        rt.anchorMin = rt.anchorMax = rt.pivot = new(0f, 1f);
-        rt.anchoredPosition = at;
-        rt.sizeDelta = new(18f, 18f);
-        go.GetComponent<Image>().color = new(0.28f, 0.22f, 0.13f, 0.9f);
-        var inner = new GameObject("Fill", typeof(RectTransform), typeof(Image));
-        inner.transform.SetParent(go.transform, false);
-        var irt = (RectTransform)inner.transform;
-        irt.anchorMin = Vector2.zero;
-        irt.anchorMax = Vector2.one;
-        irt.offsetMin = new(2f, 2f);
-        irt.offsetMax = new(-2f, -2f);
-        var image = inner.GetComponent<Image>();
-        image.color = ColourPicker.ToColor(colour);
-        image.raycastTarget = false;
-        go.GetComponent<Button>().onClick.AddListener(() => {
-            SE.ClickGeneral();
-            _colourField = field;
-            Fill();
-        });
-    }
-
-    /// <summary>The selected tool's button shaded as the journal's picked row</summary>
-    private static void Highlight(UIButton button, bool on)
-    {
-        var shade = new GameObject("Picked", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-        shade.transform.SetParent(button.transform, false);
-        shade.transform.SetAsFirstSibling();
-        shade.GetComponent<LayoutElement>().ignoreLayout = true;
-        var rt = (RectTransform)shade.transform;
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
-        var image = shade.GetComponent<Image>();
-        image.color = on ? new(0.28f, 0.22f, 0.13f, 0.22f) : new(0f, 0f, 0f, 0f);
-        image.raycastTarget = false;
-    }
-
-    /// <summary>
-    ///     Under the canvas: the palette (a left click sets the primary colour, a right click the secondary), the
-    ///     brush's size, filled shapes, the zoom and the grid
-    /// </summary>
-    private static void PaintOptions(YKLayout parent)
-    {
-        var palette = parent.Horizontal();
-        palette.Layout.childForceExpandWidth = false;
-        palette.Layout.spacing = 1f;
-        palette.LayoutElement().minHeight = palette.LayoutElement().preferredHeight = 14f;
-        foreach (var rgb in TeamBanner.Palette) {
-            var rgba = ((uint)rgb << 8) | 0xFFu;
-            var go = new GameObject("Paint", typeof(RectTransform), typeof(LayoutElement), typeof(Image), typeof(EventTrigger));
-            go.transform.SetParent(palette.transform, false);
-            ((RectTransform)go.transform).sizeDelta = new(14f, 14f);
-            var element = go.GetComponent<LayoutElement>();
-            (element.minWidth, element.preferredWidth, element.minHeight, element.preferredHeight) = (14f, 14f, 14f, 14f);
-            go.GetComponent<Image>().color = ColourPicker.ToColor(rgba);
-            var entry = new EventTrigger.Entry { eventID = EventTriggerType.PointerClick };
-            entry.callback.AddListener(data => {
-                SE.ClickGeneral();
-                if (data is PointerEventData { button: PointerEventData.InputButton.Right }) {
-                    _secondary = rgba;
-                } else {
-                    _primary = rgba;
-                }
-
-                Fill();
-            });
-            go.GetComponent<EventTrigger>().triggers.Add(entry);
-        }
-
-        var row = parent.Row();
-        row.Layout.spacing = 4f;
-        // the brush's size (pencil 1 px; brush, eraser and lines), filled shapes
-        var sized = _tool is ToolBrush or ToolEraser or ToolLine or ToolRect or ToolEllipse;
-        var label = row.TextSmall("emp_ui_emblem_brush".lang(), FontColor.Gray);
-        label.LayoutElement().minWidth = 0f;
-        row.SignButton("-", () => {
-            _brush = Mathf.Max(1, _brush - 1);
-            Fill();
-        }, 24f).interactable = sized && _brush > 1;
-        var size = row.Text(_brush + " px");
-        size.LayoutElement().minWidth = size.LayoutElement().preferredWidth = 38f;
-        size.alignment = TextAnchor.MiddleCenter;
-        row.SignButton("+", () => {
-            _brush = Mathf.Min(6, _brush + 1);
-            Fill();
-        }, 24f).interactable = sized && _brush < 6;
-        var filled = row.Toggle("emp_ui_emblem_filled".lang(), _filled, on => _filled = on);
-        filled.AsRow();
-        filled.interactable = _tool is ToolRect or ToolEllipse;
-
-        var gap = new GameObject("Gap", typeof(RectTransform), typeof(LayoutElement));
-        gap.transform.SetParent(row.transform, false);
-        gap.GetComponent<LayoutElement>().flexibleWidth = 1f;
-
-        // the zoom: 3x shows the whole emblem; more scrolls it (the wheel, or a drag with the middle button)
-        row.SignButton("-", () => {
-            _zoom = Mathf.Max(0, _zoom - 1);
-            Fill();
-        }, 24f).interactable = _zoom > 0;
-        var zoom = row.Text(Zoom >= 1f ? Mathf.RoundToInt(Zoom) + "x" : Mathf.RoundToInt(Zoom * 100f) + "%");
-        zoom.LayoutElement().minWidth = zoom.LayoutElement().preferredWidth = 28f;
-        zoom.alignment = TextAnchor.MiddleCenter;
-        row.SignButton("+", () => {
-            _zoom = Mathf.Min(Zooms.Length - 1, _zoom + 1);
-            Fill();
-        }, 24f).interactable = _zoom < Zooms.Length - 1;
-        var grid = Icon(row.IconButton(EditorIcons.Grid, "#", () => {
-            _grid = !_grid;
-            Fill();
-        }, "emp_ui_emblem_grid", true, 0f, 24f));
-        Highlight(grid, _grid);
-        // the drag's snap to the 4 px grid and the centre
-        var snap = Icon(row.IconButton(EditorIcons.Magnet, "S", () => {
-            _snap = !_snap;
-            Fill();
-        }, "emp_ui_emblem_snap", true, 0f, 24f));
-        Highlight(snap, _snap);
-    }
-
-    // ---------------------------------------------------------------- the canvas
-
-    /// <summary>
-    ///     The canvas in its frame: the emblem at the zoom, scrolled inside the frame when larger, the pixel grid over
-    ///     it from 4x. Returns the emblem's image (the pointer's target)
-    /// </summary>
-    private static Image Canvas(Transform frame, Sprite sprite)
-    {
-        var view = new GameObject("Canvas", typeof(RectTransform), typeof(ScrollRect));
-        view.transform.SetParent(frame, false);
-        var vrt = (RectTransform)view.transform;
-        vrt.anchorMin = Vector2.zero;
-        vrt.anchorMax = Vector2.one;
-        vrt.offsetMin = new(2f, 2f);
-        vrt.offsetMax = new(-2f, -2f);
-
-        var content = new GameObject("Content", typeof(RectTransform));
-        content.transform.SetParent(view.transform, false);
-        var crt = (RectTransform)content.transform;
-        crt.anchorMin = crt.anchorMax = crt.pivot = new(0.5f, 0.5f);
-        crt.sizeDelta = new(CW * Zoom, CH * Zoom);
-        crt.anchoredPosition = Vector2.zero;
-
-        var scroll = view.GetComponent<ScrollRect>();
-        scroll.content = crt;
-        scroll.viewport = vrt;
-        scroll.movementType = ScrollRect.MovementType.Clamped;
-        scroll.inertia = false;
-        scroll.scrollSensitivity = 24f;
-        scroll.horizontal = CW * Zoom > FrameSize - 4f;
-        scroll.vertical = CH * Zoom > FrameSize - 4f;
-
-        // (the canvas' own ground, a light checker as a paint program shows what is clear: its edges are seen even
-        // when nothing is drawn near them, as on a new drawing)
-        var ground = new GameObject("Ground", typeof(RectTransform), typeof(RawImage));
-        ground.transform.SetParent(content.transform, false);
-        var gr = (RectTransform)ground.transform;
-        gr.anchorMin = Vector2.zero;
-        gr.anchorMax = Vector2.one;
-        gr.offsetMin = gr.offsetMax = Vector2.zero;
-        var checker = ground.GetComponent<RawImage>();
-        checker.texture = Checker();
-        checker.uvRect = new(0f, 0f, CW / 8f, CH / 8f);
-        checker.raycastTarget = false;
-
-        var emblem = TeamEmblemBaker.Place(content.transform, sprite, Mathf.Max(CW, CH) * Zoom);
-        emblem.preserveAspect = false;
-        emblem.GetComponent<LayoutElement>().ignoreLayout = true;
-        var rt = emblem.rectTransform;
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
-
-        if (_grid && Zoom >= 4f && Mathf.Approximately(Zoom, Mathf.Round(Zoom))) {
-            var grid = new GameObject("PixelGrid", typeof(RectTransform), typeof(RawImage));
-            grid.transform.SetParent(content.transform, false);
-            var grt = (RectTransform)grid.transform;
-            grt.anchorMin = Vector2.zero;
-            grt.anchorMax = Vector2.one;
-            grt.offsetMin = grt.offsetMax = Vector2.zero;
-            var raw = grid.GetComponent<RawImage>();
-            raw.texture = GridTexture(Mathf.RoundToInt(Zoom));
-            raw.uvRect = new(0f, 0f, CW, CH);
-            raw.raycastTarget = false;
-        }
-
-        return emblem;
-    }
+    // ---------------------------------------------------------------- textures of the canvas
 
     private static Texture2D? _checker;
 
@@ -360,7 +135,7 @@ internal static partial class EmblemEditor
     // ---------------------------------------------------------------- drawing
 
     /// <summary>A point of the canvas in a paint layer's own pixels (its place, size, turn and flips undone)</summary>
-    private static Vector2Int LayerPixel(EmblemLayer l, Vector2 p, int pw, int ph)
+    private static Vector2 LayerPoint(EmblemLayer l, Vector2 p, int pw, int ph)
     {
         float x0 = p.x - l.X, y0 = p.y - l.Y;
         var angle = l.Rotation * Mathf.Deg2Rad;
@@ -377,15 +152,50 @@ internal static partial class EmblemEditor
 
         // (as the baker places a picture: its longer side the layer's size in % of 64 pixels)
         var scale = Mathf.Max(0.01f, EmblemPaint.N * l.Size / 100f / Mathf.Max(pw, ph, 1));
-        return new(Mathf.FloorToInt(u / scale + pw / 2f), Mathf.FloorToInt(v / scale + ph / 2f));
+        return new(u / scale + pw / 2f, v / scale + ph / 2f);
+    }
+
+    private static Vector2Int LayerPixel(EmblemLayer l, Vector2 p, int pw, int ph)
+    {
+        var at = LayerPoint(l, p, pw, ph);
+        return new(Mathf.FloorToInt(at.x), Mathf.FloorToInt(at.y));
+    }
+
+    /// <summary>A rectangle of the canvas (the selection) in a paint layer's pixels, clamped to it</summary>
+    private static RectInt LayerRect(EmblemLayer l, RectInt r, int pw, int ph)
+    {
+        var a = LayerPoint(l, new(r.xMin + 0.5f, r.yMin + 0.5f), pw, ph);
+        var b = LayerPoint(l, new(r.xMax - 0.5f, r.yMax - 0.5f), pw, ph);
+        int x0 = Mathf.Clamp(Mathf.FloorToInt(Mathf.Min(a.x, b.x)), 0, pw), y0 = Mathf.Clamp(Mathf.FloorToInt(Mathf.Min(a.y, b.y)), 0, ph);
+        int x1 = Mathf.Clamp(Mathf.FloorToInt(Mathf.Max(a.x, b.x)) + 1, 0, pw), y1 = Mathf.Clamp(Mathf.FloorToInt(Mathf.Max(a.y, b.y)) + 1, 0, ph);
+        return new(x0, y0, Mathf.Max(0, x1 - x0), Mathf.Max(0, y1 - y0));
     }
 
     private static Color32 ToColor32(uint rgba) => new((byte)(rgba >> 24), (byte)(rgba >> 16), (byte)(rgba >> 8), (byte)rgba);
 
+    private static uint ToRgba(Color32 c) => ((uint)c.r << 24) | ((uint)c.g << 16) | ((uint)c.b << 8) | c.a;
+
+    /// <summary>The selected layer as a paint layer to draw on: itself, or a new one over the selection</summary>
+    private static bool PaintTarget()
+    {
+        if (HasSelection && Current.IsPaint && Current.Lock == 0 && Current.Hidden == 0) {
+            return true;
+        }
+
+        if (_draft.Layers.Count >= TeamEmblem.MaxLayers) {
+            _note = "emp_ui_editor_layers_full".lang();
+            return false;
+        }
+
+        AddPaintLayer(false);
+        return HasSelection && Current.IsPaint;
+    }
+
     /// <summary>A paint tool pressed on the canvas: the selected paint layer, or a new one over the selection</summary>
     private static void PaintDown(Vector2 p, bool right)
     {
-        if (_tool == ToolPicker) {
+        // (Alt with a paint tool picks the colour under the pointer, as paint.net's Ctrl does)
+        if (_tool == ToolPicker || Paints(_tool) && (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt))) {
             PickColour(p, right);
             return;
         }
@@ -400,23 +210,23 @@ internal static partial class EmblemEditor
             return;
         }
 
-        var added = false;
-        if (!HasSelection || !Current.IsPaint || Current.Lock != 0 || Current.Hidden != 0) {
-            if (_draft.Layers.Count >= TeamEmblem.MaxLayers) {
-                return;
-            }
-
-            AddPaintLayer(false);
-            added = true;
-        }
-
-        if (EmblemPaint.Decode(Current.Thing) is not { } decoded) {
+        var before = _draft.Layers.Count;
+        if (!PaintTarget() || EmblemPaint.Decode(Current.Thing) is not { } decoded) {
             return;
         }
 
+        var added = _draft.Layers.Count != before;
         (_canvas, _pw, _ph) = decoded;
         _strokeBase = (Color32[])_canvas.Clone();
-        _ink = _tool == ToolEraser ? new Color32(0, 0, 0, 0) : ToColor32(right ? _secondary : _primary);
+        _cover = new float[_canvas.Length];
+        _erasing = _tool == ToolEraser;
+        var colour = right ? _secondary : _primary;
+        _ink = _erasing ? new Color32(0, 0, 0, 0) : ToColor32(colour);
+        if (!_erasing) {
+            ColourPicker.Remember(colour);
+        }
+
+        _strokeClip = _sel is { } sel ? LayerRect(Current, sel, _pw, _ph) : null;
         _painting = true;
         _from = _last = LayerPixel(Current, p, _pw, _ph);
         // (a stroke that added its layer is one undo step with it)
@@ -424,7 +234,7 @@ internal static partial class EmblemEditor
         // (the list, the history and Save shown again when the pointer is released)
         _reselect = true;
         if (_tool == ToolFill) {
-            Flood(_canvas, _from, _ink);
+            Flood(_canvas, _from);
             _painting = false;
         } else {
             Stroke(_from);
@@ -454,6 +264,8 @@ internal static partial class EmblemEditor
         _painting = false;
         _canvas = null;
         _strokeBase = null;
+        _cover = null;
+        _strokeClip = null;
         _dragKey = null;
         BakeNow();
     }
@@ -461,67 +273,143 @@ internal static partial class EmblemEditor
     /// <summary>The stroke drawn to that point: a free line from the last point, or the line or shape from its start</summary>
     private static void Stroke(Vector2Int at)
     {
-        if (_canvas == null || _strokeBase == null) {
+        if (_canvas == null || _strokeBase == null || _cover == null) {
             return;
         }
 
         var width = _tool == ToolPencil ? 1 : _brush;
         switch (_tool) {
             case ToolLine:
-                System.Array.Copy(_strokeBase, _canvas, _canvas.Length);
-                Line(_canvas, _from, at, width, _ink);
+                Restart();
+                Line(_canvas, _from, at, width);
                 break;
             case ToolRect:
             case ToolEllipse:
-                System.Array.Copy(_strokeBase, _canvas, _canvas.Length);
-                Shape(_canvas, _from, at, width, _ink, _tool == ToolEllipse, _filled);
+                Restart();
+                Shape(_canvas, _from, at, width, _tool == ToolEllipse, _filled);
                 break;
             default:
-                Line(_canvas, _last, at, width, _ink);
+                Line(_canvas, _last, at, width);
                 break;
         }
     }
 
-    /// <summary>The canvas into the selected layer (one undo step for the whole stroke); refused past 255 colours</summary>
+    // a line or a shape is drawn again from the stroke's start at each move
+    private static void Restart()
+    {
+        System.Array.Copy(_strokeBase!, _canvas!, _canvas!.Length);
+        System.Array.Clear(_cover!, 0, _cover!.Length);
+    }
+
+    /// <summary>The canvas into the selected layer (one undo step for the whole stroke); its colours rounded past 255</summary>
     private static void Commit()
     {
-        if (_canvas == null || EmblemPaint.Encode(_canvas, _pw, _ph) is not { } code) {
+        if (_canvas == null) {
+            return;
+        }
+
+        var code = EmblemPaint.Encode(_canvas, _pw, _ph);
+        _reduced = code == null;
+        code ??= EmblemPaint.EncodeReduced(_canvas, _pw, _ph);
+        if (code == null) {
             return;
         }
 
         Edit(l => l with { Thing = code }, "paint");
     }
 
-    private static void Dot(Color32[] px, int cx, int cy, int width, Color32 ink)
+    /// <summary>
+    ///     How much of the ink a pixel gets: a tool's opacity, the brush's soft edge. A pixel keeps the most it got in
+    ///     this stroke (passing twice never darkens it)
+    /// </summary>
+    private static void Put(Color32[] px, int x, int y, float amount)
     {
-        // (a square of 1 or 2, a round dab from 3)
+        if (x < 0 || y < 0 || x >= _pw || y >= _ph || amount <= 0f || _strokeClip is { } clip && !clip.Contains(new(x, y))) {
+            return;
+        }
+
+        var i = y * _pw + x;
+        if (_cover != null) {
+            if (amount <= _cover[i]) {
+                return;
+            }
+
+            _cover[i] = amount;
+        }
+
+        var under = _strokeBase != null ? _strokeBase[i] : px[i];
+        px[i] = Mix(under, _ink, amount, _erasing);
+    }
+
+    /// <summary>
+    ///     The ink over a pixel: all of it replaces the pixel (the pixel art's exact colour); a part of it is laid over
+    ///     it (an eraser takes that part of its alpha away). Rounded so a soft stroke keeps few colours
+    /// </summary>
+    internal static Color32 Mix(Color32 under, Color32 ink, float amount, bool erase)
+    {
+        if (amount >= 0.999f) {
+            return erase ? default : ink;
+        }
+
+        if (erase) {
+            var a = Mathf.RoundToInt(under.a * (1f - amount) / 8f) * 8;
+            return a <= 0 ? default : new(under.r, under.g, under.b, (byte)Mathf.Min(255, a));
+        }
+
+        var src = ink.a / 255f * amount;
+        var dst = under.a / 255f * (1f - src);
+        var outA = src + dst;
+        if (outA <= 0.001f) {
+            return default;
+        }
+
+        byte Channel(byte i, byte u) => (byte)Mathf.Clamp(Mathf.RoundToInt((i * src + u * dst) / outA / 4f) * 4, 0, 255);
+        return new(Channel(ink.r, under.r), Channel(ink.g, under.g), Channel(ink.b, under.b), (byte)Mathf.Clamp(Mathf.RoundToInt(outA * 255f / 8f) * 8, 8, 255));
+    }
+
+    private static float Strength => SeeThrough(_tool) ? _opacity / 100f : 1f;
+
+    private static void Dot(Color32[] px, int cx, int cy, int width)
+    {
+        var strength = Strength;
+        // (one pixel, or a square of two: the pixel art's own dabs)
+        if (width <= 2) {
+            for (var y = cy; y < cy + width; y++) {
+                for (var x = cx; x < cx + width; x++) {
+                    Put(px, x, y, strength);
+                }
+            }
+
+            return;
+        }
+
+        // a round dab: hard (as before), or fading from the hardness' share of its radius to its edge
         var r = (width - 1) / 2f;
+        var edge = r + 0.5f;
+        var inner = edge * (Soft(_tool) ? _hardness / 100f : 1f);
         for (var y = Mathf.FloorToInt(cy - r); y <= Mathf.CeilToInt(cy + r); y++) {
             for (var x = Mathf.FloorToInt(cx - r); x <= Mathf.CeilToInt(cx + r); x++) {
-                if (x < 0 || y < 0 || x >= _pw || y >= _ph) {
-                    continue;
+                var d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+                float amount;
+                if (!Soft(_tool) || _hardness >= 100) {
+                    amount = d2 <= r * r + 0.5f ? 1f : 0f;
+                } else {
+                    var d = Mathf.Sqrt(d2);
+                    amount = d <= inner ? 1f : Mathf.Clamp01((edge - d) / Mathf.Max(0.5f, edge - inner));
                 }
 
-                if (width >= 3 && (x - cx) * (x - cx) + (y - cy) * (y - cy) > r * r + 0.5f) {
-                    continue;
-                }
-
-                if (width == 2 && (x < cx || y < cy)) {
-                    continue;
-                }
-
-                px[y * _pw + x] = ink;
+                Put(px, x, y, amount * strength);
             }
         }
     }
 
     /// <summary>A line of dabs from a to b (Bresenham)</summary>
-    private static void Line(Color32[] px, Vector2Int a, Vector2Int b, int width, Color32 ink)
+    private static void Line(Color32[] px, Vector2Int a, Vector2Int b, int width)
     {
         int x = a.x, y = a.y, dx = Mathf.Abs(b.x - a.x), dy = -Mathf.Abs(b.y - a.y);
         int sx = a.x < b.x ? 1 : -1, sy = a.y < b.y ? 1 : -1, err = dx + dy;
         for (var guard = 0; guard < 4 * Drawing.MaxSide * Drawing.MaxSide; guard++) {
-            Dot(px, x, y, width, ink);
+            Dot(px, x, y, width);
             if (x == b.x && y == b.y) {
                 break;
             }
@@ -540,8 +428,9 @@ internal static partial class EmblemEditor
     }
 
     /// <summary>A rectangle or an ellipse in the box from a to b, its outline of that width or filled</summary>
-    private static void Shape(Color32[] px, Vector2Int a, Vector2Int b, int width, Color32 ink, bool ellipse, bool filled)
+    private static void Shape(Color32[] px, Vector2Int a, Vector2Int b, int width, bool ellipse, bool filled)
     {
+        var strength = Strength;
         int x0 = Mathf.Min(a.x, b.x), x1 = Mathf.Max(a.x, b.x), y0 = Mathf.Min(a.y, b.y), y1 = Mathf.Max(a.y, b.y);
         float cx = (x0 + x1) / 2f, cy = (y0 + y1) / 2f, rx = (x1 - x0) / 2f + 0.5f, ry = (y1 - y0) / 2f + 0.5f;
         for (var y = Mathf.Max(0, y0); y <= Mathf.Min(_ph - 1, y1); y++) {
@@ -558,36 +447,44 @@ internal static partial class EmblemEditor
                 }
 
                 if (inside && (filled || edge)) {
-                    px[y * _pw + x] = ink;
+                    Put(px, x, y, strength);
                 }
             }
         }
     }
 
-    /// <summary>The bucket: the area of the clicked pixel's colour (4-connected) in the ink</summary>
-    private static void Flood(Color32[] px, Vector2Int at, Color32 ink)
+    /// <summary>The bucket: the area of the clicked pixel's colour (4-connected, inside the selection) in the ink</summary>
+    private static void Flood(Color32[] px, Vector2Int at)
     {
         int n = _pw, rows = _ph;
-        if (at.x < 0 || at.y < 0 || at.x >= n || at.y >= rows) {
+        if (at.x < 0 || at.y < 0 || at.x >= n || at.y >= rows || _strokeClip is { } clip && !clip.Contains(at)) {
             return;
         }
 
-        var target = px[at.y * n + at.x];
+        var start = (Color32[])px.Clone();
+        var target = start[at.y * n + at.x];
         bool Same(Color32 c) => c.a == 0 && target.a == 0 || c.r == target.r && c.g == target.g && c.b == target.b && c.a == target.a;
-        if (Same(ink)) {
+        if (Strength >= 0.999f && Same(_ink)) {
             return;
         }
 
+        var seen = new bool[start.Length];
         var stack = new Stack<int>();
         stack.Push(at.y * n + at.x);
+        var strength = Strength;
         while (stack.Count > 0) {
             var i = stack.Pop();
-            if (!Same(px[i])) {
+            if (seen[i] || !Same(start[i])) {
                 continue;
             }
 
-            px[i] = ink;
+            seen[i] = true;
             int x = i % n, y = i / n;
+            if (_strokeClip is { } k && !k.Contains(new(x, y))) {
+                continue;
+            }
+
+            Put(px, x, y, strength);
             if (x > 0) stack.Push(i - 1);
             if (x < n - 1) stack.Push(i + 1);
             if (y > 0) stack.Push(i - n);
@@ -612,13 +509,14 @@ internal static partial class EmblemEditor
             return;
         }
 
-        var rgba = ((uint)c.r << 24) | ((uint)c.g << 16) | ((uint)c.b << 8) | c.a;
+        var rgba = ToRgba(c);
         if (right) {
             _secondary = rgba;
         } else {
             _primary = rgba;
         }
 
+        ColourPicker.Remember(rgba);
         Fill();
     }
 
@@ -637,12 +535,277 @@ internal static partial class EmblemEditor
         Select(at);
         _picking = 0;
         _colourField = NoColour;
-        if (!Paints(_tool)) {
+        if (!Paints(_tool) && _tool != ToolSelect) {
             _tool = ToolBrush;
         }
 
         if (fill) {
             Fill();
         }
+    }
+
+    // ---------------------------------------------------------------- the selection
+
+    // the selection, in the canvas' pixels from its top left; the press that starts one, the pixels lifted to move
+    private static RectInt? _sel;
+    private static Vector2Int _selFrom;
+    private static bool _selecting;
+    private static bool _selMoving;
+    private static Vector2Int _selGrab;
+    private static RectInt _selStart;
+    private static RectInt _liftRect;
+    private static Color32[]? _lifted;
+    private static Color32[]? _liftBase;
+
+    // the pixels copied (Ctrl+C), and which clipboard was filled last: the pixels or a layer (the list's Copy)
+    private static Color32[]? _pixClip;
+    private static int _pixW, _pixH;
+    private static bool _pixLast;
+
+    private static Vector2Int CanvasPixel(Vector2 p) => new(Mathf.Clamp(Mathf.FloorToInt(p.x), 0, CW - 1), Mathf.Clamp(Mathf.FloorToInt(p.y), 0, CH - 1));
+
+    private static void SelectDown(Vector2 p)
+    {
+        var at = CanvasPixel(p);
+        // (a press inside the selection on a paint layer moves its pixels)
+        if (_sel is { } sel && sel.Contains(new(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.y))) && HasSelection && Current.IsPaint && Current.Lock == 0 &&
+            EmblemPaint.Decode(Current.Thing) is { } decoded) {
+            (_canvas, _pw, _ph) = decoded;
+            _liftRect = LayerRect(Current, sel, _pw, _ph);
+            _lifted = Cut(_canvas, _pw, _liftRect, false);
+            _liftBase = (Color32[])_canvas.Clone();
+            Clear(_liftBase, _pw, _liftRect);
+            _selMoving = true;
+            _selGrab = at;
+            _selStart = sel;
+            _dragKey = null;
+            _reselect = true;
+            return;
+        }
+
+        _selecting = true;
+        _selFrom = at;
+        _sel = null;
+        ShowSelection();
+    }
+
+    private static void SelectDrag(Vector2 p)
+    {
+        var at = new Vector2Int(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.y));
+        if (_selMoving && _liftBase != null && _lifted != null && _canvas != null) {
+            var d = at - _selGrab;
+            _sel = new RectInt(_selStart.x + d.x, _selStart.y + d.y, _selStart.width, _selStart.height);
+            // (in the layer's pixels: the same move scaled as the layer is)
+            var o = LayerPixel(Current, _selGrab + (Vector2)d, _pw, _ph) - LayerPixel(Current, _selGrab, _pw, _ph);
+            System.Array.Copy(_liftBase, _canvas, _canvas.Length);
+            Stamp(_canvas, _pw, _ph, _lifted, _liftRect.width, _liftRect.height, _liftRect.x + o.x, _liftRect.y + o.y);
+            Commit();
+            ShowSelection();
+            return;
+        }
+
+        if (!_selecting) {
+            return;
+        }
+
+        var to = CanvasPixel(p);
+        int x0 = Mathf.Min(_selFrom.x, to.x), y0 = Mathf.Min(_selFrom.y, to.y);
+        _sel = new RectInt(x0, y0, Mathf.Abs(to.x - _selFrom.x) + 1, Mathf.Abs(to.y - _selFrom.y) + 1);
+        ShowSelection();
+    }
+
+    private static void SelectUp()
+    {
+        if (_selMoving) {
+            _selMoving = false;
+            _canvas = null;
+            _lifted = _liftBase = null;
+            _dragKey = null;
+            BakeNow();
+            return;
+        }
+
+        if (_selecting) {
+            _selecting = false;
+            // (a click without a drag drops the selection)
+            if (_sel is { width: <= 1, height: <= 1 }) {
+                _sel = null;
+            }
+
+            ShowSelection();
+            _reselect = true;
+        }
+    }
+
+    /// <summary>The pixels of a rectangle of the canvas (rows top-down), cleared from it when <paramref name="clear" /></summary>
+    private static Color32[] Cut(Color32[] px, int w, RectInt r, bool clear)
+    {
+        var part = new Color32[r.width * r.height];
+        for (var y = 0; y < r.height; y++) {
+            for (var x = 0; x < r.width; x++) {
+                var i = (r.y + y) * w + r.x + x;
+                part[y * r.width + x] = px[i];
+                if (clear) {
+                    px[i] = default;
+                }
+            }
+        }
+
+        return part;
+    }
+
+    private static void Clear(Color32[] px, int w, RectInt r) => Cut(px, w, r, true);
+
+    /// <summary>Pixels laid over a canvas at that place (clear ones leave what is under them), clipped to it</summary>
+    private static void Stamp(Color32[] px, int w, int h, Color32[] part, int pw, int ph, int ox, int oy)
+    {
+        for (var y = 0; y < ph; y++) {
+            for (var x = 0; x < pw; x++) {
+                int tx = ox + x, ty = oy + y;
+                var c = part[y * pw + x];
+                if (tx < 0 || ty < 0 || tx >= w || ty >= h || c.a == 0) {
+                    continue;
+                }
+
+                px[ty * w + tx] = c.a == 255 ? c : Over(px[ty * w + tx], c);
+            }
+        }
+    }
+
+    private static Color32 Over(Color32 under, Color32 c)
+    {
+        var src = c.a / 255f;
+        var dst = under.a / 255f * (1f - src);
+        var a = src + dst;
+        if (a <= 0.001f) {
+            return default;
+        }
+
+        byte Ch(byte i, byte u) => (byte)Mathf.Clamp(Mathf.RoundToInt((i * src + u * dst) / a), 0, 255);
+        return new(Ch(c.r, under.r), Ch(c.g, under.g), Ch(c.b, under.b), (byte)Mathf.Clamp(Mathf.RoundToInt(a * 255f), 0, 255));
+    }
+
+    /// <summary>The whole canvas selected (Ctrl+A)</summary>
+    internal static void SelectAll()
+    {
+        _sel = new RectInt(0, 0, CW, CH);
+        Fill();
+    }
+
+    internal static void Deselect()
+    {
+        _sel = null;
+        Fill();
+    }
+
+    /// <summary>
+    ///     The selection's pixels copied (of the selected paint layer; of the picture as seen when another kind of
+    ///     layer is selected); without a selection, the selected layer itself (the list's Copy)
+    /// </summary>
+    internal static void CopySelection(bool cut = false)
+    {
+        if (_sel is not { } sel) {
+            if (HasSelection) {
+                _clipboard = Current;
+                _pixLast = false;
+                _note = "emp_ui_editor_copied_layer".lang();
+                if (cut && Current.Lock == 0) {
+                    RemoveLayer(_selected);
+                    return;
+                }
+
+                Fill();
+            }
+
+            return;
+        }
+
+        if (HasSelection && Current.IsPaint && EmblemPaint.Decode(Current.Thing) is { } d) {
+            var r = LayerRect(Current, sel, d.W, d.H);
+            _pixClip = Cut(d.Px, d.W, r, false);
+            (_pixW, _pixH) = (r.width, r.height);
+            if (cut && Current.Lock == 0) {
+                Clear(d.Px, d.W, r);
+                if ((EmblemPaint.Encode(d.Px, d.W, d.H) ?? EmblemPaint.EncodeReduced(d.Px, d.W, d.H)) is { } code) {
+                    Edit(l => l with { Thing = code });
+                }
+            }
+        } else {
+            // (what is seen: the whole picture baked, rows turned top-down)
+            var seen = TopDown(TeamEmblemBaker.Bake(_draft), CW, CH);
+            _pixClip = Cut(seen, CW, sel, false);
+            (_pixW, _pixH) = (sel.width, sel.height);
+        }
+
+        _pixLast = true;
+        _note = "emp_ui_editor_copied".lang();
+        Fill();
+    }
+
+    /// <summary>The copied pixels as a new paint layer, where the selection is (or the top left), selected to move them</summary>
+    internal static void PastePixels()
+    {
+        if (!_pixLast || _pixClip == null) {
+            Paste();
+            return;
+        }
+
+        if (_draft.Layers.Count >= TeamEmblem.MaxLayers) {
+            _note = "emp_ui_editor_layers_full".lang();
+            Fill();
+            return;
+        }
+
+        var at = _sel is { } sel ? sel.position : Vector2Int.zero;
+        var px = EmblemPaint.Blank(CW, CH);
+        Stamp(px, CW, CH, _pixClip, _pixW, _pixH, at.x, at.y);
+        if (PaintLayerOf(px) is not { } layer) {
+            return;
+        }
+
+        var list = _draft.Layers.ToList();
+        var index = HasSelection ? _selected + 1 : list.Count;
+        list.Insert(index, layer with { Name = "emp_ui_editor_pasted".lang() });
+        Change(_draft with { Layers = list });
+        Select(index);
+        _sel = new RectInt(at.x, at.y, Mathf.Min(_pixW, CW - at.x), Mathf.Min(_pixH, CH - at.y));
+        _tool = ToolSelect;
+        Fill();
+    }
+
+    /// <summary>The selection's pixels cleared on the selected paint layer (Delete)</summary>
+    internal static void DeleteSelection()
+    {
+        if (_sel is not { } sel || !HasSelection || !Current.IsPaint || Current.Lock != 0 || EmblemPaint.Decode(Current.Thing) is not { } d) {
+            return;
+        }
+
+        Clear(d.Px, d.W, LayerRect(Current, sel, d.W, d.H));
+        if ((EmblemPaint.Encode(d.Px, d.W, d.H) ?? EmblemPaint.EncodeReduced(d.Px, d.W, d.H)) is { } code) {
+            Edit(l => l with { Thing = code });
+        }
+
+        Fill();
+    }
+
+    /// <summary>A whole canvas of pixels (rows top-down) as a paint layer covering it, null when it cannot be one</summary>
+    private static EmblemLayer? PaintLayerOf(Color32[] px)
+    {
+        if (EmblemPaint.Layer(CW, CH) is not { } layer || (EmblemPaint.Encode(px, CW, CH) ?? EmblemPaint.EncodeReduced(px, CW, CH)) is not { } code) {
+            return null;
+        }
+
+        return layer with { Thing = code };
+    }
+
+    /// <summary>A texture's rows (bottom-up) turned top-down</summary>
+    private static Color32[] TopDown(Color32[] px, int w, int h)
+    {
+        var flipped = new Color32[w * h];
+        for (var y = 0; y < h; y++) {
+            System.Array.Copy(px, y * w, flipped, (h - 1 - y) * w, w);
+        }
+
+        return flipped;
     }
 }

@@ -315,6 +315,15 @@ internal static class EditorIcons
             }
         }),
         8 => Art("picker", PickerArt),
+        10 => Make("select", px => {
+            // (a dashed rectangle, the marquee)
+            for (var i = 2; i <= 13; i++) {
+                if (i % 3 != 1) {
+                    px[i, 3] = px[i, 12] = Ink;
+                    px[2, i - 1 < 3 ? 3 : i > 12 ? 12 : i] = px[13, i - 1 < 3 ? 3 : i > 12 ? 12 : i] = Ink;
+                }
+            }
+        }),
         _ => Art("text", TextArt),
     };
 
