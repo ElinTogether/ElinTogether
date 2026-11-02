@@ -182,8 +182,16 @@ internal static partial class EmblemEditor
     /// <summary>A drawing's history forgotten (closed without saving, deleted)</summary>
     internal static void Forget(string id)
     {
-        _sessions.Remove("drawing:" + id);
-        DrawingDrafts.Drop("drawing:" + id);
+        var key = "drawing:" + id;
+        if (_session == key) {
+            Discard();
+            _doc = null;
+            _docId = null;
+            LayerDrawingEditor.CloseNow();
+        }
+
+        _sessions.Remove(key);
+        DrawingDrafts.Drop(key);
     }
 
     // a layer's largest size on this canvas (200 % of 64 pixels on an emblem, twice a drawing's longer side)
@@ -1128,6 +1136,13 @@ internal static partial class EmblemEditor
             return;
         }
 
+        // (the window stays open while the player plays: a team left or a right lost since it opened)
+        if (_team != MyTeam || !TeamRanks.Can(EClass.pc.uid, TeamPerm.Emblem, _team)) {
+            _note = "emp_ui_team_tools_leader_only".lang();
+            Fill();
+            return;
+        }
+
         // (the team's colour: the bottom shape's when it is one of the twelve team colours; else it stays)
         var colour = TeamEmblem.TeamColour(_draft) ?? TeamBanner.Of(_team)?.Color ?? 0;
         Teams.Ask(TeamAsk.Banner, 0, colour, text);
@@ -1155,7 +1170,8 @@ internal static partial class EmblemEditor
         }
 
         if (id != _docId) {
-            // (the session follows the new drawing: its history goes on)
+            // (the session follows the new drawing: its history goes on; the old one's draft on disk goes)
+            DrawingDrafts.Drop(_session);
             _sessions.Remove(_session);
             _session = "drawing:" + id;
             _docId = id;
@@ -1537,6 +1553,7 @@ internal static partial class EmblemEditor
         _draft = _undo[_undo.Count - 1];
         _undo.RemoveAt(_undo.Count - 1);
         _multi.Clear();
+        DropSelectionOutside();
         Fill();
     }
 
@@ -1550,6 +1567,7 @@ internal static partial class EmblemEditor
         _draft = _redo[_redo.Count - 1];
         _redo.RemoveAt(_redo.Count - 1);
         _multi.Clear();
+        DropSelectionOutside();
         Fill();
     }
 

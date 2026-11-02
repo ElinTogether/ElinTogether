@@ -66,6 +66,9 @@ internal static partial class EmblemEditor
             return;
         }
 
+        // (the document shown until now: its last edits written to disk at once)
+        Autosave(true);
+
         _team = team;
         _doc = null;
         _docId = null;
@@ -79,6 +82,9 @@ internal static partial class EmblemEditor
         if (DrawingStore.Get(id) is not { } doc) {
             return;
         }
+
+        // (the document shown until now: its last edits written to disk at once)
+        Autosave(true);
 
         _team = MyTeam;
         _doc = doc;
@@ -123,6 +129,22 @@ internal static partial class EmblemEditor
         _pointerText = null;
         _sideContent = null;
         _painting = _moving = _selecting = _selMoving = false;
+    }
+
+    /// <summary>Save refused from the close question (too long for the network): said in the status line</summary>
+    internal static void SaveRefused()
+    {
+        var (length, limit) = TextSize();
+        _note = length > limit ? "emp_ui_emblem_too_long".Loc(length, limit) : "emp_ui_team_tools_leader_only".lang();
+        Fill();
+    }
+
+    /// <summary>A selection left outside a canvas whose size an undo changed is dropped</summary>
+    private static void DropSelectionOutside()
+    {
+        if (_sel is { } s && (s.xMax > CW || s.yMax > CH)) {
+            _sel = null;
+        }
     }
 
     /// <summary>Changes not saved that closing would lose</summary>
@@ -232,7 +254,7 @@ internal static partial class EmblemEditor
     {
         Tick();
         Autosave();
-        if (Time.realtimeSinceStartup < _nextPoll || _painting || _moving || _selMoving) {
+        if (Time.realtimeSinceStartup < _nextPoll || _painting || _moving || _selMoving || _selecting || Typing) {
             return;
         }
 
@@ -258,6 +280,11 @@ internal static partial class EmblemEditor
         Clear(_host);
         _dragKey = null;
         _moving = false;
+        // (the old canvas view is gone with its pointer: what it was doing ends here)
+        _painting = _selecting = _selMoving = false;
+        _canvas = _strokeBase = _lifted = _liftBase = null;
+        _cover = null;
+        _strokeClip = null;
         _view = null;
         _selected = Mathf.Clamp(_selected, 0, Mathf.Max(0, _draft.Layers.Count - 1));
         _multi.RemoveWhere(i => i >= _draft.Layers.Count);
@@ -1224,6 +1251,9 @@ internal static partial class EmblemEditor
 
     private static readonly Queue<(KeyCode Key, bool Ctrl, bool Shift)> _keys = new();
 
+    // a text field of the window (a title, a layer's name or text, a colour's hex) has the keyboard
+    private static bool Typing => EventSystem.current?.currentSelectedGameObject?.GetComponent<InputField>() is { isFocused: true };
+
     /// <summary>The bench gives a key as a player presses it ("ctrl+z", "b", "]"): read in the same pass as the keyboard</summary>
     internal static void InjectKey(string combo)
     {
@@ -1256,7 +1286,7 @@ internal static partial class EmblemEditor
             Key(key, ctrl, shift);
         }
 
-        if (EventSystem.current?.currentSelectedGameObject?.GetComponent<InputField>() is { isFocused: true }) {
+        if (Typing) {
             return;
         }
 
@@ -1583,6 +1613,7 @@ internal static partial class EmblemEditor
         Teams.Ask(TeamAsk.Banner, 0, colour, text);
         // (the team's emblem opened next starts from the new one)
         _sessions.Remove(TeamKey(team));
+        DrawingDrafts.Drop(TeamKey(team));
         return null;
     }
 
@@ -1814,6 +1845,8 @@ internal sealed class LayerDrawingEditor : YKLayer<LayerCreationData>
                 if (EmblemEditor.SaveForClose()) {
                     _force = true;
                     Close();
+                } else {
+                    EmblemEditor.SaveRefused();
                 }
             });
             d.AddButton("emp_ui_editor_close_discard".lang(), () => {
@@ -1823,6 +1856,15 @@ internal sealed class LayerDrawingEditor : YKLayer<LayerCreationData>
             });
             d.AddButton("emp_ui_editor_cancel".lang());
         });
+    }
+
+    /// <summary>Closed without the question (the drawing it showed was deleted)</summary>
+    internal static void CloseNow()
+    {
+        if (Instance is { } open) {
+            open._force = true;
+            open.Close();
+        }
     }
 
     public override void OnKill()
@@ -1975,6 +2017,8 @@ internal sealed class EditorCanvasView : MonoBehaviour, IPointerDownHandler, IBe
     }
 
     public void OnPointerEnter(PointerEventData data) => _hover = true;
+
+    private void Start() => _hover = RectTransformUtility.RectangleContainsScreenPoint((RectTransform)transform, Input.mousePosition, Cam);
 
     public void OnPointerExit(PointerEventData data)
     {

@@ -306,7 +306,8 @@ internal static class DrawingDrafts
 {
     private static string FilePath => Path.Combine(DrawingStore.Folder, "drafts.txt");
 
-    private static List<string[]> Lines()
+    // (null when the file could not be read: nothing is written over it)
+    private static List<string[]>? Lines()
     {
         try {
             return File.Exists(FilePath)
@@ -314,7 +315,7 @@ internal static class DrawingDrafts
                 : [];
         } catch (System.Exception e) {
             EmpLog.Debug(e, "Drawings: the drafts could not be read");
-            return [];
+            return null;
         }
     }
 
@@ -346,11 +347,20 @@ internal static class DrawingDrafts
     internal static void Put(string key, Drawing draft)
     {
         var text = draft.Format();
-        if (text.Length > Drawing.MaxText || key.IndexOfAny(['\t', '\n']) >= 0) {
+        if (key.IndexOfAny(['\t', '\n']) >= 0) {
             return;
         }
 
-        var lines = Lines().Where(p => p[0] != key).ToList();
+        if (text.Length > Drawing.MaxText) {
+            // (an older, shorter draft would come back over this one)
+            Drop(key);
+            return;
+        }
+
+        if (Lines()?.Where(p => p[0] != key).ToList() is not { } lines) {
+            return;
+        }
+
         lines.Add([key, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), text]);
         Write(lines);
     }
@@ -358,7 +368,7 @@ internal static class DrawingDrafts
     /// <summary>The draft kept for that document and when it was kept, null when there is none</summary>
     internal static (Drawing Draft, long Time)? Get(string key)
     {
-        foreach (var p in Lines()) {
+        foreach (var p in Lines() ?? []) {
             if (p[0] == key && long.TryParse(p[1], NumberStyles.None, CultureInfo.InvariantCulture, out var time) &&
                 Drawing.Parse(p[2]) is { } d) {
                 return (d, time);
@@ -371,7 +381,7 @@ internal static class DrawingDrafts
     internal static void Drop(string key)
     {
         var lines = Lines();
-        if (lines.RemoveAll(p => p[0] == key) > 0) {
+        if (lines != null && lines.RemoveAll(p => p[0] == key) > 0) {
             Write(lines);
         }
     }

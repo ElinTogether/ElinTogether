@@ -235,11 +235,12 @@ internal static partial class EmblemEditor
         _reselect = true;
         if (_tool == ToolFill) {
             Flood(_canvas, _from);
-            _painting = false;
-        } else {
-            Stroke(_from);
+            Commit();
+            PaintUp();
+            return;
         }
 
+        Stroke(_from);
         Commit();
     }
 
@@ -594,7 +595,8 @@ internal static partial class EmblemEditor
         var at = new Vector2Int(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.y));
         if (_selMoving && _liftBase != null && _lifted != null && _canvas != null) {
             var d = at - _selGrab;
-            _sel = new RectInt(_selStart.x + d.x, _selStart.y + d.y, _selStart.width, _selStart.height);
+            var moved = Inside(new RectInt(_selStart.x + d.x, _selStart.y + d.y, _selStart.width, _selStart.height));
+            _sel = moved.width > 0 && moved.height > 0 ? moved : _sel;
             // (in the layer's pixels: the same move scaled as the layer is)
             var o = LayerPixel(Current, _selGrab + (Vector2)d, _pw, _ph) - LayerPixel(Current, _selGrab, _pw, _ph);
             System.Array.Copy(_liftBase, _canvas, _canvas.Length);
@@ -685,6 +687,13 @@ internal static partial class EmblemEditor
         return new(Ch(c.r, under.r), Ch(c.g, under.g), Ch(c.b, under.b), (byte)Mathf.Clamp(Mathf.RoundToInt(a * 255f), 0, 255));
     }
 
+    /// <summary>A rectangle of the canvas' pixels cut to the canvas</summary>
+    private static RectInt Inside(RectInt r)
+    {
+        int x0 = Mathf.Clamp(r.xMin, 0, CW), y0 = Mathf.Clamp(r.yMin, 0, CH), x1 = Mathf.Clamp(r.xMax, 0, CW), y1 = Mathf.Clamp(r.yMax, 0, CH);
+        return new(x0, y0, Mathf.Max(0, x1 - x0), Mathf.Max(0, y1 - y0));
+    }
+
     /// <summary>The whole canvas selected (Ctrl+A)</summary>
     internal static void SelectAll()
     {
@@ -733,8 +742,9 @@ internal static partial class EmblemEditor
         } else {
             // (what is seen: the whole picture baked, rows turned top-down)
             var seen = TopDown(TeamEmblemBaker.Bake(_draft), CW, CH);
-            _pixClip = Cut(seen, CW, sel, false);
-            (_pixW, _pixH) = (sel.width, sel.height);
+            var inside = Inside(sel);
+            _pixClip = Cut(seen, CW, inside, false);
+            (_pixW, _pixH) = (inside.width, inside.height);
         }
 
         _pixLast = true;
