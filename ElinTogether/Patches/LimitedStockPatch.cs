@@ -18,6 +18,7 @@ namespace ElinTogether.Patches;
 ///     next restock, for everyone. Not in a world nobody else plays in: the game's own rule
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class LimitedStockPatch
 {
     private const string BuyersKey = "emp_limited_buyers";

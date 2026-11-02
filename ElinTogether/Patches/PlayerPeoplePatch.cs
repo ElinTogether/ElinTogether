@@ -13,6 +13,7 @@ namespace ElinTogether.Patches;
 ///     player's character. The same on every game (llm-council 2026-10-24: display only, no option)
 /// </summary>
 [HarmonyPatch]
+[AlwaysPatched]
 internal static class PlayerPeoplePatch
 {
     /// <summary>
