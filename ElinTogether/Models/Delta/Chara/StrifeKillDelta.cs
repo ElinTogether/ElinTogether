@@ -78,7 +78,21 @@ public class StrifeKillDelta : ElinDelta
 
         internal static int StrifeLevel(Card victim, Card? origin)
         {
-            if (NetSession.Instance.Connection is not ElinNetHost host || PlayerKarma.PlayerBehind(origin) is not { IsRemotePlayer: true } player) {
+            // a kill the host settled, played again here (CardDamageHpDelta): the host counts it for the player it is
+            // about and sends this delta. Counted here as well, a guest gained twice for its own kills (once with the
+            // delta, once in the replay) and also gained for every other player's kills
+            if (NetSession.Instance.Connection is ElinNetClient) {
+                return 0;
+            }
+
+            if (NetSession.Instance.Connection is not ElinNetHost host) {
+                return EClass.pc.Evalue(1355);
+            }
+
+            // the player behind the killer; a member of the faction that no player killed (a monster's work): the
+            // player it belongs to, as the host's own companion counts for the host (the guest's replay gave it so far)
+            var player = PlayerKarma.PlayerBehind(origin) ?? (victim.IsPCFactionOrMinion ? PlayerKarma.PlayerBehind(victim) : null);
+            if (player is not { IsRemotePlayer: true }) {
                 return EClass.pc.Evalue(1355);
             }
 
