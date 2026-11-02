@@ -912,7 +912,7 @@ internal static class ModFetch
             var id = BaseModPackage.NormalizeId(package.id);
             var workshop = ModList.WorkshopOf(package);
             var on = kept.Contains(id) || (ownLooks && ModList.OnlyLook(package)) ||
-                     ClientOnlyMods.Lists(ClientOnly, package.id ?? "", workshop) ? package.willActivate :
+                     ClientOnlyMods.Lists(ClientOnly, package.id, workshop) ? package.willActivate :
                 workshop.Length > 0 ? workshops.Contains(workshop) : ids.Contains(id);
             lines.Add($"{package.dirInfo.FullName},{(on ? 1 : 0)},{package.id.Trim()}");
         }
