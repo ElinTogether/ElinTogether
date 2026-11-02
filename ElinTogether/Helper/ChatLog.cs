@@ -22,7 +22,14 @@ internal static class ChatLog
 
     private const int Capacity = 200;
 
-    internal sealed record Line(string Time, int Channel, string Who, string Text);
+    internal sealed record Line(string Time, int Channel, string Who, string Text)
+    {
+        /// <summary>The speaker's character (0: the server or unknown): its name's menu, its team colour, muting</summary>
+        public int Uid { get; init; }
+
+        /// <summary>The line names this player (@name): drawn highlighted, counted on the tab</summary>
+        public bool Mention { get; init; }
+    }
 
     private static readonly List<Line> Lines = [];
 
@@ -36,11 +43,25 @@ internal static class ChatLog
 
     internal static int Unread => Mathf.Min(Version - _seen, Lines.Count);
 
-    internal static void MarkSeen() => _seen = Version;
+    /// <summary>The lines naming this player since the Chat tab was last shown (the tab's "@" count)</summary>
+    internal static int UnreadMentions { get; private set; }
 
-    internal static void Add(int channel, string who, string text, bool mine = false)
+    internal static void MarkSeen()
     {
-        Lines.Add(new(DateTime.Now.ToString("HH:mm"), channel, who, text));
+        _seen = Version;
+        UnreadMentions = 0;
+    }
+
+    internal static void Add(int channel, string who, string text, bool mine = false, int uid = 0)
+    {
+        // (a line naming this player: highlighted, a short sound of the game's chat, counted until the tab is seen)
+        var mention = !mine && channel != Server && ChatMarkup.Mentions(text, MyNames());
+        if (mention) {
+            UnreadMentions++;
+            SE.Play("click_chat");
+        }
+
+        Lines.Add(new(DateTime.Now.ToString("HH:mm"), channel, who, text) { Uid = uid, Mention = mention });
         if (Lines.Count > Capacity) {
             Lines.RemoveAt(0);
         }
@@ -49,6 +70,18 @@ internal static class ChatLog
         // (a line of this player's own is never unread)
         if (mine) {
             _seen = Version;
+        }
+    }
+
+    /// <summary>The names other players call this one by: its account's, its character's</summary>
+    internal static IEnumerable<string> MyNames()
+    {
+        if (NetSession.Instance.Self?.User.Name is { Length: > 0 } account) {
+            yield return account;
+        }
+
+        if (EClass.core.IsGameStarted && EClass.pc?.Name is { Length: > 0 } chara) {
+            yield return chara;
         }
     }
 
@@ -66,6 +99,7 @@ internal static class ChatLog
     internal static void Clear()
     {
         Lines.Clear();
+        UnreadMentions = 0;
         Version++;
     }
 
@@ -116,7 +150,7 @@ internal static class ChatLog
             return false;
         }
 
-        Add(Team, delta.Name ?? "?", text, true);
+        Add(Team, delta.Name ?? "?", text, true, EClass.pc.uid);
         ChatBubbleEvent.PopChat("emp_ui_chat_team_tag".Loc(delta.Name ?? "?"), text);
         return true;
     }

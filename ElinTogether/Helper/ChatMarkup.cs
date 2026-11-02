@@ -52,7 +52,7 @@ internal static class ChatMarkup
     /// </summary>
     internal static string Render(string text, int size, List<Sprite> icons)
     {
-        return EmoteCode.Replace(Escape(text), match => {
+        return EmoteCode.Replace(BoldMentions(Escape(text)), match => {
             if (EmoteSprite(match.Groups[1].Value) is not { } sprite) {
                 return match.Value;
             }
@@ -61,6 +61,34 @@ internal static class ChatMarkup
             return $"<quad size={size} width=1>";
         });
     }
+
+    /// <summary>
+    ///     The line names one of <paramref name="names" /> with an "@" before it (any case), not inside a longer word
+    /// </summary>
+    internal static bool Mentions(string text, IEnumerable<string> names)
+    {
+        foreach (var name in names) {
+            var at = 0;
+            while ((at = text.IndexOf("@" + name, at, StringComparison.OrdinalIgnoreCase)) >= 0) {
+                var end = at + 1 + name.Length;
+                if (end >= text.Length || !char.IsLetterOrDigit(text[end])) {
+                    return true;
+                }
+
+                at = end;
+            }
+        }
+
+        return false;
+    }
+
+    private static readonly Regex MentionCode = new(@"(?<![\w@])@[^\s@<>:]+", RegexOptions.Compiled);
+
+    /// <summary>"@name" in bold, in the mention colour (on text already escaped)</summary>
+    internal static string BoldMentions(string text) => MentionCode.Replace(text, m => $"<b>{m.Value}</b>".TagColor(MentionColor));
+
+    /// <summary>The colour of a line naming this player and of the "@names" in any line</summary>
+    internal static readonly Color MentionColor = new(0.65f, 0.25f, 0.05f);
 
     /// <summary>The words of a line, for the pop text and the bubbles: no emote code</summary>
     internal static string Plain(string text)

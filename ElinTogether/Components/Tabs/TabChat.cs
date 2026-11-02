@@ -278,6 +278,10 @@ internal partial class TabChat : TabEmpBase
         // (the emotes as the game's icons, the words escaped: ChatMarkup, ChatIcons)
         var icons = new List<Sprite>();
         var body = ChatMarkup.Render(line.Text, text.fontSize + 4, icons);
+        // (a line naming this player stands out: a mark before it, its words in the mention colour)
+        if (line.Mention) {
+            body = "<b>» </b>" + body.TagColor(ChatMarkup.MentionColor);
+        }
         text.text = $"{line.Time.TagColor(new Color(0.45f, 0.4f, 0.32f))}  {head}{line.Who}: {body}";
         if (icons.Count > 0) {
             text.gameObject.AddComponent<ChatIcons>().Set(icons);

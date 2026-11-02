@@ -1,4 +1,8 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using ElinTogether.Helper;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,6 +34,11 @@ internal partial class TabChat
 
         if (_popup != null && Input.GetKeyDown(KeyCode.Escape)) {
             ClosePopup();
+        }
+
+        // (Tab writes the first name the list offers)
+        if (_popupKind == "mention" && _mentionChoices.Count > 0 && Input.GetKeyDown(KeyCode.Tab)) {
+            CompleteMention(_mentionChoices[0]);
         }
     }
 
@@ -147,8 +156,82 @@ internal partial class TabChat
 
     // ---------------------------------------------------------------- what is being typed
 
+    // "@" and the start of a name at the end of the line
+    private static readonly Regex MentionTail = new(@"(?:^|\s)@([^\s@]*)$", RegexOptions.Compiled);
+    private List<string> _mentionChoices = [];
+
     private void OnDraftChanged(string text)
     {
-        _ = text;
+        if (MentionTail.Match(text) is { Success: true } mention) {
+            ShowMentions(mention.Groups[1].Value);
+            return;
+        }
+
+        if (_popupKind == "mention") {
+            ClosePopup();
+        }
+    }
+
+    /// <summary>A list over the writing row, for the mention names and the commands' help</summary>
+    private YKVertical? ListPopup(string kind)
+    {
+        if (_writer == null || Popup(kind) is not { } panel) {
+            return null;
+        }
+
+        var group = panel.gameObject.AddComponent<VerticalLayoutGroup>();
+        group.padding = new(10, 10, 6, 6);
+        group.childControlWidth = group.childControlHeight = true;
+        group.childForceExpandWidth = group.childForceExpandHeight = false;
+        // (made by the row's layout, then moved into the panel, as EmpUi.ScrollList does)
+        var list = _writer.Vertical();
+        list.transform.SetParent(panel, false);
+        list.Layout.spacing = 2f;
+        return list;
+    }
+
+    /// <summary>The players whose name starts with what follows the "@"; a click or Tab writes the whole name</summary>
+    private void ShowMentions(string partial)
+    {
+        var names = PrivateTargets().Select(t => t.Name).Where(n => n.Length > 0).Distinct()
+            .Where(n => n.StartsWith(partial, StringComparison.OrdinalIgnoreCase) && !string.Equals(n, partial, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).Take(6).ToList();
+        if (names.Count == 0) {
+            if (_popupKind == "mention") {
+                ClosePopup();
+            }
+
+            return;
+        }
+
+        if (_popupKind == "mention" && names.SequenceEqual(_mentionChoices)) {
+            return;
+        }
+
+        if (ListPopup("mention") is not { } list) {
+            return;
+        }
+
+        _mentionChoices = names;
+        foreach (var name in names) {
+            var button = list.Button("@" + name, () => CompleteMention(name));
+            var element = button.LayoutElement();
+            element.minWidth = element.preferredWidth = 220f;
+            element.minHeight = element.preferredHeight = 28f;
+        }
+    }
+
+    private void CompleteMention(string name)
+    {
+        if (_field == null || MentionTail.Match(_field.text) is not { Success: true } mention) {
+            return;
+        }
+
+        var at = mention.Groups[1].Index - 1;
+        _field.text = _field.text.Substring(0, at) + "@" + name + " ";
+        ClosePopup();
+        _caret = _field.text.Length;
+        _field.ActivateInputField();
+        StartCoroutine(PutCaret(_caret));
     }
 }
