@@ -58,7 +58,15 @@ internal abstract class TabEmpBase : YKLayout<LayerCreationData>
         Relayout();
     }
 
-    private void OnEnable() => BuildIfWaiting();
+    private void OnEnable()
+    {
+        BuildIfWaiting();
+        // (the menu opened on a tab hides and shows it again while it opens: the pass Relayout started died with the
+        // hidden tab, and the Chat log stayed 160 high with its writing row in the middle of the page)
+        if (GetComponentsInChildren<FillsPage>(false).Any(f => !f.Done)) {
+            StartCoroutine(RelayoutLater());
+        }
+    }
 
     // ---------------------------------------------------------------- sub-tabs
 
