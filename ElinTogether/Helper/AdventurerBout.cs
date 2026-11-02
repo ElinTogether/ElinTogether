@@ -238,6 +238,14 @@ public static class AdventurerBout
                (c.trait.CanBout && c.IsGlobal && c.GetInt(DateBout) + 10080 < date);
     }
 
+    private static void Recache(Chara c)
+    {
+        CardCache.Set(c);
+        foreach (var thing in c.things.Flatten()) {
+            CardCache.Set(thing);
+        }
+    }
+
     /// <summary>
     ///     The adventurer back where it stood, healed and friendly, as the game's ZoneInstanceBout.OnLeaveZone does
     /// </summary>
@@ -306,6 +314,12 @@ public static class AdventurerBout
     /// </summary>
     private static void Reward(Chara target, Chara guest)
     {
+        // the host's adventurer and its gear are often out of the card table after a bout (3 adventurers of 3 on the
+        // bench, with 0 or 1 of their 8 to 10 worn things): what is said about an uncached card is dropped before it
+        // goes out (CardAddThingDelta.OnRefresh finds nothing), the guest never got the reward, only the bag check
+        // brought it some 25 s later (GitHub issue 62, bench 2026-11-02). This game's adventurer is the real one
+        Recache(target);
+
         Thing? best = null;
         var price = 0;
         foreach (var thing in target.things) {
