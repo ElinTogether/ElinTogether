@@ -99,9 +99,13 @@ internal static class TeamBoxes
     // known to the card cache (deltas about it resolve), and kept alive: nothing holds a parked box but us
     private static Thing Register(Thing box)
     {
-        CardCache.Add(box);
+        // (a guest's copy is the card of its uid: every player was told of the host's new box and new gold
+        // (CardGenDelta) and holds a loose copy of each. Added, the copy the guest got first kept the uid and took the
+        // deltas meant for the box, bench team_ranks_check W1: B's team bank never held the gold put in it)
+        Action<Card> cache = KeepsBook ? CardCache.Add : CardCache.Set;
+        cache(box);
         foreach (var thing in box.things.Flatten()) {
-            CardCache.Add(thing);
+            cache(thing);
         }
 
         CardCache.KeepAlive(box);
