@@ -128,6 +128,70 @@ internal static class EmpAutoHost
     internal static string? HostAfterLoad { get; set; }
 
     /// <summary>
+    ///     The title's "New world" (TabPlay.StartNewWorld) opened the game's new game: the world it starts is opened to
+    ///     multiplayer once its land is claimed (#56). Forgotten by the title's own New Game or Continue (NewWorldPatch)
+    /// </summary>
+    internal static bool NewWorldAsked { get; set; }
+
+    /// <summary>
+    ///     The id of the new world "New world" made: opened to multiplayer as soon as the player's land is claimed (the
+    ///     game's own claim, Ashland's or the survival start's), since a session needs a home base. Never stored
+    /// </summary>
+    internal static string? HostAfterClaim { get; private set; }
+
+    private static bool _claimTold;
+
+    /// <summary>
+    ///     Game.StartNewGame has run (NewWorldPatch)
+    /// </summary>
+    internal static void OnNewGame()
+    {
+        if (!NewWorldAsked) {
+            return;
+        }
+
+        NewWorldAsked = false;
+        if (NetSession.Instance.Transport is not null) {
+            return;
+        }
+
+        HostAfterClaim = Game.id;
+        _claimTold = false;
+        EmpLog.Information("New world {Id}: opened to multiplayer once its land is claimed", Game.id);
+    }
+
+    private static void UpdateHostAfterClaim()
+    {
+        if (HostAfterClaim is not { } id || !EClass.core.IsGameStarted || EClass.scene.mode != Scene.Mode.Zone) {
+            return;
+        }
+
+        // another world loaded since, or a session already open: nothing left to open
+        if (Game.id != id || NetSession.Instance.Transport is not null) {
+            HostAfterClaim = null;
+            return;
+        }
+
+        // (not in the middle of the claim scene or any window)
+        if (!SafeToSave() || EClass.ui.IsActive) {
+            return;
+        }
+
+        if (EClass.player?.chara?.homeBranch?.owner is null) {
+            if (!_claimTold) {
+                _claimTold = true;
+                EmpPop.Pop("emp_ui_new_world_wait".lang());
+            }
+
+            return;
+        }
+
+        HostAfterClaim = null;
+        EmpLog.Information("New world {Id}: land claimed, opened to multiplayer", id);
+        OpenAsked();
+    }
+
+    /// <summary>
     ///     What the in-game "Start Server" does (TabPlay.StartServerFromPanel), without the click; why it could not is
     ///     said in a window and the game stays loaded, played alone
     /// </summary>
@@ -221,6 +285,7 @@ internal static class EmpAutoHost
     internal static void Update()
     {
         UpdateSaveWhenSafe();
+        UpdateHostAfterClaim();
 
 #if DEBUG
         // a window of the bench saves by itself only once its test asked (emp.autosave_every): the suites written

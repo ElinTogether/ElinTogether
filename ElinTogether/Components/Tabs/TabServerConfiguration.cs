@@ -173,6 +173,9 @@ internal class TabServerConfiguration : TabEmpBase
                 // the save "Host a game" chose at the title screen: these rules, then Start (TabPlay.HostPick)
                 if (!_guest && !EClass.core.IsGameStarted && TabPlay.HostPick is { } pick) {
                     BuildStartHosting(page, pick);
+                } else if (!_guest && !EClass.core.IsGameStarted && TabPlay.NewWorldPick) {
+                    // "New world" (#56): these rules, then the game's own new game
+                    BuildStartNewWorld(page);
                 }
 
                 BuildBanner(page);
@@ -361,6 +364,15 @@ internal class TabServerConfiguration : TabEmpBase
         var buttons = card.ButtonRow();
         buttons.RowButton("emp_ui_host_start".Loc(name), () => TabPlay.StartHosting(pick));
         buttons.RowButton("emp_ui_host_back".lang(), TabPlay.BackToSaves);
+    }
+
+    private static void BuildStartNewWorld(YKLayout page)
+    {
+        var card = page.Card("emp_ui_new_world_title".lang());
+        card.TextSmall("emp_ui_new_world_desc".lang(), FontColor.Gray);
+        var buttons = card.ButtonRow();
+        buttons.RowButton("emp_ui_new_world_start".lang(), TabPlay.StartNewWorld);
+        buttons.RowButton("emp_ui_host_back".lang(), TabPlay.BackFromNewWorld);
     }
 
     private void BuildBanner(YKLayout page)

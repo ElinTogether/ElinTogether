@@ -194,6 +194,11 @@ internal class TabPlay : TabEmpBase
     internal static GameIndex? HostPick { get; private set; }
 
     /// <summary>
+    ///     "New world" was chosen: the rules page shows its Create button until it starts or Back (#56)
+    /// </summary>
+    internal static bool NewWorldPick { get; private set; }
+
+    /// <summary>
     ///     "Host a game": one button that lists the saves; the shared world of the depot, when there is one, as a
     ///     second line under it
     /// </summary>
@@ -201,9 +206,18 @@ internal class TabPlay : TabEmpBase
     {
         var card = page.Card("emp_ui_host_game_title".lang());
         card.TextSmall("emp_ui_host_game_desc".lang(), FontColor.Gray);
-        card.ButtonRow().RowButton("emp_ui_host_game_choose".lang(), () => {
+        var row = card.ButtonRow();
+        row.RowButton("emp_ui_host_game_choose".lang(), () => {
             _choosing = true;
             LayerElinTogether.Instance?.Reopen();
+        });
+        // a world made for it (#56, #66): the rules page first, as for a save, then the game's own new game
+        row.RowButton("emp_ui_host_new".lang(), () => {
+            HostPick = null;
+            NewWorldPick = true;
+            SetSubTab("server", 0);
+            LayerElinTogether.Instance?.Close();
+            LayerElinTogether.OpenPanelSesame("emp_tab_server");
         });
 
         if (!SaveDepot.Enabled) {
@@ -312,6 +326,7 @@ internal class TabPlay : TabEmpBase
     internal static void BackToSaves()
     {
         HostPick = null;
+        NewWorldPick = false;
         _choosing = true;
         LayerElinTogether.Instance?.Close();
         LayerElinTogether.OpenPanelSesame(TabName);
@@ -324,6 +339,8 @@ internal class TabPlay : TabEmpBase
     internal static void StartHosting(GameIndex save)
     {
         HostPick = null;
+        NewWorldPick = false;
+        EmpAutoHost.NewWorldAsked = false;
         _choosing = false;
         var cloud = save.cloud;
         LayerElinTogether.Instance?.Close();
@@ -344,6 +361,37 @@ internal class TabPlay : TabEmpBase
         if (!Game.TryLoad(save.id, cloud, () => Game.Load(save.id, cloud))) {
             EmpAutoHost.HostAfterLoad = null;
         }
+    }
+
+    /// <summary>
+    ///     The title's own "New Game" (character, world settings, embark), clicked for the player; the world it makes
+    ///     opens to multiplayer once its land is claimed by the game's own claim (EmpAutoHost.HostAfterClaim)
+    /// </summary>
+    internal static void StartNewWorld()
+    {
+        NewWorldPick = false;
+        _choosing = false;
+        LayerElinTogether.Instance?.Close();
+        // (the title's button acts only with the title on top: once this window is gone)
+        EClass.core.actionsNextFrame.Add(() => {
+            if (EClass.core.IsGameStarted || LayerTitle.Instance is not { } title) {
+                return;
+            }
+
+            title.OnClickStart();
+            // (after the click: the title's own New Game or Continue, clicked later, forgets it, see NewWorldPatch)
+            EmpAutoHost.NewWorldAsked = true;
+        });
+    }
+
+    /// <summary>
+    ///     Back from the rules page of a new world to the Play page
+    /// </summary>
+    internal static void BackFromNewWorld()
+    {
+        NewWorldPick = false;
+        LayerElinTogether.Instance?.Close();
+        LayerElinTogether.OpenPanelSesame(TabName);
     }
 
     private static void BuildHost(YKVertical page)
