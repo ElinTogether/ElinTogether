@@ -11,7 +11,19 @@ internal class RemotePartyPatch
     [HarmonyPatch(typeof(Chara), nameof(Chara.IsPCParty), MethodType.Getter)]
     internal static bool OnGetPcParty(Chara __instance, ref bool __result)
     {
-        __result = __instance.party is { } party && party.members.Contains(__instance);
+        // (asked many times a turn for every character: a plain loop by reference, which is what List.Contains does
+        // for a Chara, without the comparer's calls; perf batch 2026-11-03)
+        __result = false;
+        if (__instance.party is { } party) {
+            var members = party.members;
+            for (var i = 0; i < members.Count; i++) {
+                if (ReferenceEquals(members[i], __instance)) {
+                    __result = true;
+                    break;
+                }
+            }
+        }
+
         return false;
     }
 
