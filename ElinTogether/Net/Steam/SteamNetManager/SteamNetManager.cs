@@ -67,7 +67,19 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
     /// <summary>
     ///     Any connected peers
     /// </summary>
-    public bool IsConnected => _peers.Any(p => p.IsConnected);
+    public bool IsConnected
+    {
+        get {
+            // (asked every frame: a plain loop, no LINQ)
+            for (var i = 0; i < _peers.Count; i++) {
+                if (_peers[i].IsConnected) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
 
     /// <summary>
     ///     Initialize poll group and optionally steam lobby

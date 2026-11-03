@@ -99,7 +99,8 @@ public class ActionModeCombat
 
         if (connection.IsHost) {
             ApplyTurnBudget();
-            HostPhaseUpdate(connection, NetSession.Instance.CurrentPlayers.ToList());
+            // (read only: the list itself, no copy each frame)
+            HostPhaseUpdate(connection, NetSession.Instance.CurrentPlayers);
         }
 
         UpdateDecideMessage();

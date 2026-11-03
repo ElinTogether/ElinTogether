@@ -40,9 +40,17 @@ internal class PauseGame
 
         // pause only if all players have no goal and none of them just walked:
         // the world goes on while anyone moves, not only the host (followers, monsters...)
-        __result &= (EClass.pc.party?.members ?? [])
-            .Where(c => c?.IsRemotePlayer is true)
-            .All(c => c.ai is GoalRemote { child: null } && !CharaMoveDelta.HasRecentMove(c));
+        // (read several times a frame: a plain loop, no LINQ)
+        if (EClass.pc.party?.members is not { } members) {
+            return;
+        }
+
+        for (var i = 0; i < members.Count; i++) {
+            if (members[i] is { IsRemotePlayer: true } c && !(c.ai is GoalRemote { child: null } && !CharaMoveDelta.HasRecentMove(c))) {
+                __result = false;
+                return;
+            }
+        }
     }
 
     [HarmonyPostfix]

@@ -269,9 +269,12 @@ internal static class Teams
     /// </summary>
     internal static int TeamOf(int charaUid)
     {
+        // (asked every frame and for every roster line: the member uids from index 2, no LINQ)
         foreach (var (id, team) in TeamList) {
-            if (MembersOf(team).Contains(charaUid)) {
-                return id;
+            for (var i = 2; i < team.Length; i++) {
+                if (team[i] == charaUid) {
+                    return id;
+                }
             }
         }
 

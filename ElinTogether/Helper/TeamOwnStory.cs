@@ -355,7 +355,19 @@ internal static class TeamOwnStory
     /// </summary>
     private static void ForgetGoneTeams()
     {
-        foreach (var team in ElinNetHost.TeamStoryBundles.Keys.Where(t => StoryOwner.IsGoneTeam(t) && t != WorldOwner && t != _owner).ToArray()) {
+        // (every frame: nothing is made unless a team is gone)
+        List<int>? gone = null;
+        foreach (var t in ElinNetHost.TeamStoryBundles.Keys) {
+            if (StoryOwner.IsGoneTeam(t) && t != WorldOwner && t != _owner) {
+                (gone ??= []).Add(t);
+            }
+        }
+
+        if (gone is null) {
+            return;
+        }
+
+        foreach (var team in gone) {
             ElinNetHost.TeamStoryBundles.Remove(team);
             EmpLog.Information("Team {TeamId} is gone: its story is out of the ledger", team);
         }
