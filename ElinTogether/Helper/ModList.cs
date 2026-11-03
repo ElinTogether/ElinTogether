@@ -245,10 +245,10 @@ internal static class ModList
             folder.StartsWith(SessionFolder, StringComparison.OrdinalIgnoreCase) ? folder.Substring(SessionFolder.Length) : "";
     }
 
-    private static string Names(List<Mod> mods)
+    internal static string Names(List<Mod> mods, int max = 4)
     {
-        var names = string.Join(", ", mods.Take(4).Select(Name));
-        return mods.Count > 4 ? names + ", ..." : names;
+        var names = string.Join(", ", mods.Take(max).Select(Name));
+        return mods.Count > max ? names + ", ..." : names;
     }
 
     private static string Describe(Mod mod)

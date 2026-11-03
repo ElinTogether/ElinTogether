@@ -229,9 +229,9 @@ internal static class ModFetch
     /// <summary>
     ///     The host refused this game for mods of ours it does not have, and nothing is missing here (user
     ///     2026-10-30: the official server plays with this mod and YK Framework only). The player is asked in the
-    ///     game's own box: yes, Elin restarts once with the mods of the host (its own look-only mods and what this
-    ///     mod runs on stay), joins again by itself, and the player's own list is back for the next start; no,
-    ///     <paramref name="refusal" /> is shown as without this. False: nothing is done here (as Begin)
+    ///     game's own box, which names the mods turned off: "Restart without them", Elin restarts once with the mods
+    ///     of the host (its own look-only mods and what this mod runs on stay), joins again by itself, and the
+    ///     player's own list is back for the next start; Cancel, <paramref name="refusal" /> is shown as without this. False: nothing is done here (as Begin)
     /// </summary>
     internal static bool BeginWithout(string reference, ModList.Diff diff, string returnTo, string refusal)
     {
@@ -244,7 +244,10 @@ internal static class ModFetch
         EmpLog.Information("The game was refused for mods it does not have here: {Mods}. Asking to restart without them, then come back to {Where}",
             diff.Extra.Select(ModList.Name).ToList(), returnTo);
         var names = ModListFile.Parse(reference).Select(ModList.Name).Where(n => n.Length > 0).Prepend("Elin Together").ToList();
-        var text = "emp_ui_mods_only_server".Loc(string.Join(", ", names.Take(6)) + (names.Count > 6 ? ", ..." : ""));
+        // (the mods that are turned off by name first, then what the server plays with: user 2026-11-03)
+        var off = TurnedOff(diff.Extra);
+        var text = "emp_ui_mods_only_server".Loc(ModList.Names(off.Count > 0 ? off : diff.Extra, 8),
+            string.Join(", ", names.Take(6)) + (names.Count > 6 ? ", ..." : ""));
         EmpMod.Instance.StartCoroutine(AskWithout(text, reference, returnTo, refusal));
         return true;
     }
@@ -256,10 +259,10 @@ internal static class ModFetch
 
         var choice = Choice.None;
         var box = Dialog.Choice(text, d => {
-            d.AddButton("yes".lang(), () => choice = Choice.Accept);
-            d.AddButton("no".lang(), () => choice = Choice.Cancel);
+            d.AddButton("emp_ui_mods_restart_without".lang(), () => choice = Choice.Accept);
+            d.AddButton("cancel".lang(), () => choice = Choice.Cancel);
         });
-        // (closed any other way, Escape or a click outside: no)
+        // (closed any other way, Escape or a click outside: cancel)
         box.SetOnKill(() => choice = choice == Choice.None ? Choice.Cancel : choice);
         while (choice == Choice.None) {
             yield return null;
@@ -860,19 +863,11 @@ internal static class ModFetch
     }
 
     /// <summary>
-    ///     loadorder.txt for one session: every mod the game knows, in the player's order, on when the reference
-    ///     has it. This mod and what it runs on stay as the player has them, and the mods that only change the look
-    ///     when the game says each player keeps their own. What was fetched is not listed: a mod that is not
-    ///     listed is on
+    ///     The mods a session list never switches off (ids, normalized): this mod, what it runs on and what those
+    ///     need, and the mod of the language the player reads the game in
     /// </summary>
-    internal static List<string> SessionList(List<Mod> reference, bool ownLooks)
+    private static HashSet<string> Kept(List<BaseModPackage> packages)
     {
-        var packages = EClass.core.mods.packages
-            .Where(p => !p.builtin && p.dirInfo is not null && !IsLink(p) && ModLoadOrderPreset.IsValidId(p.id))
-            .ToList();
-        var workshops = new HashSet<string>(reference.Where(m => m.Workshop.Length > 0).Select(m => m.Workshop));
-        var ids = new HashSet<string>(reference.Where(m => m.Workshop.Length == 0 && m.Id.Length > 0).Select(m => BaseModPackage.NormalizeId(m.Id)));
-
         // never switched off: this mod, the mods whose libraries it is built on (those that come neither with the
         // game nor with this mod: YK Framework), and what those declare they need
         var own = Path.GetDirectoryName(EmpMod.Assembly.Location) ?? "";
@@ -906,6 +901,35 @@ internal static class ModFetch
                 }
             }
         }
+
+        return kept;
+    }
+
+    /// <summary>
+    ///     Of the player's mods the host does not have, those "restart without them" really turns off (not the kept
+    ///     ones, Kept): what the refusal names
+    /// </summary>
+    internal static List<Mod> TurnedOff(List<Mod> extra)
+    {
+        var packages = EClass.core.mods.packages.Where(p => !p.builtin && p.dirInfo is not null).ToList();
+        var kept = Kept(packages);
+        return extra.Where(m => !kept.Contains(BaseModPackage.NormalizeId(m.Id))).ToList();
+    }
+
+    /// <summary>
+    ///     loadorder.txt for one session: every mod the game knows, in the player's order, on when the reference
+    ///     has it. This mod and what it runs on stay as the player has them, and the mods that only change the look
+    ///     when the game says each player keeps their own. What was fetched is not listed: a mod that is not
+    ///     listed is on
+    /// </summary>
+    internal static List<string> SessionList(List<Mod> reference, bool ownLooks)
+    {
+        var packages = EClass.core.mods.packages
+            .Where(p => !p.builtin && p.dirInfo is not null && !IsLink(p) && ModLoadOrderPreset.IsValidId(p.id))
+            .ToList();
+        var workshops = new HashSet<string>(reference.Where(m => m.Workshop.Length > 0).Select(m => m.Workshop));
+        var ids = new HashSet<string>(reference.Where(m => m.Workshop.Length == 0 && m.Id.Length > 0).Select(m => BaseModPackage.NormalizeId(m.Id)));
+        var kept = Kept(packages);
 
         var lines = new List<string> { Marker };
         foreach (var package in packages) {

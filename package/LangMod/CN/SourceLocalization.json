@@ -50,8 +50,8 @@
     "LangGeneral.emp_ui_source_mismatch_files.text": "不同的文件：",
     "LangGeneral.emp_ui_source_mismatch_more.text": "……还有 {0} 项",
     "LangGeneral.emp_ui_source_mismatch_continue.text": "仍然要加入吗？",
-    "LangGeneral.emp_ui_reject_acts.text": "无法加入：模组不一致（{0}）。\n请安装与主机相同的模组。",
-    "LangGeneral.emp_ui_reject_integrity.text": "无法加入：主机开启了严格检查，你的数据不一致（{0}）。",
+    "LangGeneral.emp_ui_reject_acts.text": "无法加入：你的模组与主机的不一致（{0} 处不同）。",
+    "LangGeneral.emp_ui_reject_integrity.text": "无法加入：此服务器只允许与它模组相同的游戏加入（{0} 处不同）。",
     "LangGeneral.emp_ui_tab_client.text": "我的设置",
     "LangGeneral.emp_tab_client.text": "我的设置",
     "LangGeneral.emp_dc_host_kick.text": "断开连接：被主机踢出",
@@ -1239,7 +1239,7 @@
     "LangGeneral.emp_ui_report_preparing.text": "正在生成报告……",
     "LangGeneral.emp_ui_sv_cfg_share_log_reports.text": "问题报告附上房主的日志",
     "LangGeneral.emp_ui_sv_desc_share_log_reports.text": "好友的问题报告也会附上房主日志的末尾（个人信息会被删除）。",
-    "LangGeneral.emp_ui_mods_only_server.text": "此服务器仅使用 {0}。为了加入，Elin 将在不加载你其他模组的情况下重启一次；下次启动 Elin 时它们会恢复。现在重启吗？",
+    "LangGeneral.emp_ui_mods_only_server.text": "此服务器不允许你的这些模组：{0}\n\n点击“不加载它们并重启”：Elin 将只用服务器的模组（{1}）重启一次并自动加入。下次启动 Elin 时你的模组会恢复。",
     "LangGeneral.emp_ui_report_category.text": "类别",
     "LangGeneral.emp_ui_report_cat_bug.text": "错误",
     "LangGeneral.emp_ui_report_cat_lost.text": "物品丢失",
@@ -1749,5 +1749,9 @@
     "LangGeneral.emp_ui_chat_view_sent_by.text": "发送者：{0}",
     "LangGeneral.emp_ui_chat_view_close.text": "关闭",
     "LangGeneral.emp_ui_cl_detailed_logs.text": "详细日志",
-    "LangGeneral.emp_ui_cl_desc_detailed_logs.text": "将模组的调试信息也写入日志文件。仅在开发者排查问题时开启（文件更大，略微变慢）。"
+    "LangGeneral.emp_ui_cl_desc_detailed_logs.text": "将模组的调试信息也写入日志文件。仅在开发者排查问题时开启（文件更大，略微变慢）。",
+    "LangGeneral.emp_ui_reject_todo_off.text": "加入方法：在 Elin 标题画面的“模组”菜单中关闭以下模组，重启 Elin，然后再次加入：{0}",
+    "LangGeneral.emp_ui_reject_todo_install.text": "加入方法：安装以下模组（Steam 创意工坊），重启 Elin，然后再次加入：{0}",
+    "LangGeneral.emp_ui_reject_todo_same.text": "你的模组相同，但数据不一致：请更新模组（Elin 启动时 Steam 会更新它们）。如果仍然不行，请询问主机使用的版本。",
+    "LangGeneral.emp_ui_mods_restart_without.text": "不加载它们并重启"
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using ElinTogether.API.SourceValidation;
 using ElinTogether.Common;
@@ -101,13 +102,16 @@ internal partial class ElinNetClient
                 ? "emp_ui_reject_acts".Loc(rejected.Details.Count)
                 : "emp_ui_reject_integrity".Loc(rejected.Details.Count));
 
-            AppendDetails(sb, rejected.Details);
-
-            // which mods differ, by name (the log has their Workshop pages)
+            // what the player does about it first, then which mods differ by name (the log has their Workshop
+            // pages), the raw entries last (user 2026-11-03: a clearer refusal)
+            sb.AppendLine();
+            sb.AppendLine(RejectAdvice(_mods));
             if (_mods is { } mods) {
                 sb.AppendLine();
                 sb.Append(ModList.Lines(mods));
             }
+
+            AppendDetails(sb, rejected.Details);
 
             detail = sb.ToString();
         }
@@ -132,6 +136,21 @@ internal partial class ElinNetClient
         Dialog.Ok(detail);
 
         Socket.Disconnect(Host, reason);
+    }
+
+    /// <summary>
+    ///     The one thing to do about a refused join: turn off the mods the host does not have, install the ones it
+    ///     has, or (the same mods, other data) update them
+    /// </summary>
+    private static string RejectAdvice(ModList.Diff? mods)
+    {
+        if (mods is { Extra.Count: > 0 }) {
+            var off = ModFetch.TurnedOff(mods.Extra);
+            return "emp_ui_reject_todo_off".Loc(ModList.Names(off.Count > 0 ? off : mods.Extra, 8));
+        }
+
+        var absent = mods?.Missing.Concat(mods.Unfetchable).ToList() ?? [];
+        return absent.Count > 0 ? "emp_ui_reject_todo_install".Loc(ModList.Names(absent, 8)) : "emp_ui_reject_todo_same".lang();
     }
 
     private static string VersionMismatchText(string mod, string version)
