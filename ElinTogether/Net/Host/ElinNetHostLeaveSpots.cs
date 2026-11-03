@@ -40,7 +40,8 @@ internal partial class ElinNetHost
     /// </summary>
     private void NoteStoodAway(ZoneLeaseRelease checkpoint, ISteamNetPeer peer, Chara? chara)
     {
-        if (chara?.pos is { IsValid: true } pos && checkpoint.StoodZoneUid > 0) {
+        // (not Point.IsValid: it measures against this game's map, and a world map tile is often past its size)
+        if (chara?.pos is { x: >= 0, z: >= 0 } pos && checkpoint.StoodZoneUid > 0) {
             _stoodAway[peer.Id] = (checkpoint.StoodZoneUid, pos.x, pos.z);
         }
     }
