@@ -26,11 +26,12 @@ internal static class OwnCompanionUiPatch
                CompanionHelper.OwnerOf(c) is { } owner && owner != EClass.pc;
     }
 
+    // (the server's stand-in leads the session's party but is nobody's to see: it stood in every player's bar)
     [HarmonyPrefix]
     [HarmonyPatch(typeof(WidgetRoster), nameof(WidgetRoster.Add))]
     internal static bool OnRosterAdd(Chara c)
     {
-        return !IsOthers(c);
+        return !IsOthers(c) && !ServerAvatar.Is(c);
     }
 
     // "c.IsPCParty && !c.isSummon": the block that offers "make home" and "wait at your home"
