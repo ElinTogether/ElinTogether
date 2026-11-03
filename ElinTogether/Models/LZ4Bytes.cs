@@ -25,11 +25,12 @@ public class LZ4Bytes
     public required byte[] Bytes { get; init; }
 
     // LZ4Stream's default block is 1 MB, a new array at each call even for a 200-byte card (efficiency audit
-    // 2026-11-03): the block is the payload's size rounded up to a power of two, at most 64 KB (LZ4's own window:
-    // bigger blocks find no longer matches). The reader takes each block's size from the block itself, so data
-    // packed either way reads the same; up to 64 KB the bytes are identical
+    // 2026-11-03): the block is the payload's size rounded up to a power of two, at most 1 MB, the old default. Each
+    // block is packed on its own (no match reaches back into the block before), so a 64 KB cap packed a 280 KB list
+    // 26% bigger (bench, 2026-11-03); with 1 MB the bytes are the old ones for every size. The reader takes each
+    // block's size from the block itself, so data packed either way reads the same
     private const int MinBlock = 256;
-    private const int MaxBlock = 64 * 1024;
+    private const int MaxBlock = 1024 * 1024;
 
     // the JSON text and the packed bytes, one of each kept per thread between calls (a call inside a call takes new
     // ones); one grown past 1 MB (a map) is let go rather than kept
