@@ -120,6 +120,41 @@ internal static class NetMetrics
         }
     }
 
+#if DEBUG
+    // Debug build only (bench, perf_baseline.py): what each kind of delta weighs inside the WorldStateDeltaList the
+    // host sends, rows "sent_delta,<Type>". Counted always; bytes only with DeltaBytes on (each delta serialized once
+    // more to measure it, which costs main-thread time and allocations of its own)
+    private static readonly Dictionary<Type, NetMetric> _sentByDelta = new(128);
+
+    public static bool DeltaBytes { get; set; }
+
+    /// <summary>
+    ///     One list of deltas handed to the players (once per list, whatever the number of players)
+    /// </summary>
+    internal static void SentDeltas(List<Models.ElinDelta> deltas)
+    {
+        var bytes = DeltaBytes;
+        lock (Gate) {
+            foreach (var delta in deltas) {
+                if (delta is null) {
+                    continue;
+                }
+
+                long size = 0;
+                if (bytes) {
+                    try {
+                        size = SteamNetSerializer.SerializePart(delta).Length;
+                    } catch (Exception) {
+                        size = 0;
+                    }
+                }
+
+                Of(_sentByDelta, delta.GetType()).Add1(size, 0);
+            }
+        }
+    }
+#endif
+
     internal static void Broadcast(int size, int targets)
     {
         lock (Gate) {
@@ -199,6 +234,11 @@ internal static class NetMetrics
             foreach (var ((category, key), metric) in _named) {
                 Write(line, stamp, role, category, key, metric);
             }
+#if DEBUG
+            foreach (var (type, metric) in _sentByDelta) {
+                Write(line, stamp, role, "sent_delta", type.Name, metric);
+            }
+#endif
         }
 
         // gauges: the value now. link: count = quality % (local), bytes = Steam's pending reliable bytes, ms = ping;
@@ -281,6 +321,9 @@ internal static class NetMetrics
             Add(_sentByPeer.Select(p => ("sent_peer", p.Key.ToString(), p.Value)));
             Add(_receivedByPeer.Select(p => ("recv_peer", p.Key.ToString(), p.Value)));
             Add(_named.Select(p => (p.Key.Item1, p.Key.Item2, p.Value)));
+#if DEBUG
+            Add(_sentByDelta.Select(p => ("sent_delta", p.Key.Name, p.Value)));
+#endif
         }
 
         var text = new StringBuilder("category key: count, bytes, ms (since start)\n");

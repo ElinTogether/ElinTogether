@@ -134,6 +134,10 @@ internal partial class ElinNetHost
             return;
         }
 
+#if DEBUG
+        NetMetrics.SentDeltas(deltaList);
+#endif
+
         if (Crowds && _crowdViews.Count > 0) {
             SendCrowdDeltas(deltaList);
             return;
