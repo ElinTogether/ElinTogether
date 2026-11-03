@@ -145,8 +145,9 @@ internal partial class ElinNetClient
     private static string RejectAdvice(ModList.Diff? mods)
     {
         if (mods is { Extra.Count: > 0 }) {
+            // (only kept mods differ, a language mod...: turning them off is not the way, the data is)
             var off = ModFetch.TurnedOff(mods.Extra);
-            return "emp_ui_reject_todo_off".Loc(ModList.Names(off.Count > 0 ? off : mods.Extra, 8));
+            return off.Count > 0 ? "emp_ui_reject_todo_off".Loc(ModList.Names(off, 8)) : "emp_ui_reject_todo_same".lang();
         }
 
         var absent = mods?.Missing.Concat(mods.Unfetchable).ToList() ?? [];

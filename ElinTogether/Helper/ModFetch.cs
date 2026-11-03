@@ -240,13 +240,19 @@ internal static class ModFetch
             return false;
         }
 
+        // only mods the restart keeps on differ (this mod's libraries, the player's language mod): restarting would
+        // change nothing and be refused again, the refusal is shown instead
+        var off = TurnedOff(diff.Extra);
+        if (off.Count == 0) {
+            return false;
+        }
+
         _busy = true;
         EmpLog.Information("The game was refused for mods it does not have here: {Mods}. Asking to restart without them, then come back to {Where}",
             diff.Extra.Select(ModList.Name).ToList(), returnTo);
         var names = ModListFile.Parse(reference).Select(ModList.Name).Where(n => n.Length > 0).Prepend("Elin Together").ToList();
         // (the mods that are turned off by name first, then what the server plays with: user 2026-11-03)
-        var off = TurnedOff(diff.Extra);
-        var text = "emp_ui_mods_only_server".Loc(ModList.Names(off.Count > 0 ? off : diff.Extra, 8),
+        var text = "emp_ui_mods_only_server".Loc(ModList.Names(off, 8),
             string.Join(", ", names.Take(6)) + (names.Count > 6 ? ", ..." : ""));
         EmpMod.Instance.StartCoroutine(AskWithout(text, reference, returnTo, refusal));
         return true;
@@ -909,10 +915,14 @@ internal static class ModFetch
     ///     Of the player's mods the host does not have, those "restart without them" really turns off (not the kept
     ///     ones, Kept): what the refusal names
     /// </summary>
+    // the mods a session list is written for: not the game's own, not a link made for a session
+    private static List<BaseModPackage> SessionPackages() => EClass.core.mods.packages
+        .Where(p => !p.builtin && p.dirInfo is not null && !IsLink(p) && ModLoadOrderPreset.IsValidId(p.id))
+        .ToList();
+
     internal static List<Mod> TurnedOff(List<Mod> extra)
     {
-        var packages = EClass.core.mods.packages.Where(p => !p.builtin && p.dirInfo is not null).ToList();
-        var kept = Kept(packages);
+        var kept = Kept(SessionPackages());
         return extra.Where(m => !kept.Contains(BaseModPackage.NormalizeId(m.Id))).ToList();
     }
 
@@ -924,9 +934,7 @@ internal static class ModFetch
     /// </summary>
     internal static List<string> SessionList(List<Mod> reference, bool ownLooks)
     {
-        var packages = EClass.core.mods.packages
-            .Where(p => !p.builtin && p.dirInfo is not null && !IsLink(p) && ModLoadOrderPreset.IsValidId(p.id))
-            .ToList();
+        var packages = SessionPackages();
         var workshops = new HashSet<string>(reference.Where(m => m.Workshop.Length > 0).Select(m => m.Workshop));
         var ids = new HashSet<string>(reference.Where(m => m.Workshop.Length == 0 && m.Id.Length > 0).Select(m => BaseModPackage.NormalizeId(m.Id)));
         var kept = Kept(packages);
