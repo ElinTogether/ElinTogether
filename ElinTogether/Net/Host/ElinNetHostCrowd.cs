@@ -128,6 +128,12 @@ internal partial class ElinNetHost
         byte[]? lean = null;
         ListSplice? splice = null;
         foreach (var peer in Socket.Peers) {
+            if (!IsPlaying(peer)) {
+                // still in its handshake, its game would drop it (IsPlaying); once joined it starts from a full one
+                _crowdSent.Remove(peer.Id);
+                continue;
+            }
+
             if (IsOffHostMap(peer)) {
                 // back on the map, it starts from a full one
                 _crowdSent.Remove(peer.Id);
@@ -362,7 +368,8 @@ internal partial class ElinNetHost
         var now = UnityEngine.Time.realtimeSinceStartup;
         byte[]? bytes = null;
         foreach (var peer in Socket.Peers) {
-            if (IsOffHostMap(peer)) {
+            // (still in its handshake: its game would drop it, and once joined it is sent the list at once)
+            if (!IsPlaying(peer) || IsOffHostMap(peer)) {
                 _playersSent.Remove(peer.Id);
                 continue;
             }
@@ -515,6 +522,10 @@ internal partial class ElinNetHost
         byte[]? lean = null;
         var leanBuilt = false;
         foreach (var peer in Socket.Peers) {
+            if (!IsPlaying(peer)) {
+                continue; // still in its handshake, its game would drop it (IsPlaying)
+            }
+
             if (IsOffHostMap(peer)) {
                 if (!leanBuilt) {
                     leanBuilt = true;
