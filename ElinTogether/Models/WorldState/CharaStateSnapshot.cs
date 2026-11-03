@@ -64,8 +64,16 @@ public class CharaStateSnapshot : EClass
             OriginalHostility = chara.c_originalHostility,
             UidMaster = chara.c_uidMaster,
             MinionType = chara.c_minionType,
-            Hunger = chara.IsPCParty && !chara.IsPC && !chara.IsRemotePlayer ? chara.hunger.value : null,
+            Hunger = HungerOf(chara),
         };
+    }
+
+    /// <summary>
+    ///     <see cref="Hunger" />: a companion's, null for anyone else
+    /// </summary>
+    internal static int? HungerOf(Chara chara)
+    {
+        return chara.IsPCParty && !chara.IsPC && !chara.IsRemotePlayer ? chara.hunger.value : null;
     }
 
     public static CharaStateSnapshot CreateSelf()

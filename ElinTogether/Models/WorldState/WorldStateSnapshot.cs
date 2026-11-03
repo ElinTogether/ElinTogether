@@ -14,6 +14,8 @@ public class WorldStateSnapshot : EClass
 {
     private static Dictionary<int, int> _missingLeftOverCharas = [];
 
+    private static readonly Dictionary<int, CharaStateSnapshot> _entries = [];
+
 
     [Key(0)]
     public required int ServerTick { get; init; }
@@ -84,6 +86,29 @@ public class WorldStateSnapshot : EClass
             return full || !_sent.TryGetValue(uid, out var sent) || sent != key;
         }
 
+        /// <summary>
+        ///     <see cref="Keep(CharaStateSnapshot, bool, bool)" /> read from the character itself, before any entry is
+        ///     made: a character that stands still costs no entry (perf batch 2026-11-03: every character of the map
+        ///     got one 5 times a second, to be dropped by most partial snapshots)
+        /// </summary>
+        internal bool Keep(Chara chara, int zoneUid, bool full, bool player = false)
+        {
+            var zone = chara.currentZone.uid;
+            if (zone == zoneUid) {
+                zone = 0;
+            }
+
+            var pos = chara.pos;
+            var hunger = CharaStateSnapshot.HungerOf(chara);
+            var key = player
+                ? StateKey(zone, chara.hp, chara.isDead, chara.hostility, chara.c_originalHostility, chara.c_uidMaster, chara.c_minionType, hunger)
+                : Key(pos.x, pos.z, zone, chara.hp, chara.isDead, chara.hostility, chara.c_originalHostility, chara.c_uidMaster,
+                    chara.c_minionType, hunger);
+            var uid = chara.uid;
+            _next[uid] = key;
+            return full || !_sent.TryGetValue(uid, out var sent) || sent != key;
+        }
+
         internal bool Begin(int zoneUid, int tick)
         {
             var full = zoneUid != _zoneUid || tick % (Crowds ? CrowdFullEvery : FullEvery) == 0;
@@ -99,8 +124,13 @@ public class WorldStateSnapshot : EClass
 
         internal static int Key(CharaStateSnapshot s)
         {
-            return HashCode.Combine(HashCode.Combine(s.Pos.X, s.Pos.Z, s.CurrentZoneUid, s.Hp, s.IsDead),
-                s.Hostility, s.OriginalHostility, s.UidMaster, s.MinionType, s.Hunger);
+            return Key(s.Pos.X, s.Pos.Z, s.CurrentZoneUid, s.Hp, s.IsDead, s.Hostility, s.OriginalHostility, s.UidMaster, s.MinionType, s.Hunger);
+        }
+
+        private static int Key(int x, int z, int zone, int hp, bool dead, Hostility hostility, Hostility original, int master,
+            MinionType minion, int? hunger)
+        {
+            return HashCode.Combine(HashCode.Combine(x, z, zone, hp, dead), hostility, original, master, minion, hunger);
         }
 
         /// <summary>
@@ -108,8 +138,13 @@ public class WorldStateSnapshot : EClass
         /// </summary>
         internal static int StateKey(CharaStateSnapshot s)
         {
-            return HashCode.Combine(HashCode.Combine(s.CurrentZoneUid, s.Hp, s.IsDead),
-                s.Hostility, s.OriginalHostility, s.UidMaster, s.MinionType, s.Hunger);
+            return StateKey(s.CurrentZoneUid, s.Hp, s.IsDead, s.Hostility, s.OriginalHostility, s.UidMaster, s.MinionType, s.Hunger);
+        }
+
+        private static int StateKey(int zone, int hp, bool dead, Hostility hostility, Hostility original, int master, MinionType minion,
+            int? hunger)
+        {
+            return HashCode.Combine(HashCode.Combine(zone, hp, dead), hostility, original, master, minion, hunger);
         }
     }
 
@@ -123,10 +158,16 @@ public class WorldStateSnapshot : EClass
 
         var zoneUid = _zone.uid;
         var full = tracker?.Begin(zoneUid, NetSession.Instance.Tick) ?? true;
-        var snapshots = new Dictionary<int, CharaStateSnapshot>();
+        // (kept from one snapshot to the next, emptied each time: the host's main thread only)
+        var snapshots = _entries;
+        snapshots.Clear();
         foreach (var chara in _map.charas) {
             // (a server's stand-in is nobody for the guests: it is not told to them, see ServerAvatar)
             if (!chara.IsInActiveMap || ServerAvatar.Is(chara)) {
+                continue;
+            }
+
+            if (tracker is not null && !tracker.Keep(chara, zoneUid, full, ChangeTracker.Crowds && chara.IsPlayer)) {
                 continue;
             }
 
@@ -135,9 +176,7 @@ public class WorldStateSnapshot : EClass
                 snapshot.CurrentZoneUid = 0;
             }
 
-            if (tracker?.Keep(snapshot, full, ChangeTracker.Crowds && chara.IsPlayer) ?? true) {
-                snapshots[chara.uid] = snapshot;
-            }
+            snapshots[chara.uid] = snapshot;
         }
 
         tracker?.End();
