@@ -78,6 +78,36 @@ internal static class ReplayBuffer
     private static int _pending;
     private static int _width, _height;
 
+    // the pixel buffers between the card's hand-over and the JPEG thread: at most MaxPending in use at once
+    private static readonly Stack<byte[]> _pixels = new();
+
+    /// <summary>For the bench: how many pixel buffers were made since the start (stays at MaxPending or under)</summary>
+    internal static int PixelBuffersMade;
+
+    private static byte[] RentPixels(int length)
+    {
+        lock (_pixels) {
+            while (_pixels.Count > 0) {
+                var kept = _pixels.Pop();
+                if (kept.Length == length) {
+                    return kept;
+                }
+            }
+        }
+
+        Interlocked.Increment(ref PixelBuffersMade);
+        return new byte[length];
+    }
+
+    private static void ReturnPixels(byte[] buffer)
+    {
+        lock (_pixels) {
+            if (_pixels.Count < MaxPending) {
+                _pixels.Push(buffer);
+            }
+        }
+    }
+
     private static void Capture()
     {
         if (Volatile.Read(ref _pending) >= MaxPending) {
@@ -125,13 +155,19 @@ internal static class ReplayBuffer
                 return;
             }
 
-            var (rgba, w, h) = (request.GetData<byte>().ToArray(), (uint)request.width, (uint)request.height);
+            // (the pixels go into a buffer kept from an earlier picture: a new 2 MB array three times a second was most
+            // of what the mod allocated, perf batch 2026-11-03)
+            var data = request.GetData<byte>();
+            var rgba = RentPixels(data.Length);
+            data.CopyTo(rgba);
+            var (w, h) = ((uint)request.width, (uint)request.height);
             ThreadPool.QueueUserWorkItem(_ => {
                 try {
                     Keep(at, ImageConversion.EncodeArrayToJPG(rgba, GraphicsFormat.R8G8B8A8_SRGB, w, h, 0, Quality));
                 } catch (Exception ex) {
                     EmpLog.Information(ex, "A replay picture could not be made");
                 } finally {
+                    ReturnPixels(rgba);
                     Interlocked.Decrement(ref _pending);
                 }
             });
