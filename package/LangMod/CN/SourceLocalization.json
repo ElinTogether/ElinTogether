@@ -1741,6 +1741,11 @@
     "LangGeneral.emp_ui_editor_pixel_size.text": "像素倍数",
     "LangGeneral.emp_ui_editor_zoom_out.text": "缩小",
     "LangGeneral.emp_ui_editor_zoom_in.text": "放大",
-    "LangGeneral.emp_ui_chat_pop_drawing.text": "[画作「{0}」]（打开聊天查看）",
-    "LangGeneral.emp_ui_chat_pop_picture.text": "[图片]（打开聊天查看）"
+    "LangGeneral.emp_ui_chat_pop_drawing.text": "[画作「{0}」]",
+    "LangGeneral.emp_ui_chat_pop_picture.text": "[图片]",
+    "LangGeneral.emp_ui_chat_pop_drawing_untitled.text": "[画作]",
+    "LangGeneral.emp_ui_chat_pop_hidden.text": "（已在“我的设置”中隐藏）",
+    "LangGeneral.emp_ui_chat_view_title.text": "聊天中的图片",
+    "LangGeneral.emp_ui_chat_view_sent_by.text": "发送者：{0}",
+    "LangGeneral.emp_ui_chat_view_close.text": "关闭"
 }

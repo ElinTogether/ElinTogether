@@ -1,4 +1,5 @@
 using System.Linq;
+using ElinTogether.Components;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
@@ -115,8 +116,17 @@ public class ChatImageDelta : ElinDelta
 
         var name = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == SpeakerUid)?.User.Name is { Length: > 0 } own ? own : Name ?? "?";
         ChatLog.Add(Team != 0 ? ChatLog.Team : ChatLog.All, name, "", uid: SpeakerUid, image: Png, drawing: drawing);
-        // (a picture said nothing outside the Chat tab, where the other lines show in the pop text: user 2026-11-03)
-        var said = drawing != null ? "emp_ui_chat_pop_drawing".Loc(drawing.Title) : "emp_ui_chat_pop_picture".lang();
-        ChatBubbleEvent.PopChat(Team != 0 ? "emp_ui_chat_team_tag".Loc(name) : name, said);
+        // (a picture said nothing outside the Chat tab, where the other lines show in the pop text: user 2026-11-03;
+        // the picture itself in the pop text, a click on it opens it larger, unless this player hides pictures)
+        var said = drawing == null ? "emp_ui_chat_pop_picture".lang() :
+            drawing.Title.Length > 0 ? "emp_ui_chat_pop_drawing".Loc(drawing.Title) : "emp_ui_chat_pop_drawing_untitled".lang();
+        var who = Team != 0 ? "emp_ui_chat_team_tag".Loc(name) : name;
+        if (EmpConfig.Client.HideChatImages.Value) {
+            ChatBubbleEvent.PopChat(who, said + " " + "emp_ui_chat_pop_hidden".lang());
+            return;
+        }
+
+        var png = Png;
+        ChatBubbleEvent.PopPicture(who, said, ChatPictureView.Make(png, drawing), () => ChatPictureView.Open(png, drawing, name));
     }
 }
