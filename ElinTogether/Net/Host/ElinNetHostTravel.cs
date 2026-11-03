@@ -1136,6 +1136,11 @@ internal partial class ElinNetHost
             EmpLog.Warning("Host card counter {UidNext} reached the leased uid range starting at {Start}, jumping past it",
                 cards.uidNext, start);
             cards.uidNext = start + MaxLeaseUids;
+            if (PendingUid.IsNearFloor(cards.uidNext)) {
+                EmpLog.Error("Host card counter {UidNext} is close to the pending uids from {Floor}: the world's card numbers are running out",
+                    cards.uidNext, PendingUid.Floor);
+            }
+
             return true;
         }
     }
@@ -1151,6 +1156,11 @@ internal partial class ElinNetHost
         var floor = Math.Max(ActiveLeaseEnd, saved > 0 ? saved + MaxLeaseUids : 0);
         var rangeStart = Math.Max(game.cards.uidNext, floor) + LeaseUidHeadroom;
         LeaseRangeFloor[FloorCards] = Math.Max(saved, rangeStart);
+        // (GitHub issue 71) above PendingUid.Floor a real card would look pending to the guests
+        if (PendingUid.IsNearFloor(rangeStart + MaxLeaseUids)) {
+            EmpLog.Error("Lease uid range {Start} is close to the pending uids from {Floor}: the world's card numbers are running out",
+                rangeStart, PendingUid.Floor);
+        }
 
         if (!_leases.TryGetValue(peer.Id, out var zones)) {
             zones = _leases[peer.Id] = [];
