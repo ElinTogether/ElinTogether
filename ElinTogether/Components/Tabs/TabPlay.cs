@@ -455,6 +455,7 @@ internal class TabPlay : TabEmpBase
                 // the friend's game as the list of games keeps it: one game per account, the hidden server's lobby
                 // first (Steam may name a left-over lobby of the same friend)
                 var target = _liveLobbyOf.TryGetValue(friendId, out var live) ? live : lobby;
+                PeerHosting.PublicEntered = false;
                 NetSession.Instance.Lobby.ConnectLobby(new Steamworks.CSteamID(target));
             });
             var element = join.LayoutElement();
@@ -500,6 +501,7 @@ internal class TabPlay : TabEmpBase
     /// </summary>
     internal static void JoinAddress(string address)
     {
+        PeerHosting.PublicEntered = false;
         if (!SaveDepot.TakeFrom(address)) {
             NetSession.Instance.InitializeComponent<ElinNetClient>().ConnectAddress(address);
         }
@@ -545,10 +547,15 @@ internal class TabPlay : TabEmpBase
         var card = page.Card("emp_ui_official_title".lang());
         // a peer-hosted world kept with the world's store: the card is there whether a keeper is up or not, and its
         // one button joins the keeper or opens the world here (PeerKeeper). The lobby list fills it in when one is up
-        if (PeerKeeper.Enabled && !EClass.core.IsGameStarted) {
+        // (the built-in public world service: no setting, no question, lead dev 2026-11-03)
+        if ((PeerKeeper.Enabled || PeerHosting.PublicAvailable) && !EClass.core.IsGameStarted) {
             card.TextSmall("emp_peer_card".lang(), FontColor.Gray);
             card.ButtonRow().RowButton("emp_ui_lobby_official_join".lang(), () => {
                 LayerElinTogether.Instance?.Close();
+                if (PeerHosting.PublicAvailable) {
+                    PeerHosting.PublicEntered = true;
+                }
+
                 PeerKeeper.Enter();
             });
             return card;
@@ -561,7 +568,7 @@ internal class TabPlay : TabEmpBase
 
     private static void FillOfficial(YKVertical card, LobbyData? lobby)
     {
-        if (lobby is not { } found || PeerKeeper.Enabled) {
+        if (lobby is not { } found || PeerKeeper.Enabled || PeerHosting.PublicAvailable) {
             return;
         }
 
@@ -675,6 +682,8 @@ internal class TabPlay : TabEmpBase
             var target = lobby;
             var join = line.Button("emp_ui_team_join_short".lang(), () => {
                 LayerElinTogether.Instance?.Close();
+                // (a game of the list is another world: the public world mode of this run ends)
+                PeerHosting.PublicEntered = false;
                 NetSession.Instance.Lobby.ConnectLobby(target);
             });
             var element = join.LayoutElement();

@@ -62,12 +62,12 @@ internal static class WorldAdmin
     internal static (string Base, string World)? Address
     {
         get {
-            var root = EmpConfig.Client.DepotPath.Value.Trim();
-            if (!root.StartsWith("etworld:", StringComparison.OrdinalIgnoreCase)) {
+            // (the depot setting's service, or the built-in public one while this game plays the public world)
+            if (SaveDepot.EtWorldService is not { } service) {
                 return null;
             }
 
-            var address = root.Substring(8);
+            var address = service.Address;
             var at = address.IndexOf('#');
             var world = at >= 0 ? address.Substring(at + 1) : "public";
             var url = (at >= 0 ? address.Substring(0, at) : address).Trim().TrimEnd('/');

@@ -150,6 +150,11 @@ internal static class HiddenServer
                 return true;
             }
 
+            // (a server on another save is the player's own game: the public world mode of this run ends)
+            if (save != PeerKeeper.SaveId) {
+                PeerHosting.PublicEntered = false;
+            }
+
             Directory.CreateDirectory(Folder);
             foreach (var old in new[] { "server.txt", "server.stop", "server.cmd" }) {
                 File.Delete(Path.Combine(Root, old));
