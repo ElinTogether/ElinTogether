@@ -109,11 +109,18 @@ public static class FrameStats
 
         private static long AllocatedByThread()
         {
+            // (a Mono without the method throws when the method calling it is compiled: called through another one)
             try {
-                return GC.GetAllocatedBytesForCurrentThread();
+                return ThreadCounter();
             } catch (Exception) {
                 return 0;
             }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static long ThreadCounter()
+        {
+            return GC.GetAllocatedBytesForCurrentThread();
         }
 
         internal string Report()

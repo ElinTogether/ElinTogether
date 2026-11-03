@@ -38,6 +38,16 @@ internal sealed class RemoteCharaMap : Dictionary<int, Chara>
         _played[chara] = _played.TryGetValue(chara, out var n) ? n + 1 : 1;
     }
 
+    public new bool TryAdd(int peerId, Chara chara)
+    {
+        if (ContainsKey(peerId)) {
+            return false;
+        }
+
+        Add(peerId, chara);
+        return true;
+    }
+
     public new bool Remove(int peerId)
     {
         return Remove(peerId, out _);

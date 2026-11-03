@@ -328,7 +328,7 @@ internal static class NetMetrics
 
         var text = new StringBuilder("category key: count, bytes, ms (since start)\n");
         foreach (var row in rows.OrderBy(r => r.category).ThenByDescending(r => r.bytes).ThenByDescending(r => r.ms)) {
-            text.Append($"{row.category} {row.key}: {row.count}, {row.bytes}, {row.ms:0.#}\n");
+            text.Append($"{row.category} {row.key}: {row.count}, {row.bytes}, {row.ms.ToString("0.#", CultureInfo.InvariantCulture)}\n");
         }
 
         return text.ToString();
