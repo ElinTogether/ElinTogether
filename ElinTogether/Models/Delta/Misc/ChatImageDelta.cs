@@ -1,6 +1,8 @@
 using System.Linq;
 using ElinTogether.Helper;
+using ElinTogether.LangMod;
 using ElinTogether.Net;
+using ElinTogether.Patches;
 using MessagePack;
 
 namespace ElinTogether.Models;
@@ -113,5 +115,8 @@ public class ChatImageDelta : ElinDelta
 
         var name = NetSession.Instance.CurrentPlayers.FirstOrDefault(p => p.CharaUid == SpeakerUid)?.User.Name is { Length: > 0 } own ? own : Name ?? "?";
         ChatLog.Add(Team != 0 ? ChatLog.Team : ChatLog.All, name, "", uid: SpeakerUid, image: Png, drawing: drawing);
+        // (a picture said nothing outside the Chat tab, where the other lines show in the pop text: user 2026-11-03)
+        var said = drawing != null ? "emp_ui_chat_pop_drawing".Loc(drawing.Title) : "emp_ui_chat_pop_picture".lang();
+        ChatBubbleEvent.PopChat(Team != 0 ? "emp_ui_chat_team_tag".Loc(name) : name, said);
     }
 }

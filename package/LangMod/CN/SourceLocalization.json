@@ -1740,5 +1740,7 @@
     "LangGeneral.emp_ui_editor_mirror_paint.text": "对称绘制",
     "LangGeneral.emp_ui_editor_pixel_size.text": "像素倍数",
     "LangGeneral.emp_ui_editor_zoom_out.text": "缩小",
-    "LangGeneral.emp_ui_editor_zoom_in.text": "放大"
+    "LangGeneral.emp_ui_editor_zoom_in.text": "放大",
+    "LangGeneral.emp_ui_chat_pop_drawing.text": "[画作「{0}」]（打开聊天查看）",
+    "LangGeneral.emp_ui_chat_pop_picture.text": "[图片]（打开聊天查看）"
 }
