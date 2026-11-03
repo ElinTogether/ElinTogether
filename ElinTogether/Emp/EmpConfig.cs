@@ -608,6 +608,13 @@ internal partial class EmpConfig
             "Minutes a kicked player cannot come back. 0: it may come back at once\n" +
             "被踢出的玩家在多少分钟内不能重新加入。0：可以立即重新加入");
 
+        Server.MaxPlayers = config.Bind(
+            "Server",
+            "MaxPlayers",
+            0,
+            "The most players connected at once, the host not counted: past it a new player is told the server is full (its admins still come in). 0: no limit\n" +
+            "同时在线的最多玩家数（不含主机）：达到上限后新玩家会被告知服务器已满（管理员仍可进入）。0：不限");
+
         Server.MaxCharacters = config.Bind(
             "Server",
             "MaxCharacters",
@@ -1266,6 +1273,8 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> OwnSleep { get; set; } = null!;
         internal static ConfigEntry<int> IdleMinutes { get; set; } = null!;
         internal static ConfigEntry<int> KickKeepOutMinutes { get; set; } = null!;
+
+        internal static ConfigEntry<int> MaxPlayers { get; set; } = null!;
         internal static ConfigEntry<int> MaxCharacters { get; set; } = null!;
         internal static ConfigEntry<bool> MembersOnly { get; set; } = null!;
         internal static ConfigEntry<bool> ContainerAccessLog { get; set; } = null!;

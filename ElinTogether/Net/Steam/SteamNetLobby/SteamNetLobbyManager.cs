@@ -141,6 +141,12 @@ public class SteamNetLobbyManager : EClass
             maxPlayers = Math.Max(maxPlayers, OfficialServer.MaxPlayers);
         }
 
+        // a host that lets more players in than the lobby holds (MaxPlayers): the lobby is the way in, it holds them
+        // and the host (the cap itself is the host's, at the connection)
+        if (EmpConfig.Server.MaxPlayers.Value is > 0 and var cap) {
+            maxPlayers = Math.Max(maxPlayers, Math.Min(cap + 1, 250));
+        }
+
         SteamMatchmaking.CreateLobby(lobbyType, maxPlayers);
     }
 

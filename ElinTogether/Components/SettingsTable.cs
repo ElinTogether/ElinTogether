@@ -176,6 +176,17 @@ internal static class SettingsTable
         source => source.Raw(EmpConfig.Server.KickKeepOutMinutes) is int minutes ? Array.IndexOf(KeepOutSteps, minutes) : -1,
         i => [(EmpConfig.Server.KickKeepOutMinutes, KeepOutSteps[i])]);
 
+    // players connected at once, 0 no limit (load test 2026-11-03 on the public server rules; another number typed in
+    // the file reads as Custom and is kept)
+    internal const int OfficialMaxPlayers = 50;
+
+    private static readonly int[] MaxPlayersSteps = [0, 8, 16, 32, 50, 75, 100];
+
+    internal static Choice MaxPlayers => new("max_players", [..MaxPlayersSteps.Select(n => n.ToString())],
+        () => [EmpConfig.Server.MaxPlayers],
+        source => source.Raw(EmpConfig.Server.MaxPlayers) is int count ? Array.IndexOf(MaxPlayersSteps, count) : -1,
+        i => [(EmpConfig.Server.MaxPlayers, MaxPlayersSteps[i])]);
+
     // players per team and minutes before founding another (council 2026-10-28); another number typed in the file
     // reads as Custom and is kept
     private static readonly int[] TeamSizeSteps = [5, 10, 20, 50, 0];
@@ -400,6 +411,7 @@ internal static class SettingsTable
         yield return new("affinity_per_player", "friends", true, EmpConfig.Server.AffinityPerPlayer);
         yield return new("public_game", "joining", true, EmpConfig.Server.PublicGame);
         yield return new("kick_keep_out", "joining", true, Choice: KickKeepOut);
+        yield return new("max_players", "joining", true, Choice: MaxPlayers);
         yield return new("members_only", "joining", true, EmpConfig.Server.MembersOnly);
         yield return new("admin_extras", "joining", true, EmpConfig.Server.AdminExtras);
         // (the dedicated public server only: it needs the public server key and the world admin key on this PC)
@@ -504,7 +516,7 @@ internal static class SettingsTable
         ..Rows().Where(r => r.Entry is not null && r.Id != "hidden_server").Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
         EmpConfig.Server.SourceValidationSet, EmpConfig.Server.WorldMapTime, EmpConfig.Server.WorldMapLeadCap,
         EmpConfig.Server.SpawnZone, EmpConfig.Server.NightPasses, EmpConfig.Server.IdleMinutes,
-        EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxCharacters, EmpConfig.Server.CatchUpDays,
+        EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxPlayers, EmpConfig.Server.MaxCharacters, EmpConfig.Server.CatchUpDays,
         EmpConfig.Server.LivingWorldMinutes, EmpConfig.Server.TeamMaxSize, EmpConfig.Server.TeamFoundCooldown,
         EmpConfig.Server.AbandonDays, EmpConfig.Server.LandsPerTeam, EmpConfig.Server.ClientOnlyMods,
     ];
@@ -566,7 +578,7 @@ internal static class SettingsTable
     /// </summary>
     internal static RuleSource Community => Over(OfficialChosenValues()
         .Where(v => v.Entry != EmpConfig.Server.ClientOnlyMods && v.Entry != EmpConfig.Server.ShareLogForReports &&
-                    v.Entry != EmpConfig.Server.TeamOwnGuilds)
+                    v.Entry != EmpConfig.Server.TeamOwnGuilds && v.Entry != EmpConfig.Server.MaxPlayers)
         .Concat([
             (EmpConfig.Server.Teams, (object)true), (EmpConfig.Server.TeamBases, true), (EmpConfig.Server.TeamBoxes, true),
             (EmpConfig.Server.ContainerAccessLog, true), (EmpConfig.Server.AdminExtras, true),
@@ -631,6 +643,8 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.DeleteCharacter, true);
         yield return (EmpConfig.Server.PermadeathRevive, true);
         yield return (EmpConfig.Server.KickKeepOutMinutes, 60);
+        // the safe crowd measured on the public server rules (load test 2026-11-03, MODLOG)
+        yield return (EmpConfig.Server.MaxPlayers, OfficialMaxPlayers);
         yield return (EmpConfig.Server.PublishMods, true);
         // look-only mods (pictures, portraits, sounds, translations) are each player's own (user 2026-10-30)
         yield return (EmpConfig.Server.LookModsOwn, true);

@@ -24,6 +24,7 @@ public static class EmpDisconnectInfo
     public const string MembersOnly = "emp_dc_members_only";
     public const string OwnerSeat = "emp_dc_owner_seat";
     public const string PeerRules = "emp_dc_peer_rules";
+    public const string ServerFull = "emp_dc_server_full";
 
     /// <summary>
     ///     A reason with words of its own (the host's, a count): "key|words", told as "key_why" with them. Steam takes

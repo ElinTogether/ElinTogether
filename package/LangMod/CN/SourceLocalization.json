@@ -1753,5 +1753,16 @@
     "LangGeneral.emp_ui_reject_todo_off.text": "加入方法：在 Elin 标题画面的“模组”菜单中关闭以下模组，重启 Elin，然后再次加入：{0}",
     "LangGeneral.emp_ui_reject_todo_install.text": "加入方法：安装以下模组（Steam 创意工坊），重启 Elin，然后再次加入：{0}",
     "LangGeneral.emp_ui_reject_todo_same.text": "你的模组相同，但数据不一致：请更新模组（Elin 启动时 Steam 会更新它们）。如果仍然不行，请询问主机使用的版本。",
-    "LangGeneral.emp_ui_mods_restart_without.text": "不加载它们并重启"
+    "LangGeneral.emp_ui_mods_restart_without.text": "不加载它们并重启",
+    "LangGeneral.emp_ui_sv_cfg_max_players.text": "最多玩家数",
+    "LangGeneral.emp_ui_sv_desc_max_players.text": "同时在游戏中的最多玩家数（不含主机）。满员时，新玩家会被告知服务器已满；管理员始终可以进入。\n不限：没有上限。\n人数很多时主机的电脑会变慢。",
+    "LangGeneral.emp_ui_sv_opt_max_players_0.text": "不限",
+    "LangGeneral.emp_ui_sv_opt_max_players_8.text": "8 人",
+    "LangGeneral.emp_ui_sv_opt_max_players_16.text": "16 人",
+    "LangGeneral.emp_ui_sv_opt_max_players_32.text": "32 人",
+    "LangGeneral.emp_ui_sv_opt_max_players_50.text": "50 人",
+    "LangGeneral.emp_ui_sv_opt_max_players_75.text": "75 人",
+    "LangGeneral.emp_ui_sv_opt_max_players_100.text": "100 人",
+    "LangGeneral.emp_dc_server_full.text": "服务器已满。请稍后再试。",
+    "LangGeneral.emp_dc_server_full_why.text": "服务器已满（{0} 人）。请稍后再试。"
 }
