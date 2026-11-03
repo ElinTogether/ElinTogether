@@ -122,7 +122,8 @@ internal static class CharaReviveEvent
             return false;
         }
 
-        return NetSession.Instance.Connection is not ElinNetClient || !ElinDelta.IsApplying;
+        // (Transport: while away Connection is null, and the revive the host sent there is applied too, GitHub issue 70)
+        return NetSession.Instance.Transport is not ElinNetClient || !ElinDelta.IsApplying;
     }
 
     [HarmonyPostfix]
@@ -135,8 +136,11 @@ internal static class CharaReviveEvent
 
         // a companion too: the guests drop the revive of anything but a player (above), the host's game is the one
         // that stands it up
+        // (a player away on a map of its own is no active remote chara here, and its revive at a bartender must reach
+        // its game all the same: GitHub issue 70, it stayed dead there)
         if (NetSession.Instance.Connection is not ElinNetHost host ||
-            !(__instance.IsPlayer || (__instance.IsPCFaction && __instance.IsInActiveMap))) {
+            !(__instance.IsPlayer || (PlayerRevive.Reviving && PlayerRevive.IsPlayerChara(__instance)) ||
+              (__instance.IsPCFaction && __instance.IsInActiveMap))) {
             return;
         }
 

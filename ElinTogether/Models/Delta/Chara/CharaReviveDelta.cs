@@ -116,14 +116,24 @@ public class CharaReviveDelta : ElinDelta
             Pos = point;
             host.Delta.AddRemote(this);
         } else {
+            // (reaching a player away on a map of its own: only its own revive, the others are about the host map)
+            if (NetSession.Instance.IsAway && !chara.IsPC) {
+                return;
+            }
+
             // duplicate
             if (chara.isDead) {
-                if (Pos is { IsInActiveMapBounds: true } pos) {
+                // (a point of the host's map means nothing on the map a player away holds)
+                if (Pos is { IsInActiveMapBounds: true } pos && !NetSession.Instance.IsAway) {
                     if (!chara.pos.IsValid) {
                         chara.pos.Set(pos.X, pos.Z);
                     }
 
                     chara.Revive(pos, true);
+                } else if (chara.IsPC && chara.pos is { IsValid: true, IsInBounds: true } fell) {
+                    // GitHub issue 70: revived by a player on another map (no point of this map in the delta). The
+                    // game puts a character back on the map only with a point: where it fell
+                    chara.Revive(fell.Copy(), true);
                 } else {
                     chara.Revive(msg: true);
                 }

@@ -56,6 +56,13 @@ internal static class PlayerRevive
         Point? point = null;
         if (reviver.IsInActiveMap && (dead.IsPC || dead.IsRemotePlayer)) {
             point = reviver.pos.GetNearestPoint(allowChara: false) ?? reviver.pos;
+        } else if (dead.IsPC || (dead.IsRemotePlayer && dead.currentZone == EClass._zone)) {
+            // GitHub issue 70: the reviver is on another map (travelling alone). Chara.Revive puts the character back
+            // on the map only with a point: without one the host stood up nowhere, "You are dead" gone, nobody on
+            // screen until a restart. Where it fell
+            point = dead.pos is { IsValid: true, IsInBounds: true } fell
+                ? fell.GetNearestPoint(allowChara: false) ?? fell.Copy()
+                : EClass._map.GetCenterPos().GetNearestPoint(allowChara: false) ?? EClass._map.GetCenterPos();
         }
 
         EmpLog.Information("Player character {Uid} revived at the bartender by {Reviver}", dead.uid, reviver.uid);
