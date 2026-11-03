@@ -196,7 +196,7 @@ internal partial class ElinNetHost
             // what differs is named to the guest, before the world is sent; the acts still decide who comes in
             Mods = EmpConfig.Server.PublishMods.Value ? Helper.ModList.Reference : null,
             // mods a player may have or not: the guest leaves them out of its report and of its comparison
-            ClientOnlyMods = EmpConfig.Server.ClientOnlyMods.Value,
+            ClientOnlyMods = Helper.ClientOnlyMods.Sent,
         });
     }
 

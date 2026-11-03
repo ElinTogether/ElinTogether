@@ -33,6 +33,21 @@ internal static class ClientOnlyMods
     internal static HashSet<string> Hosted => Parse(EmpConfig.Server.ClientOnlyMods.Value);
 
     /// <summary>
+    ///     The list as told to a joining player: with the Workshop numbers of this game's own listed mods. The host's
+    ///     mod list names a mod by its Workshop number only, so a listed mod the host runs itself (named by its id)
+    ///     was "missing" on every player's side and the join was cancelled to fetch it
+    /// </summary>
+    internal static string Sent
+    {
+        get {
+            var list = Hosted;
+            return string.Join(",", list.Concat(ModList.Here
+                .Where(m => m.Workshop.Length > 0 && Lists(list, m.Id, m.Workshop))
+                .Select(m => m.Workshop)).Distinct());
+        }
+    }
+
+    /// <summary>
     ///     That mod of the list (its id or its Workshop number is in it)
     /// </summary>
     internal static bool Lists(HashSet<string> list, string id, string workshop)
