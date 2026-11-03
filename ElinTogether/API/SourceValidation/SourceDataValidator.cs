@@ -46,11 +46,46 @@ internal class SourceDataValidator : ISourceValidator
         return GetValidation(ValidationConfig.DefaultSources);
     }
 
+    // each table's checksum, made once per run (every row exported to JSON and hashed, on the main thread: it was
+    // made again at every join, on both sides; efficiency audit 2026-11-03). Forgotten when the game imports its
+    // tables again (a language change, a reload) and at each session start (CreateValidation)
+    private readonly Dictionary<string, string> _checksums = [];
+
     public Dictionary<string, string> GetValidation(IEnumerable<string> sourceNames)
     {
-        return sourceNames
-            .Distinct()
-            .ToDictionary(s => s, GenerateSourceChecksum);
+        var result = new Dictionary<string, string>();
+        foreach (var name in sourceNames.Distinct()) {
+            result[name] = Checksum(name);
+        }
+
+        return result;
+    }
+
+    private string Checksum(string sourceType)
+    {
+        lock (_checksums) {
+            if (!_checksums.TryGetValue(sourceType, out var sha)) {
+                _checksums[sourceType] = sha = GenerateSourceChecksum(sourceType);
+            }
+
+            return sha;
+        }
+    }
+
+    internal void Invalidate()
+    {
+        lock (_checksums) {
+            _checksums.Clear();
+        }
+    }
+
+    /// <summary>
+    ///     The game imported its tables again: the checksums are made again at the next ask
+    /// </summary>
+    internal static void SubscribeReloads()
+    {
+        BaseModManager.SubscribeEvent("elin.source.imported", (object _) => Default.Invalidate());
+        BaseModManager.SubscribeEvent("elin.source.lang_set", (object _) => Default.Invalidate());
     }
 
     public static string GenerateSourceChecksum(string sourceType)

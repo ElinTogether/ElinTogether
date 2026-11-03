@@ -67,9 +67,36 @@ internal class PluginDataValidator : ISourceValidator
             EmpLog.Debug("Plugins of client-side mods left out of the plugin check: {Plugins}", skipped.ToList());
         }
 
+        foreach (var (modId, hash) in AllHashes()) {
+            if (!skipped.Contains(modId)) {
+                result[modId] = hash;
+            }
+        }
+
+        return result;
+    }
+
+    // every loaded plugin's DLL hashed once per run (read from the disk at each join before, on the main thread;
+    // efficiency audit 2026-11-03), whatever the client-side list: that list only leaves some out. Made again at
+    // each session start (CreateValidation)
+    private Dictionary<string, string>? _hashes;
+
+    internal void Invalidate()
+    {
+        _hashes = null;
+    }
+
+    private Dictionary<string, string> AllHashes()
+    {
+        if (_hashes is { } known) {
+            return known;
+        }
+
+        var result = new Dictionary<string, string>();
+        var failed = false;
         foreach (var plugin in TypeQualifier.Plugins) {
             var modId = plugin.Info.Metadata.GUID;
-            if (ValidationConfig.ExcludedPlugins.Contains(modId) || skipped.Contains(modId)) {
+            if (ValidationConfig.ExcludedPlugins.Contains(modId)) {
                 continue;
             }
 
@@ -84,7 +111,13 @@ internal class PluginDataValidator : ISourceValidator
             } catch (Exception ex) {
                 EmpLog.Warning("Failed to hash plugin {ModId}: {Error}", modId, ex.Message);
                 result[modId] = $"error:{ex.Message}";
+                failed = true;
             }
+        }
+
+        // (a file that could not be read is tried again at the next ask, not kept as "error" for the whole run)
+        if (!failed) {
+            _hashes = result;
         }
 
         return result;

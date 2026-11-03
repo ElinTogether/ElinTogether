@@ -60,9 +60,24 @@ public class FileDataValidator(IEnumerable<string> filePaths) : ISourceValidator
                 continue;
             }
 
+            lock (Known) {
+                if (Known.TryGetValue(fullPath.FullName, out var known)) {
+                    result[path] = known;
+                    continue;
+                }
+            }
+
             try {
                 using var fs = File.Open(fullPath.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                result[path] = fs.GetSha256Code();
+                var hash = fs.GetSha256Code();
+                result[path] = hash;
+                lock (Known) {
+                    if (Known.Count >= MaxKnown) {
+                        Known.Clear();
+                    }
+
+                    Known[fullPath.FullName] = hash;
+                }
             } catch (Exception ex) {
                 EmpLog.Warning(ex, "Failed to hash file {FilePath}", path);
                 result[path] = "error";
@@ -70,6 +85,19 @@ public class FileDataValidator(IEnumerable<string> filePaths) : ISourceValidator
         }
 
         return result;
+    }
+
+    // each file read and hashed once per run (at every join before, on the main thread; efficiency audit
+    // 2026-11-03), by its full path: a missing or unreadable one is looked for again at the next ask. Forgotten at
+    // each session start (CreateValidation), bounded (the paths come from the host on a guest's side)
+    private static readonly Dictionary<string, string> Known = [];
+    private const int MaxKnown = 2048;
+
+    internal static void Invalidate()
+    {
+        lock (Known) {
+            Known.Clear();
+        }
     }
 
     private const int MaxPaths = 512;

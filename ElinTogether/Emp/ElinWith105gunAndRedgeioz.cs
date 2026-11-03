@@ -112,6 +112,7 @@ internal sealed class EmpMod : BaseUnityPlugin
 
         EmpPop.InitLogger();
         EmpConfig.Bind();
+        API.SourceValidation.SourceDataValidator.SubscribeReloads();
 
         // a hidden server lets go of its single-instance mutex, so that the game of the player who started it, or
         // one started again after a crash, is not held up by it (see SingleInstance)

@@ -15,6 +15,11 @@ public partial class ElinNetBase
         ValidFlags = ValidationConfig.GetConfiguredFlags();
         ValidationFilePaths = ValidationConfig.GetConfiguredFilePaths();
 
+        // made again here, then kept for every join of the session (the validators keep them)
+        SourceDataValidator.Default.Invalidate();
+        PluginDataValidator.Default.Invalidate();
+        FileDataValidator.Invalidate();
+
         var oldList = SourceList;
         SourceList = SourceDataValidator.Default.GetValidation();
         PluginHashList = PluginDataValidator.Default.GetValidation();
