@@ -11,7 +11,7 @@ namespace ElinTogether.Net;
 
 internal partial class ElinNetHost
 {
-    public readonly Dictionary<int, Chara> ActiveRemoteCharas = [];
+    public readonly RemoteCharaMap ActiveRemoteCharas = [];
 
     /// <summary>
     ///     When each player's link dropped without anyone leaving (see <see cref="Common.EmpDisconnectInfo.IsLinkLost" />):

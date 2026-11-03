@@ -328,8 +328,8 @@ internal partial class ElinNetHost
             return;
         }
 
-        // (a set: ContainsValue walked every player for every character standing on a tile)
-        var remotes = new HashSet<Chara>(ActiveRemoteCharas.Values);
+        // (one lookup per character standing on a tile: RemoteCharaMap keeps its characters in a set)
+        var remotes = ActiveRemoteCharas;
         var size = _map.Size;
         for (var x = 0; x < size; ++x) {
             for (var z = 0; z < size; ++z) {
@@ -340,7 +340,7 @@ internal partial class ElinNetHost
                 var seen = 0;
                 for (var i = list.Count - 1; i >= 0; --i) {
                     var c = list[i];
-                    if (!remotes.Contains(c)) {
+                    if (!remotes.ContainsValue(c)) {
                         continue;
                     }
 
