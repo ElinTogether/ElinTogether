@@ -295,6 +295,50 @@ internal static class EmpServer
         Tell("running");
     }
 
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct ProcessMemoryCounters
+    {
+        public uint Size;
+        public uint PageFaultCount;
+        public UIntPtr PeakWorkingSetSize;
+        public UIntPtr WorkingSetSize;
+        public UIntPtr QuotaPeakPagedPoolUsage;
+        public UIntPtr QuotaPagedPoolUsage;
+        public UIntPtr QuotaPeakNonPagedPoolUsage;
+        public UIntPtr QuotaNonPagedPoolUsage;
+        public UIntPtr PagefileUsage;
+        public UIntPtr PeakPagefileUsage;
+        public UIntPtr PrivateUsage;
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", EntryPoint = "K32GetProcessMemoryInfo")]
+    private static extern bool GetProcessMemoryInfo(IntPtr process, out ProcessMemoryCounters counters, uint size);
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern IntPtr GetCurrentProcess();
+
+    /// <summary>
+    ///     The bytes the process holds of its own (Windows "private bytes"). Unity's Mono answers 0 to
+    ///     Process.PrivateMemorySize64 on Windows, so the memory line always said "private 0 MB": asked of Windows
+    ///     itself there, Mono's answer elsewhere
+    /// </summary>
+    internal static long PrivateBytes()
+    {
+        if (Environment.OSVersion.Platform == PlatformID.Win32NT) {
+            try {
+                var size = (uint)System.Runtime.InteropServices.Marshal.SizeOf<ProcessMemoryCounters>();
+                if (GetProcessMemoryInfo(GetCurrentProcess(), out var counters, size)) {
+                    return (long)counters.PrivateUsage.ToUInt64();
+                }
+            } catch (Exception) {
+                // (no such entry: Mono's answer below)
+            }
+        }
+
+        using var self = System.Diagnostics.Process.GetCurrentProcess();
+        return self.PrivateMemorySize64;
+    }
+
     private const float MemoryLogSeconds = 600f;
     private static float _nextMemoryLog;
 
@@ -310,10 +354,7 @@ internal static class EmpServer
 
         _nextMemoryLog = Time.unscaledTime + MemoryLogSeconds;
         try {
-            long privateBytes;
-            using (var self = System.Diagnostics.Process.GetCurrentProcess()) {
-                privateBytes = self.PrivateMemorySize64;
-            }
+            var privateBytes = PrivateBytes();
 
             int passes = 0, batches = 0;
             foreach (var pass in Resources.FindObjectsOfTypeAll<MeshPass>()) {
