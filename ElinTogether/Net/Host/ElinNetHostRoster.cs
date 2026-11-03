@@ -19,6 +19,39 @@ internal partial class ElinNetHost
     private int _rosterKey;
     private float _rosterSentAt = float.MinValue;
 
+    // a Steam name is asked of the Steam client (a call to another process: 0.15 ms each on the bench, and the roster
+    // job took 200 ms and more a second while that client was busy, net_metrics 2026-11-01/02): asked again for the
+    // roster at this pace only, so a new Steam name shows within half a minute
+    private const float SteamNameSeconds = 30f;
+
+    // a name Steam does not know yet (empty, "[unknown]") is asked again sooner
+    private const float UnknownSteamNameSeconds = 5f;
+    private static readonly Dictionary<ulong, (string Name, float At)> _steamNames = [];
+
+    /// <summary>For the bench: how many Steam names the roster asked of the Steam client</summary>
+    internal static int SteamNamesAsked;
+
+    private static string SteamName(HeathenEngineering.SteamworksIntegration.UserData user)
+    {
+        var id = (ulong)user;
+        var now = Time.realtimeSinceStartup;
+        if (_steamNames.TryGetValue(id, out var kept) && now >= kept.At &&
+            now - kept.At < (Known(kept.Name) ? SteamNameSeconds : UnknownSteamNameSeconds)) {
+            return kept.Name;
+        }
+
+        if (_steamNames.Count > 512) {
+            _steamNames.Clear();
+        }
+
+        SteamNamesAsked++;
+        var name = user.Name ?? "";
+        _steamNames[id] = (name, now);
+        return name;
+    }
+
+    private static bool Known(string name) => name.Length > 0 && name != "[unknown]";
+
     internal List<RosterEntry> BuildRoster()
     {
         var list = new List<RosterEntry>();
@@ -27,7 +60,7 @@ internal partial class ElinNetHost
             list.Add(new() {
                 Peer = 0,
                 Steam = self is null ? 0 : (ulong)self.User,
-                Name = self?.User.Name ?? "",
+                Name = self is null ? "" : SteamName(self.User),
                 CharaUid = pc.uid,
                 CharaName = pc.Name,
                 Level = pc.LV,
@@ -37,7 +70,7 @@ internal partial class ElinNetHost
             });
         }
 
-        foreach (var peer in Socket.Peers.ToArray()) {
+        foreach (var peer in Socket.Peers) {
             if (PlayerChara(peer.Id) is not { } chara || Helper.ServerAvatar.IsUid(chara.uid)) {
                 // (still choosing or loading its character: not playing yet)
                 continue;
@@ -49,7 +82,7 @@ internal partial class ElinNetHost
             list.Add(new() {
                 Peer = peer.Id,
                 Steam = (ulong)peer.User,
-                Name = peer.User.Name ?? "",
+                Name = SteamName(peer.User),
                 CharaUid = chara.uid,
                 CharaName = chara.Name,
                 Level = chara.LV,
