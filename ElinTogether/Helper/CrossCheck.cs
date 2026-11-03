@@ -96,7 +96,7 @@ internal static class CrossCheck
             try {
                 then();
             } catch (Exception ex) {
-                EmpLog.Debug(ex, "Cross-check: an answer could not be used");
+                EmpLog.Information(ex, "Cross-check: an answer could not be used");
             }
         }
 
@@ -217,7 +217,7 @@ internal static class CrossCheck
                         }
                     }
                 } catch (Exception ex) {
-                    EmpLog.Debug(ex, "Cross-check: the world copy could not be read");
+                    EmpLog.Information(ex, "Cross-check: the world copy could not be read");
                 }
 
                 _answered.Enqueue(() => {
@@ -236,7 +236,7 @@ internal static class CrossCheck
             });
         } catch (Exception ex) {
             _reading = false;
-            EmpLog.Debug(ex, "Cross-check: the copy could not be checked");
+            EmpLog.Information(ex, "Cross-check: the copy could not be checked");
         }
     }
 
@@ -493,7 +493,7 @@ internal static class CrossCheck
                     $"{cleared} lands of existing owners cleared at once");
             }
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Cross-check: the land book could not be compared");
+            EmpLog.Information(ex, "Cross-check: the land book could not be compared");
         }
     }
 
@@ -514,7 +514,7 @@ internal static class CrossCheck
                     $"{extra.Length} admin(s) the signed list does not have");
             }
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Cross-check: the admin list could not be compared");
+            EmpLog.Information(ex, "Cross-check: the admin list could not be compared");
         }
     }
 
@@ -637,7 +637,7 @@ internal static class CrossCheck
 
             File.AppendAllText(file, evidence.ToString(Formatting.None) + "\n");
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
-            EmpLog.Debug(ex, "Cross-check: the evidence could not be written");
+            EmpLog.Information(ex, "Cross-check: the evidence could not be written");
         }
     }
 }

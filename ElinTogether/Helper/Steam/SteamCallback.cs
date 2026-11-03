@@ -24,7 +24,7 @@ internal class SteamCallback<T> where T : struct
             try {
                 OnEvent?.Invoke(callbackStruct);
             } catch (Exception ex) {
-                EmpLog.Verbose(ex, "Exception at steam callback {CallbackName}",
+                EmpLog.Information(ex, "Exception at steam callback {CallbackName}",
                     typeof(T).FullName);
                 // noexcept
             }

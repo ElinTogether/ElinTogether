@@ -894,7 +894,7 @@ internal static class TeamEmblemBaker
                 result = EmblemSprites.Fit(cut, box.width, box.height, SourceSide);
             }
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Team emblem: the sprite of {Thing} could not be read", thing);
+            EmpLog.Information(e, "Team emblem: the sprite of {Thing} could not be read", thing);
         }
 
         if (_sources.Count > SourceCapacity) {

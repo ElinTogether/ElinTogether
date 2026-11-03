@@ -356,7 +356,7 @@ internal static class WorldAdmin
             EmpMod.Instance.StartCoroutine(Wait(done, work));
         } catch (Exception ex) {
             Busy = false;
-            EmpLog.Debug(ex, "World admin: the request could not start");
+            EmpLog.Information(ex, "World admin: the request could not start");
         }
     }
 

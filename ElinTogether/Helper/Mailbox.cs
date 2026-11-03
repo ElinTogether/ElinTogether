@@ -856,7 +856,7 @@ internal static class Mailbox
         try {
             thing = letter.Items[index] is { Length: > 0 } bytes ? new LZ4Bytes { Bytes = bytes }.Decompress<Thing>() : null;
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "A stack of letter {Id} could not be read", letter.Id);
+            EmpLog.Information(ex, "A stack of letter {Id} could not be read", letter.Id);
             thing = null;
         }
 

@@ -75,7 +75,7 @@ internal static class SnapshotStub
                 ? AccessTools.PropertyGetter(target.declaringType, target.methodName)
                 : AccessTools.Method(target.declaringType, target.methodName, target.argumentTypes);
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Snapshot stub of {PatchClass} not checked", type.FullName);
+            EmpLog.Information(ex, "Snapshot stub of {PatchClass} not checked", type.FullName);
         }
     }
 
@@ -160,7 +160,7 @@ internal static class SnapshotStub
                 }
             }
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Snapshot stubs not checked");
+            EmpLog.Information(ex, "Snapshot stubs not checked");
         }
     }
 }

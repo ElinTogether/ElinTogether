@@ -68,7 +68,7 @@ internal static class EmblemText
                 }
             }
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Team emblem: the text {Text} could not be drawn", layer.Text);
+            EmpLog.Information(e, "Team emblem: the text {Text} could not be drawn", layer.Text);
         }
 
         if (_cache.Count >= Capacity) {

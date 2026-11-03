@@ -40,7 +40,7 @@ internal static class FriendGames
             }
         } catch (Exception ex) {
             // (no Steam: no friends to list)
-            EmpLog.Debug(ex, "The friends' games could not be listed");
+            EmpLog.Information(ex, "The friends' games could not be listed");
         }
 
         return games;

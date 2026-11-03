@@ -29,7 +29,7 @@ internal sealed class ChatLine : MonoBehaviour, IPointerEnterHandler, IPointerEx
                 try {
                     thing.WriteNote(tip.note);
                 } catch (Exception ex) {
-                    EmpLog.Debug(ex, "Chat item link tooltip of {Id} could not be written", thing.id);
+                    EmpLog.Information(ex, "Chat item link tooltip of {Id} could not be written", thing.id);
                     tip.note.Clear();
                     tip.note.AddText(thing.Name);
                     tip.note.Build();

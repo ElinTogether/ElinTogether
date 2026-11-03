@@ -225,7 +225,7 @@ internal static class DrawingStore
             }
         } catch (System.Exception e) {
             _broken = true;
-            EmpLog.Debug(e, "Drawings: {Path} could not be read", path);
+            EmpLog.Information(e, "Drawings: {Path} could not be read", path);
         }
     }
 
@@ -245,7 +245,7 @@ internal static class DrawingStore
 
             File.Move(tmp, FilePath);
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Drawings: {Path} could not be written", FilePath);
+            EmpLog.Information(e, "Drawings: {Path} could not be written", FilePath);
         }
     }
 
@@ -314,7 +314,7 @@ internal static class DrawingDrafts
                 ? File.ReadAllLines(FilePath).Select(l => l.Split(['\t'], 3)).Where(p => p.Length == 3).ToList()
                 : [];
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Drawings: the drafts could not be read");
+            EmpLog.Information(e, "Drawings: the drafts could not be read");
             return null;
         }
     }
@@ -339,7 +339,7 @@ internal static class DrawingDrafts
 
             File.Move(tmp, FilePath);
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Drawings: the drafts could not be written");
+            EmpLog.Information(e, "Drawings: the drafts could not be written");
         }
     }
 
@@ -495,7 +495,7 @@ internal static class StickerPrefs
                 }
             }
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Drawings: the stickers could not be read");
+            EmpLog.Information(e, "Drawings: the stickers could not be read");
         }
     }
 
@@ -511,7 +511,7 @@ internal static class StickerPrefs
 
             File.Move(tmp, FilePath);
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Drawings: the stickers could not be written");
+            EmpLog.Information(e, "Drawings: the stickers could not be written");
         }
     }
 }

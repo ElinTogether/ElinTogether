@@ -75,7 +75,7 @@ internal static class EmpServer
         } catch (ArgumentException) {
             return true;
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Server: the parent process could not be looked at");
+            EmpLog.Information(ex, "Server: the parent process could not be looked at");
             return false;
         }
     }
@@ -106,7 +106,7 @@ internal static class EmpServer
             Directory.CreateDirectory(_folder);
             File.WriteAllLines(Path.Combine(_folder, "server.txt"), ["state=loading", "save=" + _save]);
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Server: could not say it is loading");
+            EmpLog.Information(ex, "Server: could not say it is loading");
         }
     }
 
@@ -337,7 +337,7 @@ internal static class EmpServer
                 ReplayBuffer.FrameCount, ChatLog.Entries.Count, ActivityJournal.ToldCount,
                 NetSession.Instance.CurrentPlayers.Count, DateTime.Now - _started);
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Server memory could not be measured");
+            EmpLog.Information(ex, "Server memory could not be measured");
         }
     }
 

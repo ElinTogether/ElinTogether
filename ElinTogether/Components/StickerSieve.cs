@@ -40,7 +40,7 @@ internal static class StickerSieve
         try {
             complete = Judge(list, clock);
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Sticker sieve: the pictures could not be judged");
+            EmpLog.Information(e, "Sticker sieve: the pictures could not be judged");
             complete = true;
         }
 
@@ -153,7 +153,7 @@ internal static class StickerSieve
             copy.Apply(false, false);
             return copy.GetPixels32();
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Sticker sieve: the texture {Name} could not be read", tex.name);
+            EmpLog.Information(e, "Sticker sieve: the texture {Name} could not be read", tex.name);
             return null;
         } finally {
             RenderTexture.active = previous;

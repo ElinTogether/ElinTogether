@@ -241,7 +241,7 @@ internal partial class TabChat
                 var tex = Drawing.Bake(drawing);
                 sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
             } catch (Exception e) {
-                EmpLog.Debug(e, "Chat: a drawing of My drawings could not be baked");
+                EmpLog.Information(e, "Chat: a drawing of My drawings could not be baked");
                 continue;
             }
 

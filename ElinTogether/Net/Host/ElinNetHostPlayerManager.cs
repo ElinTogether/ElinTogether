@@ -368,7 +368,7 @@ internal partial class ElinNetHost
         try {
             return chara.GetIdPortrait() ?? "";
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "No portrait for chara {Uid}", chara.uid);
+            EmpLog.Information(ex, "No portrait for chara {Uid}", chara.uid);
             return "";
         }
     }

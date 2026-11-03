@@ -47,7 +47,7 @@ internal partial class ElinNetClient
         try {
             return Portrait.modPortraits.GetItem(id, true)?.GetObject();
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "No picture for portrait {Id}", id);
+            EmpLog.Information(ex, "No picture for portrait {Id}", id);
             return null;
         }
     }

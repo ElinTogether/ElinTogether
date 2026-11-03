@@ -98,7 +98,7 @@ public class DesyncReportDelta : ElinDelta
         try {
             NetDesync.Explain(host, this, Cut(ZoneFullName));
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Map checksum not explained");
+            EmpLog.Information(ex, "Map checksum not explained");
         }
     }
 
@@ -261,7 +261,7 @@ internal static class NetDesync
                 LocalMix = localMix,
             };
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Map checksum not computed");
+            EmpLog.Information(ex, "Map checksum not computed");
             return null;
         }
     }
@@ -287,7 +287,7 @@ internal static class NetDesync
         try {
             CompareCore(host);
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Map checksum not compared");
+            EmpLog.Information(ex, "Map checksum not compared");
         }
     }
 

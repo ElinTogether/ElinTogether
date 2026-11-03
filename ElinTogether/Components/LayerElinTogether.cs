@@ -116,7 +116,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             JournalTabsOnTheLeft();
         }
         catch (System.Exception e) {
-            EmpLog.Debug(e, "The Journal-style tabs could not be placed");
+            EmpLog.Information(e, "The Journal-style tabs could not be placed");
         }
 
         Decorate();
@@ -180,7 +180,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             }
         }
         catch (System.Exception e) {
-            EmpLog.Debug(e, "The window art of the character sheet could not be copied");
+            EmpLog.Information(e, "The window art of the character sheet could not be copied");
         }
 
         // (the two putits keep their shape in the caption's square)

@@ -130,7 +130,7 @@ internal static class ReplayBuffer
                 try {
                     Keep(at, ImageConversion.EncodeArrayToJPG(rgba, GraphicsFormat.R8G8B8A8_SRGB, w, h, 0, Quality));
                 } catch (Exception ex) {
-                    EmpLog.Debug(ex, "A replay picture could not be made");
+                    EmpLog.Information(ex, "A replay picture could not be made");
                 } finally {
                     Interlocked.Decrement(ref _pending);
                 }
@@ -206,7 +206,7 @@ internal static class ReplayBuffer
                 read.Apply(false);
                 return read.EncodeToJPG(PictureQuality);
             } catch (Exception ex) {
-                EmpLog.Debug(ex, "The game picture of {At} could not be read", _gameAt);
+                EmpLog.Information(ex, "The game picture of {At} could not be read", _gameAt);
             } finally {
                 RenderTexture.active = before;
                 UnityEngine.Object.Destroy(read);

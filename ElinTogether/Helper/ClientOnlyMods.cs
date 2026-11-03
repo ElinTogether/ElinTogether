@@ -96,7 +96,7 @@ internal static class ClientOnlyMods
                     guids.Add(guid);
                 }
             } catch (Exception ex) {
-                EmpLog.Debug(ex, "Could not place the plugin {Guid} in a mod folder", guid);
+                EmpLog.Information(ex, "Could not place the plugin {Guid} in a mod folder", guid);
             }
         }
 
@@ -120,7 +120,7 @@ internal static class ClientOnlyMods
             return dir.GetFiles("*", SearchOption.AllDirectories)
                 .Any(file => file.Extension.ToLowerInvariant() is ".xlsx" or ".xls" or ".z");
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Could not read the files of the mod {Mod}", package.id);
+            EmpLog.Information(ex, "Could not read the files of the mod {Mod}", package.id);
             return false;
         }
     }

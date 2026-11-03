@@ -283,7 +283,7 @@ internal partial class ElinNetHost
         try {
             quest = data.Decompress<Quest>();
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Shared quest {QuestUid} from player {CharaUid} could not be read", questUid, charaUid);
+            EmpLog.Information(ex, "Shared quest {QuestUid} from player {CharaUid} could not be read", questUid, charaUid);
             return;
         }
 

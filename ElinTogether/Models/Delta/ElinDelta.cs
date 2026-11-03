@@ -413,7 +413,7 @@ public abstract class ElinDelta : EClass
         } catch (Exception ex) {
             // a check that fails is a refusal like any other: logged, and the delta dropped where strangers come in
             // (security audit 2026-10-27, item 14: a forged delta that made its check throw went through unchecked)
-            EmpLog.Debug(ex, "Permit check of {DeltaType} threw", GetType().Name);
+            EmpLog.Information(ex, "Permit check of {DeltaType} threw", GetType().Name);
             reason = "its check failed";
         }
 
@@ -480,7 +480,7 @@ public abstract class ElinDelta : EClass
             try {
                 OnHostRefused(permitHost);
             } catch (Exception ex) {
-                EmpLog.Debug(ex, "Sending back after a refused {DeltaType} threw", GetType().Name);
+                EmpLog.Information(ex, "Sending back after a refused {DeltaType} threw", GetType().Name);
             }
 
             return;

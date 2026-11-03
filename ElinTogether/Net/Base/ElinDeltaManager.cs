@@ -228,7 +228,7 @@ public class ElinDeltaManager
             EmpLog.Warning(ex, "Exception at processing delta {DeltaType}, further ones in the debug journal\n{@Delta}",
                 deltaType, delta);
         } else {
-            EmpLog.Debug(ex, "Exception at processing delta {DeltaType}\n{@Delta}",
+            EmpLog.Information(ex, "Exception at processing delta {DeltaType}\n{@Delta}",
                 deltaType, delta);
         }
 

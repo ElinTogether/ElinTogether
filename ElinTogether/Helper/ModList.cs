@@ -129,7 +129,7 @@ internal static class ModList
 
             return true;
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Could not read the files of the mod {Mod}", package.id);
+            EmpLog.Information(ex, "Could not read the files of the mod {Mod}", package.id);
             return false;
         }
     }

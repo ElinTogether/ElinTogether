@@ -40,7 +40,7 @@ public class TickScheduler
                 if (sub.Failures++ == 0) {
                     EmpLog.Warning(ex, "Exception at tick update {TickHandler}", sub.Update.Method.Name);
                 } else {
-                    EmpLog.Debug(ex, "Exception at tick update {TickHandler} ({Failures} so far)", sub.Update.Method.Name, sub.Failures);
+                    EmpLog.Information(ex, "Exception at tick update {TickHandler} ({Failures} so far)", sub.Update.Method.Name, sub.Failures);
                 }
             }
 

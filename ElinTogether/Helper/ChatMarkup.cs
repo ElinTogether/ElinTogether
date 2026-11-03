@@ -186,7 +186,7 @@ internal static class ChatMarkup
             thing.SetNum(Mathf.Clamp(int.Parse(code.Groups[6].Value), 1, 999999));
             thing.c_IDTState = 0;
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Chat item link {Code} could not be shown", code.Value);
+            EmpLog.Information(ex, "Chat item link {Code} could not be shown", code.Value);
             Failed(code.Value);
             return null;
         }

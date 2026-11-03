@@ -334,7 +334,7 @@ internal static class HiddenServer
                 _process.Kill();
             }
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Hidden server: the process could not be ended");
+            EmpLog.Information(ex, "Hidden server: the process could not be ended");
         }
 
         _process = null;

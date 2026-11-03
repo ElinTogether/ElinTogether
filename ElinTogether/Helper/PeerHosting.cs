@@ -381,7 +381,7 @@ internal sealed class StorePeerHosting : IPeerHosting
             }
         } catch (Exception ex) {
             ok = false;
-            EmpLog.Debug(ex, "Peer-hosted world: the signed documents could not be read");
+            EmpLog.Information(ex, "Peer-hosted world: the signed documents could not be read");
         } finally {
             lock (_gate) {
                 _refreshing = false;

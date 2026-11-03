@@ -27,7 +27,7 @@ internal static class ChatPictureView
             try {
                 return Drawing.Bake(drawing);
             } catch (Exception e) {
-                EmpLog.Debug(e, "Chat: a drawing of {W}x{H} could not be baked", drawing.Art.W, drawing.Art.H);
+                EmpLog.Information(e, "Chat: a drawing of {W}x{H} could not be baked", drawing.Art.W, drawing.Art.H);
                 return null;
             }
         }
@@ -165,7 +165,7 @@ internal sealed class LayerChatPicture : YKLayer<LayerCreationData>
         try {
             YK.CreateLayer<LayerChatPicture, LayerCreationData>(new(""));
         } catch (Exception e) {
-            EmpLog.Debug(e, "Chat: the picture's window could not be opened");
+            EmpLog.Information(e, "Chat: the picture's window could not be opened");
         } finally {
             // (taken by the window as it was built; left when it never was)
             if (_pending != null) {

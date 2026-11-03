@@ -57,7 +57,7 @@ internal static class ChatImages
         try {
             return Drawing.Parse(text) is { Art.W: <= MaxSide, Art.H: <= MaxSide } d ? d : null;
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Chat: a drawing of {Length} characters could not be read", text.Length);
+            EmpLog.Information(e, "Chat: a drawing of {Length} characters could not be read", text.Length);
             return null;
         }
     }

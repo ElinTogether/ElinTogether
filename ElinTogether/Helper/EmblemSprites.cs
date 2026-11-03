@@ -101,7 +101,7 @@ internal static class EmblemSprites
             };
             return known ? code + ":" + id : null;
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Team emblem: {Id} could not be looked up", value);
+            EmpLog.Information(e, "Team emblem: {Id} could not be looked up", value);
             return null;
         }
     }
@@ -135,7 +135,7 @@ internal static class EmblemSprites
                 _ => null,
             };
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Team emblem: the picture of {Id} could not be read", typed);
+            EmpLog.Information(e, "Team emblem: the picture of {Id} could not be read", typed);
             return null;
         }
     }

@@ -310,7 +310,7 @@ internal static class WorldHandover
                 }
             }, world);
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "The games that host this world could not be listed");
+            EmpLog.Information(ex, "The games that host this world could not be listed");
             // noexcept
         }
     }

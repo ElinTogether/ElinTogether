@@ -885,7 +885,7 @@ internal static class PeerKeeper
         try {
             host.RunOrder("say " + "emp_peer_rollback".lang());
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "Peer-hosted world: the rollback could not be announced");
+            EmpLog.Information(ex, "Peer-hosted world: the rollback could not be announced");
         }
     }
 

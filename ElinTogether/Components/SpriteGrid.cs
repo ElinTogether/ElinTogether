@@ -37,7 +37,7 @@ internal static class SpriteGrid
             try {
                 return Get();
             } catch (System.Exception e) {
-                EmpLog.Debug(e, "Emblem grid: the picture of {Id} could not be read", Value);
+                EmpLog.Information(e, "Emblem grid: the picture of {Id} could not be read", Value);
                 return null;
             }
         }
@@ -76,7 +76,7 @@ internal static class SpriteGrid
                     _ => EmblemSprites.List(code).ToList(),
                 });
             } catch (System.Exception e) {
-                EmpLog.Debug(e, "Emblem grid: the source {Code} could not be listed", code);
+                EmpLog.Information(e, "Emblem grid: the source {Code} could not be listed", code);
             }
         }
 

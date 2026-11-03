@@ -186,7 +186,7 @@ internal static class EmblemPaint
 
             return (px, w, h);
         } catch (System.Exception e) {
-            EmpLog.Debug(e, "Team emblem: a paint layer could not be read");
+            EmpLog.Information(e, "Team emblem: a paint layer could not be read");
             return null;
         }
     }

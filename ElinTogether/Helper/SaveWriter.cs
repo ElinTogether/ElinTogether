@@ -168,7 +168,7 @@ internal static class SaveWriter
                 File.WriteAllBytes(path + (i == 0 ? "" : ".b" + i), data);
                 return;
             } catch (Exception ex) when (i < 4) {
-                EmpLog.Debug(ex, "Save: {Path} not written, next name", path);
+                EmpLog.Information(ex, "Save: {Path} not written, next name", path);
             }
         }
     }

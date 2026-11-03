@@ -60,13 +60,13 @@ internal static class UpdateCheck
                 }
             }
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "The kept update answer could not be read");
+            EmpLog.Information(ex, "The kept update answer could not be read");
         }
 
         try {
             EmpMod.Instance.StartCoroutine(Ask());
         } catch (Exception ex) {
-            EmpLog.Debug(ex, "The update check could not start");
+            EmpLog.Information(ex, "The update check could not start");
         }
     }
 

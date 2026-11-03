@@ -56,7 +56,7 @@ internal class TabPatchNotes : TabEmpBase
             return list is { Count: > 0 } ? list : null;
         }
         catch (System.Exception e) {
-            EmpLog.Debug(e, "The patch notes could not be read");
+            EmpLog.Information(e, "The patch notes could not be read");
             return null;
         }
     }
