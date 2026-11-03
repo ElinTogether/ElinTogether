@@ -89,13 +89,29 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
-    ///     To everyone, as Broadcast, except that a player away from the host map gets the other packet (none when
-    ///     null). Each one serialized once; the same reliable link per player, so the order does not change
+    ///     A player past its handshake (the host accepted it). Before that its game drops snapshots, deltas and the
+    ///     player list (ElinNetClient.ShouldReceiveHostPacket), so they are not sent to it at all
+    /// </summary>
+    private bool IsPlaying(ISteamNetPeer peer)
+    {
+        return _handshakes.TryGetValue(peer.Id, out var state) && state.Phase == NetHandshakePhase.Joined;
+    }
+
+    /// <summary>
+    ///     To every playing player, as Broadcast, except that a player away from the host map gets the other packet
+    ///     (none when null). Each one serialized once; the same reliable link per player, so the order does not change.
+    ///     A player still in its handshake gets nothing (see IsPlaying; the session rules, which it reads then, are
+    ///     sent by Broadcast, not here)
     /// </summary>
     private void SendByMap<T>(T onMap, Func<T?> offMap) where T : class
     {
         var peers = Socket.Peers;
-        if (!peers.Any(IsOffHostMap)) {
+        var everyone = true;
+        for (var i = 0; i < peers.Count && everyone; i++) {
+            everyone = IsPlaying(peers[i]) && !IsOffHostMap(peers[i]);
+        }
+
+        if (everyone) {
             Broadcast(onMap);
             return;
         }
@@ -104,6 +120,10 @@ internal partial class ElinNetHost
         byte[]? lean = null;
         var leanBuilt = false;
         foreach (var peer in peers) {
+            if (!IsPlaying(peer)) {
+                continue;
+            }
+
             if (IsOffHostMap(peer)) {
                 if (!leanBuilt) {
                     leanBuilt = true;
