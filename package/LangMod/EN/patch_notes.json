@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.26.1852",
+    "date": "2026-11-03",
+    "title": "public server fixes, drawings in the in-game chat, editor upgrades, issues #68 #69",
+    "bullets": [
+      "Public server: you no longer arrive on top of the server's own character.",
+      "Public server rules: pictures and drawings in the chat and duel bets are on.",
+      "Drawings in the chat: a drawing shows in the in-game chat over the game, not only in the Multiplayer menu.",
+      "Drawing editor: a Shapes tool (star, triangle, diamond, hexagon, polygon, shield, banner, cross...), Shift for squares, circles and straight lines, mirror painting, tools two per row (nothing cut off in a small window), sticker sizes 1x to 4x, bigger sticker cells, cleaner sticker tabs (useless pieces removed, new Scenery tab), and the mouse wheel scrolls the sticker list even over a picture.",
+      "Multiplayer menu: the mouse wheel no longer changes the tab.",
+      "#68: when a player is dead (permadeath with revive), turn-based rounds no longer wait for them: the others can walk.",
+      "#69: adding a portrait in the drawing editor no longer breaks the editor."
+    ]
+  },
+  {
     "version": "0.26.1829",
     "date": "2026-11-02",
     "title": "drawing editor window, stickers, New world from the Play tab, issues #56 #65 #66 #67, release-build fixes",
