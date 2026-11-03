@@ -27,7 +27,8 @@ internal static class LeaveSpotArrival
     [HarmonyPatch(typeof(Zone), nameof(Zone.Activate))]
     internal static void OnActivate(Zone __instance)
     {
-        if (_expected is not { } spot || NetSession.Instance.Connection is not ElinNetClient) {
+        // (Transport: the world map is reached as an away player, whose Connection is null by then)
+        if (_expected is not { } spot || NetSession.Instance.Transport is not ElinNetClient) {
             return;
         }
 
