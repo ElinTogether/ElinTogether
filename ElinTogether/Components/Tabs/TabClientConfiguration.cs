@@ -82,6 +82,11 @@ internal class TabClientConfiguration : TabEmpBase
             hide.Value = v;
             TabChat.RefillShown();
         });
+
+        // the mod log's detail (EmpLogger.Level), off by default: Debug lines only for a developer looking into a problem
+        var detailed = EmpConfig.Client.DetailedLogs;
+        card.ToggleRow("emp_ui_cl_detailed_logs".lang(), "emp_ui_cl_desc_detailed_logs".lang(), detailed.Value,
+            v => detailed.Value = v);
     }
 
     // the mods of the game joined, fetched without subscribing (ModFetch): this player's own choice

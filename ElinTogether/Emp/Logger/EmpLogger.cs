@@ -10,6 +10,7 @@ using ElinTogether.Net;
 using ElinTogether.Net.Steam;
 using EModding.Helper;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
 using UnityEngine;
@@ -25,14 +26,29 @@ internal static partial class EmpLogger
 
     private static ILogger DefaultLogger => field ??= GetDefaultLoggerConfiguration().CreateLogger();
 
+    // the mod log's level: Information in a release build, Debug with the player's box "Detailed logs"
+    // (Client.DetailedLogs) and always in a debug build (the bench reads Debug lines). Verbose in release builds made
+    // and wrote every Debug line of every frame (efficiency audit 2026-11-03)
+#if DEBUG
+    private const LogEventLevel DefaultLevel = LogEventLevel.Debug;
+#else
+    private const LogEventLevel DefaultLevel = LogEventLevel.Information;
+#endif
+
+    internal static readonly LoggingLevelSwitch Level = new(DefaultLevel);
+
+    /// <summary>
+    ///     The player's box "Detailed logs": the Debug lines go to the mod log too
+    /// </summary>
+    internal static void SetDetailed(bool detailed)
+    {
+        Level.MinimumLevel = detailed ? LogEventLevel.Debug : DefaultLevel;
+    }
+
     internal static LoggerConfiguration GetDefaultLoggerConfiguration()
     {
         return new LoggerConfiguration()
-#if DEBUG
-            .MinimumLevel.Verbose()
-#else
-            .MinimumLevel.Verbose() // beta testing
-#endif
+            .MinimumLevel.ControlledBy(Level)
             .ConfigureDestructures()
             .ConfigureEnrichers()
             .ConfigureSinks();
@@ -111,7 +127,13 @@ internal static partial class EmpLogger
         {
             return lc
                 .WriteTo.Console(
-                    outputTemplate: "[EMP][{Level:u4}-{Timestamp:HH:mm:ss}] {Message:lj}{NewLine}{Exception}")
+                    outputTemplate: "[EMP][{Level:u4}-{Timestamp:HH:mm:ss}] {Message:lj}{NewLine}{Exception}",
+#if DEBUG
+                    restrictedToMinimumLevel: LogEventLevel.Debug)
+#else
+                    // the console is for what a player may read: the detail stays in the file
+                    restrictedToMinimumLevel: LogEventLevel.Information)
+#endif
                 .WriteTo.File(
                     new CompactJsonFormatter(new PlainJsonValueFormatter()),
                     Path.Combine(Application.persistentDataPath, "ElinMP/Logs/Session_.log"),
@@ -120,6 +142,9 @@ internal static partial class EmpLogger
                     shared: true,
 #else
                     buffered: true,
+                    // written out every few seconds: a bug report reads the end of this file (BugReport), and with
+                    // fewer lines the buffer could hold the last minutes back for long
+                    flushToDiskInterval: TimeSpan.FromSeconds(5),
 #endif
                     rollingInterval: RollingInterval.Day,
                     // a long-running server: a new file past 100 MB, the last ones kept (reliability audit 2026-10-27:

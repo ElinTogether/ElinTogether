@@ -1747,5 +1747,7 @@
     "LangGeneral.emp_ui_chat_pop_hidden.text": "（已在“我的设置”中隐藏）",
     "LangGeneral.emp_ui_chat_view_title.text": "聊天中的图片",
     "LangGeneral.emp_ui_chat_view_sent_by.text": "发送者：{0}",
-    "LangGeneral.emp_ui_chat_view_close.text": "关闭"
+    "LangGeneral.emp_ui_chat_view_close.text": "关闭",
+    "LangGeneral.emp_ui_cl_detailed_logs.text": "详细日志",
+    "LangGeneral.emp_ui_cl_desc_detailed_logs.text": "将模组的调试信息也写入日志文件。仅在开发者排查问题时开启（文件更大，略微变慢）。"
 }

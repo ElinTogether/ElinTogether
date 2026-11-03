@@ -31,6 +31,11 @@ internal partial class EmpConfig
             : Net.WorldMapTime.SharedClock;
     }
 
+    private static void OnDetailedLogsChanged(object? sender, System.EventArgs e)
+    {
+        EmpLogger.SetDetailed(Client.DetailedLogs.Value);
+    }
+
     internal static void Bind()
     {
         var config = EmpMod.Instance.Config;
@@ -195,6 +200,18 @@ internal partial class EmpConfig
             false,
             "Pictures other players send in the chat are not shown (a line says one was sent)\n" +
             "不显示其他玩家在聊天中发送的图片（只显示一行提示）");
+
+        // the mod log's detail (EmpLogger.Level): Information by default in a release build, always Debug in a debug one
+        Client.DetailedLogs = config.Bind(
+            "Client",
+            "DetailedLogs",
+            false,
+            "Write the mod's detailed (debug) lines to its log file too, for a developer looking into a problem. Bigger files, a little slower\n" +
+            "将模组的详细（调试）信息也写入日志文件，供开发者排查问题。文件更大，略微变慢\n" +
+            "モッドの詳細（デバッグ）情報もログファイルに書き出します（開発者の調査用）。ファイルが大きくなり、少し遅くなります");
+        EmpLogger.SetDetailed(Client.DetailedLogs.Value);
+        Client.DetailedLogs.SettingChanged -= OnDetailedLogsChanged;
+        Client.DetailedLogs.SettingChanged += OnDetailedLogsChanged;
 
         Client.PingKeybind = config.Bind(
             "Client",
@@ -1194,6 +1211,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<KeyCode> PingKeybind { get; set; } = null!;
         internal static ConfigEntry<bool> ChatGameTime { get; set; } = null!;
         internal static ConfigEntry<bool> HideChatImages { get; set; } = null!;
+        internal static ConfigEntry<bool> DetailedLogs { get; set; } = null!;
         internal static ConfigEntry<string> FirstStepsSeen { get; set; } = null!;
         internal static ConfigEntry<string> DepotPath { get; set; } = null!;
         internal static ConfigEntry<string> DepotPassword { get; set; } = null!;

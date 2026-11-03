@@ -164,6 +164,8 @@ internal static class BugReport
         text.AppendLine($"Written {DateTime.Now:yyyy-MM-dd HH:mm:ss} (local), {DateTime.UtcNow:HH:mm:ss} UTC");
         text.AppendLine($"Role: {(session.Transport is null ? "no session" : session.Transport.GetType().Name)}, away: {session.IsAway}, guest: {session.IsGuest}");
         text.AppendLine($"Players: {session.CurrentPlayers.Count}");
+        // the mod log has Debug lines only then (EmpLogger.Level)
+        text.AppendLine($"Mod log level: {EmpLogger.Level.MinimumLevel}");
         if (EClass.core.IsGameStarted) {
             text.AppendLine($"Zone: {EClass._zone?.id} #{EClass._zone?.uid}, date raw {EClass.world.date.GetRaw()}");
         }

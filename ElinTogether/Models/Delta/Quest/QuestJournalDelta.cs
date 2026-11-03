@@ -79,8 +79,6 @@ public class QuestJournalDelta : ElinDelta
         }
 
         _next = Time.unscaledTime + Period;
-        EmpLog.Debug("Quest journal told at real {Real:F1}s, unscaled {Unscaled:F1}s, frame {Frame}, tick {Tick}",
-            Time.realtimeSinceStartup, Time.unscaledTime, Time.frameCount, NetSession.Instance.Tick);
 
         // the floors a dungeon opened during this session count too, not only those the world had when it was
         // hosted: the Vernis mine reached and its boss beaten in one evening left the quest at 3 (2026-10-15)
@@ -126,9 +124,6 @@ public class QuestJournalDelta : ElinDelta
         if (net is ElinNetHost || game?.quests is not { } quests) {
             return;
         }
-
-        EmpLog.Debug("Quest journal applied at real {Real:F1}s, frame {Frame}, tick {Tick}",
-            Time.realtimeSinceStartup, Time.frameCount, NetSession.Instance.Tick);
 
         for (var i = 0; i < Ids.Length && i * 2 + 1 < Phases.Length; i++) {
             var id = Ids[i];

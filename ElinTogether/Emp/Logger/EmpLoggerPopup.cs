@@ -66,7 +66,7 @@ internal static partial class EmpLogger
     }
 
     // Notice kinds (council 2026-10-26): Log = Information (the game's message log), File = Debug (mod file log only
-    // in Release), Pop = a short text over the map, Block = a dialog the player must close.
+    // in Release, and there only with the player's box "Detailed logs"), Pop = a short text over the map, Block = a dialog the player must close.
 
     /// <summary>
     ///     A refusal tied to a click: a short text over the map (message log line where the map is not up)
