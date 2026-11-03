@@ -67,6 +67,7 @@ public abstract partial class ElinNetBase : EMono
         }
 
         Scheduler.Tick();
+        Patches.FactionBonusPatch.Tick();
         Socket.Poll();
         NetMetrics.Tick(Socket);
         DialogFlagSync.Tick();
