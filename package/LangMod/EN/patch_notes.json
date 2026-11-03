@@ -1,5 +1,18 @@
 [
   {
+    "version": "0.26.1874",
+    "date": "2026-11-03",
+    "title": "faster and lighter, issues #70 #71 #72",
+    "bullets": [
+      "Performance: the mod makes about 70% less garbage per frame, so the game pauses less often to clean memory (about 3 times a minute instead of 17) and the worst stutters are shorter.",
+      "Logs: the released mod now writes only the important lines, so its log files stay small.",
+      "Large crowds: a player who is still joining no longer receives the world's updates before being really in.",
+      "#71: identifying, enchanting or dropping new items works again for guests on long-running worlds (the public server among them).",
+      "#72: Absorb Mana and other party spells work again when a party member is on another map.",
+      "#70: a player revived from another map comes back where they fell, visible, without restarting."
+    ]
+  },
+  {
     "version": "0.26.1852",
     "date": "2026-11-03",
     "title": "public server fixes, drawings in the in-game chat, editor upgrades, issues #68 #69",
