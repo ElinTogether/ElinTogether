@@ -182,9 +182,9 @@ internal sealed class StorePeerHosting : IPeerHosting
     private const double RefreshSeconds = 300;
     private const double RetrySeconds = 30;
 
-    // the public halves of the world admins' keys (dev/etworld/make_admin_key.py on the lead dev's PC), 64 hex each.
-    // Empty until the service is deployed (API.md section 9)
-    private static readonly string[] AdminKeysHex = [];
+    // the public halves of the world admins' keys, 64 hex each; the private seeds stay on the lead dev's PC
+    // (ElinMP/etworld_admin.key and an offline copy), never in the repository or a release (made 2026-11-03)
+    private static readonly string[] AdminKeysHex = ["250fe36322971ef5e094139f69a3a0ef359bd2d2b3c1e0533f45cc74b9382052"];
 
     private static string[]? _adminKeys;
 
