@@ -24,21 +24,80 @@ public class LZ4Bytes
     [Key(0)]
     public required byte[] Bytes { get; init; }
 
+    // LZ4Stream's default block is 1 MB, a new array at each call even for a 200-byte card (efficiency audit
+    // 2026-11-03): the block is the payload's size rounded up to a power of two, at most 64 KB (LZ4's own window:
+    // bigger blocks find no longer matches). The reader takes each block's size from the block itself, so data
+    // packed either way reads the same; up to 64 KB the bytes are identical
+    private const int MinBlock = 256;
+    private const int MaxBlock = 64 * 1024;
+
+    // the JSON text and the packed bytes, one of each kept per thread between calls (a call inside a call takes new
+    // ones); one grown past 1 MB (a map) is let go rather than kept
+    private const int KeepAtMost = 1024 * 1024;
+
+    [ThreadStatic]
+    private static MemoryStream? _text;
+
+    [ThreadStatic]
+    private static MemoryStream? _packed;
+
+    internal static int BlockSize(long length)
+    {
+        var block = MinBlock;
+        while (block < length && block < MaxBlock) {
+            block <<= 1;
+        }
+
+        return block;
+    }
+
+    private static MemoryStream Rent(ref MemoryStream? slot)
+    {
+        var ms = slot ?? new MemoryStream();
+        slot = null;
+        ms.SetLength(0);
+        return ms;
+    }
+
+    private static void Return(ref MemoryStream? slot, MemoryStream ms)
+    {
+        if (ms.Capacity <= KeepAtMost) {
+            slot = ms;
+        }
+    }
+
     public static LZ4Bytes Create<T>(T data)
     {
-        using var ms = new MemoryStream();
-        using var lz4 = new LZ4Stream(ms, CompressionMode.Compress);
-        using var sw = new StreamWriter(lz4, Encoding.UTF8);
-        using var jw = new JsonTextWriter(sw);
+        var text = Rent(ref _text);
+        try {
+            // (the same bytes as before, written to the LZ4 stream directly: UTF-8 with its mark first)
+            using (var sw = new StreamWriter(text, Encoding.UTF8, 1024, true))
+            using (var jw = new JsonTextWriter(sw)) {
+                _serializer.Serialize(jw, data, typeof(T));
+                jw.Flush();
+            }
 
-        _serializer.Serialize(jw, data, typeof(T));
-        jw.Flush();
-        sw.Flush();
-        lz4.Flush();
+            return Pack(text.GetBuffer(), (int)text.Length);
+        } finally {
+            Return(ref _text, text);
+        }
+    }
 
-        return new() {
-            Bytes = ms.ToArray(),
-        };
+    private static LZ4Bytes Pack(byte[] input, int length)
+    {
+        var packed = Rent(ref _packed);
+        try {
+            using (var lz4 = new LZ4Stream(packed, CompressionMode.Compress, LZ4StreamFlags.IsolateInnerStream, BlockSize(length))) {
+                lz4.Write(input, 0, length);
+                lz4.Flush();
+            }
+
+            return new() {
+                Bytes = packed.ToArray(),
+            };
+        } finally {
+            Return(ref _packed, packed);
+        }
     }
 
     /// <summary>
@@ -56,30 +115,27 @@ public class LZ4Bytes
     public static LZ4Bytes CreateFromFile(string filePath)
     {
         using var input = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var ms = new MemoryStream();
-        // fast mode: high compression froze the main thread at each join (~0.4 s on a small map, empload 2026-10-27).
-        // Maps are ~40% bigger, which SteamNetPeer sends in pieces (NetFragments)
-        using var lz4 = new LZ4Stream(ms, CompressionMode.Compress);
+        var packed = Rent(ref _packed);
+        try {
+            // fast mode: high compression froze the main thread at each join (~0.4 s on a small map, empload 2026-10-27).
+            // Maps are ~40% bigger, which SteamNetPeer sends in pieces (NetFragments)
+            using (var lz4 = new LZ4Stream(packed, CompressionMode.Compress, LZ4StreamFlags.IsolateInnerStream,
+                       BlockSize(input.Length))) {
+                input.CopyTo(lz4);
+                lz4.Flush();
+            }
 
-        input.CopyTo(lz4);
-        lz4.Flush();
-
-        return new() {
-            Bytes = ms.ToArray(),
-        };
+            return new() {
+                Bytes = packed.ToArray(),
+            };
+        } finally {
+            Return(ref _packed, packed);
+        }
     }
 
     public static LZ4Bytes CreateFromBytes(byte[] input)
     {
-        using var ms = new MemoryStream();
-        using var lz4 = new LZ4Stream(ms, CompressionMode.Compress);
-
-        lz4.Write(input, 0, input.Length);
-        lz4.Flush();
-
-        return new() {
-            Bytes = ms.ToArray(),
-        };
+        return Pack(input, input.Length);
     }
 
     public T Decompress<T>()
