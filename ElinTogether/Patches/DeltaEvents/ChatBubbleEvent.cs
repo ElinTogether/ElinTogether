@@ -1,10 +1,15 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
+using ElinTogether.Components;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
 using HeathenEngineering.SteamworksIntegration;
+using UnityEngine;
+using UnityEngine.UI;
+using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 
 namespace ElinTogether.Patches;
@@ -61,11 +66,70 @@ internal class ChatBubbleEvent
         var plain = ChatMarkup.Escape(ChatMarkup.Plain(text));
         var sprite = ChatMarkup.AloneEmote(text) is { } emo ? ChatMarkup.EmoteSprite(emo.ToString()) : null;
         WidgetPopText.Say(plain.Length > 0 ? $"{who}: {plain}" : who, sprite: sprite ?? UIHelper.FindSprite("emo2_hint"));
+        Remember(text);
+    }
+
+    private static void Remember(string text)
+    {
         Shown.Enqueue(text);
         while (Shown.Count > 20) {
             Shown.Dequeue();
         }
     }
+
+    // the pop text lines with a picture alive at once, at most (each holds its own small texture)
+    private const int MaxPicturePops = 4;
+
+    /// <summary>
+    ///     A chat picture over the game (user 2026-11-03): the pop text's line with the picture itself in the place of
+    ///     its icon, at a readable size (whole steps, nearest filter); a click on it opens the larger view. The line owns
+    ///     <paramref name="picture" /> and frees it when it fades out; without the pop text, or with too many pictures
+    ///     shown already, only the words
+    /// </summary>
+    internal static void PopPicture(string who, string text, Texture2D? picture, Action? open)
+    {
+        if (picture == null || WidgetPopText.Instance == null || WidgetPopText.Instance.pop == null ||
+            PopPictureOwner.Alive >= MaxPicturePops) {
+            if (picture != null) {
+                Object.Destroy(picture);
+            }
+
+            PopChat(who, text);
+            return;
+        }
+
+        // (as WidgetPopText.Say makes its line, the picture's size set before the line takes its place)
+        var pop = WidgetPopText.Instance.pop;
+        var sprite = Sprite.Create(picture, new(0f, 0f, picture.width, picture.height), new(0.5f, 0.5f), 100f);
+        var item = pop.Get<PopItemText>("PopNotification");
+        item.important = false;
+        var plain = ChatMarkup.Escape(ChatMarkup.Plain(text));
+        item.SetText(plain.Length > 0 ? $"{ChatMarkup.SafeName(who)}: {plain}" : ChatMarkup.SafeName(who), sprite);
+        item.gameObject.AddComponent<PopPictureOwner>().Own(sprite, picture);
+        if (item.image != null) {
+            var scale = ChatPictureView.Fit(picture, PopPictureSide, 4f);
+            var size = new Vector2(picture.width * scale, picture.height * scale);
+            item.image.SetActive(true);
+            item.image.preserveAspect = true;
+            item.image.rectTransform.sizeDelta = size;
+            var element = item.image.GetComponent<LayoutElement>();
+            if (element == null) {
+                element = item.image.gameObject.AddComponent<LayoutElement>();
+            }
+
+            element.minWidth = element.preferredWidth = size.x;
+            element.minHeight = element.preferredHeight = size.y;
+            if (open != null) {
+                ChatPictureView.Clickable(item.image, open);
+            }
+        }
+
+        pop.Pop(item);
+        Remember(text);
+    }
+
+    // the picture's longer side in the pop text
+    private const float PopPictureSide = 80f;
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(AM_Adv), nameof(AM_Adv.OnEnterChat))]

@@ -408,10 +408,8 @@ internal partial class TabChat : TabEmpBase
         if (line.Image != null || line.Drawing != null) {
             if (EmpConfig.Client.HideChatImages.Value && line.Uid != EClass.pc.uid) {
                 text.text += " " + "emp_ui_chat_image_hidden".lang().TagColor(new Color(0.45f, 0.4f, 0.32f));
-            } else if (line.Image != null) {
-                AddPicture(line.Image);
             } else {
-                AddDrawing(line.Drawing!);
+                AddPicture(line.Image, line.Drawing, line.Who.RemoveAllTags());
             }
         }
     }
@@ -419,77 +417,26 @@ internal partial class TabChat : TabEmpBase
     // the textures of the pictures shown, freed when the log is drawn again
     private readonly List<Texture2D> _pictures = [];
 
-    private void AddPicture(byte[] png)
-    {
-        if (!ChatImages.IsValid(png)) {
-            return;
-        }
-
-        var texture = new Texture2D(2, 2);
-        if (!texture.LoadImage(png)) {
-            Destroy(texture);
-            return;
-        }
-
-        texture.filterMode = FilterMode.Point;
-        _pictures.Add(texture);
-        Place(texture, Mathf.Min(2f, 180f / Mathf.Max(texture.width, texture.height)));
-    }
-
     /// <summary>
-    ///     A drawing of the chat: baked here (its sides checked when it came), as large as fits 180 pixels at whole
-    ///     steps, "by" its creator and a Save button that keeps it in My drawings with that credit
+    ///     A picture of the chat under its line: only the image (user 2026-11-03), a small PNG at most twice its size or
+    ///     a drawing baked here (its sides checked when it came) at whole steps, as large as fits 180 pixels. A click
+    ///     on it opens it larger with the drawing's title, its creator's credit and Save (ChatPictureView)
     /// </summary>
-    private void AddDrawing(Drawing drawing)
+    private void AddPicture(byte[]? png, Drawing? drawing, string sender)
     {
-        Texture2D texture;
-        try {
-            texture = Drawing.Bake(drawing);
-        } catch (System.Exception e) {
-            EmpLog.Debug(e, "Chat: a drawing of {W}x{H} could not be baked", drawing.Art.W, drawing.Art.H);
+        if (ChatPictureView.Make(png, drawing) is not { } texture) {
             return;
         }
 
         _pictures.Add(texture);
-        var scale = 180f / Mathf.Max(texture.width, texture.height);
-        Place(texture, scale >= 1f ? Mathf.Min(4f, Mathf.Floor(scale)) : scale);
-
-        var bar = _list!.Horizontal();
-        bar.name = "ChatDrawing";
-        bar.Layout.childForceExpandWidth = false;
-        bar.Layout.childAlignment = TextAnchor.MiddleLeft;
-        bar.Layout.spacing = 8f;
-        bar.Layout.padding = new(24, 0, 0, 0);
-        // (the credit, always: lead dev 2026-11-02, a drawing stays its creator's)
-        var credit = "emp_ui_drawing_by".Loc(drawing.CreatorName);
-        if (drawing.BasedOnName.Length > 0) {
-            credit += "  ·  " + "emp_ui_drawing_based_on".Loc(drawing.BasedOnName);
-        }
-
-        bar.TextSmall((drawing.Title.Length > 0 ? ChatMarkup.Escape(drawing.Title) + "  ·  " : "") + ChatMarkup.Escape(credit), FontColor.Gray);
-        var saved = ChatImages.IsSaved(drawing);
-        UIButton? save = null;
-        save = bar.Button((saved ? "emp_ui_chat_drawing_saved" : "emp_ui_chat_drawing_save").lang(), () => {
-            if (ChatImages.SaveFromChat(drawing) is { } why) {
-                Tell(why);
-                return;
-            }
-
-            if (save != null) {
-                save.mainText.text = "emp_ui_chat_drawing_saved".lang();
-                save.interactable = false;
-            }
-        });
-        save.name = "ChatDrawingSave";
-        save.interactable = !saved;
-        var element = save.LayoutElement();
-        element.flexibleWidth = 0f;
-        element.preferredWidth = Mathf.Max(110f, (save.mainText != null ? save.mainText.preferredWidth : 0f) + 32f);
-        element.minHeight = element.preferredHeight = 26f;
+        var scale = drawing != null ? ChatPictureView.Fit(texture, 180f, 4f) : Mathf.Min(2f, 180f / Mathf.Max(texture.width, texture.height));
+        var image = Place(texture, scale);
+        image.gameObject.name = drawing != null ? "ChatDrawingPicture" : "ChatPngPicture";
+        ChatPictureView.Clickable(image, () => ChatPictureView.Open(png, drawing, sender));
     }
 
     // a row as wide as the log holding the picture at its own shape, from the line's start
-    private void Place(Texture2D texture, float scale)
+    private RawImage Place(Texture2D texture, float scale)
     {
         var size = new Vector2(texture.width * scale, texture.height * scale);
         var row = new GameObject("ChatPicture", typeof(RectTransform));
@@ -497,12 +444,13 @@ internal partial class TabChat : TabEmpBase
         ((RectTransform)row.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, size.y);
         var picture = new GameObject("Picture", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
         picture.transform.SetParent(row.transform, false);
-        picture.GetComponent<RawImage>().texture = texture;
-        picture.GetComponent<RawImage>().raycastTarget = false;
+        var raw = picture.GetComponent<RawImage>();
+        raw.texture = texture;
         var rt = (RectTransform)picture.transform;
         rt.anchorMin = rt.anchorMax = rt.pivot = new(0f, 1f);
         rt.anchoredPosition = new(24f, 0f);
         rt.sizeDelta = size;
+        return raw;
     }
 
     // the log is at its newest line (or too short to scroll): a new line keeps it there
