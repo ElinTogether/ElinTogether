@@ -30,6 +30,9 @@ internal partial class ElinNetHost
     // ranges spaced by the headroom only, 1M keeps room for thousands of overlapping leases in the int space)
     private const int MaxLeaseUids = 1_000_000;
 
+    // what must be left of a player's range for its next map to go on in it, see ReserveLease
+    private const int LeaseReuseMargin = 200_000;
+
     /// <summary>
     ///     Same for quest uids: a zone simulated by a client creates the quests of its residents there
     /// </summary>
@@ -1150,6 +1153,19 @@ internal partial class ElinNetHost
     /// </summary>
     private int ReserveLease(ISteamNetPeer peer, Zone zone)
     {
+        // a player going on from a map it holds to the next one (the next lease is granted before the previous one is
+        // handed back) has one card counter: it goes on in the range it already allocates in, which no one else uses.
+        // A fresh range each trip spent 1.05M uids a trip and pushed long-played worlds' counters past 2^30 (GitHub
+        // issue 71, the public servers at 1.42 and 1.85 billion). A fresh one only when that range is nearly used
+        if (_leases.TryGetValue(peer.Id, out var held) && held.Count > 0) {
+            var block = held.Values.Max();
+            var used = _checkpointUidNext.TryGetValue(peer.Id, out var reported) ? Math.Max(reported, block) : block;
+            if (used < block + MaxLeaseUids - LeaseReuseMargin) {
+                held[zone.uid] = block;
+                return block;
+            }
+        }
+
         // above the host counter and past the END of any range handed out and still in use (the saved floor is the
         // highest range start, as older versions kept it): ranges never overlap each other
         var saved = LeaseRangeFloor[FloorCards];
@@ -1422,8 +1438,15 @@ internal partial class ElinNetHost
 
             // first, whatever follows throws or not: the cards made away keep their uids (robustness audit 2026-11-01)
             // only a range the client allocated in pushes the host counter
-            if (release.UidNext > rangeStart) {
-                game.cards.uidNext = Math.Max(game.cards.uidNext, Math.Min(release.UidNext, rangeStart + MaxLeaseUids));
+            // (not while another map it holds goes on in the same range: the counter would jump past all of it. What
+            // was used is kept for when that range ends, a decline or a disconnect included)
+            var usedEnd = Math.Min(release.UidNext, rangeStart + MaxLeaseUids);
+            if (release.UidNext > rangeStart && zones.ContainsValue(rangeStart)) {
+                _checkpointUidNext[peer.Id] = Math.Max(_checkpointUidNext.GetValueOrDefault(peer.Id), usedEnd);
+            } else if (release.UidNext > rangeStart) {
+                var kept = _checkpointUidNext.GetValueOrDefault(peer.Id);
+                game.cards.uidNext = Math.Max(game.cards.uidNext,
+                    kept > rangeStart && kept <= rangeStart + MaxLeaseUids ? Math.Max(usedEnd, kept) : usedEnd);
             }
 
             // every range came back with what was used of it: nothing above the counter is in use anymore
@@ -1604,8 +1627,13 @@ internal partial class ElinNetHost
             _guestAsks.Remove(peer.Id);
         }
 
-        if (!_leases.TryGetValue(peer.Id, out var zones) || !zones.Remove(decline.ZoneUid)) {
+        if (!_leases.TryGetValue(peer.Id, out var zones) || !zones.Remove(decline.ZoneUid, out var declined)) {
             return;
+        }
+
+        // a range it went on in from a map handed back meanwhile (ReserveLease): what it used there is in the save
+        if (!zones.ContainsValue(declined) && _checkpointUidNext.TryGetValue(peer.Id, out var used) && used > declined) {
+            game.cards.uidNext = Math.Max(game.cards.uidNext, Math.Min(used, declined + MaxLeaseUids));
         }
 
         if (zones.Count == 0) {
