@@ -361,17 +361,66 @@ internal class EmpConsole
             : "Only the host drops links";
     }
 
+    /// <summary>
+    ///     Bench: a bad network for this game, both ways, with Steam's own fake packet settings (global, every link of
+    ///     this process): lag in ms added to each way, loss and reorder in percent, reordered packets late by
+    ///     reorderMs. emp.net_fault 0 0 0 puts it back
+    /// </summary>
+    [ConsoleCommand("net_fault")]
+    internal static string NetFault(int lagMs = 0, float lossPercent = 0f, float reorderPercent = 0f, int reorderMs = 50)
+    {
+        SetFake(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketLag_Send, lagMs);
+        SetFake(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketLag_Recv, lagMs);
+        SetPacketLoss(lossPercent);
+        SetFake(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketReorder_Send, reorderPercent);
+        SetFake(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketReorder_Recv, reorderPercent);
+        SetFake(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketReorder_Time, reorderMs);
+        EmpLog.Information("Bench network fault: lag {Lag} ms each way, loss {Loss}%, reorder {Reorder}% by {ReorderMs} ms",
+            lagMs, lossPercent, reorderPercent, reorderMs);
+        return $"Network fault: lag {lagMs} ms each way, loss {lossPercent}%, reorder {reorderPercent}% by {reorderMs} ms";
+    }
+
+    /// <summary>
+    ///     Bench: this game's main thread stops for that long on the next frame, as a game hanging on a big save or a
+    ///     slow disk (Steam's own thread keeps the links up meanwhile)
+    /// </summary>
+    [ConsoleCommand("freeze")]
+    internal static string Freeze(int ms = 8000)
+    {
+        EmpMod.Instance.StartCoroutine(Later());
+        return $"Freezing for {ms} ms on the next frame";
+
+        IEnumerator Later()
+        {
+            yield return null;
+            EmpLog.Information("Bench freeze: {Ms} ms", ms);
+            System.Threading.Thread.Sleep(ms);
+            EmpLog.Information("Bench freeze over");
+        }
+    }
+
     private static void SetPacketLoss(float percent)
     {
-        var value = Marshal.AllocHGlobal(sizeof(float));
+        SetFake(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketLoss_Send, percent);
+        SetFake(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketLoss_Recv, percent);
+    }
+
+    private static void SetFake(ESteamNetworkingConfigValue config, float data)
+    {
+        SetFake(config, BitConverter.ToInt32(BitConverter.GetBytes(data), 0),
+            ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Float);
+    }
+
+    private static void SetFake(ESteamNetworkingConfigValue config, int data,
+        ESteamNetworkingConfigDataType type = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32)
+    {
+        // (a float and an int32 are the same 4 bytes here)
+        var value = Marshal.AllocHGlobal(sizeof(int));
         try {
-            Marshal.Copy(new[] { percent }, 0, value, 1);
-            foreach (var config in new[] {
-                         ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketLoss_Send,
-                         ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_FakePacketLoss_Recv,
-                     }) {
-                SteamNetworkingUtils.SetConfigValue(config, ESteamNetworkingConfigScope.k_ESteamNetworkingConfig_Global,
-                    IntPtr.Zero, ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Float, value);
+            Marshal.WriteInt32(value, data);
+            if (!SteamNetworkingUtils.SetConfigValue(config, ESteamNetworkingConfigScope.k_ESteamNetworkingConfig_Global,
+                    IntPtr.Zero, type, value)) {
+                EmpLog.Warning("Steam refused the bench network setting {Config}", config);
             }
         } finally {
             Marshal.FreeHGlobal(value);
