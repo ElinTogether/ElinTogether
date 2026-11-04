@@ -75,6 +75,8 @@ internal static class NetReconnect
     {
         _routine = null;
         WorldHandover.Followed();
+        // (however it ends: given up, cancelled, stopped by a takeover or a world started from the title)
+        UnpatchIfNoSession();
 
         var notice = _notice;
         _notice = null;
@@ -294,5 +296,30 @@ internal static class NetReconnect
                 NetSession.Instance.ResetSession();
             }
         });
+    }
+
+    /// <summary>
+    ///     The session's patches stay while the guest joins again (ElinNetBase.OnDestroy): taken away a frame after
+    ///     it stops if no session is left, as when a session closes. Kept when a session is there or about to be (its
+    ///     component is destroyed at the end of the frame and finds them gone otherwise)
+    /// </summary>
+    private static void UnpatchIfNoSession()
+    {
+        if (!EmpMod.PatchesPerSession || Active || !HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
+            return;
+        }
+
+        // (the component of the last try is destroyed at the end of this frame: it takes them away itself)
+        EmpMod.Instance.StartCoroutine(Later());
+
+        static IEnumerator Later()
+        {
+            yield return null;
+            var session = NetSession.Instance;
+            if (!Active && session.Transport == null && session.ZoneSession == null && HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
+                EmpLog.Information("No session after joining again was given up: the session's patches are taken away");
+                EmpMod.SharedHarmony.UnpatchSelf();
+            }
+        }
     }
 }

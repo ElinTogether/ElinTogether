@@ -106,7 +106,11 @@ public abstract partial class ElinNetBase : EMono
         // (those marked AlwaysPatched stay, see EmpMod.PatchesPerSession)
         var transport = Session.Transport;
         var zoneSession = Session.ZoneSession;
-        if (EmpMod.PatchesPerSession && (transport == null || transport == this) && (zoneSession == null || zoneSession == this)) {
+        // (not while the guest joins the same game again by itself: taking the patches away then putting them back froze
+        // the game 30 s, then 25 s more, before the first try, net_fault_check 2026-11-04; NetReconnect takes them away
+        // if it gives up)
+        if (EmpMod.PatchesPerSession && !NetReconnect.Active && (transport == null || transport == this) &&
+            (zoneSession == null || zoneSession == this)) {
             EmpMod.SharedHarmony.UnpatchSelf();
         }
     }
