@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.26.1888",
+    "date": "2026-11-04",
+    "title": "travel together, steadier links, issues #73 #74 #75",
+    "bullets": [
+      "#75 Follow goes across maps: when you follow another player and they leave the map, you take the same way out and walk after them on the world map.",
+      "Steadier links: a connection silent for up to 30 seconds now holds instead of dropping after 10, and the guest carries on by itself.",
+      "Max players: a new host setting caps how many players can be in at once (50 on the public server).",
+      "Mod refusal: when a server refuses your mods, the message now says what to do (which mods to turn off, restart, join again), and the button reads \"Restart without them\".",
+      "#73: faction bonuses from worn gear (a god's weapon, for example) are counted again from what the members really wear, so stats no longer go negative when someone leaves.",
+      "#74: livestock is no longer hatched twice when a guest enters the base: only the game that keeps a map catches up on its hours.",
+      "Companion gear: a guest changing its companion's gear now reaches the host (shown worn, counted, saved).",
+      "Achievements: a guest opening Kettle's or Demitas' shop earns the achievement on its own Steam account, not the host's.",
+      "Crowds: two players on the same tile no longer make the host remove one of them over and over, which made big servers much slower."
+    ]
+  },
+  {
     "version": "0.26.1874",
     "date": "2026-11-03",
     "title": "faster and lighter, issues #70 #71 #72",
