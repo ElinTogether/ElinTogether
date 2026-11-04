@@ -9,9 +9,19 @@ public class SteamNetConfig
 {
     private readonly Dictionary<ESteamNetworkingConfigValue, SteamNetworkingConfigValue_t> _configs = [];
 
+    /// <summary>
+    ///     How long a connected link may stay silent before Steam gives it up (Steam's own is 10 s). A wifi that drops
+    ///     for 10 s was a lost link: the guest's game went to the title and joined again, 70 s without playing
+    ///     (net_fault_check N2, 2026-11-04). A silent link of that long now comes back as it was. A game that closes
+    ///     says so and is let go at once; only one that vanishes without a word is waited for that long
+    /// </summary>
+    internal const int ConnectedTimeoutMs = 30000;
+
+    // (the listen socket hands its settings to the links it accepts: both ends wait the same)
     public static SteamNetConfig Default => new SteamNetConfig()
         .Set(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_ConnectionUserData,
-            BuildVersionIntegrity.VersionStringToLong());
+            BuildVersionIntegrity.VersionStringToLong())
+        .Set(ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_TimeoutConnected, ConnectedTimeoutMs);
 
     public SteamNetworkingConfigValue_t[] Create()
     {
