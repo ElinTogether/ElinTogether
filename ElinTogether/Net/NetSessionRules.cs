@@ -559,6 +559,13 @@ public class NetSessionRules
     [Key(160)]
     public bool ChatImages { get; set; }
 
+    /// <summary>
+    ///     Host setting "Follow goes across maps" (GitHub issue 75): Follow takes the leader's way out and walks after
+    ///     it on the world map, where only the leader's steps move the date, see PlayerFollow
+    /// </summary>
+    [Key(161)]
+    public bool FollowTravel { get; set; } = true;
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -568,6 +575,7 @@ public class NetSessionRules
         PlayersAtBase = EmpConfig.Server.PlayersAtBase.Value,
         GlobalChat = EmpConfig.Server.GlobalChat.Value,
         AllowFollow = EmpConfig.Server.Follow.Value,
+        FollowTravel = EmpConfig.Server.FollowTravel.Value,
         PrivateChat = EmpConfig.Server.PrivateChat.Value,
         ChatBubbles = EmpConfig.Server.ChatBubbles.Value,
         ChatImages = EmpConfig.Server.ChatImages.Value,

@@ -108,6 +108,11 @@ internal partial class ElinNetHost
     private (Zone Zone, ZoneTransition Transition)? _pendingHostMove;
 
     /// <summary>
+    ///     The host's move waits for a player to hand its map back, see PlayerFollow
+    /// </summary>
+    internal bool IsTravelPending => _pendingHostMove is not null;
+
+    /// <summary>
     ///     The player finished replicating the host map and stands on it
     /// </summary>
     private void MarkSettled(ISteamNetPeer peer)

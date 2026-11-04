@@ -19,6 +19,11 @@ internal partial class ElinNetClient
     private (Zone Zone, ZoneTransition Transition)? _pendingTravel;
 
     /// <summary>
+    ///     A move of this player waits for the host's answer (a lease, a rejoin), see PlayerFollow
+    /// </summary>
+    internal bool IsTravelPending => _pendingTravel is not null || _rejoining || _pendingGrant is not null;
+
+    /// <summary>
     ///     Lease granted while on the host map (or as a guest), waiting for <see cref="ZoneLeaseDepart" />
     /// </summary>
     private ZoneLeaseGrant? _pendingGrant;
@@ -1476,7 +1481,7 @@ internal partial class ElinNetClient
     {
         // (SpatialGenDelta: a zone the world made, a new nefia on the world map, known to an away player too, 2026-10-28;
         // AchievementDelta: one it earned; BaseRelocateDelta: a base moved on the world map, read there)
-        return delta is MsgSayDelta or WhisperDelta or GateItemAnswer or GateZoneDelta or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or QuestFailDelta or QuestUpdateDelta or PersonalStateDelta or PlayerStandingDelta or WorldDateAdvanceDelta or WorldMapTogetherDelta or PlayerLeadDelta or WeatherDelta or DayDataDelta or QuestFollowDelta or SleepReadyDelta or SleepStartDelta or CharaSleepDelta or BillPayDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or QuestJournalDelta or TentZoneDelta or TeamsDelta or TeamLoreDelta or StoryBundleDelta or ModerationDelta or AdventurerBoutDelta or DuelStateDelta or SpatialGenDelta or AchievementDelta or BaseRelocateDelta or TeamEvictDelta or SiblingLandDelta or ClaimZoneDelta or MailStateDelta or ServerRosterDelta or GodGiftDelta or
+        return delta is MsgSayDelta or WhisperDelta or FollowTravelDelta or GateItemAnswer or GateZoneDelta or MarriageDelta or QuestStartDelta or QuestCompleteDelta or QuestChangePhaseDelta or DialogFlagDelta or QuestFailDelta or QuestUpdateDelta or PersonalStateDelta or PlayerStandingDelta or WorldDateAdvanceDelta or WorldMapTogetherDelta or PlayerLeadDelta or WeatherDelta or DayDataDelta or QuestFollowDelta or SleepReadyDelta or SleepStartDelta or CharaSleepDelta or BillPayDelta or CodexDelta or AddRecipeDelta or BossWinDelta or ExtraTaxDelta or QuestJournalDelta or TentZoneDelta or TeamsDelta or TeamLoreDelta or StoryBundleDelta or ModerationDelta or AdventurerBoutDelta or DuelStateDelta or SpatialGenDelta or AchievementDelta or BaseRelocateDelta or TeamEvictDelta or SiblingLandDelta or ClaimZoneDelta or MailStateDelta or ServerRosterDelta or GodGiftDelta or
                // its own revive at a bartender, from the host's game (GitHub issue 70: it stayed dead in its game)
                CharaReviveDelta;
     }

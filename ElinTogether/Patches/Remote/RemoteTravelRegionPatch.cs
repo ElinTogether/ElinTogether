@@ -98,7 +98,7 @@ internal static class RemoteTravelRegionPatch
 
         if (DateMoves()) {
             Travel(date, minutes, false);
-        } else {
+        } else if (!PlayerFollow.CarriesTrip) {
             Tell();
         }
     }
@@ -177,6 +177,12 @@ internal static class RemoteTravelRegionPatch
     /// </summary>
     internal static bool DateMoves()
     {
+        // following another player on the world map (GitHub issue 75): its steps pay the hours of the trip made
+        // together, this player's own steps only its turns
+        if (PlayerFollow.CarriesTrip) {
+            return false;
+        }
+
         var session = NetSession.Instance;
         if (session.Rules.WorldMapTime != WorldMapTime.TravelTogether) {
             return true;
@@ -297,7 +303,7 @@ internal static class TravelExpressPatch
     {
         if (RemoteTravelRegionPatch.DateMoves()) {
             RemoteTravelRegionPatch.Travel(date, Date.HourToken, true);
-        } else {
+        } else if (!PlayerFollow.CarriesTrip) {
             RemoteTravelRegionPatch.Tell();
         }
     }

@@ -239,6 +239,8 @@ namespace ElinTogether.Models;
 [Union(1292, typeof(ChatImageDelta))]
 // The public server asks a joined player for its world service key and vouches for it (PLAN_peer_hosted_server 2.1)
 [Union(1310, typeof(EtWorldKeyDelta))]
+// Follow across maps: the follower asks, the leader tells where it went (GitHub issue 75)
+[Union(1311, typeof(FollowTravelDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

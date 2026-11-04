@@ -722,9 +722,17 @@ internal partial class EmpConfig
             "Server",
             "Follow",
             true,
-            "The menu on another player's character offers Follow: your character walks after it, on the same map\n" +
-            "Any key, a blow, a monster in sight or a window stops it; so does the other player leaving the map\n" +
+            "The menu on another player's character offers Follow: your character walks after it\n" +
+            "Any key, a blow, a monster in sight or a window stops it; so does the other player leaving the map, unless FollowTravel is on\n" +
             "其他玩家角色的菜单中提供“跟随”：你的角色会在同一地图上跟着对方走；按任意键、受到攻击、看到怪物或打开窗口都会停止，对方离开地图时也会停止");
+
+        Server.FollowTravel = config.Bind(
+            "Server",
+            "FollowTravel",
+            true,
+            "Follow goes across maps: when the player followed leaves the map, the follower takes the same way and walks after it on the world map\n" +
+            "Only the leader's steps move the world's date, so a trip made together counts once. Needs Follow and travel alone\n" +
+            "跟随可以跨地图：被跟随的玩家离开地图时，跟随者会走同样的路，并在世界地图上跟着对方走；只有领头者的步伐推进世界日期，一起旅行的时间只计算一次。需要开启跟随和独自旅行");
 
         Server.PrivateChat = config.Bind(
             "Server",
@@ -1290,6 +1298,8 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> GlobalChat { get; set; } = null!;
 
         internal static ConfigEntry<bool> Follow { get; set; } = null!;
+
+        internal static ConfigEntry<bool> FollowTravel { get; set; } = null!;
         internal static ConfigEntry<bool> PrivateChat { get; set; } = null!;
         internal static ConfigEntry<bool> ChatBubbles { get; set; } = null!;
         internal static ConfigEntry<bool> ChatImages { get; set; } = null!;

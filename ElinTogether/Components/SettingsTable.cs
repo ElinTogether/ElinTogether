@@ -400,6 +400,8 @@ internal static class SettingsTable
         yield return new("duel_bets", "together", true, EmpConfig.Server.DuelBets, Requires: () => EmpConfig.Server.Duels.Value);
         yield return new("player_trade", "friends", true, EmpConfig.Server.PlayerTrade);
         yield return new("follow", "friends", true, EmpConfig.Server.Follow);
+        yield return new("follow_travel", "friends", true, EmpConfig.Server.FollowTravel,
+            Requires: () => EmpConfig.Server.Follow.Value && EmpConfig.Server.IndependentTravel.Value);
         yield return new("private_chat", "friends", true, EmpConfig.Server.PrivateChat);
         yield return new("chat_bubbles", "friends", true, EmpConfig.Server.ChatBubbles);
         yield return new("chat_images", "friends", true, EmpConfig.Server.ChatImages);
@@ -679,6 +681,8 @@ internal static class SettingsTable
         yield return (EmpConfig.Server.DuelBets, true);
         yield return (EmpConfig.Server.PlayerTrade, true);
         yield return (EmpConfig.Server.Follow, true);
+        // a trip made together counts once (GitHub issue 75)
+        yield return (EmpConfig.Server.FollowTravel, true);
         yield return (EmpConfig.Server.PrivateChat, true);
         yield return (EmpConfig.Server.ChatBubbles, true);
         // pictures and drawings in the chat: on (user 2026-11-02: the public server has the most features on); each
@@ -868,6 +872,7 @@ internal static class SettingsTable
             [EmpConfig.Server.AutoCombatPerPlayer] = r.AutoCombatPerPlayer,
             [EmpConfig.Server.SummonsFollowMaster] = r.SummonsFollowMaster,
             [EmpConfig.Server.Follow] = r.AllowFollow,
+            [EmpConfig.Server.FollowTravel] = r.FollowTravel,
             [EmpConfig.Server.PrivateChat] = r.PrivateChat,
             [EmpConfig.Server.ChatBubbles] = r.ChatBubbles,
             [EmpConfig.Server.ChatImages] = r.ChatImages,

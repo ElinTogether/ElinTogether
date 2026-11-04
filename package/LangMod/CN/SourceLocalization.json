@@ -408,7 +408,7 @@
     "LangGeneral.emp_follow_lost.text": "你看不到#1了。",
     "LangGeneral.emp_follow_danger.text": "危险！你不再跟随。",
     "LangGeneral.emp_ui_sv_cfg_follow.text": "玩家可以互相跟随",
-    "LangGeneral.emp_ui_sv_desc_follow.text": "点击其他玩家并选择“跟随”：你的角色会在同一地图上跟着对方走。按键、受到攻击、看到怪物或对方离开地图都会停止。",
+    "LangGeneral.emp_ui_sv_desc_follow.text": "点击其他玩家并选择“跟随”：你的角色会自动跟着对方走。按键、受到攻击或看到怪物都会停止。是否跨地图由“跟随可以跨地图”决定。",
     "LangGeneral.emp_people_players.text": "玩家",
     "LangGeneral.emp_people_offline.text": "离线",
     "LangGeneral.emp_act_talk.text": "交谈",
@@ -1764,5 +1764,9 @@
     "LangGeneral.emp_ui_sv_opt_max_players_75.text": "75 人",
     "LangGeneral.emp_ui_sv_opt_max_players_100.text": "100 人",
     "LangGeneral.emp_dc_server_full.text": "服务器已满。请稍后再试。",
-    "LangGeneral.emp_dc_server_full_why.text": "服务器已满（{0} 人）。请稍后再试。"
+    "LangGeneral.emp_dc_server_full_why.text": "服务器已满（{0} 人）。请稍后再试。",
+    "LangGeneral.emp_ui_sv_cfg_follow_travel.text": "跟随可以跨地图",
+    "LangGeneral.emp_ui_sv_desc_follow_travel.text": "被跟随的玩家离开地图时，你会走同样的路，并在世界地图上跟着对方走。只有领头者的步伐推进日期，一起旅行的时间只计算一次。需要开启跟随和独自旅行。关闭：对方离开地图时停止跟随。",
+    "LangGeneral.emp_follow_by.text": "#1正在跟随你。",
+    "LangGeneral.emp_follow_travel.text": "你正与#1一同旅行：这段旅程的时间只按#1的步伐计算一次。"
 }
