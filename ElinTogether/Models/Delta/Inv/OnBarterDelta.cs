@@ -42,7 +42,10 @@ public class OnBarterDelta : ElinDelta
 
             // restock
             using var _ = Simulate();
-            using var opened = ShopStock.Opened(Gates, FromPeer && net is ElinNetHost host ? host.PlayerChara(OriginPeer) : null);
+            var opener = FromPeer && net is ElinNetHost host ? host.PlayerChara(OriginPeer) : null;
+            using var opened = ShopStock.Opened(Gates, opener);
+            // what the restock earns (Kettle's and Demitas' copy shops, a Steam achievement) is the opener's, not this game's
+            using var earned = PlayerAchievements.For(opener);
             shopOwner.trait.OnBarter();
             return;
         }

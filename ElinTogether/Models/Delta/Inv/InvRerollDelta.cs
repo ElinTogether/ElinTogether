@@ -56,8 +56,11 @@ public class InvRerollDelta : ElinDelta
         }
 
         shopOwner.c_dateStockExpire = 0;
+        var opener = FromPeer && net is ElinNetHost host ? host.PlayerChara(OriginPeer) : null;
         using (Simulate())
-        using (ShopStock.Opened(Gates, FromPeer && net is ElinNetHost host ? host.PlayerChara(OriginPeer) : null)) {
+        using (ShopStock.Opened(Gates, opener))
+        // what the restock earns (a Steam achievement of Kettle's or Demitas' shop) is the opener's
+        using (PlayerAchievements.For(opener)) {
             shopOwner.trait.OnBarter(true);
         }
 
