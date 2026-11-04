@@ -39,16 +39,20 @@ public class CharaEquipDelta : ElinDelta
             return;
         }
 
-        // client only equips self
+        // a client equips itself, or one of its companions standing on its map (the game's ally window)
+        Chara? sender = null;
         if (net is ElinNetHost host &&
-            (!host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender) || sender != chara)) {
-            EmpLog.Warning("Refusing {DeltaType} from peer {PeerIndex}, owner {OwnerUid} is not the sender",
+            (!host.ActiveRemoteCharas.TryGetValue(OriginPeer, out sender) ||
+             (sender != chara && (!OwnsOrCompanion(sender, chara) || chara.currentZone != sender.currentZone)))) {
+            EmpLog.Warning("Refusing {DeltaType} from peer {PeerIndex}, owner {OwnerUid} is not the sender's",
                 nameof(CharaEquipDelta), OriginPeer, chara.uid);
             return;
         }
 
-        // what sits in someone else's bag is not this player's to put on (it may have just been traded away)
-        if (net is ElinNetHost && Equip && thing.GetRootCard() is Chara holder && holder != chara) {
+        // what sits in someone else's bag is not this player's to put on (it may have just been traded away); the
+        // sender's own bag is, for its companion: the game moves the thing from it inside Equip, and the move may
+        // be told after the equip
+        if (net is ElinNetHost && Equip && thing.GetRootCard() is Chara holder && holder != chara && holder != sender) {
             EmpLog.Warning("Refusing {DeltaType} from peer {PeerIndex}, thing {Uid} is held by {HolderUid}",
                 nameof(CharaEquipDelta), OriginPeer, thing.uid, holder.uid);
             return;

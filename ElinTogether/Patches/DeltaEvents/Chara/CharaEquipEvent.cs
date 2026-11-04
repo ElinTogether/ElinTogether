@@ -1,3 +1,4 @@
+using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
 using HarmonyLib;
@@ -60,8 +61,10 @@ internal static class CharaEquipEvent
         }
 
         if (connection.IsClient) {
-            // 客机只报自己，影子 uid 不出机
-            if (!owner.IsPC || PendingUid.IsPending(thing.uid) || PendingUid.IsPending(owner.uid)) {
+            // a guest reports its own gear and its companions' (a companion's gear changed in the guest's game was
+            // never told: the host kept counting and saving the old gear); shadow uids never leave this game
+            if (!(owner.IsPC || owner.IsCompanionOf(EClass.pc)) || PendingUid.IsPending(thing.uid) ||
+                PendingUid.IsPending(owner.uid)) {
                 return;
             }
 
