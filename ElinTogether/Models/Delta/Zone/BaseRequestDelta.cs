@@ -286,7 +286,10 @@ public class BaseRequestDelta : ElinDelta
             }
 
             if (Kind == BaseRequestKind.Recruit) {
-                branch.Recruit(reserved);
+                // the sender's recruit: an achievement for it (LOMIAS2, MELILITH...) is the sender's, not the host's
+                using (Helper.PlayerAchievements.For(sender)) {
+                    branch.Recruit(reserved);
+                }
             } else if (reserved.trait.CanBeBanished) {
                 // what the trash button does; OnBanish tells the others, see RemoteResidentPatch
                 Home.RemoveReserve(reserved);

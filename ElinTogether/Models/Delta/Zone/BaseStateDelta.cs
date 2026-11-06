@@ -229,7 +229,11 @@ public class BaseStateDelta : ElinDelta
                 Home.AddReserve(chara);
                 break;
             case BaseRequestKind.Recruit:
-                branch.AddMemeber(chara);
+                // the copy of a recruit the host's game made: its achievement went to whoever recruited (the host's
+                // account, or the guest it sent it to), never to every game that copies it; the recruit is no player
+                using (Helper.PlayerAchievements.For(chara)) {
+                    branch.AddMemeber(chara);
+                }
                 break;
             case BaseRequestKind.Banish:
                 if (Value == 0) {
