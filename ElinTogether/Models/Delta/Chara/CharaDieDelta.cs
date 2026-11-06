@@ -64,6 +64,9 @@ public class CharaDieDelta : ElinDelta
         SleepSynchronizationContext.ReportAwayLife(chara);
         // ReportContextPatch's: a guest's bug report said nothing of its death, the host's did
         ReportContextPatch.OnDie(chara, Origin);
+        // PlayerFollow's: a guest's death comes by this replay only, and the players following it were never told (issue
+        // 75: they kept walking after a dead leader)
+        Helper.PlayerFollow.OnDie(chara);
 
         // stale
         if (!wasDead && chara.IsPC) {
