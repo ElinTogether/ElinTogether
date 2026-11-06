@@ -1,3 +1,4 @@
+using ElinTogether.LangMod;
 using System.Linq;
 using ElinTogether.Helper.Extensions;
 using ElinTogether.Models;
@@ -296,6 +297,17 @@ public static class AdventurerBout
                 continue;
             }
 
+            // travelling alone, the winner goes back to a town of its own and never stands on this map: the reward
+            // comes by letter, as what the host gives any player who is away (GitHub issue 79)
+            if (peer >= 0 && host.IsAwayPeer(peer)) {
+                bouts.Remove(uid);
+                if (Find(uid) is { } beaten) {
+                    RewardByLetter(beaten, rec[RecGuest]);
+                }
+
+                continue;
+            }
+
             if (peer < 0 || !host.IsSettled(peer) || !host.ActiveRemoteCharas.TryGetValue(peer, out var guest) ||
                 !EClass._map.charas.Contains(guest)) {
                 continue;
@@ -312,14 +324,32 @@ public static class AdventurerBout
     ///     The game's reward of a won bout (ZonePreEnterBoutWin), given by the host: the most precious piece the
     ///     adventurer wears and was not given, or some platinum
     /// </summary>
-    private static void Reward(Chara target, Chara guest)
+    private static void RewardByLetter(Chara target, int guestUid)
     {
-        // the host's adventurer and its gear are often out of the card table after a bout (3 adventurers of 3 on the
-        // bench, with 0 or 1 of their 8 to 10 worn things): what is said about an uncached card is dropped before it
-        // goes out (CardAddThingDelta.OnRefresh finds nothing), the guest never got the reward, only the bag check
-        // brought it some 25 s later (GitHub issue 62, bench 2026-11-02). This game's adventurer is the real one
         Recache(target);
+        Thing best;
+        using (ElinDelta.Simulate()) {
+            best = TakeBest(target);
+        }
 
+        if (!Mailbox.Post(guestUid, best, "emp_bout_reward_mail".Loc(target.NameSimple), target.NameSimple)) {
+            // (no letter could be written: the adventurer keeps it, in its bag)
+            using (ElinDelta.Simulate()) {
+                if (best.id != "plat") {
+                    target.AddThing(best);
+                }
+            }
+
+            EmpLog.Warning("Bout reward {Thing} from {Target} to player {Guest}: no letter, not given", best.id, target.uid, guestUid);
+            return;
+        }
+
+        EmpLog.Information("Bout reward {Thing} from {Target} to player {Guest}, away: by letter", best.id, target.uid, guestUid);
+    }
+
+    // the most precious piece the adventurer wears and was not given, taken off it, or some platinum
+    private static Thing TakeBest(Chara target)
+    {
         Thing? best = null;
         var price = 0;
         foreach (var thing in target.things) {
@@ -329,16 +359,28 @@ public static class AdventurerBout
             }
         }
 
+        if (best is null) {
+            return ThingGen.Create("plat").SetNum(EClass.rndHalf(target.LV / 10 + 2));
+        }
+
+        target.RemoveCard(best);
+        target.EQ_CAT(best.category.id);
+        return best;
+    }
+
+    private static void Reward(Chara target, Chara guest)
+    {
+        // the host's adventurer and its gear are often out of the card table after a bout (3 adventurers of 3 on the
+        // bench, with 0 or 1 of their 8 to 10 worn things): what is said about an uncached card is dropped before it
+        // goes out (CardAddThingDelta.OnRefresh finds nothing), the guest never got the reward, only the bag check
+        // brought it some 25 s later (GitHub issue 62, bench 2026-11-02). This game's adventurer is the real one
+        Recache(target);
+
         // the real item changes hands here; the host's own patches tell everyone, as for a trade
         var picked = PlayerTrade.HasRoom(guest, 1, 0);
+        Thing best;
         using (ElinDelta.Simulate()) {
-            if (best is null) {
-                best = ThingGen.Create("plat").SetNum(EClass.rndHalf(target.LV / 10 + 2));
-            } else {
-                target.RemoveCard(best);
-                target.EQ_CAT(best.category.id);
-            }
-
+            best = TakeBest(target);
             if (picked) {
                 guest.AddThing(best, false);
             } else {

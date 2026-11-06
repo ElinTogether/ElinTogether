@@ -1768,5 +1768,6 @@
     "LangGeneral.emp_ui_sv_cfg_follow_travel.text": "跟随可以跨地图",
     "LangGeneral.emp_ui_sv_desc_follow_travel.text": "被跟随的玩家离开地图时，你会走同样的路，并在世界地图上跟着对方走。只有领头者的步伐推进日期，一起旅行的时间只计算一次。需要开启跟随和独自旅行。关闭：对方离开地图时停止跟随。",
     "LangGeneral.emp_follow_by.text": "#1正在跟随你。",
-    "LangGeneral.emp_follow_travel.text": "你正与#1一同旅行：这段旅程的时间只按#1的步伐计算一次。"
+    "LangGeneral.emp_follow_travel.text": "你正与#1一同旅行：这段旅程的时间只按#1的步伐计算一次。",
+    "LangGeneral.emp_bout_reward_mail.text": "与{0}决斗的奖品"
 }
