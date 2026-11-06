@@ -1,14 +1,13 @@
 [
   {
-    "version": "0.26.1893",
+    "version": "0.26.1894",
     "date": "2026-11-06",
     "title": "teleporters, bank and shops, duel rewards, issues #76-#82",
     "bullets": [
-      "#76 #82 Teleporters: after arriving by a teleporter, your first step off it no longer sends you back.",
-      "#78 #81 Bank, shops, crafting: in worlds that had been played a long time, a guest's bank deposits, purchases (innkeeper food) and crafted items were undone after 10 seconds. Fixed for every world: a world whose card numbers were nearly used up is repaired by itself when the host opens it (a backup of the save is made first).",
-      "#80 Residents and pets no longer duplicate when the host enters a settlement that a guest was holding alone (same cause as #78).",
-      "#79 Duel rewards: a guest who wins a duel with an adventurer while travelling alone now gets the reward by letter in the mailbox.",
-      "Built for Elin EA 23.358."
+      "#76 #82 Teleporters: after arriving by a teleporter, your first step off it no longer sends you back again and again.",
+      "#78 #81 Bank, shops, crafting: in worlds played for a long time, a guest's bank deposits, purchases (food from the innkeeper) and crafted items (bullets) were undone after 10 seconds.",
+      "#80: residents and pets no longer duplicate when the host enters a settlement a guest was holding alone (same cause as #78).",
+      "#79 Duel rewards: a guest who wins a duel with an adventurer while travelling alone now gets the reward by letter in the mailbox."
     ]
   },
   {
@@ -16,6 +15,7 @@
     "date": "2026-11-04",
     "title": "travel together, steadier links, issues #73 #74 #75",
     "bullets": [
+      "Downloads: players need only ElinTogether-independence.zip.",
       "#75 Follow goes across maps: when you follow another player and they leave the map, you take the same way out and walk after them on the world map.",
       "Steadier links: a connection silent for up to 30 seconds now holds instead of dropping after 10, and the guest carries on by itself.",
       "Max players: a new host setting caps how many players can be in at once (50 on the public server).",
