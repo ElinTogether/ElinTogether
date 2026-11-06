@@ -52,7 +52,7 @@ public class BuildVersionIntegrity : EClass
     /// <summary>
     ///     The Elin build this release is compiled and tested against (the Nightly branch). Bump it with each release
     /// </summary>
-    public const int BuiltForGame = 23357;
+    public const int BuiltForGame = 23358;
 
     public static string BuiltForGameText => $"EA {BuiltForGame / 1000}.{BuiltForGame % 1000}";
 
