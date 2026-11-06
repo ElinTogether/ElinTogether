@@ -33,10 +33,10 @@ internal static class PublicServerCertificate
 {
     internal const string LobbyKey = "EmpHostCert";
 
-    // the public half of the ETWorld service key (worker secret SERVICE_KEY), 64 hex each. Empty until the service is
-    // deployed (API.md section 9): until then no certificate is accepted by a Release build and the public server is
-    // the dedicated PC with its RSA signature (OfficialServer.AcceptLegacySignature)
-    private static readonly string[] ServiceKeysHex = [];
+    // the public half of the ETWorld service key (worker secret SERVICE_KEY), 64 hex each; the seed is a secret of the
+    // worker and of the lead dev's PC only (made 2026-11-03). The dedicated PC's RSA signature is still accepted beside
+    // it (OfficialServer.AcceptLegacySignature)
+    private static readonly string[] ServiceKeysHex = ["a440f8e33c1dcc037e286c213c927750c13fe31daafcbf2976ca5200a80c812a"];
 
     private static List<byte[]>? _keys;
 

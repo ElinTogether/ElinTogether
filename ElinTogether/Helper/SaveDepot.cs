@@ -153,7 +153,13 @@ internal static class SaveDepot
     ///     The world service this game's depot names ("etworld:" address), null when it is another depot or none: the
     ///     election of the next keeper of the peer-hosted world uses it (EtWorldPeerStore), with the same key
     /// </summary>
-    internal static (string Address, string KeyFile)? EtWorldService => EtWorld ? (Root.Substring(8), KeyFile) : null;
+    internal static (string Address, string KeyFile)? EtWorldService => EtWorld ? (Root.Substring(8), KeyFile) :
+        PeerHosting.PublicRoot is { } builtIn ? (builtIn.Substring(8), KeyFile) : null;
+
+    /// <summary>
+    ///     The depot setting itself names a world service (a group's own, it comes before the built-in public one)
+    /// </summary>
+    internal static bool EtWorldConfigured => EtWorld;
 
     /// <summary>
     ///     The public half of this install's world service key (made now if there is none), whatever depot is set,

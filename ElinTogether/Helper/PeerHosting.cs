@@ -80,6 +80,11 @@ internal sealed class LocalPeerHosting : IPeerHosting
 
     private static readonly bool _argument = Environment.GetCommandLineArgs().Contains(Argument);
 
+    /// <summary>
+    ///     This game was started with -emppeerhosted (the hidden server of a peer-hosted world)
+    /// </summary>
+    internal static bool ArgumentGiven => _argument;
+
     private static string FilePath => Path.Combine(Application.persistentDataPath, "ElinMP", "peer_hosting.json");
 
     private DateTime _readAt = DateTime.MinValue;
@@ -88,7 +93,7 @@ internal sealed class LocalPeerHosting : IPeerHosting
     private string[] _banned = [];
     private RulesSnapshot? _rules;
 
-    public bool Active => _argument || EmpConfig.Dev.PeerHosted.Value;
+    public bool Active => _argument || EmpConfig.Dev.PeerHosted.Value || PeerHosting.PublicRoot is not null;
 
     public string[] AdminIds {
         get {
@@ -182,9 +187,9 @@ internal sealed class StorePeerHosting : IPeerHosting
     private const double RefreshSeconds = 300;
     private const double RetrySeconds = 30;
 
-    // the public halves of the world admins' keys (dev/etworld/make_admin_key.py on the lead dev's PC), 64 hex each.
-    // Empty until the service is deployed (API.md section 9)
-    private static readonly string[] AdminKeysHex = [];
+    // the public halves of the world admins' keys, 64 hex each; the private seeds stay on the lead dev's PC
+    // (ElinMP/etworld_admin.key and an offline copy), never in the repository or a release (made 2026-11-03)
+    private static readonly string[] AdminKeysHex = ["250fe36322971ef5e094139f69a3a0ef359bd2d2b3c1e0533f45cc74b9382052"];
 
     private static string[]? _adminKeys;
 
@@ -402,6 +407,89 @@ internal static class PeerHosting
     internal static IPeerHosting Current { get; set; } = new StorePeerHosting();
 
     internal static bool Active => Current.Active;
+
+    // the public world's ETWorld service, built in: empty until the worker is deployed (dev/etworld/API.md section 9);
+    // then the public server card opens the peer-hosted world with no setting and no question (lead dev 2026-11-03)
+    private const string PublicServiceAddress = "";
+
+#if DEBUG
+    private static string? _publicService;
+    // (Environment.TickCount, not Unity's clock: the store's requests read it off the game's thread)
+    private static int _publicReadAt;
+#endif
+
+    /// <summary>
+    ///     The built-in public world service ("https://host"), empty when there is none (Debug builds also read the
+    ///     bench's ElinMP/etworld_public_test.txt, one address, again every 2 s)
+    /// </summary>
+    internal static string PublicService
+    {
+        get {
+#if DEBUG
+            if (_publicService is null || unchecked(Environment.TickCount - _publicReadAt) > 2000) {
+                _publicReadAt = Environment.TickCount;
+                var address = PublicServiceAddress;
+                try {
+                    var path = Path.Combine(Application.persistentDataPath, "ElinMP", "etworld_public_test.txt");
+                    if (File.Exists(path) && File.ReadAllText(path).Trim() is { Length: > 0 } test) {
+                        address = test;
+                    }
+                } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+                    EmpLog.Warning(ex, "The bench's public world service could not be read");
+                }
+
+                _publicService = address;
+            }
+
+            return _publicService;
+#else
+            return PublicServiceAddress;
+#endif
+        }
+    }
+
+    /// <summary>
+    ///     The player opened the public world from its card in this run; cleared when this game starts anything else
+    ///     (another save, another game's lobby, a hidden server on another save)
+    /// </summary>
+    internal static bool PublicEntered { get; set; }
+
+    /// <summary>
+    ///     The card opens the public world through the built-in service: there is one, and the depot setting does not
+    ///     name another world service (a group's own etworld: depot comes first)
+    /// </summary>
+    internal static bool PublicAvailable => PublicService.Length > 0 && !SaveDepot.EtWorldConfigured;
+
+    /// <summary>
+    ///     "etworld:" + the built-in service while this game plays the public world (the card was used, or this is
+    ///     the hidden server started for it with -emppeerhosted), null otherwise: then nothing of the peer mode runs
+    /// </summary>
+    internal static string? PublicRoot => PublicAvailable && (PublicEntered || LocalPeerHosting.ArgumentGiven)
+        ? "etworld:" + PublicService
+        : null;
+
+    /// <summary>
+    ///     A scene came up: a game played on another save than the peer world's, as its host or alone, or as a guest of
+    ///     a lobby that does not even claim to be the public server (a Steam invite to a friend's game), ends the public
+    ///     world mode of this run. The keeper's own game (its hidden server, no lobby) and a keeper's lobby keep it;
+    ///     the other joins of the Lobby tab end it at the click (TabPlay)
+    /// </summary>
+    [ElinPostSceneInit]
+    private static void LeavePublicOnOtherGame(Scene.Mode mode)
+    {
+        if (!PublicEntered || mode != Scene.Mode.StartGame || !EClass.core.IsGameStarted) {
+            return;
+        }
+
+        var session = NetSession.Instance;
+        var other = session.Transport is ElinNetClient
+            ? session.Lobby.Current is { IsValid: true } lobby && !Net.Steam.OfficialServer.Claims(lobby)
+            : Game.id != PeerKeeper.SaveId;
+        if (other) {
+            PublicEntered = false;
+            EmpLog.Information("Public world mode ended: this game plays another world");
+        }
+    }
 
     internal static HashSet<ulong> AdminSet() => Parse(Current.AdminIds);
 
