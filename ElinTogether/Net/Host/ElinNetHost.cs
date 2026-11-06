@@ -76,6 +76,8 @@ internal partial class ElinNetHost : ElinNetBase
         }
 
         BackupBeforeNewVersion();
+        // a counter near the end of the numbers goes down first (issues 78-81), the save just backed up
+        Helper.UidRepair.Run();
         // a peer-hosted world: its signed rules, admins and bans, whatever this machine's files say
         BeginPeerHosted();
         // the official server's fixed rules, over whatever the file says

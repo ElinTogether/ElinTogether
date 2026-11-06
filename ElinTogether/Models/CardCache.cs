@@ -66,11 +66,7 @@ public static class CardCache
 
     internal static void Set(Card card)
     {
-        if (card.uid < 0) {
-            EmpLog.Warning("Added card with negative uid");
-            return;
-        }
-
+        // (a negative uid is a client's pending card, see PendingUid)
         _cards[card.uid] = new(card);
     }
 
@@ -85,7 +81,7 @@ public static class CardCache
         card.uid = uid;
         _cards[uid] = new(card);
 
-        EClass.game.cards.uidNext = Math.Max(EClass.game.cards.uidNext, uid + 1);
+        EClass.game.cards.uidNext = PendingUid.Above(EClass.game.cards.uidNext, uid);
     }
 
     internal static bool Contains(Card? card)
@@ -115,7 +111,7 @@ public static class CardCache
 
     internal static Card? Find(int uid)
     {
-        if (uid > 0 && _cards.TryGetValue(uid, out var reference)) {
+        if (uid != 0 && _cards.TryGetValue(uid, out var reference)) {
             reference.TryGetTarget(out var card);
             return card;
         }

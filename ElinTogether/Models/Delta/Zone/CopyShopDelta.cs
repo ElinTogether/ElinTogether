@@ -79,7 +79,7 @@ public class CopyShopDelta : ElinDelta
         shop.c_copyContainer = found;
         // what came with it has the host's uids: keep this game's next one above them (as CardGenDelta does)
         foreach (var card in found.things.Flatten().Prepend(found)) {
-            game.cards.uidNext = System.Math.Max(game.cards.uidNext, card.uid + 1);
+            game.cards.uidNext = PendingUid.Above(game.cards.uidNext, card.uid);
         }
 
         // the dialog may be closed by now, or be another one

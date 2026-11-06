@@ -57,8 +57,9 @@ public class CardGenDelta : ElinDelta
         IEnumerable<Card> subtree = card.things.Flatten();
         // the next number to hand out, above every number received: a client simulating on its own later
         // (travelling alone, inheriting a map) must not give one of them to a new card
-        game.cards.uidNext = Math.Max(game.cards.uidNext,
-            subtree.Select(node => node.uid).Prepend(card.uid).Max() + 1);
+        foreach (var uid in subtree.Select(node => node.uid).Prepend(card.uid)) {
+            game.cards.uidNext = PendingUid.Above(game.cards.uidNext, uid);
+        }
 
         CardCache.Add(card);
         foreach (var thing in subtree) {

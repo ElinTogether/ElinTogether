@@ -189,7 +189,7 @@ public class CharaBagDelta : ElinDelta
 
             if (mine is null || mine.isDestroyed) {
                 mine = theirs;
-                game.cards.uidNext = Math.Max(game.cards.uidNext, theirs.uid + 1);
+                game.cards.uidNext = PendingUid.Above(game.cards.uidNext, theirs.uid);
                 added++;
             } else if (mine.parent != holder) {
                 moved++;

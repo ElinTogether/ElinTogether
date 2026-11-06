@@ -58,6 +58,15 @@ internal partial class ElinNetHost
         set;
     }
 
+    /// <summary>
+    ///     UidRepair moved the world's counter down: the saved highest range is forgotten with it (ranges start above
+    ///     the counter again)
+    /// </summary>
+    internal static void ResetCardRangeFloor(int floor)
+    {
+        LeaseRangeFloor[FloorCards] = floor;
+    }
+
     private int ReserveQuestUids()
     {
         _questRangeNext = Math.Max(Math.Max(game.quests.uid, _questRangeNext), LeaseRangeFloor[FloorQuests]) +
@@ -1144,9 +1153,9 @@ internal partial class ElinNetHost
             EmpLog.Warning("Host card counter {UidNext} reached the leased uid range starting at {Start}, jumping past it",
                 cards.uidNext, start);
             cards.uidNext = start + MaxLeaseUids;
-            if (PendingUid.IsNearFloor(cards.uidNext)) {
-                EmpLog.Error("Host card counter {UidNext} is close to the pending uids from {Floor}: the world's card numbers are running out",
-                    cards.uidNext, PendingUid.Floor);
+            if (PendingUid.IsNearCeiling(cards.uidNext)) {
+                EmpLog.Error("Host card counter {UidNext} is close to the world's ceiling {Ceiling}: the world's card numbers are running out",
+                    cards.uidNext, PendingUid.Ceiling);
             }
 
             return true;
@@ -1177,10 +1186,10 @@ internal partial class ElinNetHost
         var floor = Math.Max(ActiveLeaseEnd, saved > 0 ? saved + MaxLeaseUids : 0);
         var rangeStart = Math.Max(game.cards.uidNext, floor) + LeaseUidHeadroom;
         LeaseRangeFloor[FloorCards] = Math.Max(saved, rangeStart);
-        // (GitHub issue 71) above PendingUid.Floor a real card would look pending to the guests
-        if (PendingUid.IsNearFloor(rangeStart + MaxLeaseUids)) {
-            EmpLog.Error("Lease uid range {Start} is close to the pending uids from {Floor}: the world's card numbers are running out",
-                rangeStart, PendingUid.Floor);
+        // (GitHub issues 71, 78) past the world's ceiling the numbers would be its cards' again, or overflow
+        if (PendingUid.IsNearCeiling(rangeStart + MaxLeaseUids)) {
+            EmpLog.Error("Lease uid range {Start} is close to the world's ceiling {Ceiling}: the world's card numbers are running out",
+                rangeStart, PendingUid.Ceiling);
         }
 
         if (!_leases.TryGetValue(peer.Id, out var zones)) {
