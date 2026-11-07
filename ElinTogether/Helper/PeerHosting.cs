@@ -412,9 +412,10 @@ internal static class PeerHosting
 
     internal static bool Active => Current.Active;
 
-    // the public world's ETWorld service, built in: empty until the worker is deployed (dev/etworld/API.md section 9);
-    // then the public server card opens the peer-hosted world with no setting and no question (lead dev 2026-11-03)
-    private const string PublicServiceAddress = "";
+    // the public world's ETWorld service, built in (deployed 2026-11-07, Cloudflare free plan): the public server card
+    // opens the peer-hosted world with no setting and no question (lead dev 2026-11-03). A Debug build never uses it
+    // by itself (the bench must not play the real world): only the address of ElinMP/etworld_public_test.txt
+    private const string PublicServiceAddress = "https://etworld.yhhhuii095.workers.dev";
 
 #if DEBUG
     private static string? _publicService;
@@ -423,7 +424,7 @@ internal static class PeerHosting
 #endif
 
     /// <summary>
-    ///     The built-in public world service ("https://host"), empty when there is none (Debug builds also read the
+    ///     The built-in public world service ("https://host"), empty when there is none (Debug builds read only the
     ///     bench's ElinMP/etworld_public_test.txt, one address, again every 2 s)
     /// </summary>
     internal static string PublicService
@@ -432,7 +433,7 @@ internal static class PeerHosting
 #if DEBUG
             if (_publicService is null || unchecked(Environment.TickCount - _publicReadAt) > 2000) {
                 _publicReadAt = Environment.TickCount;
-                var address = PublicServiceAddress;
+                var address = "";
                 try {
                     var path = Path.Combine(Application.persistentDataPath, "ElinMP", "etworld_public_test.txt");
                     if (File.Exists(path) && File.ReadAllText(path).Trim() is { Length: > 0 } test) {
