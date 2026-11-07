@@ -53,6 +53,7 @@ internal partial class ElinNetHost
 
         PeerRules.Enforce(this);
         ForceDebugOff();
+        UpdateLoadCap();
         if (Time.realtimeSinceStartup >= _nextPeerSync) {
             _nextPeerSync = Time.realtimeSinceStartup + PeerSyncSeconds;
             SyncPeerModeration(this);

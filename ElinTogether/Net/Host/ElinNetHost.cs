@@ -243,7 +243,8 @@ internal partial class ElinNetHost : ElinNetBase
 
         // the most players at once (MaxPlayers): a new one is told the server is full; a player whose link is being
         // replaced (same id), the owner's seat and the admins are never counted out
-        if (!IsOwnerCandidate(peer) && EmpConfig.Server.MaxPlayers.Value is > 0 and var cap && !Admins.ContainsKey(peer.User) &&
+        // (a peer-hosted world's keeper may hold a lower cap of its own while its PC is slow, see LoadCap)
+        if (!IsOwnerCandidate(peer) && EffectiveCap(EmpConfig.Server.MaxPlayers.Value) is > 0 and var cap && !Admins.ContainsKey(peer.User) &&
             Socket.Peers.Count(p => !ReferenceEquals(p, peer) && p.Id != peer.Id) >= cap) {
             EmpLog.Information("Player {@Peer} refused: the server is full ({Cap} players)", peer, cap);
             AdminLog($"refused {(ulong)peer.User} {peer.User.Name}: full ({cap})");
