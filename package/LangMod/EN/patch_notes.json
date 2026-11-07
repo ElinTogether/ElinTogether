@@ -1,5 +1,18 @@
 [
   {
+    "version": "0.26.1914",
+    "date": "2026-11-07",
+    "title": "the public world hosted by its players, achievements, issue #83",
+    "bullets": [
+      "The public world is now kept by its players, in turn.",
+      "A keeper whose PC slows down takes no more new players until it keeps up again (never below 25). Nobody already in is put out.",
+      "#83 War horn reinforcements no longer turn on the player in the middle of a defense fight.",
+      "Steam achievements: the achievements earned in a shared world go to the player who earned them, the host's account included (recruiting a companion, the bell, the snail, fishing, meals, the Ashland pie, the mammoth and more).",
+      "Follow: the follow stops when the leader dies, and goes down dungeon stairs after the leader.",
+      "Lighter for the host: the player list sends only what changed (63% less upload for it at 50 players), and a world copy reuses the files a player already has."
+    ]
+  },
+  {
     "version": "0.26.1894",
     "date": "2026-11-06",
     "title": "teleporters, bank and shops, duel rewards, issues #76-#82",
