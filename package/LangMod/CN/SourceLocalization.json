@@ -1771,5 +1771,6 @@
     "LangGeneral.emp_follow_travel.text": "你正与#1一同旅行：这段旅程的时间只按#1的步伐计算一次。",
     "LangGeneral.emp_bout_reward_mail.text": "与{0}决斗的奖品",
     "LangGeneral.emp_ui_takeover_wait.text": "保管世界的玩家已离开，正在等待交接…（#1）",
-    "LangGeneral.emp_ui_takeover_opening.text": "#1 正在打开世界…（#2，通常约2分钟）"
+    "LangGeneral.emp_ui_takeover_opening.text": "#1 正在打开世界…（#2，通常约2分钟）",
+    "LangGeneral.emp_ui_connection_problem.text": "连接出现问题…（{0}秒）"
 }

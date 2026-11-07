@@ -36,10 +36,16 @@ public sealed class SteamNetPeerStat
                $"Sent={BytesSent.ToAllocateString()}\tRecv={BytesReceived.ToAllocateString()}";
     }
 
+    /// <summary>
+    ///     When the last message came (Time.realtimeSinceStartup, the main thread's Poll), -1 before any
+    /// </summary>
+    public float LastReceivedAt = -1f;
+
     public void Received(int bytes)
     {
         BytesReceived += bytes;
         PacketsReceived++;
+        LastReceivedAt = UnityEngine.Time.realtimeSinceStartup;
     }
 
     public void Sent(int bytes)

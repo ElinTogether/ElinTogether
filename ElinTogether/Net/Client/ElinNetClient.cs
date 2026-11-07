@@ -45,6 +45,39 @@ internal partial class ElinNetClient : ElinNetBase
 
     public bool IsDirectConnection { get; private set; }
 
+    private const float SilenceSeconds = 3f;
+    private const float SilenceRepeatSeconds = 5f;
+    private float _silenceToldAt = -1f;
+
+    /// <summary>
+    ///     Nothing came from the host for 3 s while playing: a line says so, with the time, again every 5 s, until the
+    ///     link either comes back or drops (the reconnect notice then; council 2026-11-07, PLAN_network_robustness
+    ///     defect 4: with the 30 s timeout a silent link looked like a frozen game)
+    /// </summary>
+    private void UpdateSilence()
+    {
+        if (Host is not { } host || !IsConnected || !EClass.core.IsGameStarted || IsInTransfer ||
+            _handshakePhase != NetHandshakePhase.Joined || host.Stat.LastReceivedAt < 0f) {
+            _silenceToldAt = -1f;
+            return;
+        }
+
+        var now = UnityEngine.Time.realtimeSinceStartup;
+        var silent = now - host.Stat.LastReceivedAt;
+        if (silent < SilenceSeconds) {
+            _silenceToldAt = -1f;
+            return;
+        }
+
+        if (_silenceToldAt >= 0f && now - _silenceToldAt < SilenceRepeatSeconds) {
+            return;
+        }
+
+        _silenceToldAt = now;
+        EmpLog.Information("Nothing from the host for {Seconds} s", (int)silent);
+        WidgetPopText.Say("emp_ui_connection_problem".Loc((int)silent));
+    }
+
     protected override void Update()
     {
         base.Update();
@@ -68,6 +101,7 @@ internal partial class ElinNetClient : ElinNetBase
         UpdateSoftStayWait();
         UpdateTravelWatchdog();
         UpdateHostLeft();
+        UpdateSilence();
         Helper.OwnSettings.WatchRespawn();
 
         if (IsConnected) {
