@@ -803,6 +803,7 @@ internal static class PeerKeeper
         }
 
         ElinNetHost.SetHandoverNumber((int)Math.Min(int.MaxValue, _handover));
+        ElinNetHost.KeeperOpened();
         _putReason = ReadLeaseReason();
         _dirty = true;
         // (the opening version: what this keeper starts from, a moment after the session opened)

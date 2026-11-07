@@ -22,6 +22,12 @@ internal partial class ElinNetHost
     // (NetReconnect gives up after 3 minutes, plus a world handover wait)
     private const float LinkLostGraceSeconds = 300f;
 
+    // a peer-hosted world just opened by its new keeper: the players of the one that left come back as the character
+    // they were playing, never asked (they did not leave, the world moved; PeerKeeper)
+    private static float _keeperOpenedAt = float.NegativeInfinity;
+
+    internal static void KeeperOpened() => _keeperOpenedAt = Time.realtimeSinceStartup;
+
     /// <summary>
     ///     A combination of all remote chara's act states
     /// </summary>
@@ -179,6 +185,10 @@ internal partial class ElinNetHost
 
         // a player whose link dropped comes back as the one it was playing, never asked: it did not leave
         if (known && LinkLostAt.Remove(peer.User, out var lost) && Time.realtimeSinceStartup - lost < LinkLostGraceSeconds) {
+            ask = false;
+        }
+
+        if (known && Time.realtimeSinceStartup - _keeperOpenedAt < LinkLostGraceSeconds) {
             ask = false;
         }
 
