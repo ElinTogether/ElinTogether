@@ -351,8 +351,20 @@ internal partial class ElinNetHost
     // many entries a tick (about 1.5 KB), the farthest wait for the next one
     private const int CrowdEntryBudget = 48;
 
-    // player -> what of the player list it was last sent, and when (item 3)
-    private readonly Dictionary<int, (int Key, float At)> _playersSent = [];
+    // player -> each line of the player list it was last sent (Index -> key), the map sums it was sent, when it got
+    // anything and when it got a whole list
+    private readonly Dictionary<int, PlayersSent> _playersSent = [];
+
+    private sealed class PlayersSent
+    {
+        internal readonly Dictionary<int, int> Lines = [];
+        internal int Sums;
+        internal float At;
+        internal float WholeAt;
+    }
+
+    // a whole list now and then: a line lost on the way, or a game that missed one, is put right
+    private const float PlayersWholeSeconds = 30f;
 
     // the player list again even unchanged after that long: the pings it shows, and NetDesync compares on each list
     // (3 in a row: a gap is told within 18 s instead of 6)
@@ -364,9 +376,14 @@ internal partial class ElinNetHost
     /// </summary>
     private void SendPlayersOnChange(SessionPlayersSnapshot players)
     {
-        var key = PlayersKey(players);
         var now = UnityEngine.Time.realtimeSinceStartup;
-        byte[]? bytes = null;
+        var lines = new Dictionary<int, int>(players.Current.Length);
+        foreach (var s in players.Current) {
+            lines[s.Index] = LineKey(s);
+        }
+
+        var sums = SumsKey(players.Sums);
+        byte[]? whole = null;
         foreach (var peer in Socket.Peers) {
             // (still in its handshake: its game would drop it, and once joined it is sent the list at once)
             if (!IsPlaying(peer) || IsOffHostMap(peer)) {
@@ -374,45 +391,83 @@ internal partial class ElinNetHost
                 continue;
             }
 
-            if (_playersSent.TryGetValue(peer.Id, out var last) && last.Key == key && now - last.At < PlayersResendSeconds) {
+            if (!_playersSent.TryGetValue(peer.Id, out var sent) || now - sent.WholeAt >= PlayersWholeSeconds) {
+                sent ??= _playersSent[peer.Id] = new();
+                sent.Lines.Clear();
+                foreach (var (index, key) in lines) {
+                    sent.Lines[index] = key;
+                }
+
+                sent.Sums = sums;
+                sent.At = sent.WholeAt = now;
+                peer.Send(whole ??= Socket.Serializer.Serialize(players));
                 continue;
             }
 
-            _playersSent[peer.Id] = (key, now);
-            peer.Send(bytes ??= Socket.Serializer.Serialize(players));
+            var changed = players.Current.Where(s => !sent.Lines.TryGetValue(s.Index, out var k) || k != lines[s.Index]).ToArray();
+            var gone = sent.Lines.Keys.Where(i => !lines.ContainsKey(i)).ToArray();
+            // nothing new: still a word now and then, NetDesync compares the map sums on each list
+            if (changed.Length == 0 && gone.Length == 0 && sent.Sums == sums && now - sent.At < PlayersResendSeconds) {
+                continue;
+            }
+
+            foreach (var s in changed) {
+                sent.Lines[s.Index] = lines[s.Index];
+            }
+
+            foreach (var i in gone) {
+                sent.Lines.Remove(i);
+            }
+
+            sent.Sums = sums;
+            sent.At = now;
+            peer.Send(new SessionPlayersSnapshot {
+                Current = [..changed],
+                Sums = players.Sums,
+                Partial = true,
+                Gone = gone.Length > 0 ? gone : null,
+            });
         }
     }
 
-    // all but the pings and the tick of the last report, which change every time
-    private static int PlayersKey(SessionPlayersSnapshot players)
+    // a line of the list: what the panel shows, the pings to 25 ms and the qualities to 10% (they move every time)
+    private static int LineKey(NetPeerState s)
     {
         var hash = new System.HashCode();
-        foreach (var s in players.Current) {
-            hash.Add(s.Index);
-            hash.Add(s.CharaUid);
-            hash.Add(s.Speed);
-            hash.Add(s.LastAct);
-            hash.Add(s.Turbo);
-            hash.Add(s.Talking);
-            hash.Add(s.Idle);
+        hash.Add(s.Index);
+        hash.Add((ulong)s.User);
+        hash.Add(s.CharaUid);
+        hash.Add(s.Speed);
+        hash.Add(s.LastAct);
+        hash.Add(s.Turbo);
+        hash.Add(s.Talking);
+        hash.Add(s.Idle);
+        hash.Add(s.AvgPingMsWire / 25);
+        hash.Add(s.ConnectionQualityLocalWire / 10);
+        hash.Add(s.ConnectionQualityRemoteWire / 10);
+        return hash.ToHashCode();
+    }
+
+    private static int SumsKey(MapSums? sums)
+    {
+        if (sums is null) {
+            return 0;
         }
 
-        if (players.Sums is { } sums) {
-            hash.Add(sums.ZoneUid);
-            hash.Add(sums.Charas);
-            hash.Add(sums.CharaMix);
-            hash.Add(sums.Things);
-            hash.Add(sums.ThingMix);
-            hash.Add(sums.Locals);
-            hash.Add(sums.LocalMix);
-            var bags = 0;
-            foreach (var (uid, mix) in sums.Bags ?? []) {
-                bags ^= System.HashCode.Combine(uid, mix);
-            }
-
-            hash.Add(bags);
+        var hash = new System.HashCode();
+        hash.Add(sums.ZoneUid);
+        hash.Add(sums.Charas);
+        hash.Add(sums.CharaMix);
+        hash.Add(sums.Things);
+        hash.Add(sums.ThingMix);
+        hash.Add(sums.Locals);
+        hash.Add(sums.LocalMix);
+        var bags = 0;
+        foreach (var (uid, mix) in sums.Bags ?? []) {
+            bags ^= System.HashCode.Combine(uid, mix);
         }
 
+        hash.Add(bags);
         return hash.ToHashCode();
     }
 

@@ -19,6 +19,20 @@ public class SessionPlayersSnapshot
     [Key(1)]
     public MapSums? Sums { get; init; }
 
+    /// <summary>
+    ///     Only the players whose line changed since the last list this game got (by <see cref="NetPeerState.Index" />),
+    ///     the others kept as they were; a whole list comes now and then (ElinNetHost.SendPlayersOnChange: the whole
+    ///     list to everyone every 2 s grew with the square of the players, 15% of the host's upload at 50)
+    /// </summary>
+    [Key(2)]
+    public bool Partial { get; init; }
+
+    /// <summary>
+    ///     With <see cref="Partial" />: the players gone since the last list
+    /// </summary>
+    [Key(3)]
+    public int[]? Gone { get; init; }
+
     public static SessionPlayersSnapshot Create()
     {
         return new() {
@@ -31,8 +45,24 @@ public class SessionPlayersSnapshot
     public void Apply()
     {
         var session = NetSession.Instance;
-        session.CurrentPlayers.Clear();
-        session.CurrentPlayers.AddRange(Current);
+        if (Partial) {
+            if (Gone is { Length: > 0 } gone) {
+                session.CurrentPlayers.RemoveAll(p => System.Array.IndexOf(gone, p.Index) >= 0);
+            }
+
+            foreach (var state in Current) {
+                var at = session.CurrentPlayers.FindIndex(p => p.Index == state.Index);
+                if (at >= 0) {
+                    session.CurrentPlayers[at] = state;
+                } else {
+                    var before = session.CurrentPlayers.FindIndex(p => p.Index > state.Index);
+                    session.CurrentPlayers.Insert(before < 0 ? session.CurrentPlayers.Count : before, state);
+                }
+            }
+        } else {
+            session.CurrentPlayers.Clear();
+            session.CurrentPlayers.AddRange(Current);
+        }
 
         // resolve self state
         session.Self =
