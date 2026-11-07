@@ -92,7 +92,10 @@ internal static class OrphanEscorts
             return false;
         }
 
-        return chara.GetInt(EscortKey) != 0 || SpawnList.Get("c_neutral").rows.Exists(r => r.id == chara.id);
+        // (the untagged ones: escorts of worlds older than the tag. Not a minion the game gave a home map: the war
+        // horn's reinforcements of a defense fight, army_palmia, are c_neutral people too and were let go in the middle
+        // of the fight, turning on the player, GitHub issue 83)
+        return chara.GetInt(EscortKey) != 0 || (chara.homeZone is null && SpawnList.Get("c_neutral").rows.Exists(r => r.id == chara.id));
     }
 
     /// <summary>
