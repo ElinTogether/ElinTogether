@@ -49,7 +49,9 @@ internal static class WorldCopyReceiver
         // reserved one (ServerAvatar.HostUser: a hidden server plays on its keeper's account, and every keeper of a
         // peer-hosted world names its copies by it). No Steam account has that id: claiming it overwrites no player's
         if (NetSession.Instance.Transport is not ElinNetClient { Host: { } peer } ||
-            (offer.Host != (ulong)peer.User && offer.Host != Steam.SteamNetPeer.DevIdentityBase + Helper.ServerAvatar.ServerIdentity)) {
+            (offer.Host != (ulong)peer.User && offer.Host != Steam.SteamNetPeer.DevIdentityBase + Helper.ServerAvatar.ServerIdentity &&
+             // (a link by the local port, the same PC: it carries no Steam id, every copy was refused there)
+             (ulong)peer.User != 0)) {
             EmpLog.Warning("World copy refused: it claims host {Claimed}, the connected host is another one", offer.Host);
             return;
         }
@@ -70,12 +72,23 @@ internal static class WorldCopyReceiver
             _badPrevious = false;
         }
 
-        var (previous, kept) = _badPrevious ? default : WorldCopyStore.Copies(folder).FirstOrDefault();
+        var copies = _badPrevious ? [] : WorldCopyStore.Copies(folder);
+        var (previous, kept) = copies.FirstOrDefault();
         if (kept is not null && kept.Saved == offer.Saved && kept.Handover == offer.Handover) {
             return;
         }
 
         var unchanged = kept?.Files.ToDictionary(f => f.Path, f => (f.Size, f.Hash)) ?? [];
+        // a file an older copy holds as it is now (a save that went back, a file changed then changed back): taken from
+        // it here instead of from the keeper, checked by its hash when the copy closes like any received file
+        var older = new Dictionary<(string, long, string), string>();
+        foreach (var (dir, manifest) in copies.Skip(1)) {
+            foreach (var f in manifest.Files) {
+                older.TryAdd((f.Path, f.Size, f.Hash), dir);
+            }
+        }
+
+        var reused = 0;
         _missing = [];
         for (var i = 0; i < offer.Files.Length; i++) {
             var file = offer.Files[i];
@@ -85,19 +98,29 @@ internal static class WorldCopyReceiver
 
             _received.Remove(file.Path);
             if (file.Size > 0 && !(unchanged.TryGetValue(file.Path, out var had) && had == (file.Size, file.Hash))) {
+                if (older.TryGetValue((file.Path, file.Size, file.Hash), out var from) && WorldCopyStore.Reuse(folder, from, file)) {
+                    _received[file.Path] = file.Hash;
+                    reused++;
+                    continue;
+                }
+
                 _missing.Add(i);
             }
         }
 
         _incoming = offer;
         _previous = previous;
+        if (reused > 0) {
+            EmpLog.Information("World copy: {Reused} file(s) taken from an older copy here, not asked of the keeper", reused);
+        }
 
         if (_missing.Count == 0) {
             Close();
             return;
         }
 
-        EmpLog.Debug("World copy: asking the host for {Count} of {Files} files", _missing.Count, offer.Files.Length);
+        EmpLog.Debug("World copy: asking the host for {Count} of {Files} files ({Reused} taken from an older copy here)",
+            _missing.Count, offer.Files.Length, reused);
         (NetSession.Instance.Transport as ElinNetClient)?.Host.Send(new WorldCopyWant {
             Saved = offer.Saved,
             Files = [.._missing],
@@ -175,7 +198,9 @@ internal static class WorldCopyReceiver
             yield return null;
         }
 
-        _badPrevious = _closing.IsFaulted || _closing.Result == WorldCopyStore.Closed.BadPrevious;
+        // (a file taken from an older copy that was not right fails the copy as a received one would: the next one
+        // asks the keeper for everything, never the same bad file again)
+        _badPrevious = _closing.IsFaulted || _closing.Result is WorldCopyStore.Closed.BadPrevious or WorldCopyStore.Closed.Failed;
         if (_closing.IsFaulted) {
             EmpLog.Warning(_closing.Exception!, "World copy not kept");
         } else if (_closing.Result == WorldCopyStore.Closed.Kept) {

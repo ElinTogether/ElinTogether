@@ -160,6 +160,28 @@ internal static class WorldCopyStore
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
+    /// <summary>
+    ///     A file of an older kept copy put in the incoming one (WorldCopyReceiver: not asked of the keeper again); its
+    ///     hash is checked when the copy closes
+    /// </summary>
+    internal static bool Reuse(string folder, string fromDir, WorldCopyFile file)
+    {
+        try {
+            var from = ToLocal(fromDir, file.Path);
+            if (!File.Exists(from)) {
+                return false;
+            }
+
+            var to = ToLocal(Path.Combine(folder, Incoming), file.Path);
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Copy(from, to, true);
+            return true;
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) {
+            EmpLog.Debug(ex, "World copy: {Path} of an older copy could not be taken", file.Path);
+            return false;
+        }
+    }
+
     private static bool Matches(string path, WorldCopyFile file)
     {
         var info = new FileInfo(path);
