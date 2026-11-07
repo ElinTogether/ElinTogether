@@ -45,8 +45,11 @@ internal static class WorldCopyReceiver
         }
 
         // the folder is named after the host: a host that claims another id would overwrite, or push out, the copies
-        // this guest keeps of that other host's world. The id is the one of the peer we are connected to
-        if (NetSession.Instance.Transport is not ElinNetClient { Host: { } peer } || offer.Host != (ulong)peer.User) {
+        // this guest keeps of that other host's world. The id is the one of the peer we are connected to, or a server's
+        // reserved one (ServerAvatar.HostUser: a hidden server plays on its keeper's account, and every keeper of a
+        // peer-hosted world names its copies by it). No Steam account has that id: claiming it overwrites no player's
+        if (NetSession.Instance.Transport is not ElinNetClient { Host: { } peer } ||
+            (offer.Host != (ulong)peer.User && offer.Host != Steam.SteamNetPeer.DevIdentityBase + Helper.ServerAvatar.ServerIdentity)) {
             EmpLog.Warning("World copy refused: it claims host {Claimed}, the connected host is another one", offer.Host);
             return;
         }
