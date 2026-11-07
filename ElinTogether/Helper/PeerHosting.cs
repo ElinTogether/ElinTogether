@@ -384,6 +384,10 @@ internal sealed class StorePeerHosting : IPeerHosting
 
                 File.Move(cache + ".tmp", cache);
             }
+        } catch (System.IO.IOException ex) {
+            // the world service is down or unreachable: a plain line, the kept documents stay (no stack in Player.log)
+            ok = false;
+            EmpLog.Information("Peer-hosted world: the signed documents could not be read: {Why}", ex.Message);
         } catch (Exception ex) {
             ok = false;
             EmpLog.Information(ex, "Peer-hosted world: the signed documents could not be read");
