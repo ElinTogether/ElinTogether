@@ -197,7 +197,25 @@ internal static class PeerKeeper
 
         _claimFailed = false;
         EmpPop.Information("emp_peer_asking".lang());
-        Later(() => Store.Who(), (who, failed) => {
+        // (read here, on the game's thread: starts the fetch of the signed documents when none is held yet)
+        _ = PeerHosting.Current.SignedRules;
+        Ask(0);
+        return true;
+    }
+
+    // the signed rules travel apart from the store's "who": a first click came back before them, "signed rules
+    // missing", and only the second one kept the world. Asked again a few times while they are still on their way
+    private const int RulesWaits = 10;
+
+    private static void Ask(int waited)
+    {
+        Later(() => {
+            if (waited > 0) {
+                System.Threading.Thread.Sleep(500);
+            }
+
+            return Store.Who();
+        }, (who, failed) => {
             if (who is null) {
                 EmpPop.Block("emp_peer_store_down".Loc(failed?.GetBaseException().Message ?? ""));
                 return;
@@ -214,13 +232,17 @@ internal static class PeerKeeper
             }
 
             if (CanKeep(who) is { } why) {
+                if (PeerHosting.Current.SignedRules is null && waited < RulesWaits) {
+                    Ask(waited + 1);
+                    return;
+                }
+
                 EmpPop.Block("emp_peer_nobody".Loc(why));
                 return;
             }
 
             Claim(null);
         });
-        return true;
     }
 
     /// <summary>
