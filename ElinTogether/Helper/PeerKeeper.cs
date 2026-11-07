@@ -847,6 +847,9 @@ internal static class PeerKeeper
         _rollback = 0;
         _lostTo = null;
         EmpLog.Information("Peer-hosted world: kept by this machine, handover {Handover}, head {Head}", _handover, _parent);
+        // (a new keeping: only this one counts for the next order)
+        _slowSeconds = 0f;
+        _slowLook = -1f;
         return null;
     }
 
@@ -869,6 +872,7 @@ internal static class PeerKeeper
             return;
         }
 
+        CountSlow();
         var now = Time.unscaledTime;
         if (now >= _nextSuccession) {
             _nextSuccession = now + SuccessionSeconds;
@@ -990,6 +994,39 @@ internal static class PeerKeeper
     ///     never a banned one), a whole copy of the last save first, then the longest connected, then the smallest
     ///     Steam id. Advisory (the store gives the lease to whoever asks first): every guest waits for its turn
     /// </summary>
+    /// <summary>
+    ///     Player -> the minutes its own PC was too slow (its LoadCap closed) during its last keeping of this world,
+    ///     measured by that keeper's server itself, kept in the save and so in every copy. A keeper that struggled
+    ///     goes after the others next time (council 2026-11-07 (3): the world moves to stronger PCs at the natural
+    ///     turns, no handover pause, and no player's own word ranks anyone)
+    /// </summary>
+    [ElinGameIOProperty("peer_weak_keepers")]
+    private static Dictionary<ulong, int> WeakKeepers
+    {
+        get => field ??= [];
+        set;
+    }
+
+    // (not const: the bench lowers it)
+    internal static int WeakMinutes = 10;
+
+    private static float _slowSeconds;
+    private static float _slowLook = -1f;
+
+    internal static bool IsWeakKeeper(ulong user) => WeakKeepers.TryGetValue(user, out var minutes) && minutes >= WeakMinutes;
+
+    // the server's tick: how long this keeping has been too slow so far
+    private static void CountSlow()
+    {
+        var now = Time.unscaledTime;
+        if (_slowLook >= 0f && ElinNetHost.LoadCap is not null) {
+            _slowSeconds += now - _slowLook;
+        }
+
+        _slowLook = now;
+        WeakKeepers[PlayerId] = (int)(_slowSeconds / 60f);
+    }
+
     private static ulong[] ComputeSuccession(ElinNetHost host)
     {
         var keeper = PlayerId;
@@ -1007,8 +1044,14 @@ internal static class PeerKeeper
             _since[p.User] = now;
         }
 
+        // (the ping this server measures to each, in 50 ms steps so the order does not churn: a player can only make it
+        // worse, never better)
+        var pings = NetSession.Instance.CurrentPlayers.Where(p => p is not null)
+            .GroupBy(p => (ulong)p.User).ToDictionary(g => g.Key, g => (int)(g.First().AvgPingMs / 50f));
         return playing
             .OrderByDescending(p => host.HasLatestCopy(p.User))
+            .ThenBy(p => IsWeakKeeper(p.User))
+            .ThenBy(p => pings.TryGetValue(p.User, out var step) ? step : 0)
             .ThenBy(p => _since[p.User])
             .ThenBy(p => p.User)
             .Select(p => p.User).Take(MaxSuccession).ToArray();
