@@ -22,7 +22,8 @@ internal static class WorldCopyStore
     private const string CopyPrefix = "copy-";
 
     // the previous whole copy stays until the next one is whole, and one more: a copy is never the only one
-    private const int CopiesKept = 2;
+    // (council 2026-11-07: three, a takeover still has an older one if the newest is bad)
+    private const int CopiesKept = 3;
 
     // what a host may ask this disk to hold
     internal const int MaxFiles = 20000;

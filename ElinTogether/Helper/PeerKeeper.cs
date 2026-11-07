@@ -31,7 +31,7 @@ namespace ElinTogether.Helper;
 ///     <b>Leaving</b>: the last save to every guest, the final version, RELEASE next=S, then "the host leaves, S goes
 ///     on" (HostLeaving.Next); S takes within the 15 s the store keeps the world for it; the others follow S
 ///     (WorldHandover, NetReconnect). Nobody left: the last version and RELEASE, the next player who comes opens it. <br />
-///     <b>Crash</b>: the guests see the link drop and ask WHO; once the lease is free (45 s), the first of the last
+///     <b>Crash</b>: the guests see the link drop and ask WHO; once the lease is free (30 s), the first of the last
 ///     succession list takes, each next one 10 s later; a lease taken by another is followed. <br />
 ///     <b>Rollback</b> (BEAT answers "rollback n"): the keeper says it, saves nothing more, hands over in a minute; the
 ///     next keeper opens the head (the rolled back version) whatever its copy says
@@ -43,7 +43,8 @@ internal static class PeerKeeper
     /// </summary>
     internal const string SaveId = "world_peer";
 
-    private const float BeatSeconds = 15f;
+    // (council 2026-11-07: lease 30 s, a beat every 10 s, one missed beat is no takeover)
+    private const float BeatSeconds = 10f;
     private const float PutSeconds = 300f;
     private const float SuccessionSeconds = 60f;
     private const float TurnSeconds = 10f;
@@ -868,7 +869,7 @@ internal static class PeerKeeper
     private static void OnBeat(ElinNetHost host, StoreReply<StoreBeat>? reply)
     {
         if (reply is null) {
-            // (the store is away: the lease runs 45 s, the next beat may reach it)
+            // (the store is away: the lease runs 30 s, the next beat may reach it)
             return;
         }
 
