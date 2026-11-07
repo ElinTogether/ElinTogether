@@ -126,10 +126,39 @@ internal static class PeerKeeper
             return;
         }
 
+        UpdateOfficial();
         UpdateVisible();
     }
 
     // ===================================================================================== the visible game
+
+    private const float OfficialAskSeconds = 20f;
+    private static float _nextOfficialAsk;
+    private static bool _toldOfficial;
+
+    /// <summary>
+    ///     The Elin Together account's own PC (its key in the signed official_keepers, lead dev 2026-11-07): while it is a
+    ///     guest of another keeper of the public world, it asks for the world every 20 s; that keeper hands it over at a
+    ///     calm moment (HandOverToClaimIfCalm), the reservation that comes with it makes this game take it as any next one
+    /// </summary>
+    private static void UpdateOfficial()
+    {
+        if (Time.unscaledTime < _nextOfficialAsk || _claiming || HiddenServer.Playing || HiddenServer.Starting ||
+            NetSession.Instance.Transport is not ElinNetClient) {
+            return;
+        }
+
+        _nextOfficialAsk = Time.unscaledTime + OfficialAskSeconds;
+        Later(() => {
+            var who = Store.Who();
+            return who.Official && who.Lease is { } lease && lease.Key != who.MyKey ? Store.Claim() : null;
+        }, (reply, _) => {
+            if (reply is { Ok: true } && !_toldOfficial) {
+                _toldOfficial = true;
+                EmpLog.Information("Peer-hosted world: this is the Elin Together PC, it asks for the world");
+            }
+        });
+    }
 
     // the lease this game took while its hidden server starts (the server renews it once it runs), 0: none
     private static long _claimed;
@@ -873,6 +902,7 @@ internal static class PeerKeeper
         }
 
         CountSlow();
+        HandOverToClaimIfCalm();
         var now = Time.unscaledTime;
         if (now >= _nextSuccession) {
             _nextSuccession = now + SuccessionSeconds;
@@ -912,7 +942,17 @@ internal static class PeerKeeper
         }
 
         if (reply.Ok) {
-            if (reply.Value!.Rollback > 0) {
+            if (reply.Value!.ClaimedBy is var claimed and not 0 && claimed != PlayerId) {
+                if (_claimedBy != claimed) {
+                    _claimedBy = claimed;
+                    _claimSince = Time.unscaledTime;
+                    EmpLog.Information("Peer-hosted world: the Elin Together PC {Steam} asks for the world, handed over at a calm moment", claimed);
+                }
+
+                _claimSeen = Time.unscaledTime;
+            }
+
+            if (reply.Value.Rollback > 0) {
                 RolledBack(host, reply.Value.Rollback);
             } else if (reply.Value.Cert is { Length: > 0 } cert) {
                 Net.Steam.PublicServerCertificate.Set(cert);
@@ -1027,6 +1067,51 @@ internal static class PeerKeeper
         WeakKeepers[PlayerId] = (int)(_slowSeconds / 60f);
     }
 
+    // the Elin Together account's PC asks for the world (COUNCIL_2026-11-07_official_keeper.md): when, and since when calm
+    private static ulong _claimedBy;
+    private static float _claimSince;
+    private static float _claimSeen;
+    private static float _calmSince = -1f;
+    private const float CalmSeconds = 20f;
+    private const float ClaimCeilingSeconds = 600f;
+
+    /// <summary>
+    ///     The world goes to the Elin Together PC that asks for it once nothing is fighting a player on this map for
+    ///     20 s (at the latest after 10 min): the server stops as on a leave, and the lease is given to it
+    /// </summary>
+    private static void HandOverToClaimIfCalm()
+    {
+        var now = Time.unscaledTime;
+        if (_claimedBy == 0 || _handingOver) {
+            return;
+        }
+
+        // (no ask for 60 s: the PC went away)
+        if (now - _claimSeen > 60f) {
+            EmpLog.Information("Peer-hosted world: the Elin Together PC no longer asks for the world");
+            _claimedBy = 0;
+            return;
+        }
+
+        var fight = EClass.core.IsGameStarted && EClass._map is { } map &&
+                    map.charas.Any(c => !c.isDead && c.enemy is { } target && (target.IsPC || target.IsRemotePlayer));
+        if (fight) {
+            _calmSince = -1f;
+        } else if (_calmSince < 0f) {
+            _calmSince = now;
+        }
+
+        if ((_calmSince >= 0f && now - _calmSince >= CalmSeconds) || now - _claimSince >= ClaimCeilingSeconds) {
+            EmpLog.Information("Peer-hosted world: handing the world to the Elin Together PC {Steam} ({Why})", _claimedBy,
+                fight ? "it waited 10 minutes" : "calm for 20 s");
+            _handTo = _claimedBy;
+            EmpServer.StopNow();
+        }
+    }
+
+    // the keeper the world goes to on this leave, whoever the list says (the Elin Together PC that asked)
+    private static ulong _handTo;
+
     private static ulong[] ComputeSuccession(ElinNetHost host)
     {
         var keeper = PlayerId;
@@ -1099,7 +1184,7 @@ internal static class PeerKeeper
         var session = NetSession.Instance;
         _succession = ComputeSuccession(host);
         var connected = new HashSet<ulong>(session.CurrentPlayers.Where(p => p is not null).Select(p => (ulong)p.User));
-        Next = _lostTo is { Steam: not 0 } lost ? lost.Steam : _succession.FirstOrDefault(connected.Contains);
+        Next = _lostTo is { Steam: not 0 } lost ? lost.Steam : _handTo != 0 ? _handTo : _succession.FirstOrDefault(connected.Contains);
         EmpLog.Information("Peer-hosted world: leaving, next keeper {Next} of {Count} in the list", Next, _succession.Length);
 
         // the last save to every guest, then (before they hear that the keeper leaves) the last version and the lease

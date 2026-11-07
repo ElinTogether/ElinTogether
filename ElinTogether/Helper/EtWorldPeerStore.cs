@@ -109,6 +109,8 @@ internal sealed class EtWorldPeerStore : IWorldStore
             Eligible = (bool?)you?["eligible"] ?? false,
             Why = (string?)you?["why"] ?? "",
             MyKey = (string?)you?["key"] ?? "",
+            ClaimedBy = Steam((who["claim"] as JObject)?["steam"]),
+            Official = (bool?)you?["official"] ?? false,
         };
     }
 
@@ -141,10 +143,17 @@ internal sealed class EtWorldPeerStore : IWorldStore
                 Head = Long(beat["head"]),
                 Rollback = Long(beat["rollback"]),
                 Cert = (string?)beat["cert"],
+                ClaimedBy = Steam((beat["claim"] as JObject)?["steam"]),
             });
         }
 
         return StoreReply<StoreBeat>.No(Error(reply), Lease(reply.Json?["lease"]));
+    }
+
+    public StoreReply<bool> Claim()
+    {
+        var reply = Call("POST", "/v1/w/{w}/claim", new JObject());
+        return reply.Status == 200 ? StoreReply<bool>.Of(true) : StoreReply<bool>.No(Error(reply), Lease(reply.Json?["lease"]));
     }
 
     public StoreReply<string> Cert(long handover, ulong lobby)

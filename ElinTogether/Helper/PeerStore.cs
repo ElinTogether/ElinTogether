@@ -40,6 +40,12 @@ internal interface IWorldStore
     StoreReply<bool> Release(long handover, ulong next);
 
     /// <summary>
+    ///     POST claim: the Elin Together account's own PC asks for the world (only a key of the admins document's
+    ///     official_keepers; renewed while it waits, gone 60 s after the last ask). Refusal: not_official
+    /// </summary>
+    StoreReply<bool> Claim();
+
+    /// <summary>
     ///     POST cert: a host certificate naming the keeper's Steam lobby (plan P3), renewed by every BEAT after it
     /// </summary>
     StoreReply<string> Cert(long handover, ulong lobby);
@@ -133,6 +139,17 @@ internal sealed class StoreWho
     internal bool Free => Lease is null || Lease.Until <= Now;
 
     internal bool ReservedForOther(ulong me) => ReservedFor != 0 && ReservedFor != me && ReservedUntil > Now;
+
+    /// <summary>
+    ///     This install's key is one of the Elin Together account's own PC (who.you.official): it asks for the world
+    ///     while another player keeps it
+    /// </summary>
+    internal bool Official { get; init; }
+
+    /// <summary>
+    ///     The Elin Together account's PC asks for the world (0: nobody)
+    /// </summary>
+    internal ulong ClaimedBy { get; init; }
 }
 
 internal sealed class StoreBeat
@@ -149,6 +166,11 @@ internal sealed class StoreBeat
     ///     A fresh host certificate for the lobby named by Cert, null: none
     /// </summary>
     internal string? Cert { get; init; }
+
+    /// <summary>
+    ///     The Elin Together account's PC asks for the world: this keeper hands it over at a calm moment (0: nobody)
+    /// </summary>
+    internal ulong ClaimedBy { get; init; }
 }
 
 internal sealed class StoreFile
@@ -205,6 +227,8 @@ internal static class PeerStore
         public StoreReply<StoreBeat> Beat(long handover, IReadOnlyList<ulong> succession) => StoreReply<StoreBeat>.No("no_store");
 
         public StoreReply<bool> Release(long handover, ulong next) => StoreReply<bool>.No("no_store");
+
+        public StoreReply<bool> Claim() => StoreReply<bool>.No("no_store");
 
         public StoreReply<string> Cert(long handover, ulong lobby) => StoreReply<string>.No("no_store");
 
