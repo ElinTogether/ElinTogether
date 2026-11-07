@@ -415,6 +415,12 @@ internal static class EmpServer
         _nextBackup = Time.unscaledTime + BackupSeconds;
         try {
             EClass.game.Save(true, true);
+            // a save as any other: a peer-hosted world's guests and store get it (a crash takes over from the last one)
+            if (ElinNetHost.PeerHostedServer && NetSession.Instance.Transport is ElinNetHost host) {
+                host.WorldSaved();
+                PeerKeeper.ServerSaved();
+            }
+
             GameIO.MakeBackup(new GameIndex { id = Game.id, cloud = EClass.game.isCloud });
             EmpLog.Information("Server: backup of {Save} made", Game.id);
             return "Backup made " + DateTime.Now.ToString("HH:mm");
