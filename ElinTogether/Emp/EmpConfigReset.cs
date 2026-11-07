@@ -92,6 +92,11 @@ internal partial class EmpConfig
         config.Reload();
         config.SaveOnConfigSet = true;
 
+        // a peer-hosted world's hidden server plays its signed rules: put back before anyone is told the reloaded
+        // ones (the keeper's own game saving the shared file reloaded it here; a guest joining in between read the
+        // unsigned values and left, "does not play its signed rules")
+        Helper.PeerRules.Apply();
+
         if (NetSession.Instance.Transport is ElinNetHost host) {
             host.UpdateRemoteSessionRules();
         }
