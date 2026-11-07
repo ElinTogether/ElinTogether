@@ -36,12 +36,25 @@ internal static class EmpServer
     private static int _lastPlayers;
     private static int _ownFrameRate;
     private static bool _resting;
+
+    /// <summary>
+    ///     Nobody connected: the server runs at 5 frames a second (Rest)
+    /// </summary>
+    internal static bool Resting => _resting;
     private static bool _stopping;
     private static float _stopAt;
     private const float StopWaitSeconds = 20f;
     private static readonly DateTime _started = DateTime.Now;
 
     internal static bool Requested => _save is not null;
+
+    internal const string WaitGoArgument = "-empwaitgo";
+
+    // started ahead by the next keeper of a peer-hosted world (HiddenServer.PreBoot): the save is loaded only once
+    // ElinMP/server/server.go says the world is taken
+    private static readonly bool _waitGo = Environment.GetCommandLineArgs().Contains(WaitGoArgument);
+
+    private static string GoFile => Path.Combine(_folder, "server", "server.go");
 
     /// <summary>
     ///     Asks this server to save and stop, as the operator's stop file does (the restart warning ends there)
@@ -141,6 +154,11 @@ internal static class EmpServer
         }
 
         var session = NetSession.Instance;
+        if (!EClass.core.IsGameStarted && _waitGo && !_loading && !File.Exists(GoFile)) {
+            Tell("waiting");
+            return;
+        }
+
         if (!EClass.core.IsGameStarted) {
             Tell("loading");
             // (the title has its own layers open: no waiting for an idle interface)

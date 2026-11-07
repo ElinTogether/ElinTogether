@@ -439,7 +439,9 @@ internal static class PeerKeeper
             EmpLog.Information("Peer-hosted world: taken, handover {Handover}, from {From}, head {Head}", laid.Handover, laid.From, laid.Head);
             WriteLeaseFile(laid);
 
-            // out of the game of the keeper that is gone, and no more attempts to join it
+            // out of the game of the keeper that is gone, and no more attempts to join it (the session's patches stay
+            // until this game is a guest of its own hidden server, HiddenServer)
+            ElinNetBase.KeepPatches = true;
             NetReconnect.Stop();
             if (session.Transport is not null) {
                 session.ResetSession();
@@ -458,12 +460,18 @@ internal static class PeerKeeper
             _nextClaimBeat = Time.unscaledTime + BeatSeconds;
             _toldKeeping = false;
             var handover = laid.Handover;
-            if (!HiddenServer.StartOn(SaveId, () => {
-                    EmpLog.Warning("Peer-hosted world: the hidden server did not come up, the world is let go");
-                    Let(handover, 0);
-                    _claimed = 0;
-                })) {
+            Action failed = () => {
+                EmpLog.Warning("Peer-hosted world: the hidden server did not come up, the world is let go");
+                ElinNetBase.ReleasePatches();
+                Let(handover, 0);
+                _claimed = 0;
+            };
+            // (started ahead while the lease ran out: it loads the world now)
+            if (HiddenServer.PreBooted) {
+                HiddenServer.Go(failed);
+            } else if (!HiddenServer.StartOn(SaveId, failed)) {
                 EmpLog.Warning("Peer-hosted world: the hidden server could not be started, the world is let go");
+                ElinNetBase.ReleasePatches();
                 Let(laid.Handover, 0);
                 _claimed = 0;
             }
@@ -633,6 +641,12 @@ internal static class PeerKeeper
     ///     still runs; once it is free, this game takes the world when its turn in the last succession list comes, a
     ///     lease taken by another player is followed. True: the election handles it (NetReconnect only tries to join)
     /// </summary>
+    /// <summary>
+    ///     While the keeper is gone: the name of the player who took the world and opens it, null while the lost
+    ///     keeper's turn has not ended (NetReconnect's notice)
+    /// </summary>
+    internal static string? Opening { get; private set; }
+
     internal static bool WhileLost()
     {
         if (!Enabled) {
@@ -646,6 +660,8 @@ internal static class PeerKeeper
         // (a new loss of the keeper: what an earlier one found is forgotten)
         if (Time.realtimeSinceStartup - _nextLook > 15f) {
             _freeSince = -1f;
+            Opening = null;
+            _preBootTried = false;
         }
 
         _nextLook = Time.realtimeSinceStartup + 5f;
@@ -656,9 +672,18 @@ internal static class PeerKeeper
                 return;
             }
 
+            // the first of the list starts its hidden server's engine while the lost keeper's lease runs out
+            if (!_preBootTried && WorldHandover.Position(me) == 0 && (who.Free || who.Lease!.Steam == former) &&
+                !who.ReservedForOther(me) && CanKeep(who) is null) {
+                _preBootTried = true;
+                HiddenServer.PreBoot(SaveId);
+            }
+
             if (!who.Free) {
                 _freeSince = -1f;
                 if (who.Lease!.Steam != former && who.Lease.Key != who.MyKey) {
+                    HiddenServer.DropPreBoot("another player took the world");
+                    Opening = who.Lease.Name ?? "";
                     WorldHandover.FollowKeeper(who.Lease.Steam);
                 }
 
@@ -666,10 +691,12 @@ internal static class PeerKeeper
             }
 
             if (who.ReservedForOther(me)) {
+                HiddenServer.DropPreBoot("the world is kept for another player");
                 WorldHandover.FollowKeeper(who.ReservedFor);
                 return;
             }
 
+            Opening = null;
             if (_freeSince < 0f) {
                 _freeSince = Time.realtimeSinceStartup;
             }
@@ -687,6 +714,7 @@ internal static class PeerKeeper
 
             if (CanKeep(who) is { } why) {
                 EmpLog.Information("Peer-hosted world: the keeper is gone and this game may not keep the world ({Why})", why);
+                HiddenServer.DropPreBoot("this game may not keep the world");
                 _claimFailed = true;
                 return;
             }
@@ -698,8 +726,14 @@ internal static class PeerKeeper
         return true;
     }
 
+    // a hidden server was started ahead for this loss of the keeper (once per loss)
+    private static bool _preBootTried;
+
     internal static void LinkBack()
     {
+        HiddenServer.DropPreBoot("the keeper is back");
+        _preBootTried = false;
+        Opening = null;
         _freeSince = -1f;
         _claimFailed = false;
     }

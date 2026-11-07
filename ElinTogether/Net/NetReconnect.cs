@@ -75,6 +75,12 @@ internal static class NetReconnect
     {
         _routine = null;
         WorldHandover.Followed();
+        // (given up or cancelled with no takeover of this game: a hidden server started ahead for it is ended; a
+        // takeover stops this routine itself and loads the world in it)
+        if (!PeerKeeper.Claiming) {
+            HiddenServer.DropPreBoot("no takeover by this game");
+        }
+
         // (however it ends: given up, cancelled, stopped by a takeover or a world started from the title)
         UnpatchIfNoSession();
 
@@ -113,6 +119,10 @@ internal static class NetReconnect
             // a hard end: a join that connects but never loads the world counts in the same time
             while (Time.realtimeSinceStartup < giveUp) {
                 yield return null;
+
+                if (takeover) {
+                    ShowTakeoverProgress(lost);
+                }
 
                 // one try that throws is one try lost, never the routine (robustness audit 2026-11-01): it ended with
                 // the session left as it was and no word to the player
@@ -274,8 +284,35 @@ internal static class NetReconnect
         }
     }
 
+    private static float _progressAt;
+
+    /// <summary>
+    ///     A peer-hosted world whose keeper is gone: the notice says where the takeover is, with the time waited
+    ///     (council 2026-11-07: one still line for 2-3 minutes read as a frozen game)
+    /// </summary>
+    private static void ShowTakeoverProgress(float lost)
+    {
+        if (_notice is not { } notice || !PeerHosting.Active || Time.realtimeSinceStartup < _progressAt) {
+            return;
+        }
+
+        _progressAt = Time.realtimeSinceStartup + 1f;
+        var waited = (int)(Time.realtimeSinceStartup - lost);
+        var clock = $"{waited / 60}:{waited % 60:00}";
+        var text = PeerKeeper.Opening is { } name
+            ? "emp_ui_takeover_opening".lang(name.Length > 0 ? name : "?", clock)
+            : "emp_ui_takeover_wait".lang(clock);
+        try {
+            notice.textDetail.SetText(text + " ");
+        } catch (Exception ex) {
+            EmpLog.Debug(ex, "Reconnect: the takeover progress could not be shown");
+            _progressAt = float.MaxValue;
+        }
+    }
+
     private static void ShowNotice(bool hostLeft)
     {
+        _progressAt = 0f;
         var cancel = false;
         // (the host said it leaves: waiting for its game, not for a link)
         var notice = _notice = Dialog.Choice(hostLeft ? "emp_ui_host_left_waiting" : "emp_ui_reconnecting",
@@ -305,7 +342,7 @@ internal static class NetReconnect
     /// </summary>
     private static void UnpatchIfNoSession()
     {
-        if (!EmpMod.PatchesPerSession || Active || !HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
+        if (!EmpMod.PatchesPerSession || Active || ElinNetBase.KeepPatches || !HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
             return;
         }
 
@@ -316,7 +353,7 @@ internal static class NetReconnect
         {
             yield return null;
             var session = NetSession.Instance;
-            if (!Active && session.Transport == null && session.ZoneSession == null && HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
+            if (!Active && !ElinNetBase.KeepPatches && session.Transport == null && session.ZoneSession == null && HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
                 EmpLog.Information("No session after joining again was given up: the session's patches are taken away");
                 EmpMod.SharedHarmony.UnpatchSelf();
             }

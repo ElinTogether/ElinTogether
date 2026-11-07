@@ -109,8 +109,29 @@ public abstract partial class ElinNetBase : EMono
         // (not while the guest joins the same game again by itself: taking the patches away then putting them back froze
         // the game 30 s, then 25 s more, before the first try, net_fault_check 2026-11-04; NetReconnect takes them away
         // if it gives up)
-        if (EmpMod.PatchesPerSession && !NetReconnect.Active && (transport == null || transport == this) &&
+        if (EmpMod.PatchesPerSession && !NetReconnect.Active && !KeepPatches && (transport == null || transport == this) &&
             (zoneSession == null || zoneSession == this)) {
+            EmpMod.SharedHarmony.UnpatchSelf();
+        }
+    }
+
+    /// <summary>
+    ///     This game leaves one session for another it opens itself in a moment (a takeover of the peer-hosted world:
+    ///     out of the lost keeper's game, into its own hidden server's): the session's patches stay in between, as while
+    ///     NetReconnect joins again. Taking them away and putting them back froze the game 20-30 s (crash takeover
+    ///     2026-11-07: 26 s between the take and the hidden server's start). Cleared by <see cref="ReleasePatches" />
+    /// </summary>
+    internal static bool KeepPatches { get; set; }
+
+    /// <summary>
+    ///     The new session came, or will not: the patches go if no session holds them
+    /// </summary>
+    internal static void ReleasePatches()
+    {
+        KeepPatches = false;
+        var session = NetSession.Instance;
+        if (EmpMod.PatchesPerSession && !NetReconnect.Active && session.Transport == null && session.ZoneSession == null &&
+            HarmonyLib.Harmony.HasAnyPatches(ModInfo.Guid)) {
             EmpMod.SharedHarmony.UnpatchSelf();
         }
     }

@@ -77,7 +77,83 @@ internal static class HiddenServer
     /// <summary>
     ///     The hidden server is being started: a progress window waits for it
     /// </summary>
-    internal static bool Starting => _process is not null && !_joined;
+    internal static bool Starting => _process is not null && !_joined && !_preBoot;
+
+    // started ahead (PreBoot): the engine is up or coming, the save not loaded until GoFile appears
+    private static bool _preBoot;
+
+    private static string GoFile => Path.Combine(Folder, "server.go");
+
+    /// <summary>
+    ///     A hidden server started ahead runs and waits for <see cref="Go" />
+    /// </summary>
+    internal static bool PreBooted => _preBoot && _process is { HasExited: false };
+
+    /// <summary>
+    ///     The first player of a peer-hosted world's succession list starts its hidden server's engine while the lost
+    ///     keeper's lease runs out (council 2026-11-07: the engine's start was 85 s of a 192 s crash takeover). The
+    ///     server waits, before loading the save, for <see cref="GoFile" />, written once the world is taken here
+    /// </summary>
+    internal static bool PreBoot(string save)
+    {
+        if (!SettingsTable.HiddenServerAvailable || EmpServer.Requested || _process is not null) {
+            return false;
+        }
+
+        try {
+            File.Delete(GoFile);
+            _preBoot = true;
+            Launch(save, () => { });
+        } catch (Exception ex) {
+            EmpLog.Information(ex, "Hidden server: could not be started ahead");
+            _process = null;
+        }
+
+        if (_process is null) {
+            _preBoot = false;
+            return false;
+        }
+
+        EmpLog.Information("Hidden server: started ahead as process {Pid}, waiting for the world to be taken", _process.Id);
+        return true;
+    }
+
+    /// <summary>
+    ///     The world is taken and laid here: the server started ahead loads it (its time counted from now)
+    /// </summary>
+    internal static void Go(Action failed)
+    {
+        _preBoot = false;
+        _onFail = failed;
+        _startedAt = Time.unscaledTime;
+        _nextLook = 0f;
+        try {
+            Directory.CreateDirectory(Folder);
+            File.WriteAllText(GoFile, "go");
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            Fail("emp_hidden_why_launch".lang());
+            return;
+        }
+
+        EmpLog.Information("Hidden server: the world is taken, the server started ahead loads it");
+        _progress = LayerProgress.Start("emp_hidden_starting".lang());
+        _progress.onCancel = () => Fail("emp_hidden_why_cancel".lang());
+    }
+
+    /// <summary>
+    ///     No takeover here after all (the keeper came back, another player took the world, this game may not keep it):
+    ///     the server started ahead is ended
+    /// </summary>
+    internal static void DropPreBoot(string why)
+    {
+        if (!_preBoot) {
+            return;
+        }
+
+        _preBoot = false;
+        EmpLog.Information("Hidden server: the one started ahead is ended, {Why}", why);
+        Kill();
+    }
 
     /// <summary>
     ///     Hosting a world with the box ticked. True: the hidden server takes it from here (the progress window shows,
@@ -179,6 +255,7 @@ internal static class HiddenServer
             var log = Path.Combine(Folder, "server.log");
             var start = new ProcessStartInfo(exe,
                 $"-batchmode -nographics -empserver \"{save}\" -empparent {Process.GetCurrentProcess().Id} -empmute -logFile \"{log}\"" +
+                (_preBoot ? " " + EmpServer.WaitGoArgument : "") +
                 (PeerHosting.Active ? " " + LocalPeerHosting.Argument : "")
 #if DEBUG
                 // (the bench's release patch timing goes to the server it starts too)
@@ -213,6 +290,9 @@ internal static class HiddenServer
             _runningAt = 0f;
             _nextLook = 0f;
             EmpLog.Information("Hidden server: {Save} started as process {Pid}", save, _process.Id);
+            if (_preBoot) {
+                return true;
+            }
 
             _progress = LayerProgress.Start("emp_hidden_starting".lang());
             _progress.onCancel = () => Fail("emp_hidden_why_cancel".lang());
@@ -230,6 +310,17 @@ internal static class HiddenServer
         }
 
         _nextLook = Time.unscaledTime + 1f;
+        // (started ahead: no time limit while it waits, and nothing to tell if it goes)
+        if (_preBoot) {
+            if (_process.HasExited) {
+                EmpLog.Information("Hidden server: the one started ahead (process {Pid}) is gone", _process.Id);
+                _preBoot = false;
+                _process = null;
+            }
+
+            return;
+        }
+
         if (_joined) {
             // the server is gone (it crashed or was stopped): nothing to protect any more
             if (_process.HasExited) {
@@ -289,6 +380,9 @@ internal static class HiddenServer
             session.InitializeComponent<ElinNetClient>().ConnectLocalPort();
         } catch (Exception ex) {
             EmpLog.Warning(ex, "Hidden server: could not join the server that runs");
+        } finally {
+            // (a takeover kept the session's patches for this join: the new client holds them now)
+            ElinNetBase.KeepPatches = false;
         }
     }
 
