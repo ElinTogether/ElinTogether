@@ -57,7 +57,10 @@ internal partial class ElinNetClient : ElinNetBase
     private void UpdateSilence()
     {
         if (Host is not { } host || !IsConnected || !EClass.core.IsGameStarted || IsInTransfer ||
-            _handshakePhase != NetHandshakePhase.Joined || host.Stat.LastReceivedAt < 0f) {
+            _handshakePhase != NetHandshakePhase.Joined || host.Stat.LastReceivedAt < 0f ||
+            // asleep: the host plays the night of the world in one long frame (9 s on the bench), it is not a
+            // connection problem (gate 2026-11-08, oct10 h1)
+            EClass.pc?.conSleep is not null) {
             _silenceToldAt = -1f;
             return;
         }
