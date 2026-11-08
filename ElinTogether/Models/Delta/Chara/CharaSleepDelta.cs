@@ -66,6 +66,7 @@ public class CharaSleepDelta : ElinDelta
             } else if (!NetSession.Instance.Rules.UseOwnSleep) {
                 using var _ = Simulate();
                 pc.OnSleep(Power, Days, pc.pos.IsSunLit);
+                OwnSettings.DropUnknownDomains(player);
                 player.DreamSpell();
             }
         } finally {
@@ -129,6 +130,7 @@ public class CharaSleepDelta : ElinDelta
         try {
             try {
                 using var _ = Simulate();
+                OwnSettings.DropUnknownDomains(player);
                 pc.OnSleep(bed, Days);
                 sleep.slept = true;
                 sleep.Kill();

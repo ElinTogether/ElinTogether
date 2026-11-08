@@ -33,6 +33,27 @@ internal static class OwnSettings
         "OwnSettings");
 
     /// <summary>
+    ///     A magic domain the game does not know (no element of that id) makes the game's own code throw where it
+    ///     goes through them, the dream spell at each wake-up (Player.DreamSpell: Element.Create gives null). Seen
+    ///     in the release gate of 2026-11-08 on a guest after a dozen suites, origin not found: dropped, and named
+    /// </summary>
+    internal static void DropUnknownDomains(Player player)
+    {
+        if (player.domains is not { } domains) {
+            player.domains = [];
+            return;
+        }
+
+        var unknown = domains.Where(id => !EClass.sources.elements.map.ContainsKey(id)).ToList();
+        if (unknown.Count == 0) {
+            return;
+        }
+
+        domains.RemoveAll(unknown.Contains);
+        EmpLog.Warning("Magic domains unknown to the game dropped: {Domains}", string.Join(", ", unknown));
+    }
+
+    /// <summary>
     ///     Before the game of a client goes away (a world received, see ElinNetClient.OnSaveDataProbe, or the game
     ///     left, see OwnSettingsPatch)
     ///     <paramref name="now" />: written down while the game goes on (its respawn point or home changed, see
@@ -367,6 +388,7 @@ internal static class OwnSettings
             player.sketches = kept.Sketches ?? player.sketches;
             // the magic domains it picked: RefreshDomain (ElinNetClientPlayer, before this) reset them to the job's
             player.domains = kept.Domains is { } domains ? [.. domains] : player.domains;
+            DropUnknownDomains(player);
             // the story scenes this player saw or can see (Nymelle, Lothria, the base): the host's list skipped a
             // scene the guest never saw or played one again (hunt 5, H5-20)
             player.flags.playedStories = kept.PlayedStories ?? player.flags.playedStories;
