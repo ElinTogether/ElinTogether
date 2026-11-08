@@ -112,7 +112,8 @@ internal partial class ElinNetHost
 
         foreach (var (peerId, chara) in ActiveRemoteCharas) {
             if (States.TryGetValue(peerId, out var state)) {
-                companions[state.User] = CompanionHelper.TravellingWith(chara).Select(c => LZ4Bytes.Create(c)).ToList();
+                companions[state.User] = CompanionHelper.StampOwner(CompanionHelper.TravellingWith(chara), chara)
+                    .Select(c => LZ4Bytes.Create(c)).ToList();
             }
         }
 

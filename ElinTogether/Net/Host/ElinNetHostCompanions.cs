@@ -97,6 +97,12 @@ internal partial class ElinNetHost
             CardCache.Add(companion);
             CardCache.CacheContainer(companion.things);
 
+            // one with no owner written is that player's here by who leads our party copy only: told as nobody's,
+            // its owner's game took it as the leader's, the host of the world's (GitHub issue 84)
+            if (player != pc && companion.CompanionOwnerUid == 0) {
+                companion.SetCompanionOwner(player);
+            }
+
             // replicas dropped it from their party when it left
             Delta.AddRemote(new CharaMakeAllyDelta {
                 Owner = companion,

@@ -583,6 +583,12 @@ internal partial class ElinNetClient
             var fresh = data.Decompress<Chara>();
             // ours are the ones we play and just handed over
             if (fresh.uid == pc.uid || fresh.CompanionOwnerUid == pc.uid || ours.Contains(fresh.uid)) {
+                // ours with no owner written here (ours only while we led the party): before the leader becomes the
+                // host's character below, or it turns into the host's companion in our game (GitHub issue 84)
+                if (fresh.uid != pc.uid && game.cards.globalCharas.Find(fresh.uid) is { CompanionOwnerUid: 0 } mine) {
+                    mine.SetCompanionOwner(pc);
+                }
+
                 continue;
             }
 

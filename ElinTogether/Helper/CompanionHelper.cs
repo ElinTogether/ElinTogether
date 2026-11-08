@@ -100,6 +100,22 @@ internal static class CompanionHelper
     ///     What goes up with a player's checkpoints: its companions, and those that died on the way
     ///     (Elin takes a dead ally out of the party, it stays dead until revived)
     /// </summary>
+    /// <summary>
+    ///     The companions of a player, listed to be sent: one with no owner written (0: the party leader's) is that
+    ///     player's in this game only because it leads the party here. Sent as is, the game where another player leads
+    ///     took it as that one's (GitHub issue 84): its owner is written before it goes
+    /// </summary>
+    internal static List<Chara> StampOwner(List<Chara> companions, Chara player)
+    {
+        foreach (var companion in companions) {
+            if (companion.CompanionOwnerUid == 0) {
+                companion.SetCompanionOwner(player);
+            }
+        }
+
+        return companions;
+    }
+
     internal static List<Chara> TravellingWith(Chara player)
     {
         var list = CompanionsOf(player);

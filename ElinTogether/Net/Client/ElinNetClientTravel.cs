@@ -1455,7 +1455,8 @@ internal partial class ElinNetClient
 
     private static List<LZ4Bytes> CollectCompanions()
     {
-        return CompanionHelper.TravellingWith(pc).Select(c => LZ4Bytes.Create(c)).ToList();
+        // (one with no owner written is ours by our lead here only: the tag goes with it, GitHub issue 84)
+        return CompanionHelper.StampOwner(CompanionHelper.TravellingWith(pc), pc).Select(c => LZ4Bytes.Create(c)).ToList();
     }
 
     internal void SendChatWhileAway(MsgSayDelta delta)
