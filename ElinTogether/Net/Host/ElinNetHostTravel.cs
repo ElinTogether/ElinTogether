@@ -518,8 +518,12 @@ internal partial class ElinNetHost
         // game keeps a box open across a move; answered later, the player left behind got its trip late or lost)
         if ((_zone?.uid ?? 0) != ask.ZoneUid || _pendingHostMove is not null) {
             _questAsk = null;
-            ask.Box?.Close();
-            ResolveQuestAsk(ask.Request, ask.Peer, false, QuestFollowDelta.NoAnswer);
+            if (ask.Box != null) {
+                ask.Box.Close();
+            }
+
+            // (not a no: the host did not say anything, the next quest asks again)
+            ResolveQuestAsk(ask.Request, ask.Peer, false, QuestFollowDelta.NoAnswer, quiet: false);
             return;
         }
 
@@ -548,13 +552,13 @@ internal partial class ElinNetHost
         ResolveQuestAsk(ask.Request, ask.Peer, along, QuestFollowDelta.Declined);
     }
 
-    private void ResolveQuestAsk(ZoneLeaseRequest request, ISteamNetPeer peer, bool along, int refusal)
+    private void ResolveQuestAsk(ZoneLeaseRequest request, ISteamNetPeer peer, bool along, int refusal, bool quiet = true)
     {
         if (along && TakeQuestZone(request, peer)) {
             return;
         }
 
-        if (!along) {
+        if (!along && quiet) {
             _questAskQuietUntil = UnityEngine.Time.realtimeSinceStartup + QuestAskQuietSeconds;
         }
 
