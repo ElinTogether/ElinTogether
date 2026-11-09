@@ -180,6 +180,16 @@ internal partial class ElinNetHost
             pos = chara.pos.Copy();
             keepSpot = true;
         }
+        // it was walking into a map the host had left meanwhile (its last news of the host was that map, a player away
+        // hears of the host's moves only when it comes back): it lands here, then goes on where it was going instead
+        // of staying on the host's new map (a guest walking home to a base another guest kept found itself in the
+        // host's town, bench 2026-11-09)
+        if (spot is { Arrival: not null } && spot.ZoneUid != _zone.uid && UnityEngine.Time.unscaledTime < spot.Until &&
+            game.spatials.Find(spot.ZoneUid) is Zone { IsRegion: false } goal) {
+            EmpLog.Information("Player {@Peer} was going to {ZoneFullName}, which the host left: it goes on there", peer, goal.ZoneFullName);
+            SendDeltaTo(peer.Id, new TeamSpawnDelta { ZoneUid = goal.uid });
+        }
+
         // never a tile outside this map: the game does not check (Map.OnCardAddedToZone), the character would
         // be left in the list of the map and on no tile, and its player without an answer
         if (pos is not { IsValid: true, IsInBounds: true }) {

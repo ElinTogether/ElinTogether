@@ -358,12 +358,21 @@ internal partial class ElinNetHost
     /// <summary>
     ///     How long the question "come along?" stays open on the host's screen, no answer is a no
     /// </summary>
-    private const float QuestAskSeconds = 15f;
+    // (15 s held a guest taking bounties in turn with the host on nearly every trip, "the client often freezes",
+    // Workshop page 2026-11-05)
+    private const float QuestAskSeconds = 5f;
+
+    /// <summary>
+    ///     After a no or no answer, the host is not asked again for a while: it is busy with its own play
+    /// </summary>
+    private const float QuestAskQuietSeconds = 300f;
+
+    private float _questAskQuietUntil;
 
     /// <summary>
     ///     The question open on the host's screen, and the request of the player it holds back meanwhile
     /// </summary>
-    private (ZoneLeaseRequest Request, ISteamNetPeer Peer, Dialog Box, float Deadline)? _questAsk;
+    private (ZoneLeaseRequest Request, ISteamNetPeer Peer, Dialog Box, float Deadline, int ZoneUid)? _questAsk;
 
     /// <summary>
     ///     The player whose quest zone the host runs since it came along, until the host leaves that zone.
@@ -444,7 +453,7 @@ internal partial class ElinNetHost
         // only with nothing else going on here: no question open, no quest zone of its own or of someone else,
         // no trade, and not asked for that quest already
         if (_questAsk is not null || _accompanied is not null || _pendingHostMove is not null ||
-            _lastQuestAsked == blueprint.QuestUid ||
+            _lastQuestAsked == blueprint.QuestUid || UnityEngine.Time.realtimeSinceStartup < _questAskQuietUntil || HostBusyForAsk() ||
             !CanRunQuestZoneFor(peer, blueprint, out var taker) ||
             game.quests.list.Any(q => q.UseInstanceZone && PersonalQuests.IsPersonal(q)) ||
             PlayerTrade.View is { Phase: PlayerTrade.Invited or PlayerTrade.Open }) {
@@ -458,7 +467,7 @@ internal partial class ElinNetHost
         var box = Dialog.YesNo("emp_quest_follow_ask".Loc(taker.Name),
             () => AnswerQuestAsk(true),
             () => AnswerQuestAsk(false));
-        _questAsk = (request, peer, box, UnityEngine.Time.realtimeSinceStartup + QuestAskSeconds);
+        _questAsk = (request, peer, box, UnityEngine.Time.realtimeSinceStartup + QuestAskSeconds, _zone?.uid ?? 0);
 
         SendDeltaTo(peer.Id, new QuestFollowDelta {
             Kind = QuestFollowDelta.Asked,
@@ -490,9 +499,27 @@ internal partial class ElinNetHost
         return new LZ4Bytes { Bytes = data }.Decompress<Quest>() is QuestSubdue or QuestHarvest or QuestMusic;
     }
 
+    /// <summary>
+    ///     The host is in a talk, a question box or a fight: a box over it would be missed, the player is not held for it
+    /// </summary>
+    private bool HostBusyForAsk()
+    {
+        return LayerDrama.IsActive() || ui.GetLayer<Dialog>() is not null ||
+               (_map is not null && _map.charas.Any(c => !c.isDead && c.IsHostile(pc) && c.Dist(pc) <= 6 && pc.CanSee(c)));
+    }
+
     private void UpdateQuestAsk()
     {
         if (_questAsk is not { } ask) {
+            return;
+        }
+
+        // the host went to another map, or is on its way: that box is stale, the player goes alone at once (the
+        // game keeps a box open across a move; answered later, the player left behind got its trip late or lost)
+        if ((_zone?.uid ?? 0) != ask.ZoneUid || _pendingHostMove is not null) {
+            _questAsk = null;
+            ask.Box?.Close();
+            ResolveQuestAsk(ask.Request, ask.Peer, false, QuestFollowDelta.NoAnswer);
             return;
         }
 
@@ -528,6 +555,10 @@ internal partial class ElinNetHost
         }
 
         if (!along) {
+            _questAskQuietUntil = UnityEngine.Time.realtimeSinceStartup + QuestAskQuietSeconds;
+        }
+
+        if (!along) {
             SendDeltaTo(peer.Id, new QuestFollowDelta {
                 Kind = refusal,
                 Name = pc.Name,
@@ -545,7 +576,7 @@ internal partial class ElinNetHost
     private bool TakeQuestZone(ZoneLeaseRequest request, ISteamNetPeer peer)
     {
         // what was true when asking may not be anymore
-        if (request.Blueprint is not { } blueprint || _accompanied is not null ||
+        if (request.Blueprint is not { } blueprint || _accompanied is not null || _pendingHostMove is not null ||
             !CanRunQuestZoneFor(peer, blueprint, out var taker) || _map.FindChara(blueprint.GiverUid) is not { } giver) {
             return false;
         }
