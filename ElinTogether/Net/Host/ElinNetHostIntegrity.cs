@@ -125,6 +125,8 @@ internal partial class ElinNetHost
             return;
         }
 
+        NoteLostAway(response.LostAway, peer);
+
         // another version of Elin: let in and told, unless the host wants the same one for everyone
         var otherGame = !BuildVersionIntegrity.SameGame(response.ClientGameVersion);
         // a zone session decides nothing of its own: the host of the game let this player in with its rules, the

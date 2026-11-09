@@ -231,7 +231,8 @@ internal partial class ElinNetHost
             // zone session: a visitor that stood on this map before we ran it keeps its game (GitHub issue 46)
         } else {
             // remote character exists: where it left, else as before (see ArriveKnown)
-            ArriveKnown(chara, peer, true);
+            // (what it played alone before its link dropped first: the world sent to it carries it)
+            ArriveKnown(ApplyLostAway(peer) ?? chara, peer, true);
         }
     }
 

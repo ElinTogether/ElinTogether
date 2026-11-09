@@ -346,6 +346,8 @@ internal partial class ElinNetClient : ElinNetBase
         }
 
         var reason = Router.DisconnectReason;
+        // what was played alone on our map since the last checkpoint goes back with the next join, not lost
+        KeepPlayedAway(EmpDisconnectInfo.IsLinkLost(reason));
         // (the host said it leaves and another guest takes the world over: that game is the one joined again)
         // (the host said it leaves: it may come back, a world reloaded or a game restarted)
         if (EmpDisconnectInfo.IsLinkLost(reason) || WorldHandover.Following || HostLeftAt > 0f) {

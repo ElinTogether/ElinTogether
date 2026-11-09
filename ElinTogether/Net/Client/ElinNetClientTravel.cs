@@ -1453,6 +1453,54 @@ internal partial class ElinNetClient
         };
     }
 
+    // the map we held alone when the link with the host dropped, as it stood then, the host it is for and when
+    // (survives the component)
+    private static (ZoneLeaseRelease Release, ulong Host, float At)? _lostAway;
+
+    // the host keeps that map for us as long (ElinNetHostPlayerManager.LinkLostGraceSeconds)
+    private const float LostAwaySeconds = 300f;
+
+    /// <summary>
+    ///     The link dropped while we held a map alone: the host keeps its last checkpoint (up to a minute old) and
+    ///     puts us back there once we join again. That map as it stands now is kept and sent with the next handshake
+    ///     (NetIntegrityResponse.LostAway), the host applies it before sending the world back: nothing played is lost.
+    ///     Not with visitors on the map (they take it over), not the world map, not a quest map
+    /// </summary>
+    private void KeepPlayedAway(bool linkLost)
+    {
+        // (a try to join again that fails closes a link too, from the title: the copy kept stays)
+        if (!linkLost || !core.IsGameStarted || !Session.IsAway || !Session.IsZoneAuthority ||
+            Session.AwayZone is not { IsRegion: false, IsInstance: false } zone || _zone != zone ||
+            Session.ZoneSession is ElinNetHost { ActiveRemoteCharas.Count: > 0 }) {
+            return;
+        }
+
+        try {
+            _lostAway = (CreateLeaseRelease(false, true), Host.User, Time.realtimeSinceStartup);
+            EmpLog.Information("Link lost while holding {ZoneFullName} alone: kept for the next join", zone.ZoneFullName);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Link lost: the map we held could not be kept, the host's last checkpoint stays");
+        }
+    }
+
+    /// <summary>
+    ///     For the handshake with the host it is for, while that host keeps the map for us. Kept until then: a join that
+    ///     fails half way sends it again, the host applies it once (it forgets the map it kept for us once back there)
+    /// </summary>
+    private ZoneLeaseRelease? TakeLostAway()
+    {
+        if (_lostAway is not { } lost) {
+            return null;
+        }
+
+        if (Time.realtimeSinceStartup - lost.At > LostAwaySeconds) {
+            _lostAway = null;
+            return null;
+        }
+
+        return lost.Host == Host.User ? lost.Release : null;
+    }
+
     private static List<LZ4Bytes> CollectCompanions()
     {
         // (one with no owner written is ours by our lead here only: the tag goes with it, GitHub issue 84)

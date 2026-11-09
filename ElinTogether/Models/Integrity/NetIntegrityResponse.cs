@@ -22,13 +22,22 @@ public class NetIntegrityResponse
     [Key(3)]
     public byte[]? OwnerToken { get; init; }
 
-    public static NetIntegrityResponse Create(byte[]? ownerToken = null)
+    /// <summary>
+    ///     What this player played alone on the map it held when its link with this host dropped, kept as a checkpoint
+    ///     of that moment (ElinNetClient.KeepPlayedAway): applied before the world is sent back, see
+    ///     ElinNetHost.ApplyLostAway. Null when there is none
+    /// </summary>
+    [Key(4)]
+    public ZoneLeaseRelease? LostAway { get; init; }
+
+    public static NetIntegrityResponse Create(byte[]? ownerToken = null, ZoneLeaseRelease? lostAway = null)
     {
         return new() {
             ClientModVersion = ModInfo.BuildVersion,
             ClientGameVersion = BuildVersionIntegrity.GameVersion,
             APIVersion = BuildVersionIntegrity.APIVersionLatest,
             OwnerToken = ownerToken,
+            LostAway = lostAway,
         };
     }
 }

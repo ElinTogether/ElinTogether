@@ -2090,6 +2090,17 @@ internal partial class ElinNetHost
         // a land made for it away that its game never confirmed
         ClaimZoneDelta.UndoAway(peer.Id, "disconnected before its game claimed it");
 
+        // a dropped link: what it played after its last checkpoint may come back with its next join (ApplyLostAway),
+        // its cards numbered in its range past that checkpoint. The host counter skips them
+        _lostAwayUidLimit.Remove(peer.User);
+        if (EmpDisconnectInfo.IsLinkLost(Router.DisconnectReason) && _leases.TryGetValue(peer.Id, out var held) && held.Count > 0) {
+            var start = held.Values.Max();
+            var used = Math.Max(start, _checkpointUidNext.GetValueOrDefault(peer.Id));
+            var limit = Math.Min(used + LostAwayUids, start + MaxLeaseUids);
+            _lostAwayUidLimit[peer.User] = limit;
+            game.cards.uidNext = Math.Max(game.cards.uidNext, limit);
+        }
+
         // cards of the last checkpoint are in the save now, the host must not allocate their uids
         if (_checkpointUidNext.Remove(peer.Id, out var uidNext)) {
             game.cards.uidNext = Math.Max(game.cards.uidNext, uidNext);
@@ -2122,6 +2133,78 @@ internal partial class ElinNetHost
 
     // player -> the map it held alone when its link dropped, until when it may come back there
     private readonly Dictionary<ulong, (int ZoneUid, float Until)> _awayAt = [];
+
+    // cards a player may make on its map between its last checkpoint and a dropped link (a minute of play makes a
+    // few hundred at most)
+    private const int LostAwayUids = 20_000;
+
+    // player -> the end of the card numbers kept for what it played before its link dropped
+    private readonly Dictionary<ulong, int> _lostAwayUidLimit = [];
+
+    // player -> the map it held as it stood when its link dropped, brought by its next handshake
+    private readonly Dictionary<ulong, ZoneLeaseRelease> _lostAway = [];
+
+    /// <summary>
+    ///     The handshake of a player brings the map it held alone when its link dropped (NetIntegrityResponse.LostAway)
+    /// </summary>
+    private void NoteLostAway(ZoneLeaseRelease? lost, ISteamNetPeer peer)
+    {
+        // (only from a player this game keeps a map for: nothing else is held in memory)
+        if (lost is null || !_awayAt.ContainsKey(peer.User)) {
+            _lostAway.Remove(peer.User);
+        } else {
+            _lostAway[peer.User] = lost;
+        }
+    }
+
+    /// <summary>
+    ///     A player whose link dropped while it held a map alone joins again: that map as it stood then, its character
+    ///     and its party replace the last checkpoint here, before the world is sent to it. Only the map the host kept
+    ///     for it (ReturnToAwayZone), in time, nobody else on it, the host not standing there, its cards in the numbers
+    ///     kept for them. The character played here otherwise, null
+    /// </summary>
+    private Chara? ApplyLostAway(ISteamNetPeer peer)
+    {
+        if (!_lostAway.Remove(peer.User, out var lost)) {
+            return null;
+        }
+
+        string? why = null;
+        if (!_awayAt.TryGetValue(peer.User, out var away) || away.ZoneUid != lost.ZoneUid) {
+            why = "not the map kept for it";
+        } else if (UnityEngine.Time.realtimeSinceStartup > away.Until) {
+            why = "too late";
+        } else if (!_lostAwayUidLimit.TryGetValue(peer.User, out var limit) || lost.UidNext > limit) {
+            why = "its cards are past the numbers kept for them";
+        } else if (game.spatials.Find(lost.ZoneUid) is not { IsRegion: false } zone || _questZones.Contains(zone.uid)) {
+            why = "the map is gone";
+        } else if (zone == _zone || _leases.Any(kv => kv.Key != peer.Id && kv.Value.ContainsKey(zone.uid))) {
+            why = "someone else is on that map now";
+        } else {
+            try {
+                var managed = ApplyLeasedZone(zone, lost, peer) ? zone.uid : -1;
+                var chara = ReplaceRemoteChara(peer.User, lost.Chara);
+                var ownerUid = SavedRemoteCharas.TryGetValue(peer.User, out var owner) ? owner : 0;
+                ReplaceCompanions(lost.Companions, ownerUid);
+                ReplaceResidents(lost.Residents, ownerUid, managed);
+                DropGoneResidents(lost.GoneResidents, ownerUid);
+                // its tile then, not the one of its last checkpoint: where it left is where it comes back
+                if (lost.StoodZoneUid == zone.uid && chara?.pos is { x: >= 0, z: >= 0 } pos && LeaveSpots.ContainsKey(chara.uid)) {
+                    LeaveSpots[chara.uid] = [zone.uid, pos.x, pos.z];
+                }
+
+                _lostAwayUidLimit.Remove(peer.User);
+                EmpLog.Information("Player {@Peer} brought {ZoneFullName} as it stood when its link dropped", peer, zone.ZoneFullName);
+                return chara;
+            } catch (Exception ex) {
+                EmpLog.Error(ex, "The map player {@Peer} held when its link dropped could not be applied, its last checkpoint stays", peer);
+                return null;
+            }
+        }
+
+        EmpLog.Information("Player {@Peer} brought the map it held when its link dropped, not applied: {Why}", peer, why);
+        return null;
+    }
 
     /// <summary>
     ///     A player whose link dropped while it held a map alone comes back there, as a game loads where it was:
