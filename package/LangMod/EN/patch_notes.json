@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.26.1928",
+    "date": "2026-11-09",
+    "title": "no waiting at quest boards, the way home kept",
+    "bullets": [
+      "A guest no longer freezes when players take quests in turn (reported on the Workshop page): when a guest left for a quest zone, the host was asked \"come along?\" and the guest waited up to 15 seconds for the answer, on every quest.",
+      "A guest walking home to a base another guest is keeping arrives there: if the host had left that base meanwhile, the guest used to land on the host's new map instead."
+    ]
+  },
+  {
     "version": "0.26.1925",
     "date": "2026-11-09",
     "title": "parties that stay together, a dropped link loses nothing",
