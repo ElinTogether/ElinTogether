@@ -217,7 +217,7 @@ public static class AdventurerBout
         }
 
         host.SendDeltaTo(peer, new AdventurerBoutDelta {
-            Kind = AdventurerBoutDelta.Home,
+            Kind = AdventurerBoutDelta.Returned,
             TargetUid = uid,
             Chara = LZ4Bytes.Create(target),
             ZoneUid = rec[RecZone],
