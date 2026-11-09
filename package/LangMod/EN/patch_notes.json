@@ -1,5 +1,28 @@
 [
   {
+    "version": "0.26.1925",
+    "date": "2026-11-09",
+    "title": "parties that stay together, a dropped link loses nothing",
+    "bullets": [
+      "#85 #87 The party disappearing (after a death, a teleporter, a return home): when a guest joined a base another guest was keeping, that guest's game wrote the newcomer down as one of its own companions.",
+      "Fiama missing on Nymelle's crystal floor (main story blocked): reported on the Workshop page.",
+      "#86 An adventurer gone after a duel: a guest who won a duel away from the host (Misaki at Nefu in the report) no longer finds the adventurer missing from its town afterwards.",
+      "A guest alone on its own map whose link with the host drops no longer loses what it played: before, the host kept the guest's last automatic save of that map (up to a minute old), so items dropped, gold earned or anything done since then was gone once the guest joined again.",
+      "Seed offerings checked: the duplication reported on the original project (seeds offered to an altar coming back after a reconnect) does not happen in this version."
+    ]
+  },
+  {
+    "version": "0.26.1920",
+    "date": "2026-11-08",
+    "title": "issue #84, the guest's night, the public world",
+    "bullets": [
+      "#84 Companions lost on the way home: a guest coming back to a base another guest was keeping (a scroll of return, a walk) no longer finds its companions turned into the host's, standing on the map out of its party.",
+      "A guest's night no longer breaks on waking: an unknown magic domain on the character (left by another mod) threw an error on waking, and the night's recipe, dream spell and pillow effect were lost.",
+      "\"Connection problem...",
+      "Public world: when the Elin Together account's PC is on, it keeps the public world."
+    ]
+  },
+  {
     "version": "0.26.1914",
     "date": "2026-11-07",
     "title": "the public world hosted by its players, achievements, issue #83",
