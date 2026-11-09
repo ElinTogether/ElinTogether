@@ -61,6 +61,7 @@ public static class AdventurerBout
             case ElinNetClient client when Enabled:
                 _target = bout.uidTarget;
                 _told = false;
+                _home = null;
                 Send(client, AdventurerBoutDelta.Start);
                 break;
             case ElinNetHost when NetSession.Instance.Connection is ElinNetHost:
@@ -182,17 +183,22 @@ public static class AdventurerBout
             return;
         }
 
+        if (EClass.game.spatials.Find(home.ZoneUid) is not Zone town) {
+            return;
+        }
+
         var chara = home.Chara.Decompress<Chara>();
         chara.uid = home.TargetUid;
+        // (the host's copy already says it is in town: MoveZone does nothing then, and a town this game stands on
+        // would never get it on its map)
+        chara.currentZone = null;
         EClass.game.cards.globalCharas.Add(chara);
         Recache(chara);
-        if (EClass.game.spatials.Find(home.ZoneUid) is Zone town) {
-            chara.MoveZone(town, new ZoneTransition {
-                state = ZoneTransition.EnterState.Exact,
-                x = home.X,
-                z = home.Z,
-            });
-        }
+        chara.MoveZone(town, new ZoneTransition {
+            state = ZoneTransition.EnterState.Exact,
+            x = home.X,
+            z = home.Z,
+        });
 
         EmpLog.Information("The adventurer {Target} of our bout is back in {Zone}", chara.uid, home.ZoneUid);
     }
