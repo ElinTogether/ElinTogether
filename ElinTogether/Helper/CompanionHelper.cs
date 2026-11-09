@@ -28,7 +28,9 @@ internal static class CompanionHelper
         /// <summary>
         ///     Chara uid of the player this companion follows, 0 for the party leader
         /// </summary>
-        internal int CompanionOwnerUid => chara.GetInt(OwnerKey);
+        // a player is nobody's companion: a world may still carry a tag written on one (GitHub issues 85-87, a guest
+        // joining another guest's zone session was made an ally there and stamped as that player's)
+        internal int CompanionOwnerUid => chara.IsPC || chara.GetBool("remote_chara") ? 0 : chara.GetInt(OwnerKey);
 
         internal bool IsCompanionOf(Chara player)
         {
@@ -43,7 +45,7 @@ internal static class CompanionHelper
 
         internal void SetCompanionOwner(Chara? player)
         {
-            chara.SetInt(OwnerKey, player?.uid ?? 0);
+            chara.SetInt(OwnerKey, chara.IsPC || chara.GetBool("remote_chara") ? 0 : player?.uid ?? 0);
         }
 
         /// <summary>

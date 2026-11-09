@@ -587,9 +587,10 @@ internal partial class ElinNetHost
             joined.Trusted = true;
         }
 
+        // (a player before it is made an ally: nobody's companion, see CompanionHelper.SetCompanionOwner)
+        chara.SetBool("remote_chara", true);
         chara.MakeAlly();
         chara.MoveZone(pc.currentZone);
-        chara.SetBool("remote_chara", true);
         chara.SetStr(PlayerRevive.PlayerKey, peer.User.Name ?? "?");
         // (whose it is, kept in the world: see ReclaimLostCharas)
         chara.SetStr(PlayerIdKey, ((ulong)peer.User).ToString());

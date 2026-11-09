@@ -58,7 +58,8 @@ public class CharaMakeAllyDelta : ElinDelta
             game.cards.globalCharas.Add(chara);
         }
 
-        chara.SetInt(CompanionHelper.OwnerKey, OwnerUid);
+        // (never on a player, see CompanionHelper.CompanionOwnerUid)
+        chara.SetInt(CompanionHelper.OwnerKey, chara.GetBool("remote_chara") ? 0 : OwnerUid);
         if (JoinOnly) {
             pc.party.AddMemeber(chara, ShowMsg);
             return;

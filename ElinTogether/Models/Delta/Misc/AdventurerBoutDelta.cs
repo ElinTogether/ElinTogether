@@ -17,6 +17,7 @@ public class AdventurerBoutDelta : ElinDelta
     public const int Lost = 2;
     public const int Left = 3;
     public const int Marks = 4;
+    public const int Home = 5;
 
     [Key(0)]
     public required int Kind { get; init; }
@@ -36,20 +37,39 @@ public class AdventurerBoutDelta : ElinDelta
     [Key(3)]
     public int Beaten { get; init; }
 
+    /// <summary>
+    ///     Home, host -> the guest of the bout, away: the host's adventurer as it stands back in its town, and where
+    ///     (its game dropped its own copy when it left the bout, see AdventurerBout.Leave)
+    /// </summary>
+    [Key(4)]
+    public LZ4Bytes? Chara { get; init; }
+
+    [Key(5)]
+    public int ZoneUid { get; init; }
+
+    [Key(6)]
+    public int X { get; init; }
+
+    [Key(7)]
+    public int Z { get; init; }
+
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
         // (only the host says what the adventurer keeps; a bout is the sender's own, AdventurerBout checks whose)
-        return Kind == Marks ? "not a request" : NoCharacter(sender);
+        return Kind is Marks or Home ? "not a request" : NoCharacter(sender);
     }
 
     protected override void OnApply(ElinNetBase net)
     {
         switch (net) {
-            case ElinNetHost host when Kind != Marks:
+            case ElinNetHost host when Kind is not (Marks or Home):
                 AdventurerBout.OnGuest(this, host);
                 break;
             case ElinNetClient when Kind == Marks:
                 AdventurerBout.Learn(this);
+                break;
+            case ElinNetClient when Kind == Home:
+                AdventurerBout.BackHome(this);
                 break;
         }
     }

@@ -35,6 +35,9 @@ public static class AdventurerBout
     private static int _target;
     private static bool _told;
 
+    // the host's adventurer back in its town, come while this game still stands in the bout: taken once it leaves
+    private static AdventurerBoutDelta? _home;
+
     internal static bool Enabled => NetSession.Instance.Rules.GuestBouts;
 
     private static Chara? Find(int uid)
@@ -105,21 +108,24 @@ public static class AdventurerBout
         }
 
         _target = 0;
-        if (Find(bout.uidTarget) is not { IsPC: false } copy) {
-            return;
+        if (Find(bout.uidTarget) is { IsPC: false } copy) {
+            EClass.game.cards.globalCharas.Remove(copy);
+            if (copy.currentZone == EClass._zone && EClass._map.charas.Contains(copy)) {
+                EClass._zone.RemoveCard(copy);
+            } else {
+                copy.parent = null;
+                copy.currentZone = null;
+            }
+
+            CardCache.Remove(copy.uid);
+            foreach (var thing in copy.things.Flatten()) {
+                CardCache.Remove(thing.uid);
+            }
         }
 
-        EClass.game.cards.globalCharas.Remove(copy);
-        if (copy.currentZone == EClass._zone && EClass._map.charas.Contains(copy)) {
-            EClass._zone.RemoveCard(copy);
-        } else {
-            copy.parent = null;
-            copy.currentZone = null;
-        }
-
-        CardCache.Remove(copy.uid);
-        foreach (var thing in copy.things.Flatten()) {
-            CardCache.Remove(thing.uid);
+        if (_home is { } home && home.TargetUid == bout.uidTarget) {
+            _home = null;
+            BackHome(home);
         }
     }
 
@@ -155,7 +161,64 @@ public static class AdventurerBout
         }
     }
 
+    /// <summary>
+    ///     Away, the adventurer of this guest's bout is back in its town in the host's game: this game, which dropped
+    ///     its copy when it left the bout, takes the host's (GitHub issue 86: Misaki was gone from Nefu after a won bout
+    ///     until a later copy of the world)
+    /// </summary>
+    internal static void BackHome(AdventurerBoutDelta home)
+    {
+        if (home.Chara is null) {
+            return;
+        }
+
+        // (told as soon as the bout is won, before this game walks out of its zone: its own copy is still there)
+        if (home.TargetUid == _target) {
+            _home = home;
+            return;
+        }
+
+        if (Find(home.TargetUid) is { isDestroyed: false }) {
+            return;
+        }
+
+        var chara = home.Chara.Decompress<Chara>();
+        chara.uid = home.TargetUid;
+        EClass.game.cards.globalCharas.Add(chara);
+        Recache(chara);
+        if (EClass.game.spatials.Find(home.ZoneUid) is Zone town) {
+            chara.MoveZone(town, new ZoneTransition {
+                state = ZoneTransition.EnterState.Exact,
+                x = home.X,
+                z = home.Z,
+            });
+        }
+
+        EmpLog.Information("The adventurer {Target} of our bout is back in {Zone}", chara.uid, home.ZoneUid);
+    }
+
     // ---------------------------------------------------------------- the host
+
+    /// <summary>
+    ///     The bout of a guest away is over and the adventurer back in its town here: that guest gets it (its game
+    ///     dropped its copy, see Leave)
+    /// </summary>
+    private static void SendHome(ElinNetHost host, int peer, int uid, int[] rec)
+    {
+        // (a bout from the host's own town: the winner walks back onto this map, which brings it the adventurer)
+        if (peer < 0 || !host.IsAwayPeer(peer) || rec[RecZone] == EClass._zone?.uid || Find(uid) is not { } target) {
+            return;
+        }
+
+        host.SendDeltaTo(peer, new AdventurerBoutDelta {
+            Kind = AdventurerBoutDelta.Home,
+            TargetUid = uid,
+            Chara = LZ4Bytes.Create(target),
+            ZoneUid = rec[RecZone],
+            X = rec[RecX],
+            Z = rec[RecZ],
+        });
+    }
 
     internal static void TellMarks(int uid, int peer = -1)
     {
@@ -217,6 +280,7 @@ public static class AdventurerBout
             rec[RecResult] = AdventurerBoutDelta.Won;
         } else {
             bouts.Remove(uid);
+            SendHome(host, delta.OriginPeer, uid, rec);
         }
 
         EmpLog.Information("Player {Guest} bout with {Target}: {Kind}", guest.uid, uid, delta.Kind);
@@ -299,11 +363,15 @@ public static class AdventurerBout
 
             // travelling alone, the winner goes back to a town of its own and never stands on this map: the reward
             // comes by letter, as what the host gives any player who is away (GitHub issue 79)
-            if (peer >= 0 && host.IsAwayPeer(peer)) {
+            // (not a bout from the host's own town: its winner walks back here, in its zone of the bout for now)
+            if (peer >= 0 && host.IsAwayPeer(peer) && rec[RecZone] != EClass._zone?.uid) {
                 bouts.Remove(uid);
                 if (Find(uid) is { } beaten) {
                     RewardByLetter(beaten, rec[RecGuest]);
                 }
+
+                // (after the reward left it)
+                SendHome(host, peer, uid, rec);
 
                 continue;
             }
