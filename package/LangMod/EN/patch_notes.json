@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.5",
+    "date": "2026-11-10",
+    "title": "a land deed for everyone, the Meadow's board stays put",
+    "bullets": [
+      "A land deed for every player (reported from the public server): until now only the founder of a team received one.",
+      "The Meadow's quest board and home crystal stay where they are: in a game with other players they can no longer be moved or picked up on the Meadow, the start land everyone shares.",
+      "Drawings in the game's chat for their sender too: a drawing you sent showed only in the menu's chat, while the other players saw it in the game.",
+      "A world kept by the players recovers faster from a crash: when the player keeping the world vanishes, the next one starts getting ready after 12 seconds of silence instead of 30, and always gets into the world it now keeps (it could stay at the title screen while the others played on its server).",
+      "Bug reports sent from the game go to the official repository."
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-11-10",
     "title": "the independence version becomes the official Elin Together",
