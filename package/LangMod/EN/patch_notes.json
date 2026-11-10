@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.0",
+    "date": "2026-11-10",
+    "title": "the independence version becomes the official Elin Together",
+    "bullets": [
+      "Elin Together 1.0: the \"independence\" version is now the official Elin Together, merged into the official repository (github.com/ElinTogether/ElinTogether).",
+      "Same game as 0.26.1928: no gameplay change in this version, only the version number, the update check and the links.",
+      "Version numbers: 1.0.0, then 1.0.1, 1.0.2 and so on."
+    ]
+  },
+  {
     "version": "0.26.1928",
     "date": "2026-11-09",
     "title": "no waiting at quest boards, the way home kept",

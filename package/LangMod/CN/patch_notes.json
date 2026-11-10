@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.0",
+    "date": "2026-11-10",
+    "title": "",
+    "bullets": [
+      "Elin Together 1.0：\"independence\" 版本现已成为官方 Elin Together，并已合并到官方仓库（github.com/ElinTogether/ElinTogether）。",
+      "与 0.26.1928 相同的游戏内容：此版本没有玩法变化，只有版本号、更新检查和链接。",
+      "版本号：1.0.0，之后为 1.0.1、1.0.2，依此类推。"
+    ]
+  },
+  {
     "version": "0.26.1928",
     "date": "2026-11-09",
     "title": "",
