@@ -844,6 +844,18 @@ internal static class Teams
     }
 
     /// <summary>
+    ///     A player in no team receives its land deed too, once (the same host option, at each join until it got one):
+    ///     only founders did, and on the public server nobody had a deed (lead dev, 2026-11-10). Founding a team later
+    ///     gives none, one deed per player
+    /// </summary>
+    internal static void FirstDeed(Chara chara)
+    {
+        if (KeepsBook && TeamOf(chara.uid) == Wanderers) {
+            GiveDeed(chara, -chara.uid);
+        }
+    }
+
+    /// <summary>
     ///     A new team's founder receives one land deed (host option), once per team and once per player: founding
     ///     again after leaving gives none
     /// </summary>

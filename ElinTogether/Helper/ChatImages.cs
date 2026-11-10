@@ -167,6 +167,7 @@ internal static class ChatImages
         }
 
         ChatLog.Add(team ? ChatLog.Team : ChatLog.All, delta.Name ?? "?", "", true, EClass.pc.uid, png, drawing);
+        ChatImageDelta.Pop(delta.Name ?? "?", teamId, png, drawing);
         return null;
     }
 

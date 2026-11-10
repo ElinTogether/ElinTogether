@@ -591,6 +591,10 @@ internal partial class ElinNetHost
         chara.SetBool("remote_chara", true);
         chara.MakeAlly();
         chara.MoveZone(pc.currentZone);
+        // (its land deed, once, for a player of no team: a letter when it is not on this map yet)
+        if (!IsZoneSession) {
+            Helper.Teams.FirstDeed(chara);
+        }
         chara.SetStr(PlayerRevive.PlayerKey, peer.User.Name ?? "?");
         // (whose it is, kept in the world: see ReclaimLostCharas)
         chara.SetStr(PlayerIdKey, ((ulong)peer.User).ToString());
