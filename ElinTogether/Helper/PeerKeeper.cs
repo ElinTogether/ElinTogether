@@ -676,6 +676,60 @@ internal static class PeerKeeper
     /// </summary>
     internal static string? Opening { get; private set; }
 
+    // the keeper silent this long: the first of the succession list starts its hidden server ahead (the link is declared
+    // lost only after Policy.Timeout, 30 s, and the engine takes 75 s on the bench: crash takeover 140 s, 2026-11-10)
+    private const float EarlyPreBootSeconds = 12f;
+    private static bool _earlyPreBoot;
+
+    // since when the keeper is heard again without a gap: one packet in the middle of an outage ended the server
+    // started ahead, the next silence started another one (bench --cut, 2026-11-10)
+    private static float _heardSince = -1f;
+    private const float HeardSteadySeconds = 10f;
+
+    /// <summary>
+    ///     Nothing from the keeper's server for a while (ElinNetClient.UpdateSilence): the next keeper starts its hidden
+    ///     server's engine ahead, as WhileLost does once the link is declared lost
+    /// </summary>
+    internal static void SilentKeeper(float silent)
+    {
+        _heardSince = -1f;
+        if (_earlyPreBoot || silent < EarlyPreBootSeconds || !Enabled || _claiming || HiddenServer.PreBooted ||
+            WorldHandover.Position(Me) != 0 || CanKeep(null) is not null) {
+            return;
+        }
+
+        _earlyPreBoot = true;
+        EmpLog.Information("Peer-hosted world: nothing from the keeper for {Seconds} s, starting the hidden server ahead", (int)silent);
+        if (HiddenServer.PreBoot(SaveId)) {
+            _preBootTried = true;
+        }
+    }
+
+    /// <summary>
+    ///     The keeper's server answers again: a server started ahead for nothing is ended
+    /// </summary>
+    internal static void KeeperHeard()
+    {
+        if (!_earlyPreBoot) {
+            return;
+        }
+
+        var now = Time.realtimeSinceStartup;
+        if (_heardSince < 0f) {
+            _heardSince = now;
+        }
+
+        if (now - _heardSince < HeardSteadySeconds) {
+            return;
+        }
+
+        _earlyPreBoot = false;
+        _heardSince = -1f;
+        if (!_claiming) {
+            HiddenServer.DropPreBoot("the keeper answers again");
+        }
+    }
+
     internal static bool WhileLost()
     {
         if (!Enabled) {
@@ -762,6 +816,7 @@ internal static class PeerKeeper
     {
         HiddenServer.DropPreBoot("the keeper is back");
         _preBootTried = false;
+        _earlyPreBoot = false;
         Opening = null;
         _freeSince = -1f;
         _claimFailed = false;

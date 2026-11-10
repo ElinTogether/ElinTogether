@@ -45,6 +45,15 @@ internal static class HiddenServer
     private static float _nextLook;
     private static float _runningAt;
     private static bool _joined;
+
+    // the first join of the server that runs, and the tries since: a join that fails (a time out on the local port)
+    // left the player at the title while its own server kept the world for the others (bench crash takeover,
+    // 2026-11-10: the new keeper's join timed out after 10 s and nothing tried again)
+    private static float _firstJoinAt;
+    private static float _lastJoinAt;
+    private static int _joinTries;
+    private const float JoinRetrySeconds = 15f;
+    private const float JoinRetryWindow = 120f;
     private static Action? _classic;
     private static LayerProgress? _progress;
 
@@ -327,6 +336,16 @@ internal static class HiddenServer
                 EmpLog.Information("Hidden server: process {Pid} is gone", _process.Id);
                 _process = null;
                 _joined = false;
+                return;
+            }
+
+            // its first join did not get into the world: again, for a while (not later: the player may have left)
+            var now = Time.unscaledTime;
+            if (!EClass.core.IsGameStarted && now - _firstJoinAt < JoinRetryWindow && now - _lastJoinAt > JoinRetrySeconds &&
+                NetSession.Instance.Transport is null) {
+                _joinTries++;
+                EmpLog.Warning("Hidden server: this game is not in the world it keeps, joining it again (try {Try})", _joinTries + 1);
+                Join();
             }
 
             return;
@@ -368,6 +387,12 @@ internal static class HiddenServer
         var session = NetSession.Instance;
         _classic = null;
         _onFail = null;
+        if (!_joined) {
+            _firstJoinAt = Time.unscaledTime;
+            _joinTries = 0;
+        }
+
+        _lastJoinAt = Time.unscaledTime;
         _joined = true;
         CloseProgress();
         EmpLog.Information("Hidden server: up after {Seconds} s, joining it", (int)(Time.unscaledTime - _startedAt));

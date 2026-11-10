@@ -69,8 +69,12 @@ internal partial class ElinNetClient : ElinNetBase
         var silent = now - host.Stat.LastReceivedAt;
         if (silent < SilenceSeconds) {
             _silenceToldAt = -1f;
+            Helper.PeerKeeper.KeeperHeard();
             return;
         }
+
+        // the next keeper of a peer-hosted world starts its hidden server now, not once the link is declared lost
+        Helper.PeerKeeper.SilentKeeper(silent);
 
         if (_silenceToldAt >= 0f && now - _silenceToldAt < SilenceRepeatSeconds) {
             return;
