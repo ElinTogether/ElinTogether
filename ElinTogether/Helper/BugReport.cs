@@ -439,7 +439,7 @@ internal static class BugReport
     /// </summary>
     internal const string Relay = "https://elin-report.yhhhuii095.workers.dev";
 
-    private const string Issues = "https://github.com/jeanfreger/elin-together-independence/issues/new";
+    private const string Issues = "https://github.com/ElinTogether/ElinTogether/issues/new";
 
     // what the relay takes at most for the logs
     private const int MaxZip = 6 * 1024 * 1024;
