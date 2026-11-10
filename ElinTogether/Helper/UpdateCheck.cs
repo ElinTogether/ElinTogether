@@ -20,7 +20,7 @@ namespace ElinTogether.Helper;
 /// </summary>
 internal static class UpdateCheck
 {
-    private const string Api = "https://api.github.com/repos/jeanfreger/elin-together-independence/releases/latest";
+    private const string Api = "https://api.github.com/repos/ElinTogether/ElinTogether/releases/latest";
     private static readonly TimeSpan _every = TimeSpan.FromHours(6);
     private static bool _started;
 
@@ -35,7 +35,7 @@ internal static class UpdateCheck
     /// <summary>The release's page, where it is downloaded</summary>
     internal static string Url => _url.StartsWith("https://github.com/", StringComparison.Ordinal)
         ? _url
-        : "https://github.com/jeanfreger/elin-together-independence/releases/latest";
+        : "https://github.com/ElinTogether/ElinTogether/releases/latest";
 
     /// <summary>
     ///     At the first title screen (and when the setting is switched on): the kept answer, then GitHub when it is
@@ -114,7 +114,7 @@ internal static class UpdateCheck
         }
     }
 
-    /// <summary>"independence-0.26.1597" (or "v0.26.1597") as "0.26.1597"; null when it holds no such version</summary>
+    /// <summary>"EMP-1.0.3", "independence-0.26.1597" or "v1.0.0" as the three numbers; null when it holds no such version</summary>
     internal static string? Parse(string tag)
     {
         var start = tag.LastIndexOf('-') + 1;

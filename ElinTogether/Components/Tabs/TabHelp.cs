@@ -13,7 +13,7 @@ namespace ElinTogether.Components;
 /// </summary>
 internal static class TabHelp
 {
-    internal const string Repo = "https://github.com/jeanfreger/elin-together-independence";
+    internal const string Repo = "https://github.com/ElinTogether/ElinTogether";
 
     // topic, the tab where it is done (tab name, its label id)
     private static readonly (string Id, string Tab, string Label)[] Topics = [
