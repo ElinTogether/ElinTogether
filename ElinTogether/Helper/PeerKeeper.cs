@@ -210,6 +210,18 @@ internal static class PeerKeeper
     }
 
     /// <summary>
+    ///     The Steam beta branch this game runs ("nightly"), empty on the default branch (Stable) or with no Steam
+    /// </summary>
+    internal static string BetaBranch()
+    {
+        try {
+            return Steamworks.SteamApps.GetCurrentBetaName(out var name, 128) && name is not ("" or "public") ? name : "";
+        } catch (System.Exception ex) when (ex is System.InvalidOperationException or System.DllNotFoundException or System.EntryPointNotFoundException) {
+            return "";
+        }
+    }
+
+    /// <summary>
     ///     The public world's card at the title screen: the keeper joined, or the world opened here when nobody keeps
     ///     it and this game may. False when the election does not run (the card does what it did)
     /// </summary>
@@ -217,6 +229,16 @@ internal static class PeerKeeper
     {
         if (!Enabled || _claiming || HiddenServer.Starting) {
             return false;
+        }
+
+        // the public world is played on Elin Stable (lead dev 2026-11-14: "it only works with nightly but it should be
+        // on stable"): a keeper on a beta branch wrote saves the Stable games could not load, and nobody on Stable
+        // could join its game (another game version). A game on a beta branch is told, and stays at the title
+        if (PeerHosting.PublicEntered && BetaBranch() is { Length: > 0 } beta) {
+            PeerHosting.PublicEntered = false;
+            EmpLog.Information("Public world not entered: this game runs the Steam branch {Branch}, the public world is on Stable", beta);
+            EmpPop.Information("emp_peer_stable_only".Loc(beta));
+            return true;
         }
 
         if (HiddenServer.Playing) {

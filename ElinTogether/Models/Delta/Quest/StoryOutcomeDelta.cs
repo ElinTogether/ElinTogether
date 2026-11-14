@@ -138,8 +138,11 @@ public class StoryOutcomeDelta : ElinDelta
             .Where(c => c is { isDead: true } && c.GetInt(100) != 0)
             .Distinct()
             .ToList();
-        foreach (var pet in pets) {
-            pet.GetRevived();
+        // (next to that player and into its party, not the host's: RemoteRevivePatch stands it in for the game's "pc")
+        using (Patches.CharaMakeAllyEvent.GiftsFor(sender)) {
+            foreach (var pet in pets) {
+                pet.GetRevived();
+            }
         }
 
         EmpLog.Information("Fiama revived {Count} pet(s) of player character {Uid}", pets.Count, sender.uid);
