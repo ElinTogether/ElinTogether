@@ -1,3 +1,4 @@
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -40,8 +41,29 @@ internal class AddRecipeEvent
         // own task is replayed here: the host, for whom that character is not "the player", never rolls for it
         var ownTask = CharaProgressCompleteDelta.Current?.Owner.Find() is Chara { IsPC: true };
         var (learner, story) = (EClass.pc.uid, StoryScope.Active);
-        // teams learning on their own, in the game that keeps the book: what the story gives is learnt by every team
-        // (in their ledger: the local team is this Player object), even when it was played for another player
+        // GitHub issues 25, 31: with each team living its own story, what a story step or a dialog teaches is that
+        // story's owner's, not every team's (the player whose story is played here, a guest's on the host)
+        if (story && TeamOwnStory.On) {
+            story = false;
+            if (TeamOwnStory.Swapped && TeamOwnStory.CurrentOwner is { } owner) {
+                learner = owner < 0 ? -owner : Teams.MembersOf(owner).DefaultIfEmpty(learner).First();
+            }
+
+            TeamKnowledge.Learnt(learner, id);
+            // (played for another owner on the host: the host's own book, this Player object, did not learn it)
+            if (TeamKnowledge.On && TeamKnowledge.LocalTeam is { } local && StoryOwner.Of(learner) != local &&
+                EClass.player.recipes.knownRecipes.TryGetValue(id, out var count)) {
+                if (count <= 1) {
+                    EClass.player.recipes.knownRecipes.Remove(id);
+                    EClass.player.recipes.newRecipes.Remove(id);
+                } else {
+                    EClass.player.recipes.knownRecipes[id] = count - 1;
+                }
+            }
+        }
+
+        // teams learning on their own, in the game that keeps the book: what the shared story gives is learnt by every
+        // team (in their ledger: the local team is this Player object), even when it was played for another player
         if (story) {
             TeamKnowledge.Learnt(0, id);
         }

@@ -45,7 +45,8 @@ public class AddRecipeDelta : ElinDelta
     {
         // who learnt it: the sender itself on the host of the world, else as told (the visitor of a zone the sender
         // keeps); nobody in particular for the story, every team learns it
-        var learner = Story ? 0 : net is ElinNetHost { IsZoneSession: false } world && !Relayed && world.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender)
+        // (each team living its own story: the story's recipe is its learner's, issues 25 and 31)
+        var learner = Story && !Helper.TeamOwnStory.On ? 0 : net is ElinNetHost { IsZoneSession: false } world && !Relayed && world.ActiveRemoteCharas.TryGetValue(OriginPeer, out var sender)
                 ? sender.uid
                 : Learner;
 

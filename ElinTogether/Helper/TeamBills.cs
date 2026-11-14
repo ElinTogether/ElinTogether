@@ -35,6 +35,23 @@ internal static class TeamBills
         : NetSession.Instance.Rules is { UseTeams: true, TeamBills: true };
 
     /// <summary>
+    ///     GitHub issue 31: the commons pays no tax (OnMonth leaves it out), but the base's tax tooltip on the Meadow still
+    ///     showed the faction's tax amounts, read as a tax on the start land. There it says so instead
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Faction), nameof(Faction.SetTaxTooltip))]
+    private static bool OnTaxTooltip(UINote n)
+    {
+        if (!On || !Commons.Is(EClass._zone)) {
+            return true;
+        }
+
+        n.AddHeader("tax");
+        n.AddText("emp_commons_no_tax".lang());
+        return false;
+    }
+
+    /// <summary>
     ///     The team a tax bill was made for, null for one of no team (older than the box)
     /// </summary>
     internal static int? TeamOf(Thing bill)
@@ -201,7 +218,8 @@ internal static class TeamBills
             Deliver(__instance, bill, team, claimer);
         }
 
-        Msg.Say("bills", EClass.player.taxBills.ToString());
+        // (GitHub issue 23: the world's sum was said, another team's bills read as one's own: this game's owner's)
+        Msg.Say("bills", UnpaidOf(StoryOwner.Of(EClass.pc.uid)).ToString());
         if (EClass.game.principal.tax && !EClass.debug.godMode) {
             Punish();
         }

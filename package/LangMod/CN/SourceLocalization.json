@@ -1773,5 +1773,8 @@
     "LangGeneral.emp_ui_takeover_wait.text": "保管世界的玩家已离开，正在等待交接…（#1）",
     "LangGeneral.emp_ui_takeover_opening.text": "#1 正在打开世界…（#2，通常约2分钟）",
     "LangGeneral.emp_ui_connection_problem.text": "连接出现问题…（{0}秒）",
-    "LangGeneral.emp_peer_stable_only.text": "公共世界使用 Elin 稳定版。此游戏运行在 Steam 分支「#1」上：请在 Steam 中切回默认分支后再加入。"
+    "LangGeneral.emp_peer_stable_only.text": "公共世界使用 Elin 稳定版。此游戏运行在 Steam 分支「#1」上：请在 Steam 中切回默认分支后再加入。",
+    "LangGeneral.emp_mailbox_delivery.text": "送货箱",
+    "LangGeneral.emp_mailbox_delivery_n.text": "送货箱（#1）",
+    "LangGeneral.emp_commons_no_tax.text": "这片土地属于所有人：无需为它缴税。"
 }

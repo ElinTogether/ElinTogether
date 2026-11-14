@@ -13,7 +13,23 @@ internal static class LeasedZonePatch
     [HarmonyPostfix]
     internal static void OnCanDestroy(Zone __instance, ref bool __result)
     {
-        if (!__result || NetSession.Instance.Transport is not ElinNetHost host) {
+        if (!__result) {
+            return;
+        }
+
+        // GitHub issue 30: a guest's copy of the world deleted an expired dungeon as it came out on the world map
+        // (Region.OnActivate), while a friend still fought in it on the host: the dungeon vanished from its map and it
+        // could not join. Only the game that keeps the world deletes its places; the copy follows it at the next
+        // world copy (an instance, the guest's own temporary map, is still its own to drop)
+        if (NetSession.Instance.Transport is ElinNetClient) {
+            if (!__instance.IsInstance) {
+                __result = false;
+            }
+
+            return;
+        }
+
+        if (NetSession.Instance.Transport is not ElinNetHost host) {
             return;
         }
 

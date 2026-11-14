@@ -85,13 +85,11 @@ internal static class TeamMail
             }
 
             var unit = StoryOwner.Of(uid);
-            // (a server never stands at a player's base: held there, it would wait for ever)
-            if (unit > 0 && Teams.HasBase(unit) && !server) {
-                if (unit != here) {
-                    list.Remove(parcel);
-                    _held.Add(parcel);
-                }
-
+            // its own base takes it into its mail box. Elsewhere: no more waiting for that base's day (GitHub issues
+            // 32, 23: in a world kept by a player, or by a server, a player's land is never simulated by the keeper,
+            // and the parcel waited in the world's list for ever); the unit's delivery box, opened from the mail box
+            // of its land (OnMenu)
+            if (unit > 0 && Teams.HasBase(unit) && unit == here && !server) {
                 continue;
             }
 
@@ -192,6 +190,19 @@ internal static class TeamMail
         }
 
         var card = __instance.owner;
+        // GitHub issues 32, 23: a player's parcels and its team's tax bills wait in its unit's delivery box, which only
+        // a delivery chest opened, and nobody builds one on a land. The mail box of the player's own land (or the
+        // commons) opens it: the game's delivery box window, which TeamBoxes and WorldBoxPatch turn into this
+        // player's own box (on the host's map, or mirrored while away)
+        var land = Teams.LandOwnerOf(EClass._zone);
+        if ((land != 0 && land == StoryOwner.Of(EClass.pc.uid)) || Commons.Is(EClass._zone)) {
+            var waiting = TeamBoxes.DeliveryBox()?.things.Count ?? 0;
+            p.TrySetAct(waiting > 0 ? "emp_mailbox_delivery_n".Loc(waiting) : "emp_mailbox_delivery".lang(), () => {
+                LayerInventory.CreateContainer(card, EClass.game.cards.container_deliver);
+                return false;
+            }, card);
+        }
+
         var now = card.GetInt(OwnerKey);
         if (now != 0 && now != EClass.pc.uid) {
             return;

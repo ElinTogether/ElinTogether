@@ -96,14 +96,25 @@ public class SpatialGenDelta : ElinDelta
         remoteZone.uid = ZoneUid;
         Name(remoteZone);
 
-        if (game.spatials.Find(ZoneUid) is { } exist) {
-            EmpLog.Warning("Zone uid {ZoneUid} taken by local zone {LocalZoneFullName}, " +
-                           "replacing with host {ZoneFullName}",
-                ZoneUid, exist.ZoneFullName, ZoneFullName);
+        game.spatials.uidNext = Math.Max(game.spatials.uidNext, ZoneUid + 1);
+        if (game.spatials.Find(ZoneUid) is { } exist && exist != remoteZone) {
+            // GitHub issue 28: a zone made here meanwhile (a field of the world map the player stood on) was dropped
+            // from the list under the player's feet: it felt like a rollback, then a jump to another map. It keeps
+            // its place with a number of its own, as ElinNetClientTravel does when the host's grant renumbers a zone
+            game.spatials.map.Remove(ZoneUid);
+            game.spatials.AssignUID(exist);
+            foreach (var thing in _map?.things ?? []) {
+                if (thing.c_uidZone == ZoneUid) {
+                    thing.c_uidZone = exist.uid;
+                }
+            }
+
+            EmpLog.Warning("Zone uid {ZoneUid} taken by local zone {LocalZoneFullName}, which is now {LocalUid}; " +
+                           "the host's {ZoneFullName} takes the uid",
+                ZoneUid, exist.ZoneFullName, exist.uid, ZoneFullName);
         }
 
         game.spatials.map[ZoneUid] = remoteZone;
-        game.spatials.uidNext = Math.Max(game.spatials.uidNext, ZoneUid + 1);
 
         // update on overworld
         if (parent is Region region && !IsInstance) {

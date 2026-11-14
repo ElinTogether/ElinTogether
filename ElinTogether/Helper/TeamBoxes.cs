@@ -341,6 +341,36 @@ internal static class TeamBoxes
         }
     }
 
+    private static Game? _drained;
+
+    /// <summary>
+    ///     GitHub issue 32: parcels in a player's name used to wait in the world's list for a day of its unit's base,
+    ///     which a world kept by another player never simulates. Once per world loaded, what still waits goes to its
+    ///     unit's delivery box (as TeamMail does now for every new parcel)
+    /// </summary>
+    private static void DrainWaitingParcels()
+    {
+        if (ReferenceEquals(_drained, EClass.game) || EClass.game.cards.listPackage is not { } list) {
+            return;
+        }
+
+        _drained = EClass.game;
+        var moved = 0;
+        foreach (var parcel in list.ToArray()) {
+            if (parcel.GetInt(TeamMail.ParcelKey) is not (var uid and > 0)) {
+                continue;
+            }
+
+            list.Remove(parcel);
+            Box(StoryOwner.Of(uid), Delivery).AddThing(parcel);
+            moved++;
+        }
+
+        if (moved > 0) {
+            EmpLog.Information("{Count} parcel(s) that waited in the world's list went to their owners' delivery boxes", moved);
+        }
+    }
+
     /// <summary>
     ///     The box unticked (seen on, now off, in this game): everything the owners' boxes hold goes back in the world's.
     ///     On: the guests on the host's map are sent their own boxes
@@ -370,6 +400,8 @@ internal static class TeamBoxes
             ElinNetHost.TeamBoxState = [Schema, 1];
             EmpLog.Information("Teams keep their own bank and delivery box: what the world's boxes hold stays shared");
         }
+
+        DrainWaitingParcels();
 
         if (NetSession.Instance.Transport is ElinNetHost { IsZoneSession: false } host && Time.unscaledTime >= _nextPoll) {
             // (a player who joins a team and opens the bank at once must already hold its team's copy)
