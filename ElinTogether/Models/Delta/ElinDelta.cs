@@ -241,6 +241,8 @@ namespace ElinTogether.Models;
 [Union(1310, typeof(EtWorldKeyDelta))]
 // Follow across maps: the follower asks, the leader tells where it went (GitHub issue 75)
 [Union(1311, typeof(FollowTravelDelta))]
+// A player's wishes line, asked of the host and sent back to everyone (GitHub issue 21, council 2026-11-14)
+[Union(1312, typeof(PlayerWishDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

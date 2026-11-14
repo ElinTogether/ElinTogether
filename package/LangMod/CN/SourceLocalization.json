@@ -1776,5 +1776,13 @@
     "LangGeneral.emp_peer_stable_only.text": "公共世界使用 Elin 稳定版。此游戏运行在 Steam 分支「#1」上：请在 Steam 中切回默认分支后再加入。",
     "LangGeneral.emp_mailbox_delivery.text": "送货箱",
     "LangGeneral.emp_mailbox_delivery_n.text": "送货箱（#1）",
-    "LangGeneral.emp_commons_no_tax.text": "这片土地属于所有人：无需为它缴税。"
+    "LangGeneral.emp_commons_no_tax.text": "这片土地属于所有人：无需为它缴税。",
+    "LangGeneral.emp_ui_sv_cfg_player_wishes.text": "玩家可以写一句愿望",
+    "LangGeneral.emp_ui_sv_desc_player_wishes.text": "每个玩家可以为自己的角色写一句短话（喜爱的物品、请求、在找什么），所有玩家都能在“玩家”页看到。",
+    "LangGeneral.emp_ui_wishes.text": "愿望",
+    "LangGeneral.emp_ui_wishes_write.text": "写下我的愿望",
+    "LangGeneral.emp_ui_wishes_title.text": "你的愿望（最多140字，留空则删除）",
+    "LangGeneral.emp_ui_wishes_fast.text": "愿望每10秒只能修改一次。",
+    "LangGeneral.emp_ui_wishes_long.text": "愿望太长了（最多140字）。",
+    "LangGeneral.emp_ui_wishes_muted.text": "你已被禁言，无法修改愿望。"
 }

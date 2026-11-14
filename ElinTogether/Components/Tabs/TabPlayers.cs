@@ -311,6 +311,10 @@ internal class TabPlayers : TabEmpBase
             var ms = player.Ping;
             lines.KeyValue("emp_ui_kv_ping".lang(), ms <= 0 ? null : $"{Mathf.RoundToInt(ms)} ms");
         }
+        // the wishes line the player wrote about itself (host box "Players write a wishes line")
+        if (PlayerWishes.Of(player.Uid) is { } wishes) {
+            lines.KeyValue("emp_ui_wishes".lang(), wishes);
+        }
         lines.KeyValue("emp_ui_kv_role".lang(), RoleOf(player));
         lines.KeyValue("emp_ui_kv_session".lang(), SessionOf(player));
         if (chara is not null) {
@@ -524,6 +528,10 @@ internal class TabPlayers : TabEmpBase
         // (IsHost also reads true on an away client, and reconnecting would drop its zone)
         if (!away && player.State is { } state && (isHost ^ player.IsMe)) {
             actions.Add(("emp_ui_reconnect".lang(), () => ReconnectPlayer(state.Index)));
+        }
+
+        if (player.IsMe && PlayerWishes.On) {
+            actions.Add(("emp_ui_wishes_write".lang(), PlayerWishes.Write));
         }
 
         // what a player may do to another, with the host's switches (the same entries as in the game's own menu)

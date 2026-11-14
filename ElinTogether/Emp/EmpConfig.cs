@@ -757,6 +757,13 @@ internal partial class EmpConfig
             "Players can send small pictures (drawings) in the chat; each player can still hide them in My settings\n" +
             "玩家可以在聊天中发送小图片（绘画）；每个玩家仍可在“我的设置”中隐藏它们");
 
+        Server.PlayerWishes = config.Bind(
+            "Server",
+            "PlayerWishes",
+            false,
+            "Each player can write a short line about itself (favourite items, requests, what it looks for) that every player sees on its row of the Players page\n" +
+            "每个玩家可以写一句关于自己的短话（喜爱的物品、请求、在找什么），所有玩家都能在“玩家”页它的那一行看到");
+
         Server.GuestMoongate = config.Bind(
             "Server",
             "GuestMoongate",
@@ -1303,6 +1310,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> PrivateChat { get; set; } = null!;
         internal static ConfigEntry<bool> ChatBubbles { get; set; } = null!;
         internal static ConfigEntry<bool> ChatImages { get; set; } = null!;
+        internal static ConfigEntry<bool> PlayerWishes { get; set; } = null!;
         internal static ConfigEntry<bool> GuestMoongate { get; set; } = null!;
 
         internal static ConfigEntry<bool> StrangerVisits { get; set; } = null!;

@@ -719,6 +719,10 @@ internal partial class ElinNetHost
 
         TellTeams();
         TellModeration();
+        foreach (var (_, peer, _) in joins) {
+            Helper.PlayerWishes.Tell(this, peer.Id);
+        }
+
         Helper.PublicVouch.Ask(this, joins.Select(j => j.Peer.Id));
 
         foreach (var join in joins) {

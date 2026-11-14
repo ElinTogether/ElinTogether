@@ -405,6 +405,7 @@ internal static class SettingsTable
         yield return new("private_chat", "friends", true, EmpConfig.Server.PrivateChat);
         yield return new("chat_bubbles", "friends", true, EmpConfig.Server.ChatBubbles);
         yield return new("chat_images", "friends", true, EmpConfig.Server.ChatImages);
+        yield return new("player_wishes", "friends", true, EmpConfig.Server.PlayerWishes);
         yield return new("guest_moongate", "friends", true, EmpConfig.Server.GuestMoongate);
         yield return new("stranger_visits", "friends", true, EmpConfig.Server.StrangerVisits);
         yield return new("guest_landing_portal", "friends", true, EmpConfig.Server.GuestLandingPortal);
@@ -688,6 +689,8 @@ internal static class SettingsTable
         // pictures and drawings in the chat: on (user 2026-11-02: the public server has the most features on); each
         // player can mute a sender or hide all pictures in their own settings
         yield return (EmpConfig.Server.ChatImages, true);
+        // a wishes line per player (GitHub issue 21, council 2026-11-14)
+        yield return (EmpConfig.Server.PlayerWishes, true);
         yield return (EmpConfig.Server.GuestLandingPortal, true);
         // council 2026-10-28, Q4: strangers meet in the wild; the land rules, the visitor cap and the upload filter hold
         yield return (EmpConfig.Server.StrangerVisits, true);
@@ -876,6 +879,7 @@ internal static class SettingsTable
             [EmpConfig.Server.PrivateChat] = r.PrivateChat,
             [EmpConfig.Server.ChatBubbles] = r.ChatBubbles,
             [EmpConfig.Server.ChatImages] = r.ChatImages,
+            [EmpConfig.Server.PlayerWishes] = r.PlayerWishes,
             [EmpConfig.Server.GuestMoongate] = r.GuestMoongate,
             [EmpConfig.Server.GuestLandingPortal] = r.GuestLandingPortal,
             [EmpConfig.Server.GuestSkyHelm] = r.GuestSkyHelm,

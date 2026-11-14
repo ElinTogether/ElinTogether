@@ -566,6 +566,12 @@ public class NetSessionRules
     [Key(161)]
     public bool FollowTravel { get; set; } = true;
 
+    /// <summary>
+    ///     Host setting "Players write a wishes line" (PlayerWishes, GitHub issue 21): off, the host keeps and passes on none
+    /// </summary>
+    [Key(162)]
+    public bool PlayerWishes { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -579,6 +585,7 @@ public class NetSessionRules
         PrivateChat = EmpConfig.Server.PrivateChat.Value,
         ChatBubbles = EmpConfig.Server.ChatBubbles.Value,
         ChatImages = EmpConfig.Server.ChatImages.Value,
+        PlayerWishes = EmpConfig.Server.PlayerWishes.Value,
         GuestMoongate = EmpConfig.Server.GuestMoongate.Value,
         GuestLandingPortal = EmpConfig.Server.GuestLandingPortal.Value,
         GuestSkyHelm = EmpConfig.Server.GuestSkyHelm.Value,
