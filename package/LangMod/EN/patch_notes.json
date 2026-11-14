@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.0.10",
+    "date": "2026-11-15",
+    "title": "the public world on Stable, every reported bug fixed",
+    "bullets": [
+      "The public world is played on Elin Stable: a game on the nightly branch is told so and stays at the title (a keeper on nightly made the world unreachable for everyone on Stable).",
+      "Mail and tax bills reach their player: parcels for a team with a land go to its delivery box at once (they could wait for ever), the mail box of your own land opens your delivery box, and the unpaid bills line counts your team's bills, not the world's.",
+      "Recipes taught by a story scene or a dialog are learnt by the team whose story it is, not by every team.",
+      "Players can write a short wishes line about their character, shown on the Players page (new host box, on for the public world).",
+      "A world kept by the players stays public when its keeper leaves without naming a successor (it became a private copy, its player standing on the Meadow).",
+      "No more jump to the Meadow when two players cross on the stairs of a dungeon, and no more rollback when a field is made while the host is slow.",
+      "A dungeon a friend is in no longer vanishes from your world map.",
+      "You can sleep again on a map where another player's quest event was left.",
+      "A host dead in a permadeath world no longer floods the game with errors; Fiama revives the pets of the player talking to her; other players show in the adventurers' ranking while you play alone; the Meadow's tax panel says it pays no tax."
+    ]
+  },
+  {
     "version": "1.0.5",
     "date": "2026-11-10",
     "title": "a land deed for everyone, the Meadow's board stays put",
