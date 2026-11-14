@@ -32,9 +32,14 @@ internal partial class ElinNetClient
 
         // a peer-hosted world kept with the world's store: the keeper handed the lease to the one it named, who opens
         // the world now; the others follow it (NetReconnect, as below)
-        if (Helper.PeerKeeper.Enabled && leaving.Next != 0) {
+        // (GitHub issue 33: a keeper that named nobody fell to the friends' game takeover below: the guest whose turn
+        // it was opened the copy as a save of its own, in a friends lobby, out of the public world, standing at the
+        // Meadow. The world's store elects the next keeper as after a crash, see NetReconnect and PeerKeeper.WhileLost)
+        if (Helper.PeerKeeper.Enabled) {
             var me = Session.Self is { } self ? (ulong)self.User : 0UL;
-            if (leaving.Next == me) {
+            if (leaving.Next == 0) {
+                EmpLog.Information("The keeper leaves and named nobody: the world's store elects the next one");
+            } else if (leaving.Next == me) {
                 Helper.PeerKeeper.NamedNext();
             } else {
                 EmpLog.Information("The keeper leaves, the world goes to {Next}", leaving.Next);

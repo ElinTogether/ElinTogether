@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using ElinTogether.Helper;
 using ElinTogether.Net;
 using ElinTogether.Patches;
 using HarmonyLib;
@@ -88,7 +90,7 @@ public class StoryOutcomeDelta : ElinDelta
         using (away ? QuestRewardPatch.GiveNothing(host.PlayerChara(OriginPeer)) : QuestRewardPatch.GiveTo(host, OriginPeer)) {
             using (Simulate()) {
                 try {
-                    Run(target, away);
+                    Run(target, away, host.PlayerChara(OriginPeer));
                 } catch (Exception ex) {
                     EmpLog.Warning(ex, "Story outcome {Method} failed", Method);
                 }
@@ -98,9 +100,12 @@ public class StoryOutcomeDelta : ElinDelta
         EmpLog.Debug("Ran story outcome {Method} for peer {PeerIndex}", Method, OriginPeer);
     }
 
-    private void Run(Chara? target, bool away)
+    private void Run(Chara? target, bool away, Chara? sender)
     {
         switch (Method) {
+            case nameof(DramaOutcome.revive_pet) when sender is not null && sender != pc:
+                RevivePets(sender, target);
+                return;
             case StoryOutcomePatch.Recruit:
                 if (target is not null && EClass.Branch is { } branch) {
                     target.SetBool(18, true);
@@ -119,6 +124,26 @@ public class StoryOutcomeDelta : ElinDelta
         }
 
         RunGameOutcome(Method, target);
+    }
+
+    /// <summary>
+    ///     GitHub issue 22: Fiama's revive_pet revives the dead pets of the base of "the player" (pc.homeBranch): run
+    ///     on the host for a guest, it revived the host's pets, and the guest's kitten stayed dead (the dialog kept
+    ///     telling it not to let it die). The sender's base and the sender's own companions here
+    /// </summary>
+    private static void RevivePets(Chara sender, Chara? fiama)
+    {
+        var members = sender.homeBranch?.members ?? [];
+        var pets = members.Concat(game.cards.globalCharas.Values.Where(c => c.CompanionOwnerUid == sender.uid))
+            .Where(c => c is { isDead: true } && c.GetInt(100) != 0)
+            .Distinct()
+            .ToList();
+        foreach (var pet in pets) {
+            pet.GetRevived();
+        }
+
+        EmpLog.Information("Fiama revived {Count} pet(s) of player character {Uid}", pets.Count, sender.uid);
+        fiama?.ModAffinity(sender, -2);
     }
 
     /// <summary>

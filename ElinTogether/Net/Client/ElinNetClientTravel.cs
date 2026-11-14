@@ -575,6 +575,14 @@ internal partial class ElinNetClient
             return;
         }
 
+        // (issue 29: the zone was handed to us on our way in and given back, see TakeOverZone: no wait)
+        if (_resumeTravel is { } resume && Session.AwayZone?.uid == resume.ZoneUid && _zone?.uid != resume.ZoneUid) {
+            EmpLog.Warning("Zone session ended ({Reason}) after its zone was handed to us on our way in, back to the host, then on to zone {ZoneUid}",
+                reason, resume.ZoneUid);
+            _handoffDeadline = Time.realtimeSinceStartup;
+            return;
+        }
+
         // meanwhile we play on alone: the host gives the zone to one of us (or calls us back),
         // see TakeOverZone, and only if it stays silent we go back
         EmpLog.Warning("Zone session ended ({Reason}), waiting for the host to hand the zone over",
@@ -677,6 +685,20 @@ internal partial class ElinNetClient
             // here. Back to it the way a player away comes back: it drops that lease and puts us on its map
             if (!Session.IsAway && !_rejoining && core.IsGameStarted) {
                 SendRejoin();
+            } else if (Session.IsAway && !_rejoining && Session.AwayZone?.uid == grant.ZoneUid && Session.IsGuest) {
+                // GitHub issue 29: on our way into the zone of a player who left it at the same moment (the two crossed
+                // on the stairs): handed to us before its map came. Kept, it stayed held by nobody (the other player
+                // was refused at its door) and we ended on the host's map 30 s later. Given back, then the same
+                // travel again from the host's map (as issue 42), which the host grants as any free zone
+                Host.Send(new ZoneLeaseDecline {
+                    ZoneUid = grant.ZoneUid,
+                });
+                var transition = _visitTravel is { } visit && visit.ZoneUid == grant.ZoneUid
+                    ? visit.Transition
+                    : new ZoneTransition { state = ZoneTransition.EnterState.Auto };
+                _visitTravel = null;
+                _resumeTravel = (grant.ZoneUid, transition, Time.realtimeSinceStartup + ResumeTravelSeconds);
+                _handoffDeadline = Time.realtimeSinceStartup;
             } else if (Session.IsAway && !_rejoining && Session.AwayZone?.uid != grant.ZoneUid) {
                 // away elsewhere: nothing drops that lease on the host, the map stayed held by nobody for good, nobody
                 // else could go in (reliability audit 2026-10-27, #4)

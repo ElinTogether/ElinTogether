@@ -36,9 +36,12 @@ internal static class PlayerPeoplePatch
     [HarmonyPatch(typeof(TraitChara), nameof(TraitChara.ShowAdvRank), MethodType.Getter)]
     internal static void OnShowAdvRank(TraitChara __instance, ref bool __result)
     {
-        // (in a guest's game the host's character carries no player mark: the session's player list says it)
-        if (!__result && Active && __instance.owner is { } c &&
-            (IsPlayerChara(c) || NetSession.Instance.CurrentPlayers.Any(p => p is not null && p.CharaUid == c.uid))) {
+        // (in a guest's game the host's character carries no player mark: the session's player list says it. GitHub
+        // issue 26: a player playing alone at its own pace has no connection open, and saw no other player here: the
+        // marks kept in the world count with no session too)
+        if (!__result && __instance.owner is { } c &&
+            (IsPlayerChara(c) || !c.GetStr(PlayerRevive.PlayerKey).IsEmpty() ||
+             (Active && NetSession.Instance.CurrentPlayers.Any(p => p is not null && p.CharaUid == c.uid)))) {
             __result = true;
         }
     }

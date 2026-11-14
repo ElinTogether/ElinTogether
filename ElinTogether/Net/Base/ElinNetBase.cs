@@ -79,7 +79,8 @@ public abstract partial class ElinNetBase : EMono
         // an away player is alone in its zone, there is nobody to ping, unless in a zone session
         if ((!Session.IsAway || IsZoneSession) && Input.GetKeyDown(EmpConfig.Client.PingKeybind.Value) && !ui.BlockActions) {
             var point = Scene.HitPoint;
-            if (point is not null) {
+            // (GitHub issue 17's log: the key pressed while joining, no player of ours yet in the session)
+            if (point is not null && Session.Self is not null) {
                 Delta.AddRemote(PingPointDelta.Ping(point));
             }
         }
