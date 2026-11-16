@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.18",
+    "date": "2026-11-16",
+    "title": "affinity kept, Poppy's coolerbox for everyone, a public server that follows Elin",
+    "bullets": [
+      "Affinity per player: the host's affinity with a resident is kept when a friend held the home map while the host was away (it went back to the old value).",
+      "Poppy's coolerbox is given to every player, as the other story rewards: it went to the player who rescued Poppy only.",
+      "The public server follows the latest Elin Stable by itself: when Steam updates Elin, it warns its players, saves, updates and starts again, so nobody is refused for a game version."
+    ]
+  },
+  {
     "version": "1.0.14",
     "date": "2026-11-16",
     "title": "the public world on Stable, every reported bug fixed",
