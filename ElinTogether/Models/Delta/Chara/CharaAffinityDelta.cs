@@ -24,6 +24,14 @@ public class CharaAffinityDelta : ElinDelta
     [Key(2)]
     public bool Relative { get; set; }
 
+    /// <summary>
+    ///     Affinity per player, from the host: its own value (the game's Chara._affinity, the world owner's), which
+    ///     the others never read but keep in their copy of the map: a map a guest kept while the host was away comes
+    ///     back with it (#41)
+    /// </summary>
+    [Key(3)]
+    public bool Owners { get; set; }
+
     // shared value: only the default permit (audit 2026-10-23): whoever a guest gives to or talks with is legit,
     // another player too (a gift to it runs ModAffinity in the giver's game). How much is not checked: a gift moves
     // it a lot
@@ -62,6 +70,12 @@ public class CharaAffinityDelta : ElinDelta
                         Owner = Owner,
                         Value = AffinityPerPlayer.Add(Owner, sender.uid, Value),
                     });
+                    break;
+                case ElinNetClient when !Relative && Owners:
+                    if (Owner.Find() is Chara known) {
+                        AffinityPerPlayer.KeepOwners(known, Value);
+                    }
+
                     break;
                 case ElinNetClient when !Relative:
                     AffinityPerPlayer.Learn(Owner.Uid, Value);

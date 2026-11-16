@@ -116,6 +116,14 @@ internal static class AffinityPerPlayer
         Set(npc, EClass.player.uidChara, value);
     }
 
+    /// <summary>
+    ///     On a guest's game, the world owner's value as the host keeps it (the game's own field, under the columns)
+    /// </summary>
+    internal static void KeepOwners(Chara npc, int value)
+    {
+        npc._cints[5] = value;
+    }
+
     internal static void Learn(Dictionary<int, int> values)
     {
         var uid = EClass.player.uidChara;
@@ -172,11 +180,20 @@ internal static class AffinityPerPlayer
                 });
                 break;
             case ElinNetHost { IsZoneSession: false } host when !ElinDelta.IsApplying:
-                // the host's own needs telling nobody: no one else reads it
-                if (ColumnOf(npc) is var player and not 0 && host.PeerOfChara(player) is var peer and >= 0) {
-                    host.SendDeltaTo(peer, new CharaAffinityDelta {
+                if (ColumnOf(npc) is var player and not 0) {
+                    if (host.PeerOfChara(player) is var peer and >= 0) {
+                        host.SendDeltaTo(peer, new CharaAffinityDelta {
+                            Owner = npc,
+                            Value = npc._affinity,
+                        });
+                    }
+                } else {
+                    // the host's own: no one else reads it, but every copy of the map carries it, and a map a guest
+                    // kept while the host was away comes back from that copy (#41)
+                    host.Delta.AddRemote(new CharaAffinityDelta {
                         Owner = npc,
-                        Value = npc._affinity,
+                        Value = npc._cints[5],
+                        Owners = true,
                     });
                 }
 
