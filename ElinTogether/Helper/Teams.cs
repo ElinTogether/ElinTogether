@@ -1341,6 +1341,26 @@ internal static class Teams
     internal const int SoloCheckedKey = 47110002;
 
     /// <summary>
+    ///     A player's character is deleted (GitHub issue 35): the lands it held alone are nobody's
+    /// </summary>
+    internal static void ReleaseOwnLands(int charaUid)
+    {
+        if (!KeepsBook) {
+            return;
+        }
+
+        var lands = Zones.Where(z => z.Value == -charaUid).Select(z => z.Key).ToList();
+        foreach (var land in lands) {
+            Release(land);
+        }
+
+        if (lands.Count > 0) {
+            EmpLog.Information("Character {Uid} deleted: its {Count} lands are nobody's", charaUid, lands.Count);
+            Tell();
+        }
+    }
+
+    /// <summary>
     ///     A land is nobody's again (its team disbanded, or away too long): it stays so, never handed to its claimer
     /// </summary>
     private static void Release(int zoneUid)

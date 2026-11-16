@@ -444,6 +444,7 @@ internal partial class ElinNetHost
             companion.party?.RemoveMember(companion);
         }
 
+        Teams.ReleaseOwnLands(chara.uid);
         EmpLog.Information("Player character {Uid} ({Name}, Lv {Level}) deleted by its player", chara.uid, chara.Name, chara.LV);
         DestroyPlayerChara(chara);
     }

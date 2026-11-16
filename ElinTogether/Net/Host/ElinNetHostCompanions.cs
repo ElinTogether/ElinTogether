@@ -116,6 +116,9 @@ internal partial class ElinNetHost
         }
     }
 
+    // (companion, player) refusals already logged: once each, not at every checkpoint
+    private readonly HashSet<(int, int)> _refusedCompanions = [];
+
     /// <summary>
     ///     Swap the host copies of the companions for the ones simulated by their travelling owner
     /// </summary>
@@ -150,10 +153,18 @@ internal partial class ElinNetHost
             // only that player's own companions, or a new one met on its map: never a player, nor a character of
             // someone else or of the world (security audit 2026-10-27)
             // (a resident of nobody, or the world's: recruited on the way by a friend; refused only on a public server)
+            // a resident of nobody at a base that player may build on: invited from it on the way, as the host's map
+            // lets it do (CharaMakeAllyRequestDelta). GitHub issues 36 and 40: a character of a player hired at its
+            // team's base by another character of it was refused at every checkpoint, "gone" back on the host's map
+            var residentOfMine = old is { CompanionOwnerUid: 0, homeZone.branch: not null } &&
+                                 game.cards.globalCharas.Find(ownerUid) is { } ownerChara && Teams.CanTouch(ownerChara, old.homeZone);
             if (SavedRemoteCharas.ContainsValue(uploaded.uid) || uploaded.uid == pc.uid ||
-                (old is not null && !carried && old.CompanionOwnerUid != ownerUid &&
+                (old is not null && !carried && !residentOfMine && old.CompanionOwnerUid != ownerUid &&
                  (old.CompanionOwnerUid != 0 || (ElinDelta.TrustEnforced && (old.IsPCFaction || old.IsGlobal))))) {
-                EmpLog.Warning("Companion {Uid} uploaded for player {OwnerUid} is not its own: refused", uploaded.uid, ownerUid);
+                if (_refusedCompanions.Add((uploaded.uid, ownerUid))) {
+                    EmpLog.Warning("Companion {Uid} uploaded for player {OwnerUid} is not its own: refused", uploaded.uid, ownerUid);
+                }
+
                 continue;
             }
 
