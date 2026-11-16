@@ -243,6 +243,8 @@ namespace ElinTogether.Models;
 [Union(1311, typeof(FollowTravelDelta))]
 // A player's wishes line, asked of the host and sent back to everyone (GitHub issue 21, council 2026-11-14)
 [Union(1312, typeof(PlayerWishDelta))]
+// A body part drawn by a player's own game (a mutant's limbs feat), for every game (GitHub issue 36)
+[Union(1313, typeof(BodyPartDelta))]
 public abstract class ElinDelta : EClass
 {
     private static int _applyDepth;

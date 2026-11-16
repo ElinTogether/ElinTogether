@@ -120,7 +120,10 @@ internal partial class ElinNetHost
     ///     Swap the host copies of the companions for the ones simulated by their travelling owner
     /// </summary>
     /// <param name="rebound">filled with the numbers given to their cards that waited for one: old -> new</param>
-    private void ReplaceCompanions(List<LZ4Bytes>? companions, int ownerUid, Dictionary<int, int>? rebound = null)
+    /// <param name="fromOwner">the list comes from its owner's own game (a release, a checkpoint): one missing from it was
+    ///     let go on the way. A list told by the world's host about a guest is only that host's view, see RegisterGuest</param>
+    private void ReplaceCompanions(List<LZ4Bytes>? companions, int ownerUid, Dictionary<int, int>? rebound = null,
+        bool fromOwner = true)
     {
         if (ownerUid == 0) {
             return;
@@ -218,7 +221,7 @@ internal partial class ElinNetHost
         }
 
         // let go while travelling (only those travelling with it, off map here)
-        foreach (var gone in party.members.ToList()) {
+        foreach (var gone in fromOwner ? party.members.ToList() : []) {
             if (gone is null || gone.CompanionOwnerUid != ownerUid || kept.Contains(gone.uid) ||
                 gone.currentZone is not null || gone.GetBool("remote_chara")) {
                 continue;

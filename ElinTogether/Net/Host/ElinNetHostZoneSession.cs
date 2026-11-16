@@ -81,8 +81,12 @@ internal partial class ElinNetHost
         UserData user = request.GuestUser;
 
         if (ReplaceRemoteChara(user, request.Chara, true) is { } guest) {
-            // placed next to it once it stands here, see BringCompanions
-            ReplaceCompanions(request.Companions, guest.uid);
+            // placed next to it once it stands here, see BringCompanions. The host's list is its own view of that player's
+            // party, asked once before the guest left its place and once after: the second one could miss what the
+            // first had just brought here, and the companions it missed were sent home, out of their owner's party
+            // (GitHub issues 37 and 38: "party disappeared again after using the teleporter"). Only its owner's own
+            // upload lets one go
+            ReplaceCompanions(request.Companions, guest.uid, fromOwner: false);
         }
 
         // it stays on its tile (the map changed hands under it) or arrives by the way it walks in, not next to us,
