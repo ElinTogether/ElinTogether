@@ -131,6 +131,59 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Set once the story's own artifacts a world gave before they were shared were written in the ledger, see
+    ///     SeedOwnArtifacts
+    /// </summary>
+    [ElinGameIOProperty("story_artifacts_seeded")]
+    private static int[] StoryArtifactsSeeded
+    {
+        get => field is { Length: 1 } ? field : field = new int[1];
+        set;
+    }
+
+    // the story's artifacts a world may have given before they were shared, and the quest that gives each (#40:
+    // Poppy's coolerbox was an artifact, never shared: one player of the world had it; see _ownArtifacts)
+    private static readonly (string Quest, string Id)[] _sharedArtifacts = [("QuestPuppy", "coolerbox")];
+
+    /// <summary>
+    ///     A world that completed such a quest before its artifact was shared has it in nobody's share: written in the
+    ///     ledger once, received by nobody (the precedent of SeedOldWorld: a spare for whoever had it costs little), so
+    ///     every player gets one in a parcel at its next arrival. Once per world
+    /// </summary>
+    internal static void SeedOwnArtifacts()
+    {
+        if (StoryArtifactsSeeded[0] != 0 || !EmpConfig.Server.OncePerPlayer.Value || NetSession.Instance.Transport is not ElinNetHost ||
+            !core.IsGameStarted || game?.quests is not { } quests || StorySeeded[0] == 0) {
+            return;
+        }
+
+        StoryArtifactsSeeded[0] = 1;
+        var held = new HashSet<string>();
+        foreach (var data in StoryRewards.Values) {
+            try {
+                held.Add(new LZ4Bytes { Bytes = data }.Decompress<Thing>().id);
+            } catch (System.Exception) {
+                // (an entry that cannot be read is no proof of anything)
+            }
+        }
+
+        // a world nobody else ever played in: its one player had them
+        int[] had = SavedRemoteCharas.Count == 0 ? [player.uidChara] : [];
+        foreach (var (quest, id) in _sharedArtifacts) {
+            if (held.Contains(id) || (!quests.completedTypes.Contains(quest) && !quests.completedIDs.Contains(quest))) {
+                continue;
+            }
+
+            var reward = ThingGen.Create(id);
+            var number = StoryRewards.Count == 0 ? 1 : StoryRewards.Keys.Max() + 1;
+            StoryRewards[number] = LZ4Bytes.Create(reward).Bytes;
+            StoryReceived[number] = had;
+            reward.Destroy();
+            EmpLog.Information("Story artifact {Id} of {Quest}, given before it was shared: in the ledger for every player", id, quest);
+        }
+    }
+
+    /// <summary>
     ///     A player stands on the host's map: what the story gave before it played in this world, or while
     ///     nothing knew it, comes to it as one parcel in its name in the mail of the base (not a flood in its
     ///     bag). Each reward once: the ledger notes it
@@ -185,7 +238,7 @@ internal partial class ElinNetHost
     private static readonly List<(Thing Reward, int Earner, string? Step)> _storyRewards = [];
 
     // artifacts every player must have its own of
-    private static readonly HashSet<string> _ownArtifacts = ["backpack_holding", "book_story"];
+    private static readonly HashSet<string> _ownArtifacts = ["backpack_holding", "book_story", "coolerbox"];
 
     internal static void NoteStoryReward(Thing reward, Chara? earner)
     {
@@ -226,6 +279,7 @@ internal partial class ElinNetHost
     internal static void GiveStoryShares()
     {
         SeedOldWorld();
+        SeedOwnArtifacts();
         if (_storyRewards.Count == 0) {
             return;
         }
