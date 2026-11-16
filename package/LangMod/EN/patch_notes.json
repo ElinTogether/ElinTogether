@@ -1,7 +1,7 @@
 [
   {
     "version": "1.0.10",
-    "date": "2026-11-15",
+    "date": "2026-11-16",
     "title": "the public world on Stable, every reported bug fixed",
     "bullets": [
       "The public world is played on Elin Stable: a game on the nightly branch is told so and stays at the title (a keeper on nightly made the world unreachable for everyone on Stable).",
@@ -12,7 +12,10 @@
       "No more jump to the Meadow when two players cross on the stairs of a dungeon, and no more rollback when a field is made while the host is slow.",
       "A dungeon a friend is in no longer vanishes from your world map.",
       "You can sleep again on a map where another player's quest event was left.",
-      "A host dead in a permadeath world no longer floods the game with errors; Fiama revives the pets of the player talking to her; other players show in the adventurers' ranking while you play alone; the Meadow's tax panel says it pays no tax."
+      "A host dead in a permadeath world no longer floods the game with errors; Fiama revives the pets of the player talking to her; other players show in the adventurers' ranking while you play alone; the Meadow's tax panel says it pays no tax.",
+      "A player joining a map another player keeps no longer has its companions sent home (\"party disappeared after the teleporter\"), and a resident of your team's base you invite on the way stays with you.",
+      "A mutant's new limbs from the body parts feat are kept: every game gets the same limb.",
+      "A deleted character's own lands become free, and the game's load window, while connected, tells where the world's characters are picked, made and deleted."
     ]
   },
   {
