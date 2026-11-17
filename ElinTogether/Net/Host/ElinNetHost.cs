@@ -84,6 +84,7 @@ internal partial class ElinNetHost : ElinNetBase
         Components.SettingsTable.ForceOfficial();
         // the headless official server: the whole preset, its admins, its message of the day (before the rules are read)
         OfficialServerStart.Run();
+        ForgivePublicBills();
         RepairBillCount();
         Patches.QuestVernisRepair.Repair();
         Patches.QuestPuppyGuard.Repair();

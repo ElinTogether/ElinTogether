@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ElinTogether.Helper;
@@ -80,4 +81,69 @@ internal partial class ElinNetHost
         TeamBills.Fit();
         return phantom;
     }
+
+    [ElinGameIOProperty("public_bills_forgiven")]
+    private static int[] PublicBillsForgiven
+    {
+        get => field is { Length: 1 } ? field : field = new int[1];
+        set;
+    }
+
+    /// <summary>
+    ///     User 2026-11-17 ("cancel and delete all the tax bills"): on the public worlds, players were billed while
+    ///     nobody of theirs was connected (GitHub issues 44 and 45: "behind 56 tax bills", karma gone). Once per
+    ///     world: every tax bill this game can find is destroyed, the counts go to zero, and the karma the four-bill
+    ///     rule took (50 a month from the fourth unpaid bill) goes back to that owner's players, never above a new
+    ///     player's
+    /// </summary>
+    internal static void ForgivePublicBills()
+    {
+        if (!core.IsGameStarted || player is null || NetSession.Instance.Transport is not ElinNetHost { IsZoneSession: false } ||
+            !PublicWorld || PublicBillsForgiven[0] != 0) {
+            return;
+        }
+
+        PublicBillsForgiven[0] = 1;
+        var owed = new Dictionary<int, int>(TeamTaxBills);
+        var returned = 0;
+        foreach (var (uid, standing) in PlayerStandings.ToArray()) {
+            if (standing.Length < 2 || owed.GetValueOrDefault(StoryOwner.Of(uid)) is not (>= 4 and var count)) {
+                continue;
+            }
+
+            var karma = standing[StandingKarma];
+            standing[StandingKarma] = Math.Max(karma, Math.Min(karma + 50 * (count - 3), NewPlayerKarma));
+            returned += standing[StandingKarma] - karma;
+        }
+
+        var charas = game.cards.globalCharas.Values.Concat(_map?.charas ?? []).Where(c => c is not null).Distinct();
+        var loose = new List<Thing>(game.cards.listPackage);
+        loose.AddRange(TeamBoxes.All());
+        if (game.cards.container_deposit is { } bank) {
+            loose.Add(bank);
+        }
+
+        if (_map is not null) {
+            loose.AddRange(_map.things);
+        }
+
+        var bills = charas.SelectMany(c => c.things.List(t => t.id == "bill_tax", true))
+            .Concat(loose.Where(t => t is { isDestroyed: false }).SelectMany(Within).Where(t => t.id == "bill_tax"))
+            .Distinct().ToList();
+        foreach (var bill in bills) {
+            game.cards.listPackage.Remove(bill);
+            bill.Destroy();
+        }
+
+        EmpLog.Information("Public world: {Bills} tax bills destroyed, counts {Owed} and {World} set to zero, {Karma} karma given back",
+            bills.Count, string.Join(",", owed.Select(kv => kv.Key + ":" + kv.Value)), player.taxBills, returned);
+        TeamTaxBills.Clear();
+        player.taxBills = 0;
+        TeamBills.Fit();
+    }
+
+    /// <summary>
+    ///     A public world: the peer-hosted one, or the dedicated official server
+    /// </summary>
+    internal static bool PublicWorld => PeerHosting.Active || Steam.OfficialServer.Hosting;
 }

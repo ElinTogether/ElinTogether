@@ -35,6 +35,8 @@ internal static class ZoneActivateEvent
         // before anyone acts: the game puts back every character whose zone this is
         ElinNetHost.RemoveUnplayedCharas();
 
+        Helper.PublicLitter.Sweep(__instance);
+
         // we are not host
         if (NetSession.Instance.Connection is not ElinNetHost host) {
             return;
