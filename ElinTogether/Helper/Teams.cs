@@ -588,7 +588,7 @@ internal static class Teams
     }
 
     /// <summary>
-    ///     A door a teammate owns: the local player does not step through, the bump says whose it is
+    ///     A door a player of another team owns: the local player does not step through, the bump says whose it is
     /// </summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Chara), nameof(Chara.TryMove))]
@@ -599,7 +599,10 @@ internal static class Teams
         }
 
         foreach (var thing in newPoint.Things) {
-            if (thing.trait is TraitDoor && thing.IsInstalled && OtherOwner(__instance, thing) != 0) {
+            // (user 2026-11-17: a teammate's building could not be entered. A teammate walks through, a player of
+            // another team bumps into it)
+            if (thing.trait is TraitDoor && thing.IsInstalled && OtherOwner(__instance, thing) is not 0 and var owner &&
+                TeamOf(owner) != TeamOf(__instance.uid)) {
                 SayBelongs(thing);
                 __result = Card.MoveResult.Fail;
                 return false;

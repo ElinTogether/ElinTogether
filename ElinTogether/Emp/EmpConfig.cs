@@ -1066,8 +1066,8 @@ internal partial class EmpConfig
             "Server",
             "WorldMapLeadCap",
             24,
-            "Personal Pace: how many hours a player travelling alone may run ahead of the world; the hours past it move the date as in SharedClock\n" +
-            "个人步调：独自旅行的玩家最多可以领先世界多少小时，超出的部分像共享时钟一样推进日期");
+            "Personal Pace: a player's world map travel never moves the others' date, it is that player's lead; when the world catches up (everyone on the world map, or a night slept together) it moves at most this many hours at once. 0: no lead, travel moves the date as in SharedClock\n" +
+            "个人步调：玩家在世界地图上的旅行不会推进其他人的日期，而是记为该玩家的领先时间；世界追上时（所有人都在世界地图上，或一起睡过一晚）一次最多推进这么多小时。0：没有领先，旅行像共享时钟一样推进日期");
 
         Server.DumpSparesBelt = config.Bind(
             "Server",

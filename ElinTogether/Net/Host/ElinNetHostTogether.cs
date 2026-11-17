@@ -26,7 +26,12 @@ internal partial class ElinNetHost
     ///     only a jump of the date is everyone's (see RemoteTravelRegionPatch). A player still loading a map,
     ///     moving between two, or visiting another player is not travelling
     /// </summary>
-    internal bool AllOnWorldMap()
+    /// <param name="idleIsAway">
+    ///     an idle player does not hold the others back (Travel Together's message). False for Personal Pace's leads:
+    ///     an idle player in a town is not on the world map, and its date must not jump (user 2026-11-17, "days go by
+    ///     in an instant" while chatting)
+    /// </param>
+    internal bool AllOnWorldMap(bool idleIsAway = true)
     {
         // A server's own character is a hidden stand-in that nobody sees (council 2026-10-28): it is no traveller, so
         // the players alone are asked, and the map it stands on does not count
@@ -46,7 +51,7 @@ internal partial class ElinNetHost
             }
 
             // away from the keyboard: the others do not wait for it (council 2026-10-26)
-            if (Patches.PlayerIdle.IsIdle(peer.Id)) {
+            if (idleIsAway && Patches.PlayerIdle.IsIdle(peer.Id)) {
                 continue;
             }
 
@@ -82,7 +87,7 @@ internal partial class ElinNetHost
 
         _nextAllOnWorldMapCheck = now + 0.5f;
         var all = AllOnWorldMap();
-        UpdateLeads(all, now);
+        UpdateLeads(AllOnWorldMap(false), now);
         if (!together || (all == _toldAllOnWorldMap && now < _nextAllOnWorldMapTell)) {
             return;
         }

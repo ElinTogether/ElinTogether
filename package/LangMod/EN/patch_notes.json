@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.23",
+    "date": "2026-11-17",
+    "title": "days no longer fly, teammates enter each other's buildings",
+    "bullets": [
+      "Time on the public world (Personal Pace): a player's travel on the world map never moves the other players' date anymore, however long the trip.",
+      "The date no longer seems to jump back and forth after a long trip.",
+      "Teams: the door a teammate built on your team's land opens for you."
+    ]
+  },
+  {
     "version": "1.0.22",
     "date": "2026-11-17",
     "title": "the tax bills bug undone, a public world without mods, dungeons open again",

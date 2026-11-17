@@ -43,18 +43,14 @@ internal partial class ElinNetHost
     internal int HoldLead(int charaUid, int minutes)
     {
         if (charaUid == 0 || minutes <= 0 || NetSession.Instance.Rules.WorldMapTime != WorldMapTime.PersonalPace ||
-            AllOnWorldMap()) {
+            EmpConfig.Server.WorldMapLeadCap.Value <= 0 || AllOnWorldMap(false)) {
             return 0;
         }
 
-        var cap = Math.Max(0, EmpConfig.Server.WorldMapLeadCap.Value) * Date.HourToken;
-        var lead = LeadOf(charaUid);
-        var held = Math.Min(minutes, Math.Max(0, cap - lead));
-        if (held > 0) {
-            WorldMapLeads[charaUid] = lead + held;
-        }
-
-        return held;
+        // council 2026-11-17 (GitHub issues 48, 49: days flew for the others): one player's travel never moves the
+        // others' date, all of it is that player's lead; the cap is now the most the world catches up at once
+        WorldMapLeads[charaUid] = LeadOf(charaUid) + minutes;
+        return minutes;
     }
 
     /// <summary>
@@ -91,7 +87,8 @@ internal partial class ElinNetHost
         }
 
         var (top, topPeer) = players.OrderByDescending(p => LeadOf(p.Uid)).First();
-        var max = LeadOf(top);
+        // (the most the world catches up at once, about one sleep; the rest the traveller paid alone, its own quests)
+        var max = Math.Min(LeadOf(top), Math.Max(0, EmpConfig.Server.WorldMapLeadCap.Value) * Date.HourToken);
         if (max <= 0) {
             return;
         }
