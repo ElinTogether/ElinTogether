@@ -88,7 +88,9 @@ internal partial class ElinNetClient
     /// <summary>
     ///     Alone away (the game runs as single player): the boxes of the world can show what the host holds
     /// </summary>
-    internal bool MirrorsWorldBoxes => Session.IsAway && !IsZoneSession && Session.Connection is null && core.IsGameStarted;
+    // away, alone or in a zone session (its guest, or holding it for guests: GitHub issue 51, the bank window stayed
+    // empty and a guest's gold went into an empty copy): this link is the world host's in every case
+    internal bool MirrorsWorldBoxes => Session.IsAway && !IsZoneSession && core.IsGameStarted;
 
     /// <summary>
     ///     Ask the host what a box of the world holds, and with takeNum for that many of its stack takeUid
@@ -130,7 +132,22 @@ internal partial class ElinNetClient
                 game.cards.AssignUID(card);
             }
 
-            EClass.pc.Pick(thing, false);
+            if (Session.Connection is not null) {
+                // a guest of a zone session (issue 51): its pick of a card the holder never saw was dropped, the gold
+                // lost. Gold is paid in as gold (told to the holder as any gain), a thing is made known first
+                if (thing.id == "money") {
+                    EClass.pc.ModCurrency(thing.Num);
+                    thing.Destroy();
+                } else {
+                    foreach (var card in thing.things.Flatten().Prepend(thing)) {
+                        CardCache.Add(card);
+                    }
+
+                    EClass.pc.Pick(thing, false);
+                }
+            } else {
+                EClass.pc.Pick(thing, false);
+            }
 
             // the host keeps its copy aside until the bag it keeps for us carries this mark: it goes up
             // with the checkpoint asked for now, in the same character as the thing

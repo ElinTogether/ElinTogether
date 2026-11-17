@@ -69,7 +69,7 @@ internal static class CardAddThingEvent
 
         // alone away, an open box of the world shows what the host holds, see ShippingHelper.MirrorKey
         var hostUid = t.GetInt(ShippingHelper.MirrorKey);
-        if (NetSession.Instance.Connection is null && NetSession.Instance.Transport is ElinNetClient mirror) {
+        if (NetSession.Instance.Transport is ElinNetClient { MirrorsWorldBoxes: true } mirror) {
             var inBox = ShippingHelper.WorldBoxIndex(__instance.GetRootCard());
             if (hostUid != 0) {
                 if (inBox >= 0) {
@@ -107,9 +107,10 @@ internal static class CardAddThingEvent
 
         // the bank and the delivery box: travelling, they are empty copies here, what goes in is sent to the
         // real ones instead of being lost with the copy
+        // (a guest of a zone session too: straight to the world host, not through the holder's empty copy, issue 51)
         if (!ElinDelta.IsRemoteStateLanding && ShippingHelper.OtherWorldBox(__instance) is var box and not 0 &&
-            NetSession.Instance.Connection is not ElinNetClient &&
-            NetSession.Instance.Transport is ElinNetClient travelling && travelling.ForwardShippingDeposit(t, 0, box)) {
+            NetSession.Instance.Transport is ElinNetClient { MirrorsWorldBoxes: true } travelling &&
+            travelling.ForwardShippingDeposit(t, 0, box)) {
             return false;
         }
 
