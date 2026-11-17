@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.0.22",
+    "date": "2026-11-17",
+    "title": "the tax bills bug undone, a public world without mods, dungeons open again",
+    "bullets": [
+      "Public world, once: every tax bill is cancelled and deleted, the unpaid bills go back to zero, the karma lost to unpaid bills is given back, and the litter that piled up on players' lands is cleared.",
+      "Tax bills: a team (or a player in no team) with nobody connected gets no bill that month and loses no karma for unpaid bills.",
+      "The public world is kept without mods: a player with mods restarts Elin once without them before keeping it, then comes back by itself.",
+      "Dungeons and tents refused with \"You can't go there alone\" after the public world changed keeper can be entered again.",
+      "The crafting window stays open when the host comes back to your map during a craft.",
+      "A refused join names every mod that differs (it stopped at four)."
+    ]
+  },
+  {
     "version": "1.0.18",
     "date": "2026-11-16",
     "title": "affinity kept, Poppy's coolerbox for everyone, a public server that follows Elin",
