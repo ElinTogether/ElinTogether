@@ -279,7 +279,18 @@ internal partial class ElinNetClient
         if (pc.ai is { IsRunning: true } task && !pc.HasNoGoal) {
             EmpLog.Information("Soft rejoin of {ZoneFullName}: {ActType} is stopped", zone.ZoneFullName, task.GetType().Name);
             pc.Say("cancel_act_pc", pc);
+            // a craft's cancel closes its window (AI_UseCrafter.OnCancel, GitHub issue 38): the window stays, its
+            // ingredients go back to their slots as at the end of a craft
+            var craft = task as AI_UseCrafter;
+            var window = craft?.layer;
+            if (craft is not null) {
+                craft.layer = null;
+            }
+
             task.Stub_Cancel();
+            if (window) {
+                window!.OnEndCraft();
+            }
         }
 
         // the switch, mirror of EnterAway: from now on the host simulates this map (NetSession.Connection is the
