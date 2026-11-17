@@ -344,6 +344,7 @@ internal partial class ElinNetClient
             _softReturnZone = 0;
             _worldAskDeadline = 0;
             _localZones.Clear();
+            _askedAsMade.Clear();
             StartWorldStateUpdate();
         }
 

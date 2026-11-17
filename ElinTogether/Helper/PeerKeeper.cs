@@ -293,6 +293,11 @@ internal static class PeerKeeper
                 return;
             }
 
+            // (user 2026-11-17: kept without mods, see ModFetch.BeginBare)
+            if (ModFetch.BeginBare()) {
+                return;
+            }
+
             Claim(null);
         });
     }
@@ -362,7 +367,10 @@ internal static class PeerKeeper
 
                     if (!asking.IsFaulted && asking.Result is { } who && who.Free && !who.ReservedForOther(Me) && CanKeep(who) is null) {
                         EmpLog.Information("Peer-hosted world: the keeper {Keeper} is gone and its lease ran out, taking the world", keeper);
-                        Claim(keeper);
+                        if (!ModFetch.BeginBare()) {
+                            Claim(keeper);
+                        }
+
                         yield break;
                     }
                 }

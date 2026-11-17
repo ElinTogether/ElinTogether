@@ -199,6 +199,12 @@ internal static class TeamBills
             var (team, claimer) = lands.Key;
             // (a player in no team is billed alone, counted under minus its uid)
             var owner = team == Teams.Wanderers && claimer > 0 ? -claimer : team;
+            // GitHub issue 44: nobody of that owner is here to pay, no bill this month (its karma went while it slept)
+            if (!Present(owner)) {
+                EmpLog.Information("Owner {Owner}: no tax bill this month, none of its players is connected", owner);
+                continue;
+            }
+
             extra = TeamOwnStory.ExtraTaxOf(team) ?? extra;
             var evasion = lands.Sum(b => b.Evalue(2119));
             var fame = team == Teams.Wanderers && claimer > 0 && PersonalQuests.Enabled ? ElinNetHost.FameOfPlayer(claimer) : TeamFame(team);
@@ -445,6 +451,19 @@ internal static class TeamBills
     }
 
     /// <summary>
+    ///     Someone of that owner (a team, or minus the uid of a player in no team) plays right now. Without teams, the
+    ///     world's one owner always is (the game's own way)
+    /// </summary>
+    private static bool Present(int owner)
+    {
+        if (!PersonalQuests.Enabled) {
+            return true;
+        }
+
+        return owner < 0 ? Teams.IsOnline(-owner) : owner == Teams.Wanderers || Teams.AnyOnline(owner);
+    }
+
+    /// <summary>
     ///     Four unpaid bills or more cost 50 karma to the players of that team only (the game: to "the player" when
     ///     the world has four). Without personal karma there is one karma for everyone: once
     /// </summary>
@@ -453,7 +472,7 @@ internal static class TeamBills
         // (every team, and each player in no team on its own)
         var owners = Teams.Ids().Where(team => team != Teams.Wanderers)
             .Concat(ElinNetHost.PlayerCharaUids().Where(uid => Teams.TeamOf(uid) == Teams.Wanderers).Select(uid => -uid));
-        var teams = owners.Distinct().Where(team => UnpaidOf(team) >= 4).ToArray();
+        var teams = owners.Distinct().Where(team => UnpaidOf(team) >= 4 && Present(team)).ToArray();
         if (teams.Length == 0) {
             return;
         }

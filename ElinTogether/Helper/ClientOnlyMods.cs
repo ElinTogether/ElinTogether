@@ -30,7 +30,26 @@ internal static class ClientOnlyMods
     /// <summary>
     ///     This game's list, as a host
     /// </summary>
-    internal static HashSet<string> Hosted => Parse(EmpConfig.Server.ClientOnlyMods.Value);
+    internal static HashSet<string> Hosted
+    {
+        get {
+            var list = Parse(EmpConfig.Server.ClientOnlyMods.Value);
+            // the public worlds take the display mods whatever their rules say (user 2026-11-17: no mods on the public
+            // world, but the visual ones and the display ones such as GanExtendDisplay)
+            if (PeerHosting.Active || Net.Steam.OfficialServer.Hosting) {
+                list.UnionWith(Parse(PublicDisplay));
+            }
+
+            return list;
+        }
+    }
+
+    /// <summary>
+    ///     Display mods with code, each player's own on the public worlds: Somewhat Enhanced Display (user
+    ///     2026-10-30), Dynamic Riding (2026-11-02), GanExtendDisplay and its nightly patch (2026-11-17)
+    /// </summary>
+    internal const string PublicDisplay =
+        "maccha_coffee_somewhat_enhanced_display,zawmbie.dynamic.riding,3358329014,gan_extend_display_nightly_patch";
 
     /// <summary>
     ///     The list as told to a joining player: with the Workshop numbers of this game's own listed mods. The host's

@@ -33,6 +33,9 @@ internal partial class ElinNetClient
     /// </summary>
     private readonly HashSet<Zone> _localZones = [];
 
+    // zones asked once more as made here, see OnZoneLeaseDenied (once each)
+    private readonly HashSet<int> _askedAsMade = [];
+
     private float _nextCheckpoint;
 
     /// <summary>
@@ -984,6 +987,17 @@ internal partial class ElinNetClient
                 AdoptHostUid(asked.Zone, denied.ZoneUid);
             }
 
+            return;
+        }
+
+        // GitHub issue 43: a zone made here in an earlier session, kept in our copy of the world, that the host does
+        // not know (a peer-hosted world taken over from an older save): asked as the host's, refused at every try.
+        // Asked once more as made here, the host makes it too (CreateClientZone finds it if it has it after all)
+        if (denied.Reason == "emp_travel_invalid" && _pendingTravel is { } unknown && unknown.Zone.uid == denied.ZoneUid &&
+            !unknown.Zone.IsRegion && !_localZones.Contains(unknown.Zone) && _askedAsMade.Add(unknown.Zone.uid)) {
+            EmpLog.Information("Zone {ZoneFullName} is not known to the host, asked again as made here", unknown.Zone.ZoneFullName);
+            _localZones.Add(unknown.Zone);
+            RequestLease(unknown.Zone, unknown.Transition);
             return;
         }
 

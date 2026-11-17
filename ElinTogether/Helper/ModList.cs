@@ -224,7 +224,8 @@ internal static class ModList
         void Line(string id, List<Mod> mods)
         {
             if (mods.Count > 0) {
-                text.AppendLine(id.Loc(mods.Count, Names(mods)));
+                // every one by name (GitHub issue 42: four and "...", the player could not tell what to install)
+                text.AppendLine(id.Loc(mods.Count, Names(mods, 40)));
             }
         }
     }

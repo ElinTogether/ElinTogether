@@ -258,6 +258,20 @@ internal static class ModFetch
         return true;
     }
 
+    /// <summary>
+    ///     User 2026-11-17: the public world is kept without mods, but for the look-only ones and the display ones
+    ///     (ClientOnlyMods.PublicDisplay). A player with others is asked to restart without them first, the game's
+    ///     "restart without" box, and comes back to the public world by itself. False: nothing to turn off (or the
+    ///     setting is off), the world is kept as it is
+    /// </summary>
+    internal static bool BeginBare()
+    {
+        ClientOnly = ClientOnlyMods.Parse(ClientOnlyMods.PublicDisplay);
+        var diff = ModList.Compare([], "the public world", true, ClientOnly);
+        var off = TurnedOff(diff.Extra);
+        return off.Count > 0 && BeginWithout(ModList.LookOwn + "\n", diff, "public", "emp_ui_reject_todo_off".Loc(ModList.Names(off, 40)));
+    }
+
     private static IEnumerator AskWithout(string text, string reference, string returnTo, string refusal)
     {
         // the caller closes its link with the host first
@@ -1194,6 +1208,10 @@ internal static class ModFetch
         var session = NetSession.Instance;
         try {
             switch (words[0]) {
+                case "public":
+                    PeerHosting.PublicEntered = PeerHosting.PublicAvailable;
+                    PeerKeeper.Enter();
+                    break;
                 case "depot" when SaveDepot.Enabled:
                     SaveDepot.Take();
                     break;

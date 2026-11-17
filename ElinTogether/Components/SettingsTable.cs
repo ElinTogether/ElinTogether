@@ -654,7 +654,7 @@ internal static class SettingsTable
         // display mods with code, each player's own (user 2026-10-30: Somewhat Enhanced Display, Workshop 3781674985;
         // its YK Framework is this mod's own dependency, on every side already. User 2026-11-02: Dynamic Riding,
         // Workshop 3548942723, patches only how a rider is drawn)
-        yield return (EmpConfig.Server.ClientOnlyMods, "maccha_coffee_somewhat_enhanced_display,zawmbie.dynamic.riding");
+        yield return (EmpConfig.Server.ClientOnlyMods, Helper.ClientOnlyMods.PublicDisplay);
         // StrictValidationMode: on after stage 1 (C, council pending); it is a file-only switch, left as it is here
         yield return (EmpConfig.Server.MembersOnly, false);
         // travel and time: (C, council pending) personal pace with a 24 hour lead
