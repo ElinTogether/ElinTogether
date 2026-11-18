@@ -69,11 +69,12 @@ public class CharaStateSnapshot : EClass
     }
 
     /// <summary>
-    ///     <see cref="Hunger" />: a companion's, null for anyone else
+    ///     <see cref="Hunger" />: a companion's and a player's (the host's own, and each guest's as its own game told it:
+    ///     GitHub issue 61, the host saw a guest hungry that was full), null for anyone else
     /// </summary>
     internal static int? HungerOf(Chara chara)
     {
-        return chara.IsPCParty && !chara.IsPC && !chara.IsRemotePlayer ? chara.hunger.value : null;
+        return chara.IsPCParty || chara.IsPC || chara.IsRemotePlayer ? chara.hunger.value : null;
     }
 
     public static CharaStateSnapshot CreateSelf()
@@ -88,6 +89,8 @@ public class CharaStateSnapshot : EClass
             OriginalHostility = pc.c_originalHostility,
             UidMaster = pc.c_uidMaster,
             MinionType = pc.c_minionType,
+            // the host's copy of us shows our own hunger (issue 61); our game feeds and starves us
+            Hunger = pc.hunger.value,
             State = new() {
                 LastAct = ActMappingValidator.Default.ActToIdMapping.GetValueOrDefault(pc.ai.GetType(), 0),
                 LastReceivedTick = NetSession.Instance.Tick,
@@ -115,6 +118,9 @@ public class CharaStateSnapshot : EClass
             if (Hunger is { } hunger && !chara.IsPC) {
                 chara.hunger.value = hunger;
             }
+        } else if (Hunger is { } own) {
+            // a guest's own state, on the host: its hunger is the one its game counts
+            chara.hunger.value = own;
         }
 
         if (chara.IsPC) {
