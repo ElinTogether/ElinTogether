@@ -436,8 +436,16 @@ internal static class HiddenServer
         // a peer-hosted world is never hosted the classic way: that would make its keeper a host again
         if (PeerHosting.Active) {
             EmpLog.Warning("Hidden server: not used, and this peer-hosted world is not hosted the usual way ({Why})", why);
-            EmpPop.Information("emp_peer_no_classic".Loc(why));
             NetSession.Instance.ResetSession();
+            // never left alone in an offline copy of the public world (GitHub issue 58: a link to the keeper dropped,
+            // the world copy was loaded, then played solo and lost): back to the title, the line stays up
+            if (EClass.core.IsGameStarted && EClass.scene.mode != Scene.Mode.Title) {
+                EClass.scene.Init(Scene.Mode.Title);
+                EmpPop.Block("emp_peer_no_classic".Loc(why));
+            } else {
+                EmpPop.Information("emp_peer_no_classic".Loc(why));
+            }
+
             return;
         }
 
