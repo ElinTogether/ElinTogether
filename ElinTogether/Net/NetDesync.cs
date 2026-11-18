@@ -711,7 +711,16 @@ internal static class NetDesync
                 }
 
                 missing.Add($"{chara.uid} {chara.id}{(chara.IsGlobal ? " global" : "")}{(chara.IsPlayer ? " player" : "")}");
-                // only the card this game already tells the others about: caching another one renumbers it
+                // only the card this game already tells the others about: caching another one renumbers it. A global
+                // character this game placed itself (a resident bought from the board, put back on its map when the
+                // host came in) was never told and never cached: its uid is free in the cache, so it is taken in as it
+                // is and sent (GitHub issue 59: the guest could never take the bought companion into its party)
+                if (NetSession.Instance.Rules.AutoResync && resent < 8 && !CardCache.Contains(chara) && chara.IsGlobal &&
+                    !PendingUid.IsPending(chara.uid) && CardCache.Find(chara.uid) is null) {
+                    EmpLog.Information("Character {CardId} {Uid} was never told to the players, taken into the card cache", chara.id, chara.uid);
+                    CardCache.Set(chara);
+                }
+
                 if (NetSession.Instance.Rules.AutoResync && resent < 8 && CardCache.Contains(chara)) {
                     resent++;
                     host.Delta.AddRemote(CardGenDelta.Create(chara));
