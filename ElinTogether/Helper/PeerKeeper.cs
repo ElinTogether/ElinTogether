@@ -45,7 +45,10 @@ internal static class PeerKeeper
 
     // (council 2026-11-07: lease 30 s, a beat every 10 s, one missed beat is no takeover)
     private const float BeatSeconds = 10f;
-    private const float PutSeconds = 300f;
+    // (user 2026-11-18, a world played day and night on the store's free plan: every connected player gets a copy of
+    // the world at each save and a takeover opens the newest of that copy and the store's, so the store is the
+    // backstop for a keeper alone that crashed; a clean leave or closing the game still sends the last save)
+    private const float PutSeconds = 1800f;
     private const float SuccessionSeconds = 60f;
     private const float TurnSeconds = 10f;
     private const float ClaimSeconds = 60f;
@@ -189,7 +192,7 @@ internal static class PeerKeeper
         if (HiddenServer.Playing) {
             if (!_toldKeeping) {
                 _toldKeeping = true;
-                EmpPop.Information("emp_peer_keeping".lang());
+                EmpPop.Information("emp_peer_keeping_leave".lang());
             }
 
             return;

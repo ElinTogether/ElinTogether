@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.0.34",
+    "date": "2026-11-18",
+    "title": "the public world follows the newest version",
+    "bullets": [
+      "Public world: a player who keeps it on an older version no longer hides it from everyone who updated.",
+      "Public world: the keeper checks for new versions every 15 minutes.",
+      "Public world: a player on an older version is told to restart the game to update it (the Steam Workshop updates on restart), instead of \"the game was not found\".",
+      "The Market tab and its setting are gone from the Multiplayer menu (since 1.0.33)."
+    ]
+  },
+  {
     "version": "1.0.33",
     "date": "2026-11-18",
     "title": "no Market tab in the Multiplayer menu",

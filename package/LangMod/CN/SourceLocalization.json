@@ -1788,5 +1788,6 @@
     "LangGeneral.emp_load_world_characters.text": "你在这个世界的角色不在这里：重新加入世界，在角色列表中选择、创建或删除角色。",
     "LangGeneral.emp_zone_unreachable.text": "无法连接到 {0} 的地图：你留在这里。再次前往即可重试。",
     "LangGeneral.emp_peer_update_restart.text": "公共世界正在由更新版本的 Elin Together 维护。请重启游戏以更新（Steam 创意工坊会在重启时更新），然后再次加入。",
-    "LangGeneral.emp_peer_asked_older.text": "{0} 正在用旧版本的 Elin Together 维护公共世界。它会在平静的时刻（最多 10 分钟）把世界交给这个游戏，请稍候。"
+    "LangGeneral.emp_peer_asked_older.text": "{0} 正在用旧版本的 Elin Together 维护公共世界。它会在平静的时刻（最多 10 分钟）把世界交给这个游戏，请稍候。",
+    "LangGeneral.emp_peer_keeping_leave.text": "现在由你来维护这个世界。谢谢！要停止时，请通过菜单回到标题画面：世界和最后的存档会交给其他玩家。"
 }
