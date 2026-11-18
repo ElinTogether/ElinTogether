@@ -122,7 +122,15 @@ internal static class PeerKeeper
             }
         }
 
-        if (!Enabled || EmpServer.Requested) {
+        if (!Enabled) {
+            return;
+        }
+
+        if (PeerHosting.Active) {
+            UpdateCheck.KeepFresh();
+        }
+
+        if (EmpServer.Requested) {
             return;
         }
 
@@ -273,6 +281,13 @@ internal static class PeerKeeper
                 return;
             }
 
+            // (user 2026-11-18) a newer version keeps or kept the world: this one could neither see its game nor keep it
+            if (StoreLease.Newer(who.Newest, ModInfo.Version) || !who.Free && StoreLease.Newer(who.Lease!.Version, ModInfo.Version)) {
+                EmpLog.Information("Peer-hosted world: newest version {Newest}, this game runs {Version}: update", who.Newest, ModInfo.Version);
+                EmpPop.Block("emp_peer_update_restart".lang());
+                return;
+            }
+
             if (!who.Free && who.Lease!.Key != who.MyKey) {
                 JoinKeeper(who.Lease.Steam, who.Lease.Name);
                 return;
@@ -319,6 +334,11 @@ internal static class PeerKeeper
             return "emp_peer_no_rules".lang();
         }
 
+        // (a newer release is out: this game would hide the world from all who updated)
+        if (UpdateCheck.Settled is not null) {
+            return "emp_peer_update_restart".lang();
+        }
+
         return who is { Eligible: false } ? who.Why : null;
     }
 
@@ -349,7 +369,9 @@ internal static class PeerKeeper
     {
         var session = NetSession.Instance;
         var until = Time.realtimeSinceStartup + JoinSeconds;
-        var nextAsk = Time.realtimeSinceStartup + 20f;
+        // (asked at once: the keeper's version decides whether its lobby can be seen at all)
+        var nextAsk = Time.realtimeSinceStartup + 2f;
+        var askedOlder = false;
         try {
             while (Time.realtimeSinceStartup < until) {
                 if (EClass.core.IsGameStarted || session.Transport is not null || _claiming) {
@@ -359,10 +381,41 @@ internal static class PeerKeeper
                 // (no lobby yet 20 s on: the keeper may have crashed with its lease still running; once the store
                 // says the world is free, this game takes it)
                 if (Time.realtimeSinceStartup >= nextAsk) {
-                    nextAsk = Time.realtimeSinceStartup + 20f;
+                    nextAsk = Time.realtimeSinceStartup + (askedOlder ? 5f : 20f);
                     var asking = Off(() => Store.Who());
                     while (!asking.IsCompleted) {
                         yield return null;
+                    }
+
+                    // (user 2026-11-18) Steam lists a lobby for its own mod version only: a keeper on another version
+                    // is never found. An older keeper is asked for the world (it hands it over at a calm moment, as to
+                    // the official PC); a newer one means this game must be updated: restarting the game does it
+                    if (!asking.IsFaulted && asking.Result is { } seen) {
+                        var keeping = seen.Free ? null : seen.Lease;
+                        if (StoreLease.Newer(seen.Newest, ModInfo.Version) || keeping is not null && StoreLease.Newer(keeping.Version, ModInfo.Version)) {
+                            EmpLog.Information("Peer-hosted world: kept by version {Keeper} (newest {Newest}), this game runs {Version}: update",
+                                keeping?.Version, seen.Newest, ModInfo.Version);
+                            EmpPop.Block("emp_peer_update_restart".lang());
+                            yield break;
+                        }
+
+                        if (keeping is not null && keeping.Key != seen.MyKey && StoreLease.Newer(ModInfo.Version, keeping.Version) && CanKeep(seen) is null) {
+                            var claiming = Off(() => Store.Claim());
+                            while (!claiming.IsCompleted) {
+                                yield return null;
+                            }
+
+                            if (!claiming.IsFaulted && claiming.Result is { Ok: true }) {
+                                if (!askedOlder) {
+                                    askedOlder = true;
+                                    EmpLog.Information("Peer-hosted world: the keeper runs {Keeper}, older than {Version}: asked for the world", keeping.Version, ModInfo.Version);
+                                    EmpPop.Information("emp_peer_asked_older".Loc(keeping.Name));
+                                }
+
+                                // (the keeper hands over within 10 minutes, at a calm moment)
+                                until = Math.Max(until, Time.realtimeSinceStartup + 660f);
+                            }
+                        }
                     }
 
                     if (!asking.IsFaulted && asking.Result is { } who && who.Free && !who.ReservedForOther(Me) && CanKeep(who) is null) {
@@ -452,6 +505,7 @@ internal static class PeerKeeper
         internal string From = "";
         internal ulong HeldBy;
         internal string HeldName = "";
+        internal bool Outdated;
     }
 
     private static IEnumerator RunClaim(ulong? former, bool afterCopy)
@@ -484,6 +538,13 @@ internal static class PeerKeeper
                     JoinKeeper(laid.HeldBy, laid.HeldName);
                 }
 
+                yield break;
+            }
+
+            if (laid.Outdated) {
+                _claimFailed = true;
+                EmpLog.Warning("Peer-hosted world: a newer version of the mod keeps the world, this one ({Version}) may not", ModInfo.Version);
+                EmpPop.Block("emp_peer_update_restart".lang());
                 yield break;
             }
 
@@ -570,6 +631,10 @@ internal static class PeerKeeper
                 if (take.Error == "reserved" && Store.Who() is { ReservedFor: var other and not 0 } && other != me) {
                     laid.HeldBy = other;
                     return laid;
+                }
+
+                if (take.Error == "outdated") {
+                    laid.Outdated = true;
                 }
 
                 laid.Why = "the store refused the lease: " + take.Error;
@@ -961,6 +1026,8 @@ internal static class PeerKeeper
         _rollback = 0;
         _lostTo = null;
         EmpLog.Information("Peer-hosted world: kept by this machine, handover {Handover}, head {Head}", _handover, _parent);
+        // (a keeping of its own: an earlier let-go for a release names nobody no more)
+        _updateSince = -1f;
         // (a new keeping: only this one counts for the next order)
         _slowSeconds = 0f;
         _slowLook = -1f;
@@ -1167,7 +1234,18 @@ internal static class PeerKeeper
     private static void HandOverToClaimIfCalm()
     {
         var now = Time.unscaledTime;
-        if (_claimedBy == 0 || _handingOver) {
+        if (_handingOver) {
+            return;
+        }
+
+        // a newer release of the mod is out (GitHub, asked every 15 min): the world is let go at a calm moment, as
+        // to a claim, so that a player who updated keeps it; this keeper's own game is then told to restart
+        if (_claimedBy == 0 && UpdateCheck.Settled is { } newer) {
+            UpdateCalm(now, newer);
+            return;
+        }
+
+        if (_claimedBy == 0) {
             return;
         }
 
@@ -1190,6 +1268,31 @@ internal static class PeerKeeper
             EmpLog.Information("Peer-hosted world: handing the world to the Elin Together PC {Steam} ({Why})", _claimedBy,
                 fight ? "it waited 10 minutes" : "calm for 20 s");
             _handTo = _claimedBy;
+            EmpServer.StopNow();
+        }
+    }
+
+    private static float _updateSince = -1f;
+
+    private static void UpdateCalm(float now, string newer)
+    {
+        if (_updateSince < 0f) {
+            _updateSince = now;
+            EmpLog.Information("Peer-hosted world: version {Newer} is out, this keeper runs {Version}: the world is let go at a calm moment",
+                newer, ModInfo.Version);
+        }
+
+        var fight = EClass.core.IsGameStarted && EClass._map is { } map &&
+                    map.charas.Any(c => !c.isDead && c.enemy is { } target && (target.IsPC || target.IsRemotePlayer));
+        if (fight) {
+            _calmSince = -1f;
+        } else if (_calmSince < 0f) {
+            _calmSince = now;
+        }
+
+        if ((_calmSince >= 0f && now - _calmSince >= CalmSeconds) || now - _updateSince >= ClaimCeilingSeconds) {
+            EmpLog.Information("Peer-hosted world: letting the world go for version {Newer}", newer);
+            _handTo = 0;
             EmpServer.StopNow();
         }
     }
@@ -1269,7 +1372,9 @@ internal static class PeerKeeper
         var session = NetSession.Instance;
         _succession = ComputeSuccession(host);
         var connected = new HashSet<ulong>(session.CurrentPlayers.Where(p => p is not null).Select(p => (ulong)p.User));
-        Next = _lostTo is { Steam: not 0 } lost ? lost.Steam : _handTo != 0 ? _handTo : _succession.FirstOrDefault(connected.Contains);
+        // (let go for a newer release: nobody on this old version is named, the first player who updated takes it)
+        Next = _lostTo is { Steam: not 0 } lost ? lost.Steam : _handTo != 0 ? _handTo :
+            _updateSince >= 0f ? 0 : _succession.FirstOrDefault(connected.Contains);
         EmpLog.Information("Peer-hosted world: leaving, next keeper {Next} of {Count} in the list", Next, _succession.Length);
 
         // the last save to every guest, then (before they hear that the keeper leaves) the last version and the lease

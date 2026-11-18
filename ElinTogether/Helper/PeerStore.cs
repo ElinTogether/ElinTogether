@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ElinTogether.Helper;
 
@@ -108,6 +109,31 @@ internal sealed class StoreLease
     internal long Handover { get; init; }
     internal long Rollback { get; init; }
     internal ulong[] Succession { get; init; } = [];
+
+    /// <summary>
+    ///     The keeper's mod version ("1.0.31"), empty when its game did not say
+    /// </summary>
+    internal string Version { get; init; } = "";
+
+    /// <summary>
+    ///     "1.0.34" is newer than "1.0.31"; empty is older than any release (user 2026-11-18: a keeper on an old mod hid
+    ///     the world from all who had updated, a lobby is listed for its own version only). As worker.js Ledger.newer
+    /// </summary>
+    internal static bool Newer(string? a, string? b)
+    {
+        static int[] Parts(string? v) => (v ?? "").Split('.').Select(n => int.TryParse(n, out var i) ? i : 0).ToArray();
+        var x = Parts(a);
+        var y = Parts(b);
+        for (var i = 0; i < Math.Max(x.Length, y.Length); i++) {
+            var l = i < x.Length ? x[i] : 0;
+            var r = i < y.Length ? y[i] : 0;
+            if (l != r) {
+                return l > r;
+            }
+        }
+
+        return false;
+    }
 }
 
 internal sealed class StoreWho
@@ -150,6 +176,11 @@ internal sealed class StoreWho
     ///     The Elin Together account's PC asks for the world (0: nobody)
     /// </summary>
     internal ulong ClaimedBy { get; init; }
+
+    /// <summary>
+    ///     The newest mod version that kept or asked for the world: an older one may not take it (who.newest)
+    /// </summary>
+    internal string Newest { get; init; } = "";
 }
 
 internal sealed class StoreBeat

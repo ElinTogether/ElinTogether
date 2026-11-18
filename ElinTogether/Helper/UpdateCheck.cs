@@ -27,6 +27,16 @@ internal static class UpdateCheck
     // the latest release as last read: its version (three parts) and page; null when unknown
     private static string? _version;
     private static string _url = "";
+    private static DateTime _publishedAt = DateTime.MaxValue;
+
+    /// <summary>
+    ///     The public world's keeper (user 2026-11-18): a release newer than this game's ModInfo.Version (what the
+    ///     store and the lobby compare), out on GitHub for 30 minutes (the Workshop follows GitHub by a few minutes: a
+    ///     keeper must not let the world go while players cannot update yet). Whatever the CheckUpdates setting.
+    ///     Null until GitHub answered in this game
+    /// </summary>
+    internal static string? Settled =>
+        _version is { } v && Compare(v, ModInfo.Version) > 0 && DateTime.UtcNow - _publishedAt >= TimeSpan.FromMinutes(30) ? v : null;
 
     /// <summary>The newer version to tell about ("0.26.1600"), null when this build is the latest or newer</summary>
     internal static string? Newer =>
@@ -70,7 +80,42 @@ internal static class UpdateCheck
         }
     }
 
+    private static float _nextFresh;
+    private static bool _asking;
+
+    /// <summary>
+    ///     The public world (user 2026-11-18: a keeper on an old version hid the world from all who had updated): its
+    ///     keeper and the players who would keep it ask GitHub every 15 minutes, whatever the setting, so a keeper
+    ///     learns of a new release soon and hands the world over (PeerKeeper.HandOverToClaimIfCalm)
+    /// </summary>
+    internal static void KeepFresh()
+    {
+        if (_asking || UnityEngine.Time.unscaledTime < _nextFresh) {
+            return;
+        }
+
+        _nextFresh = UnityEngine.Time.unscaledTime + 15 * 60f;
+        try {
+            EmpMod.Instance.StartCoroutine(Ask());
+        } catch (Exception ex) {
+            EmpLog.Information(ex, "The update check could not start");
+        }
+    }
+
     private static IEnumerator Ask()
+    {
+        _asking = true;
+        try {
+            var inner = AskOnce();
+            while (inner.MoveNext()) {
+                yield return inner.Current;
+            }
+        } finally {
+            _asking = false;
+        }
+    }
+
+    private static IEnumerator AskOnce()
     {
         var work = System.Threading.Tasks.Task.Run(Fetch);
         while (!work.IsCompleted) {
@@ -83,13 +128,14 @@ internal static class UpdateCheck
 
         _version = found.Version;
         _url = found.Url;
+        _publishedAt = found.Published;
         EmpConfig.Client.UpdateLatest.Value = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}|{_version}|{_url}";
         EmpLog.Debug("Latest release: {Version} (installed {Installed})", _version, TabPatchNotes.Installed);
         Shown();
     }
 
     // off the main thread; null on any trouble (offline, rate limit, a tag that is no version)
-    private static (string Version, string Url)? Fetch()
+    private static (string Version, string Url, DateTime Published)? Fetch()
     {
         try {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
@@ -108,7 +154,9 @@ internal static class UpdateCheck
                 return null;
             }
 
-            return (version, url);
+            // (no date: never settled)
+            var published = json["published_at"]?.Type == JTokenType.Date ? ((DateTime)json["published_at"]!).ToUniversalTime() : DateTime.MaxValue;
+            return (version, url, published);
         } catch (Exception) {
             return null;
         }

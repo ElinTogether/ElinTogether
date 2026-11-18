@@ -68,6 +68,7 @@ internal sealed class EtWorldPeerStore : IWorldStore
             Handover = Long(lease["handover"]),
             Rollback = Long(lease["rollback"]),
             Succession = (lease["succession"] as JArray)?.Select(Steam).Where(s => s != 0).ToArray() ?? [],
+            Version = (string?)lease["version"] ?? "",
         };
     }
 
@@ -111,6 +112,7 @@ internal sealed class EtWorldPeerStore : IWorldStore
             MyKey = (string?)you?["key"] ?? "",
             ClaimedBy = Steam((who["claim"] as JObject)?["steam"]),
             Official = (bool?)you?["official"] ?? false,
+            Newest = (string?)who["newest"] ?? "",
         };
     }
 
@@ -152,7 +154,8 @@ internal sealed class EtWorldPeerStore : IWorldStore
 
     public StoreReply<bool> Claim()
     {
-        var reply = Call("POST", "/v1/w/{w}/claim", new JObject());
+        // (with this game's version: a newer one than the keeper's may ask for the world, not only the official PC)
+        var reply = Call("POST", "/v1/w/{w}/claim", new JObject { ["version"] = ModInfo.Version });
         return reply.Status == 200 ? StoreReply<bool>.Of(true) : StoreReply<bool>.No(Error(reply), Lease(reply.Json?["lease"]));
     }
 

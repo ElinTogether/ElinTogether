@@ -1,5 +1,28 @@
 [
   {
+    "version": "1.0.33",
+    "date": "2026-11-18",
+    "title": "no Market tab in the Multiplayer menu",
+    "bullets": [
+      "The Market tab is gone from the Multiplayer menu, and its box from the host's World rules."
+    ]
+  },
+  {
+    "version": "1.0.31",
+    "date": "2026-11-18",
+    "title": "the public world is saved while everyone plays apart, stays public, and no more bouncing between maps",
+    "bullets": [
+      "Public world: progress is no longer lost when the keeper changes.",
+      "Public world: whoever keeps it today can no longer make it friends only or members only. It is always open to everyone.",
+      "Public world: a player who cannot reach the keeper goes back to the title screen with the reason, instead of being left alone in an offline copy of the world that was then lost.",
+      "The bank and the delivery box work for a player on a map another player holds (gold went into an empty copy).",
+      "A companion bought from the board can be taken into a guest's party (the guest never received it).",
+      "Each player's hunger is the same in every game (the host saw a guest hungry that was full).",
+      "\"Connection problem\" only shows after 6 seconds without news from the host, not at every short hitch.",
+      "A player who cannot reach the map a friend holds is no longer bounced back and forth between the host's map and that map: after two failed tries in a row they stay on the host's map and are told the map could not be reached."
+    ]
+  },
+  {
     "version": "1.0.23",
     "date": "2026-11-17",
     "title": "days no longer fly, teammates enter each other's buildings",
