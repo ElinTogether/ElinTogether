@@ -128,7 +128,7 @@ public class SteamNetLobbyManager : EClass
         // Steam server refuses it): a session opened by itself that must let the players of its world in is Public,
         // so that friends still join it from Steam, and marked hidden: the browser only shows it to friends of its
         // owner. Who really comes in is decided here, in OnLobbyChatUpdate
-        _invisible = quiet && type == SteamNetLobbyType.Friend && KnownAccount is not null;
+        _invisible = quiet && type == SteamNetLobbyType.Friend && KnownAccount is not null && !PeerHosting.Active;
         if (_invisible) {
             lobbyType = ELobbyType.k_ELobbyTypePublic;
         }
@@ -579,10 +579,11 @@ public class SteamNetLobbyManager : EClass
     ///     The host ticked "Public game": anybody who finds the game in the list comes in. Not a session opened by
     ///     itself (depot, shared world): those let only the accounts of their world in
     /// </summary>
-    internal bool OpenToAll => EmpConfig.Server.PublicGame.Value && !_quiet;
+    // the public world (peer-hosted, GitHub issue 53) is open to all whoever keeps it today and whatever its own box says
+    internal bool OpenToAll => PeerHosting.Active || EmpConfig.Server.PublicGame.Value && !_quiet;
 
     // a game anyone can join, hosted by the Elin Together account with its key (OfficialServer)
-    private bool Signs => (OpenToAll || EmpServer.Requested && !EmpServer.Hidden) && OfficialServer.CanHost();
+    private bool Signs => (EmpConfig.Server.PublicGame.Value && !_quiet || EmpServer.Requested && !EmpServer.Hidden) && OfficialServer.CanHost();
 
     /// <summary>
     ///     A session opened by itself lets the accounts of its world in. A session opened by hand never does

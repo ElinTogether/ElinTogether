@@ -74,7 +74,8 @@ internal partial class ElinNetHost
     /// </summary>
     internal static bool MembersOnlyRefuses(ulong user)
     {
-        return EmpConfig.Server.MembersOnly.Value && !IsMember(user);
+        // never on the public world (issue 53): its keeper of the day cannot close it to newcomers
+        return EmpConfig.Server.MembersOnly.Value && !Helper.PeerHosting.Active && !IsMember(user);
     }
 
     internal static string Allow(ulong user)

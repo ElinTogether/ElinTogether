@@ -84,6 +84,9 @@ internal static class PeerRules
         // a peer-hosted world is taken over when its keeper leaves or is lost (PeerKeeper, step P5), whatever the
         // snapshot says: the keeper's hidden server plays it on, and every guest expects it
         values[EmpConfig.Server.Takeover] = true;
+        // and it stays public (GitHub issue 53): no keeper makes it friends only or members only
+        values[EmpConfig.Server.PublicGame] = true;
+        values[EmpConfig.Server.MembersOnly] = false;
 
         return _values = values;
     }
