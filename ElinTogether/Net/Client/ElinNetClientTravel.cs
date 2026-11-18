@@ -571,6 +571,21 @@ internal partial class ElinNetClient
         // ended on the host's map, far from where the player went. Back to the host now, then on to that zone by
         // the same travel, which the host grants as any free zone
         if (visit is { } going && Session.AwayZone?.uid == going.ZoneUid && _zone?.uid != going.ZoneUid) {
+            // GitHub issue 56: a holder this game cannot reach over Steam was tried again and again, the player sent
+            // to the host's map and back six times in two minutes. Twice is enough: it stays on the host's map
+            var now = Time.realtimeSinceStartup;
+            _unreached = _unreached.Zone == going.ZoneUid && now - _unreached.At < UnreachedSeconds
+                ? (going.ZoneUid, _unreached.Count + 1, now)
+                : (going.ZoneUid, 1, now);
+            if (_unreached.Count >= 2) {
+                EmpLog.Warning("Zone session ended ({Reason}) before its map came, again: zone {ZoneUid} is not tried once more",
+                    reason, going.ZoneUid);
+                _unreached = default;
+                _handoffDeadline = now;
+                EmpPop.Information("emp_zone_unreachable".Loc(session is ElinNetClient { Host: { } holder } ? holder.User.Name : "?"));
+                return;
+            }
+
             EmpLog.Warning("Zone session ended ({Reason}) before its map came, back to the host, then on to zone {ZoneUid}",
                 reason, going.ZoneUid);
             _resumeTravel = (going.ZoneUid, going.Transition, Time.realtimeSinceStartup + ResumeTravelSeconds);
@@ -605,6 +620,11 @@ internal partial class ElinNetClient
     private (int ZoneUid, ZoneTransition Transition, float Until)? _resumeTravel;
 
     private const float ResumeTravelSeconds = 180f;
+
+    // the zone whose holder could not be reached before its map came, how many times in a row, when last
+    private (int Zone, int Count, float At) _unreached;
+
+    private const float UnreachedSeconds = 300f;
 
     private float _resumeAt;
 

@@ -351,6 +351,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer:
                 var peer = _peers.FirstOrDefault(p => p.Connection == connection);
                 if (peer is not null) {
+                    EmpLog.Information("Connection to {@Peer} closed by it: {EndReason} {Reason}", peer, status.m_info.m_eEndReason, status.m_info.m_szEndDebug);
                     Disconnect(peer, status.m_info.m_szEndDebug);
                 }
 
@@ -359,7 +360,8 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
             case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
                 var lost = _peers.FirstOrDefault(p => p.Connection == connection);
                 if (lost is not null) {
-                    EmpLog.Debug("Lost connection to {@Peer}: {Reason}", lost, status.m_info.m_szEndDebug);
+                    // (Information: why a link to another player's map failed is what a report must tell, issue 56)
+                    EmpLog.Information("Lost connection to {@Peer}: {EndReason} {Reason}", lost, status.m_info.m_eEndReason, status.m_info.m_szEndDebug);
                     Disconnect(lost, EmpDisconnectInfo.Timeout);
                 }
 
