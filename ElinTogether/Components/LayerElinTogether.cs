@@ -70,8 +70,7 @@ internal class LayerElinTogether : YKLayer<LayerCreationData>
             DecorateLastTab("icon_medal", "emp_tip_tab_community");
             _tabs.Add(CreateTab<TabChat>("emp_ui_tab_chat", TabChat.TabName));
             DecorateLastTab("icon_menu_16", "emp_tip_tab_chat");
-            _tabs.Add(CreateTab<TabMarket>("emp_ui_tab_market", TabMarket.TabName));
-            DecorateLastTab("icon_money", "emp_tip_tab_market");
+            // (no Market tab since 2026-11-18: the user asked to take it out of the menu; the board code stays)
         }
 
         // the world's rules: always there. The host edits them (also at the title screen, before hosting), a guest
