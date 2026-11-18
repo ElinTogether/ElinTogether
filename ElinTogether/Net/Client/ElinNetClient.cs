@@ -47,10 +47,14 @@ internal partial class ElinNetClient : ElinNetBase
 
     private const float SilenceSeconds = 3f;
     private const float SilenceRepeatSeconds = 5f;
+
+    // the line itself waits longer: a save of the host or a long turn is a hitch of a few seconds, not a connection
+    // problem worth a popup every time (GitHub issue 55)
+    private const float SilenceToldSeconds = 6f;
     private float _silenceToldAt = -1f;
 
     /// <summary>
-    ///     Nothing came from the host for 3 s while playing: a line says so, with the time, again every 5 s, until the
+    ///     Nothing came from the host for 3 s while playing: the next keeper gets ready; from 6 s a line says so, with the time, again every 5 s, until the
     ///     link either comes back or drops (the reconnect notice then; council 2026-11-07, PLAN_network_robustness
     ///     defect 4: with the 30 s timeout a silent link looked like a frozen game)
     /// </summary>
@@ -76,7 +80,7 @@ internal partial class ElinNetClient : ElinNetBase
         // the next keeper of a peer-hosted world starts its hidden server now, not once the link is declared lost
         Helper.PeerKeeper.SilentKeeper(silent);
 
-        if (_silenceToldAt >= 0f && now - _silenceToldAt < SilenceRepeatSeconds) {
+        if (silent < SilenceToldSeconds || _silenceToldAt >= 0f && now - _silenceToldAt < SilenceRepeatSeconds) {
             return;
         }
 
