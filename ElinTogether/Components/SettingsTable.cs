@@ -448,7 +448,7 @@ internal static class SettingsTable
         yield return new("activity_journal", "together", true, EmpConfig.Server.ActivityJournal);
         yield return new("team_banner", "together", true, EmpConfig.Server.TeamBanner, Requires: () => EmpConfig.Server.Teams.Value);
         yield return new("leaderboards", "together", true, EmpConfig.Server.Leaderboards);
-        yield return new("market", "together", true, EmpConfig.Server.Market);
+        // (no "market" box since 2026-11-18: its tab is out of the menu, user)
         yield return new("mailbox", "together", true, EmpConfig.Server.Mailbox);
         yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialLocked);
         yield return new("team_own_guilds", "together", true, EmpConfig.Server.TeamOwnGuilds, Requires: () => Helper.TeamOwnStory.Wanted);
