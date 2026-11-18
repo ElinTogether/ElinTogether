@@ -293,7 +293,9 @@ internal static class EmpServer
         // nobody is there to save: the server does, while someone plays
         if (Time.unscaledTime >= _nextSave) {
             _nextSave = Time.unscaledTime + SaveSeconds;
-            if (session.CurrentPlayers.Count > 1) {
+            // (a player away in its own zone is connected but not on this map, not in CurrentPlayers: the public world
+            // where everyone plays apart was never saved, a takeover lost up to an hour, GitHub issue 54)
+            if (session.CurrentPlayers.Count > 1 || session.Connection is ElinNetHost away && away.AwayPeers.Any()) {
                 SaveNow();
             }
         }

@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.LangMod;
 using ElinTogether.Net;
@@ -304,7 +305,8 @@ internal static class EmpAutoHost
         }
 
         var now = Time.unscaledTime;
-        var guests = session.CurrentPlayers.Count > 1;
+        // (a player away on a map of its own is connected without being in CurrentPlayers: still saved for, issue 54)
+        var guests = session.CurrentPlayers.Count > 1 || session.Transport is ElinNetHost host && host.AwayPeers.Any();
         if (guests != _guests) {
             // the first player in starts the clock; the last one out is saved at once: what it did is in the world.
             // A save asked for by RequestSave survives the first player in
