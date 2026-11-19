@@ -43,6 +43,9 @@ internal partial class ElinNetClient
     /// </summary>
     private int _hostZoneUid = -1;
 
+    /// <summary>The zone the host is in, as last told (-1: not told)</summary>
+    internal int HostZoneUid => _hostZoneUid;
+
     internal void OnLocalZoneCreated(Zone zone)
     {
         _localZones.Add(zone);

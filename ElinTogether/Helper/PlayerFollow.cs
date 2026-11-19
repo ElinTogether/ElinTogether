@@ -332,8 +332,15 @@ internal static class PlayerFollow
                 x = where.EnterX,
                 z = where.EnterZ,
             });
+        } else if (NetSession.Instance.Transport is ElinNetClient client && NetSession.Instance.IsAway &&
+                   client.HostZoneUid == where.ZoneUid) {
+            // (issue 65) a map this game does not know yet, made by the host's game (a wilderness field entered from
+            // the world map), where the host is: joined there as when coming back to the host, which brings the map
+            EmpLog.Information("Follow: {Leader} went to zone {ZoneUid} where the host is, unknown here: joining the host there",
+                _leaderName, where.ZoneUid);
+            client.FollowHost();
         } else {
-            // a map this game does not know (a wilderness field the leader's game made): not followed
+            // a map this game does not know (a wilderness field another guest's game made): not followed
             EmpLog.Information("Follow: {Leader} went to zone {ZoneUid}, unknown here", _leaderName, where.ZoneUid);
             Stop("emp_follow_lost");
         }
