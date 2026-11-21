@@ -249,6 +249,9 @@ public class ActionModeCombat
         }
 
         var prev = Phase;
+        // (issue 64: a fight that ends between two rounds dropped the act each player had going, a song most of all,
+        // while the guests' copy of that player played it on; the act now goes on as it would without rounds)
+        var resume = phase == CombatPhase.Inactive ? _pendingAi : null;
         Phase = phase;
         _executingTimer = 0f;
         _executingBlockNotified = false;
@@ -271,6 +274,17 @@ public class ActionModeCombat
                 _done.Clear();
                 WaitForSelf = false;
                 Msg.SayGod("emp_ui_combat_exit".lang());
+                if (resume is not null && !EClass.pc.isDead && EClass.pc.HasNoGoal) {
+                    _applyingPending = true;
+                    try {
+                        EmpLog.Debug("Combat over, {ActType} goes on", resume.GetType().Name);
+                        Act.CC = EClass.pc;
+                        EClass.pc.SetAIImmediate(resume);
+                    } finally {
+                        _applyingPending = false;
+                    }
+                }
+
                 break;
             case CombatPhase.Deciding when prev == CombatPhase.Inactive:
                 EClass.pc.ai.Cancel();
