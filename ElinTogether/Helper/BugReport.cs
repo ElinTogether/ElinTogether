@@ -25,7 +25,8 @@ internal sealed record ReportAnswers(int Category, string Summary, string Detail
 {
     // what the summary and the detail need at least to send the report
     internal const int SummaryMin = 10;
-    internal const int DetailMin = 30;
+    // (30 kept a 28-letter detail from being sent, the Send button stayed grey: issue 74)
+    internal const int DetailMin = 5;
 
     // what each box takes (the detail and the context stay under the relay's 4000 characters)
     internal const int SummaryMax = 120;

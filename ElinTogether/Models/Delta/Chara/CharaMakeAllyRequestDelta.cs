@@ -102,8 +102,21 @@ public class CharaMakeAllyRequestDelta : ElinDelta
 
     private void JoinParty(ElinNetHost host, Chara chara)
     {
-        if (chara.party == pc.party || !host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var recruiter)) {
+        if (!host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var recruiter)) {
+            EmpLog.Information("Join of {Uid} asked by peer {PeerIndex}, whose character is not here: not taken", chara.uid, OriginPeer);
             return;
+        }
+
+        if (pc.party.members.Contains(chara)) {
+            EmpLog.Information("Join of {Uid} asked by player {Recruiter}: already in the party", chara.uid, recruiter.uid);
+            return;
+        }
+
+        // out of the members but still pointing at the party (a companion that died on its owner's trip, see
+        // ReplaceCompanions): the game's AddMemeber skips it, every "Join me" said yes and nothing came (issue 73)
+        if (chara.party == pc.party) {
+            EmpLog.Information("Join of {Uid}: it pointed at the party without being in it, joined again", chara.uid);
+            chara.party = null;
         }
 
         using var _ = Simulate();
