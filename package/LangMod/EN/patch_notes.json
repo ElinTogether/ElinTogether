@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.0.47",
+    "date": "2026-11-21",
+    "title": "Follow keeps up with the host",
+    "bullets": [
+      "Follow: a guest no longer stays behind on the world map when the host enters a new field (issue 65).",
+      "A guest whose link drops says in its own log what closed it (issue 67)."
+    ]
+  },
+  {
     "version": "1.0.43",
     "date": "2026-11-21",
     "title": "a steady public world, lobby passwords, no cheats",
