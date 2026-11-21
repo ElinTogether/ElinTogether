@@ -1892,7 +1892,10 @@ internal partial class ElinNetHost
 
             if (release.GuestCompanions?.TryGetValue(user, out var companions) is true &&
                 SavedRemoteCharas.TryGetValue(user, out var ownerUid)) {
-                ReplaceCompanions(companions, ownerUid);
+                // the holder's view of its visitor's companions, not the visitor's own list: one missing from it was
+                // not let go by its owner (issue 70: a guest's allies sent home to the Meadow, out of its party, after
+                // a stay on another player's map)
+                ReplaceCompanions(companions, ownerUid, fromOwner: false);
             }
         }
     }
