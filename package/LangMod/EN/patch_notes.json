@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.0.35",
+    "date": "2026-11-18",
+    "title": "the public world can be played day and night",
+    "bullets": [
+      "Public world: the world store was down on 2026-11-18 (its free daily limit was used up).",
+      "Public world: the player who keeps it is told to stop through the menu (back to the title), so the world and its last save go to the others."
+    ]
+  },
+  {
     "version": "1.0.34",
     "date": "2026-11-18",
     "title": "the public world follows the newest version",
