@@ -30,4 +30,9 @@ public static class EmpLobbyData
     ///     prefers the hidden server's lobby
     /// </summary>
     public const string ServerKind = "EmpServerKind";
+
+    /// <summary>
+    ///     "1" when the host asks a password of every player (LobbyPassword); never the password itself
+    /// </summary>
+    public const string Password = "emp_pw";
 }

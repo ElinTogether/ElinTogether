@@ -228,6 +228,13 @@ internal static class SettingsTable
     // Custom and is kept)
     private static readonly int[] CatchUpSteps = [1, 3, 7];
 
+    private static readonly int[] CropSteps = [1, 2, 3];
+
+    internal static Choice CropGrowth => new("crop_growth", [..CropSteps.Select(d => "x" + d)],
+        () => [EmpConfig.Server.CropGrowth],
+        source => source.Raw(EmpConfig.Server.CropGrowth) is int x ? Array.IndexOf(CropSteps, x) : -1,
+        i => [(EmpConfig.Server.CropGrowth, CropSteps[i])]);
+
     internal static Choice CatchUpDays => new("catch_up_days", [..CatchUpSteps.Select(d => d.ToString())],
         () => [EmpConfig.Server.CatchUpDays],
         source => source.Raw(EmpConfig.Server.CatchUpDays) is int days ? Array.IndexOf(CatchUpSteps, days) : -1,
@@ -417,6 +424,9 @@ internal static class SettingsTable
         yield return new("max_players", "joining", true, Choice: MaxPlayers);
         yield return new("members_only", "joining", true, EmpConfig.Server.MembersOnly);
         yield return new("admin_extras", "joining", true, EmpConfig.Server.AdminExtras);
+        yield return new("no_cheats", "joining", true, EmpConfig.Server.NoCheats);
+        // (a text row of the host only, drawn by TabServerConfiguration.BuildLobbyPassword; no preset touches it)
+        yield return new("lobby_password", "joining", true);
         // (the dedicated public server only: it needs the public server key and the world admin key on this PC)
         yield return new("vouch_players", "joining", true, EmpConfig.Server.VouchPlayers, Requires: () => OfficialServer.CanHost());
         yield return new("container_log", "together", true, EmpConfig.Server.ContainerAccessLog);
@@ -490,6 +500,7 @@ internal static class SettingsTable
         yield return new("living_world", "time_details", true, Choice: LivingWorld, Requires: () => EmpConfig.Server.SharedWorldTime.Value);
         yield return new("absent_quests_wait", "time_details", true, EmpConfig.Server.AbsentQuestsWait, Requires: () => EmpConfig.Server.PersonalQuests.Value);
         yield return new("catch_up_days", "time_details", true, Choice: CatchUpDays);
+        yield return new("crop_growth", "time_details", true, Choice: CropGrowth);
         yield return new("world_map_lead", "time_details", true, Choice: LeadCap, Requires: () => EmpConfig.Server.WorldMapTime.Value == Net.WorldMapTime.PersonalPace);
 
         yield return new("delete_chara", "comfort", true, EmpConfig.Server.DeleteCharacter, Apply: "join");
@@ -519,7 +530,7 @@ internal static class SettingsTable
         ..Rows().Where(r => r.Entry is not null && r.Id != "hidden_server").Select(r => (ConfigEntryBase)r.Entry!).Distinct(),
         EmpConfig.Server.SourceValidationSet, EmpConfig.Server.WorldMapTime, EmpConfig.Server.WorldMapLeadCap,
         EmpConfig.Server.SpawnZone, EmpConfig.Server.NightPasses, EmpConfig.Server.IdleMinutes,
-        EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxPlayers, EmpConfig.Server.MaxCharacters, EmpConfig.Server.CatchUpDays,
+        EmpConfig.Server.KickKeepOutMinutes, EmpConfig.Server.MaxPlayers, EmpConfig.Server.MaxCharacters, EmpConfig.Server.CatchUpDays, EmpConfig.Server.CropGrowth,
         EmpConfig.Server.LivingWorldMinutes, EmpConfig.Server.TeamMaxSize, EmpConfig.Server.TeamFoundCooldown,
         EmpConfig.Server.AbandonDays, EmpConfig.Server.LandsPerTeam, EmpConfig.Server.ClientOnlyMods,
     ];
@@ -610,7 +621,7 @@ internal static class SettingsTable
         (EmpConfig.Server.HiddenServer, false), (EmpConfig.Server.ServerAvatar, true), (EmpConfig.Server.ServerRestsWhenEmpty, true),
         (EmpConfig.Server.PublicGame, true), (EmpConfig.Server.SameGameVersion, true), (EmpConfig.Server.ContainerAccessLog, true),
         (EmpConfig.Server.AdminExtras, true), (EmpConfig.Server.Teams, true), (EmpConfig.Server.TeamBases, true),
-        (EmpConfig.Server.PlayerKill, false),
+        (EmpConfig.Server.PlayerKill, false), (EmpConfig.Server.NoCheats, true),
         // council 2026-10-28: maps from the internet in a persistent shared world are unmoderated, with no undo
         (EmpConfig.Server.GuestMoongate, false),
         // a player who comes back starts where it left (user 2026-11-02: "players should come back to the position
@@ -893,6 +904,7 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamBoxes] = r.TeamBoxes,
             [EmpConfig.Server.ContainerAccessLog] = r.ContainerLog,
             [EmpConfig.Server.AdminExtras] = r.AdminExtras,
+            [EmpConfig.Server.NoCheats] = r.NoCheats,
             [EmpConfig.Server.TeamLeaders] = r.TeamLeaders,
             [EmpConfig.Server.LandRules] = r.LandRules,
             [EmpConfig.Server.CommonsStartLand] = r.CommonsStartLand,
@@ -927,6 +939,7 @@ internal static class SettingsTable
             [EmpConfig.Server.IdleMinutes] = r.IdleMinutes,
             [EmpConfig.Server.TimeStopsWhenEmpty] = r.TimeStopsWhenEmpty,
             [EmpConfig.Server.CatchUpDays] = r.CatchUpDays,
+            [EmpConfig.Server.CropGrowth] = r.CropGrowth,
             [EmpConfig.Server.LivingWorldMinutes] = r.LivingWorldMinutes,
             [EmpConfig.Server.OwnSleep] = r.UseOwnSleep,
             [EmpConfig.Server.SharedWorldTime] = r.UseSharedWorldTime,

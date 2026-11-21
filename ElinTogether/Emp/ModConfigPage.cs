@@ -70,7 +70,7 @@ internal static class ModConfigPage
                 SettingsTable.MarkDirty();
             });
 
-            var rows = SettingsTable.Rows().Where(r => (TabServerConfiguration.ShowAdvanced || !r.Advanced) && r.Id is not ("checks" or "bills" or "client_mods"))
+            var rows = SettingsTable.Rows().Where(r => (TabServerConfiguration.ShowAdvanced || !r.Advanced) && r.Id is not ("checks" or "bills" or "client_mods" or "lobby_password"))
                 .ToList();
             foreach (var card in SettingsTable.Cards) {
                 var inCard = rows.Where(r => r.Card == card).ToList();

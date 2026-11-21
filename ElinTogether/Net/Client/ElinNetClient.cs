@@ -366,7 +366,32 @@ internal partial class ElinNetClient : ElinNetBase
             NetReconnect.Stop();
         }
 
+        // the host asks a password (none given, or a wrong one): asked here, then the same lobby is joined again
+        var passwordLobby = reason is EmpDisconnectInfo.LobbyPassword or EmpDisconnectInfo.LobbyPasswordWrong &&
+                            !IsLocalConnection && !IsDirectConnection && Session.Lobby.Current.IsValid
+            ? Session.Lobby.Current.SteamId.m_SteamID
+            : 0UL;
+        // (joined by its address: asked the same, then the same address again)
+        var passwordAgain = reason is EmpDisconnectInfo.LobbyPassword or EmpDisconnectInfo.LobbyPasswordWrong &&
+                            IsDirectConnection ? _rejoin : null;
+
         Session.ResetSession();
+
+        if (passwordAgain is not null) {
+            var owner = (ulong)host.User;
+            Helper.LobbyPassword.Forget(owner);
+            Helper.LobbyPassword.Ask(owner, passwordAgain,
+                reason == EmpDisconnectInfo.LobbyPassword ? "emp_ui_lobby_password_ask" : "emp_ui_lobby_password_wrong");
+            return;
+        }
+
+        if (passwordLobby != 0) {
+            var owner = (ulong)host.User;
+            Helper.LobbyPassword.Forget(owner);
+            Helper.LobbyPassword.Ask(owner, () => NetSession.Instance.Lobby.ConnectLobby(passwordLobby),
+                reason == EmpDisconnectInfo.LobbyPassword ? "emp_ui_lobby_password_ask" : "emp_ui_lobby_password_wrong");
+            return;
+        }
 
         // coming back by itself says so on its own
         // (blocks only when the player is turned away: its own way out, which closes the link as HostShutdown, or a

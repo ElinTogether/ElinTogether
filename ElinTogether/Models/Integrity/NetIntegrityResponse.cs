@@ -30,7 +30,15 @@ public class NetIntegrityResponse
     [Key(4)]
     public ZoneLeaseRelease? LostAway { get; init; }
 
-    public static NetIntegrityResponse Create(byte[]? ownerToken = null, ZoneLeaseRelease? lostAway = null)
+    /// <summary>
+    ///     SHA-256 of the host's Steam id and the password this player gave for it (Helper.LobbyPassword), null when
+    ///     none was asked. An older host ignores it
+    /// </summary>
+    [Key(5)]
+    public byte[]? LobbyPasswordHash { get; init; }
+
+    public static NetIntegrityResponse Create(byte[]? ownerToken = null, ZoneLeaseRelease? lostAway = null,
+        byte[]? lobbyPasswordHash = null)
     {
         return new() {
             ClientModVersion = ModInfo.BuildVersion,
@@ -38,6 +46,7 @@ public class NetIntegrityResponse
             APIVersion = BuildVersionIntegrity.APIVersionLatest,
             OwnerToken = ownerToken,
             LostAway = lostAway,
+            LobbyPasswordHash = lobbyPasswordHash,
         };
     }
 }

@@ -188,6 +188,10 @@ internal static class PeerRules
             return Math.Max(1, (int)value);
         }
 
+        if (entry == EmpConfig.Server.CropGrowth) {
+            return Math.Min(3, Math.Max(1, (int)value));
+        }
+
         if (entry == EmpConfig.Server.TeamMaxSize || entry == EmpConfig.Server.IdleMinutes || entry == EmpConfig.Server.LivingWorldMinutes) {
             return Math.Max(0, (int)value);
         }

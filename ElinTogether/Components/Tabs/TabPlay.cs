@@ -671,6 +671,11 @@ internal class TabPlay : TabEmpBase
             game.TextSmall("emp_ui_lobby_friends".lang(), FontColor.Gray);
         }
 
+        // the host asks a password of every player (LobbyPassword)
+        if (LobbyPassword.Shown(lobby)) {
+            game.TextSmall("emp_ui_lobby_password".lang(), FontColor.Gray);
+        }
+
         // what that game runs with, when its host says so: known before joining
         if (ModList.Summary(lobby[EmpLobbyData.Mods]) is { } mods) {
             game.TextSmall(mods.Missing > 0
@@ -684,6 +689,13 @@ internal class TabPlay : TabEmpBase
                 LayerElinTogether.Instance?.Close();
                 // (a game of the list is another world: the public world mode of this run ends)
                 PeerHosting.PublicEntered = false;
+                // asked before joining when the lobby says so and nothing was given for that host in this run
+                var owner = target.GameServer.id.m_SteamID;
+                if (LobbyPassword.Shown(target) && owner != 0 && !LobbyPassword.Known(owner)) {
+                    LobbyPassword.Ask(owner, () => NetSession.Instance.Lobby.ConnectLobby(target));
+                    return;
+                }
+
                 NetSession.Instance.Lobby.ConnectLobby(target);
             });
             var element = join.LayoutElement();

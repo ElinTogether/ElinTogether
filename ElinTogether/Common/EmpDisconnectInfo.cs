@@ -25,6 +25,8 @@ public static class EmpDisconnectInfo
     public const string OwnerSeat = "emp_dc_owner_seat";
     public const string PeerRules = "emp_dc_peer_rules";
     public const string ServerFull = "emp_dc_server_full";
+    public const string LobbyPassword = "emp_dc_lobby_password";
+    public const string LobbyPasswordWrong = "emp_dc_lobby_password_wrong";
 
     /// <summary>
     ///     A reason with words of its own (the host's, a count): "key|words", told as "key_why" with them. Steam takes

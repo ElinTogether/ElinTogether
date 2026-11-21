@@ -637,6 +637,22 @@ internal partial class EmpConfig
             "Unticked, nothing is recorded or shown\n" +
             "主机为玩家或队伍领地中的每个容器（以及银行和快递箱）记录谁在何时放入或取出了什么（最近50条）。该领地的队伍成员和管理员可在容器右键菜单中查看；取消勾选时不记录也不显示");
 
+        Server.NoCheats = config.Bind(
+            "Server",
+            "NoCheats",
+            true,
+            "The game's cheat commands of the console (Cheat, Spawn, SetElement...) do nothing for anyone in this world while it is played together (Workshop comment 2026-11-20: players spawned items on the public server)\n" +
+            "Unticked, everyone may use them, as in a game played alone\n" +
+            "多人游戏时，游戏控制台的作弊命令（Cheat、Spawn、SetElement 等）对所有人无效；取消勾选时所有人都可以使用");
+
+        Server.LobbyPassword = config.Bind(
+            "Server",
+            "LobbyPassword",
+            "",
+            "A password every player must give to join this game, friends included (Workshop comment 2026-11-19). Empty: no password. " +
+            "Asked once, remembered for the session. Never used by the public world or a dedicated server\n" +
+            "所有玩家（包括好友）加入此游戏时必须输入的密码。留空表示无密码。只询问一次，本次运行内记住。公共世界和专用服务器从不使用");
+
         Server.AdminExtras = config.Bind(
             "Server",
             "AdminExtras",
@@ -685,6 +701,14 @@ internal partial class EmpConfig
             true,
             "The quests of a player who left the game keep their time left: the days the world went on without it are added to their deadlines when it comes back. Otherwise they ran out as the world went on\n" +
             "离开游戏的玩家的任务保留剩余时间：玩家回来时，世界在其离开期间经过的天数会加到任务期限上；关闭时任务期限随世界流逝");
+
+        // Workshop comment 2026-11-19: the world's day is slow next to the players' time, crops took weeks of play
+        Server.CropGrowth = config.Bind(
+            "Server",
+            "CropGrowth",
+            1,
+            "Sown crops on farm fields grow this many times faster (the game's own daily step, x1, x2 or x3); wild plants, trees and weeds as in the game\n" +
+            "农田里播种的作物生长快这么多倍（游戏每天一次的生长，x1、x2 或 x3）；野生植物、树木和杂草不变");
 
         // council 2026-10-26, stage 5: a week since 0.26.1082
         Server.CatchUpDays = config.Bind(
@@ -1294,11 +1318,14 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> MembersOnly { get; set; } = null!;
         internal static ConfigEntry<bool> ContainerAccessLog { get; set; } = null!;
         internal static ConfigEntry<bool> AdminExtras { get; set; } = null!;
+        internal static ConfigEntry<bool> NoCheats { get; set; } = null!;
+        internal static ConfigEntry<string> LobbyPassword { get; set; } = null!;
         internal static ConfigEntry<bool> VouchPlayers { get; set; } = null!;
         internal static ConfigEntry<NightRule> NightPasses { get; set; } = null!;
         internal static ConfigEntry<bool> TimeStopsWhenEmpty { get; set; } = null!;
         internal static ConfigEntry<bool> AbsentQuestsWait { get; set; } = null!;
         internal static ConfigEntry<int> CatchUpDays { get; set; } = null!;
+        internal static ConfigEntry<int> CropGrowth { get; set; } = null!;
         internal static ConfigEntry<int> LivingWorldMinutes { get; set; } = null!;
         internal static ConfigEntry<bool> SummonsFollowMaster { get; set; } = null!;
         internal static ConfigEntry<bool> PlayersAtBase { get; set; } = null!;

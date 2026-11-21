@@ -1789,5 +1789,19 @@
     "LangGeneral.emp_zone_unreachable.text": "无法连接到 {0} 的地图：你留在这里。再次前往即可重试。",
     "LangGeneral.emp_peer_update_restart.text": "公共世界正在由更新版本的 Elin Together 维护。请重启游戏以更新（Steam 创意工坊会在重启时更新），然后再次加入。",
     "LangGeneral.emp_peer_asked_older.text": "{0} 正在用旧版本的 Elin Together 维护公共世界。它会在平静的时刻（最多 10 分钟）把世界交给这个游戏，请稍候。",
-    "LangGeneral.emp_peer_keeping_leave.text": "现在由你来维护这个世界。谢谢！要停止时，请通过菜单回到标题画面：世界和最后的存档会交给其他玩家。"
+    "LangGeneral.emp_peer_keeping_leave.text": "现在由你来维护这个世界。谢谢！要停止时，请通过菜单回到标题画面：世界和最后的存档会交给其他玩家。",
+    "LangGeneral.emp_lobby_create_timeout.text": "Steam 没有回应大厅的创建（两次）。\n请确认 Steam 在线（必要时重启 Steam），然后重新开房。",
+    "LangGeneral.emp_no_cheats.text": "此世界中作弊已关闭（房主设置“禁止作弊”）。",
+    "LangGeneral.emp_ui_sv_cfg_no_cheats.text": "禁止作弊",
+    "LangGeneral.emp_ui_sv_desc_no_cheats.text": "游戏控制台的作弊命令（Cheat、Spawn、SetElement 等）对所有人无效，包括房主。关闭：所有人都可以使用，和单人游戏一样。",
+    "LangGeneral.emp_ui_sv_cfg_crop_growth.text": "作物生长",
+    "LangGeneral.emp_ui_sv_desc_crop_growth.text": "农田里播种的作物生长快这么多倍（游戏每天一次的生长，x1、x2 或 x3）：世界的一天比玩家的时间慢。野生植物、树木、杂草、肥料和收获量不变。",
+    "LangGeneral.emp_ui_sv_cfg_lobby_password.text": "加入密码",
+    "LangGeneral.emp_ui_sv_desc_lobby_password.text": "每位加入的玩家（包括好友）都必须输入此密码。留空：无密码。每位玩家只被询问一次，游戏关闭前会记住。公共世界和专用服务器不使用。",
+    "LangGeneral.emp_ui_sv_lobby_password_hint.text": "留空：无密码",
+    "LangGeneral.emp_ui_lobby_password.text": "需要密码",
+    "LangGeneral.emp_ui_lobby_password_ask.text": "此游戏需要密码。请输入房主告诉你的密码。",
+    "LangGeneral.emp_ui_lobby_password_wrong.text": "密码错误。请重新输入。",
+    "LangGeneral.emp_dc_lobby_password.text": "此游戏需要密码。",
+    "LangGeneral.emp_dc_lobby_password_wrong.text": "密码错误。"
 }

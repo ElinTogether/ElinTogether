@@ -166,6 +166,14 @@ internal partial class ElinNetHost
         EmpLog.Information("Version verified for {@Peer}: mod {HostModVersion}, game {HostGameVersion}",
             peer, ModInfo.BuildVersion, BuildVersionIntegrity.GameVersion);
 
+        // the host's password, friends included (an older joiner sends none: refused the same way). A zone session
+        // was entered with the host's leave already
+        if (!IsZoneSession && Helper.LobbyPassword.Refusal(response.LobbyPasswordHash) is { } noPassword) {
+            EmpLog.Warning("Lobby password refused for {@Peer}: {Reason}", peer, noPassword);
+            Socket.Disconnect(peer, noPassword);
+            return;
+        }
+
         if (_handshakes.TryGetValue(peer.Id, out var state)) {
             state.Phase = NetHandshakePhase.AwaitingIntegrity;
             state.Timeout = Time.time + EmpConfig.Policy.Timeout.Value;

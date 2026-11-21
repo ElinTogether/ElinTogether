@@ -94,6 +94,10 @@ public class SteamNetLobbyManager : EClass
         _deferOnComplete = null;
     }
 
+    private (SteamNetLobbyType Type, int MaxPlayers, bool Quiet) _lastAsk;
+    private int _timeoutRetries;
+    private bool _retrying;
+
     /// <summary>
     ///     Create a new lobby. We do this automatically on Host
     /// </summary>
@@ -111,6 +115,10 @@ public class SteamNetLobbyManager : EClass
 
         _quiet = quiet;
         _creating = true;
+        _lastAsk = (type, maxPlayers, quiet);
+        if (!_retrying) {
+            _timeoutRetries = 0;
+        }
 
         EmpLog.Information("Creating steam {LobbyType} lobby",
             type);
@@ -338,18 +346,39 @@ public class SteamNetLobbyManager : EClass
 
         _creating = false;
         if (created.m_eResult != EResult.k_EResultOK || created.m_ulSteamIDLobby == 0) {
-            EmpLog.Warning("Lobby creation failed with {Result}",
-                created.m_eResult);
+            EmpLog.Warning("Lobby creation failed with {Result}, Steam logged on {LoggedOn}, try {Try}",
+                created.m_eResult, SteamUser.BLoggedOn(), _timeoutRetries + 1);
+
+            // Steam's own 10 s wait ran out (issues 68 69: four in a row after a world reload, the game seemed
+            // frozen): asked once more before giving up
+            if (created.m_eResult == EResult.k_EResultTimeout && _timeoutRetries < 1) {
+                _timeoutRetries++;
+                _retrying = true;
+                try {
+                    CreateLobby(_lastAsk.Type, _lastAsk.MaxPlayers, _lastAsk.Quiet);
+                } finally {
+                    _retrying = false;
+                }
+
+                return;
+            }
+
+            _timeoutRetries = 0;
 
             // opened by itself: a player alone and offline would get this window at every load
             if (!_quiet) {
-                EmpPop.Block("emp_lobby_create_failed".lang(), created.m_eResult);
+                if (created.m_eResult == EResult.k_EResultTimeout) {
+                    EmpPop.Block("emp_lobby_create_timeout".lang());
+                } else {
+                    EmpPop.Block("emp_lobby_create_failed".lang(), created.m_eResult);
+                }
             }
 
             NetSession.Instance.ResetSession();
             return;
         }
 
+        _timeoutRetries = 0;
         if (_quiet) {
             EmpLog.Information("Lobby created");
         } else {
@@ -379,6 +408,7 @@ public class SteamNetLobbyManager : EClass
         Current[EmpLobbyData.Handover] = ElinNetHost.HandoverNumber.ToString();
 
         Current[EmpLobbyData.Public] = OpenToAll ? "1" : "0";
+        LobbyPassword.MarkLobby(Current);
         Current[EmpLobbyData.ServerKind] = EmpServer.Hidden ? "hidden" : EmpServer.Requested ? "server" : "game";
 
         // the project's own public game: shown first and as official in everyone's list

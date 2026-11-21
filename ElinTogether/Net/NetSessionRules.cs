@@ -343,6 +343,13 @@ public class NetSessionRules
     public int CatchUpDays { get; set; } = 7;
 
     /// <summary>
+    ///     Host setting "Crop growth" (CropGrowthPatch): sown crops on farm fields grow this many times faster, 1 to 3.
+    ///     An older host sends none: 1
+    /// </summary>
+    [Key(170)]
+    public int CropGrowth { get; set; } = 1;
+
+    /// <summary>
     ///     Council 2026-10-25 (dev/PLAN_teams_knowledge.md): each team has its own recipes and codex, see
     ///     TeamKnowledge. An older host sends none: one book for everyone, as it was
     /// </summary>
@@ -572,6 +579,12 @@ public class NetSessionRules
     [Key(162)]
     public bool PlayerWishes { get; set; }
 
+    /// <summary>
+    ///     Host setting "No cheats" (NoCheatsPatch): the console's cheat commands do nothing. An older host sends none: off
+    /// </summary>
+    [Key(163)]
+    public bool NoCheats { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -586,6 +599,7 @@ public class NetSessionRules
         ChatBubbles = EmpConfig.Server.ChatBubbles.Value,
         ChatImages = EmpConfig.Server.ChatImages.Value,
         PlayerWishes = EmpConfig.Server.PlayerWishes.Value,
+        NoCheats = EmpConfig.Server.NoCheats.Value,
         GuestMoongate = EmpConfig.Server.GuestMoongate.Value,
         GuestLandingPortal = EmpConfig.Server.GuestLandingPortal.Value,
         GuestSkyHelm = EmpConfig.Server.GuestSkyHelm.Value,
@@ -633,6 +647,7 @@ public class NetSessionRules
         NightPasses = EmpConfig.Server.NightPasses.Value,
         TimeStopsWhenEmpty = EmpConfig.Server.TimeStopsWhenEmpty.Value,
         CatchUpDays = System.Math.Max(1, EmpConfig.Server.CatchUpDays.Value),
+        CropGrowth = System.Math.Min(3, System.Math.Max(1, EmpConfig.Server.CropGrowth.Value)),
         LivingWorldMinutes = System.Math.Max(0, EmpConfig.Server.LivingWorldMinutes.Value),
         PermadeathRevive = EmpConfig.Server.PermadeathRevive.Value,
         OwnJournal = EmpConfig.Server.OwnJournal.Value,

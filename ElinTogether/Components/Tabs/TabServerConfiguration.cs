@@ -588,6 +588,10 @@ internal class TabServerConfiguration : TabEmpBase
             return BuildClientMods(parent, row);
         }
 
+        if (row.Id == "lobby_password") {
+            return BuildLobbyPassword(parent, row);
+        }
+
         var changed = IsChanged(row, _src, _target);
         var block = parent.Vertical();
         block.Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -734,6 +738,39 @@ internal class TabServerConfiguration : TabEmpBase
         }
 
         return new(row, block.gameObject, $"{row.Label} {row.Description} {value}", false);
+    }
+
+    /// <summary>
+    ///     The password every player gives to join (LobbyPassword): a text row of the host only, a friend is never told
+    ///     it. Written when the host leaves the box; the lobby says at once whether one is needed
+    /// </summary>
+    private Line? BuildLobbyPassword(YKVertical parent, SettingRow row)
+    {
+        if (_guest) {
+            return null;
+        }
+
+        var block = Vertical(parent);
+        block.Layout.spacing = 2f;
+        var head = block.Horizontal();
+        head.Layout.childForceExpandWidth = false;
+        head.Layout.childAlignment = TextAnchor.MiddleLeft;
+        head.Layout.spacing = 6f;
+        head.Text(row.Label).SetSize(UIHelper.LabelSize);
+        Hint(head, row.Description);
+        var input = block.InputText(EmpConfig.Server.LobbyPassword.Value);
+        input.AllowAnyText();
+        input.field.characterLimit = 64;
+        input.StyleAsSearch("emp_ui_sv_lobby_password_hint".lang());
+        input.field.onEndEdit.AddListener(text => {
+            var clean = text.Trim();
+            if (clean != EmpConfig.Server.LobbyPassword.Value) {
+                SettingsTable.Write([(EmpConfig.Server.LobbyPassword, clean)]);
+                Helper.LobbyPassword.MarkLobby(NetSession.Instance.Lobby.Current);
+            }
+        });
+
+        return new(row, block.gameObject, $"{row.Label} {row.Description}", false);
     }
 
     /// <summary>
