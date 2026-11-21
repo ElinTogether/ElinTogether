@@ -67,6 +67,8 @@ internal static class PlayerFollow
     private static float _offSince;
     private static float _seenSince;
     private static float _movedAt;
+    private static float _whereAt;
+    private const float UnknownWaitSeconds = 15f;
     private static int _moves;
     private static bool _toldTravel;
 
@@ -339,6 +341,11 @@ internal static class PlayerFollow
             EmpLog.Information("Follow: {Leader} went to zone {ZoneUid} where the host is, unknown here: joining the host there",
                 _leaderName, where.ZoneUid);
             client.FollowHost();
+        } else if (now - _whereAt < UnknownWaitSeconds) {
+            // (issue 65, bench 2026-11-21: the word of where the leader went comes before the map itself, and before
+            // the host's own zone change, by a second or two: asked again each second for a while, not given up)
+            _moves--;
+            _movedAt = now - MoveRetrySeconds + 1f;
         } else {
             // a map this game does not know (a wilderness field another guest's game made): not followed
             EmpLog.Information("Follow: {Leader} went to zone {ZoneUid}, unknown here", _leaderName, where.ZoneUid);
@@ -469,6 +476,7 @@ internal static class PlayerFollow
                 return;
             case FollowTravelDelta.Where when delta.FromUid == _leaderUid && Sane(delta):
                 _where = delta;
+                _whereAt = Time.realtimeSinceStartup;
                 if (EClass.game?.spatials.Find(delta.ZoneUid) is { IsRegion: true }) {
                     _regionAt = new Point(delta.X, delta.Z);
                 }
