@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.43",
+    "date": "2026-11-21",
+    "title": "a steady public world, lobby passwords, no cheats",
+    "bullets": [
+      "Public world: the keeper no longer loses it after a minute (issues 66, 71).",
+      "Companions of a player visiting another player's map stay with their owner (issue 70).",
+      "Join me works again on a companion that died on its owner's trip (issue 73).",
+      "New host settings: Password to join, No cheats (on by default), Crop growth x1/x2/x3.",
+      "Bug reports with a short detail can be sent (issue 74); a Steam lobby creation that times out is asked again (issues 68, 69)."
+    ]
+  },
+  {
     "version": "1.0.35",
     "date": "2026-11-18",
     "title": "the public world can be played day and night",
