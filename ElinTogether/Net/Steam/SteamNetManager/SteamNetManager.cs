@@ -185,11 +185,25 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
 
 #region Connection Management
 
+    // (issue 67: the other side only reads "emp_dc_host_shutdown", the reason every close of ours sends; this game's own
+    // log says which of its paths closed the links)
+    private void LogOwnClose(string how)
+    {
+        if (_peers.Count == 0) {
+            return;
+        }
+
+        var frames = new System.Diagnostics.StackTrace(2, false).GetFrames() ?? [];
+        var callers = string.Join(" < ", frames.Take(4).Select(f => f.GetMethod() is { } m ? m.DeclaringType?.Name + "." + m.Name : "?"));
+        EmpLog.Information("Closing {Count} link(s) of ours ({How}), from {Callers}", _peers.Count, how, callers);
+    }
+
     /// <summary>
     ///     Ungracefully discard the listen socket
     /// </summary>
     public void Stop()
     {
+        LogOwnClose(nameof(Stop));
         foreach (var peer in Peers) {
             Disconnect(peer, EmpDisconnectInfo.HostShutdown);
         }
@@ -204,6 +218,7 @@ public partial class SteamNetManager(ISteamNetSerializer? serializer = null) : I
         }
 
         _disposed = true;
+        LogOwnClose(nameof(Shutdown));
 
         SteamCallback<SteamNetConnectionStatusChangedCallback_t>.Remove(HandleStatusChange);
 
