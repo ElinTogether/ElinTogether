@@ -91,7 +91,22 @@ internal static class PeerKeeper
     /// </summary>
     private static void Later<T>(Func<T> ask, Action<T?, Exception?> then)
     {
-        _asking = _asking.ContinueWith(_ => {
+        _asking = Chain(_asking, ask, then);
+    }
+
+    // the keeper's beats and certificates: a lane of their own, a version going up on a slow line (40 MB, a minute
+    // and more) held them behind it and the 30 s lease died, every keeper stopped after a minute (issue 71). Each
+    // request still takes EtWorldDepot's lock, so a beat goes between two pieces of the upload
+    private static Tasks.Task _beating = Tasks.Task.CompletedTask;
+
+    private static void LaterBeat<T>(Func<T> ask, Action<T?, Exception?> then)
+    {
+        _beating = Chain(_beating, ask, then);
+    }
+
+    private static Tasks.Task Chain<T>(Tasks.Task after, Func<T> ask, Action<T?, Exception?> then)
+    {
+        return after.ContinueWith(_ => {
             T? value = default;
             Exception? failed = null;
             try {
@@ -207,7 +222,7 @@ internal static class PeerKeeper
         if (Time.unscaledTime >= _nextClaimBeat) {
             _nextClaimBeat = Time.unscaledTime + BeatSeconds;
             var handover = _claimed;
-            Later(() => Store.Beat(handover, []), (reply, _) => {
+            LaterBeat(() => Store.Beat(handover, []), (reply, _) => {
                 if (reply is { Ok: false } && reply.Error is "not_holder" or "banned") {
                     EmpLog.Warning("Peer-hosted world: the lease was lost while the server started ({Why})", reply.Error);
                 }
@@ -987,7 +1002,7 @@ internal static class PeerKeeper
 
         _certLobby = lobby;
         var handover = _handover;
-        Later(() => Store.Cert(handover, lobby), (reply, _) => {
+        LaterBeat(() => Store.Cert(handover, lobby), (reply, _) => {
             if (reply is { Ok: true }) {
                 Net.Steam.PublicServerCertificate.Set(reply.Value);
             } else {
@@ -1086,11 +1101,17 @@ internal static class PeerKeeper
 
         _nextBeat = Time.unscaledTime + BeatSeconds;
         var (handover, succession) = (_handover, _succession);
-        Later(() => Store.Beat(handover, succession), (reply, _) => OnBeat(host, reply));
+        LaterBeat(() => Store.Beat(handover, succession), (reply, _) => OnBeat(host, reply, handover));
     }
 
-    private static void OnBeat(ElinNetHost host, StoreReply<StoreBeat>? reply)
+    private static void OnBeat(ElinNetHost host, StoreReply<StoreBeat>? reply, long handover)
     {
+        // (beats have their own lane: one sent before a release, or for the lease before this one, may come back
+        // after it; it says nothing about the lease held now)
+        if (handover != _handover || _handover == 0) {
+            return;
+        }
+
         if (reply is null) {
             // (the store is away: the lease runs 30 s, the next beat may reach it)
             return;

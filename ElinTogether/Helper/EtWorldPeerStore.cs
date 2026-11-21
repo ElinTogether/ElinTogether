@@ -352,7 +352,7 @@ internal sealed class EtWorldPeerStore : IWorldStore
     // wait behind this request in PeerKeeper's queue)
     private static void KeepLease(System.Diagnostics.Stopwatch since, long handover)
     {
-        if (handover <= 0 || since.Elapsed.TotalSeconds < 15) {
+        if (handover <= 0 || since.Elapsed.TotalSeconds < 10) {
             return;
         }
 
