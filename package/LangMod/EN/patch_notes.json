@@ -4,8 +4,8 @@
     "date": "2026-11-21",
     "title": "Follow keeps up with the host",
     "bullets": [
-      "Follow: a guest no longer stays behind on the world map when the host enters a new field (issue 65).",
-      "A guest whose link drops says in its own log what closed it (issue 67)."
+      "Follow: when the host entered a wilderness field from the world map, a guest following it sometimes stayed behind on the world map (issue 65).",
+      "A guest whose link drops now writes in its own log which part of the game closed it, so reports of \"guest drops out\" (issue 67) can say why."
     ]
   },
   {
