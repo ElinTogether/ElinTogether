@@ -4,11 +4,14 @@
     "date": "2026-11-21",
     "title": "a steady public world, lobby passwords, no cheats",
     "bullets": [
-      "Public world: the keeper no longer loses it after a minute (issues 66, 71).",
-      "Companions of a player visiting another player's map stay with their owner (issue 70).",
-      "Join me works again on a companion that died on its owner's trip (issue 73).",
-      "New host settings: Password to join, No cheats (on by default), Crop growth x1/x2/x3.",
-      "Bug reports with a short detail can be sent (issue 74); a Steam lobby creation that times out is asked again (issues 68, 69)."
+      "Public world: whoever kept it lost it after about a minute and it restarted again and again (issues 66 and 71).",
+      "Companions of a player who visited another player's map were sometimes sent back to the Meadow, out of their party (issue 70): a player's companions now only leave when their owner lets them go.",
+      "New host setting \"Password to join\": every player who joins, friends included, types it once (it is remembered until the game closes).",
+      "New host setting \"No cheats\" (on by default, always on in the public world): the game console's cheat commands (Cheat, Spawn, SetElement...) do nothing for anyone, the host included.",
+      "New host setting \"Crop growth\" (x1, x2, x3): sown crops on farm fields grow faster, since the world's day is slow next to the players' time.",
+      "A companion that had died on its owner's trip could not be asked to join again: \"Join me\" said yes and nothing came (issue 73).",
+      "The in-game bug report could not be sent with a short detail (under 30 letters); 5 are enough now (issue 74).",
+      "Creating a Steam lobby: when Steam does not answer, it is asked once more, then a clear message says to check Steam (issues 68 and 69)."
     ]
   },
   {
