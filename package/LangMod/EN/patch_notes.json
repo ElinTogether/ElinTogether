@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.0.50",
+    "date": "2026-11-21",
+    "title": "songs after a fight, other mods' broken parts",
+    "bullets": [
+      "Turn-based fights: when a fight ended between two rounds, the song a player was playing was dropped.",
+      "Another mod with a part that cannot load (for example one that needs a missing \"Mod Options\") made Elin Together leave out 13 of its own patches on that player's game: work progress, item use and quest syncs."
+    ]
+  },
+  {
     "version": "1.0.47",
     "date": "2026-11-21",
     "title": "Follow keeps up with the host",
