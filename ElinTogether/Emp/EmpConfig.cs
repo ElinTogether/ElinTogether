@@ -1066,6 +1066,14 @@ internal partial class EmpConfig
             "Unticked, or the save opened without the mod: the guilds of the host's own story. Otherwise one membership for the group, as before\n" +
             "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍在战士、法师、盗贼和商人公会中也有自己的位置（成员身份、等级、贡献、公会任务）。勾选时所有人从世界当前的公会状态开始。Elin Together 公共服务器上也默认关闭。取消勾选或不带模组打开存档时：房主自己剧情的公会。关闭时整个团体共用一个成员身份，如前");
 
+        Server.StoryCharaCopies = config.Bind(
+            "Server",
+            "StoryCharaCopies",
+            true,
+            "With 'Each player or team lives its own story': each player or team gets its own copy of the story characters it needs (for now Loytel: his debt, his mart, his place at the base). The first story to start the debt keeps the world's Loytel; every other one gets its own, at its base. Each game shows only its own. Always on for the Elin Together public server\n" +
+            "Otherwise one Loytel for the world: he stays in the base of the first story that took the debt\n" +
+            "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍拥有自己需要的剧情角色副本（目前为洛伊特）。关闭时世界只有一个洛伊特");
+
         Server.GlobalChat = config.Bind(
             "Server",
             "GlobalChat",
@@ -1377,6 +1385,7 @@ internal partial class EmpConfig
         internal static ConfigEntry<bool> TeamQuestSharing { get; set; } = null!;
         internal static ConfigEntry<bool> ShareLogForReports { get; set; } = null!;
         internal static ConfigEntry<bool> TeamOwnGuilds { get; set; } = null!;
+        internal static ConfigEntry<bool> StoryCharaCopies { get; set; } = null!;
         internal static ConfigEntry<WorldMapTime> WorldMapTime { get; set; } = null!;
         internal static ConfigEntry<int> WorldMapLeadCap { get; set; } = null!;
         internal static ConfigEntry<bool> DumpSparesBelt { get; set; } = null!;

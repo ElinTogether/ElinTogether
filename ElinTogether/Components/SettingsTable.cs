@@ -462,6 +462,7 @@ internal static class SettingsTable
         yield return new("mailbox", "together", true, EmpConfig.Server.Mailbox);
         yield return new("team_own_story", "together", true, EmpConfig.Server.TeamOwnStory, Requires: () => !OfficialLocked);
         yield return new("team_own_guilds", "together", true, EmpConfig.Server.TeamOwnGuilds, Requires: () => Helper.TeamOwnStory.Wanted);
+        yield return new("story_chara_copies", "together", true, EmpConfig.Server.StoryCharaCopies, Requires: () => Helper.TeamOwnStory.Wanted);
 
         // When the host leaves
         yield return new("host_leaves", "host_leaves", false, Choice: HostLeaves);
@@ -616,7 +617,7 @@ internal static class SettingsTable
     /// </summary>
     internal static (ConfigEntryBase Entry, object Value)[] OfficialFixedValues() => [
         (EmpConfig.Server.ImportCharacter, false), (EmpConfig.Server.ExportCharacter, false),
-        (EmpConfig.Server.TeamOwnStory, true), (EmpConfig.Server.TeamKnowledge, true), (EmpConfig.Server.TeamBoxes, true),
+        (EmpConfig.Server.TeamOwnStory, true), (EmpConfig.Server.StoryCharaCopies, true), (EmpConfig.Server.TeamKnowledge, true), (EmpConfig.Server.TeamBoxes, true),
         (EmpConfig.Server.WorldCopy, false), (EmpConfig.Server.Takeover, false), (EmpConfig.Server.AutoHost, false),
         (EmpConfig.Server.HiddenServer, false), (EmpConfig.Server.ServerAvatar, true), (EmpConfig.Server.ServerRestsWhenEmpty, true),
         (EmpConfig.Server.PublicGame, true), (EmpConfig.Server.SameGameVersion, true), (EmpConfig.Server.ContainerAccessLog, true),
@@ -923,6 +924,7 @@ internal static class SettingsTable
             [EmpConfig.Server.TeamQuestSharing] = r.TeamQuestSharing,
             [EmpConfig.Server.ShareLogForReports] = r.ShareLogForReports,
             [EmpConfig.Server.TeamOwnGuilds] = r.TeamOwnGuilds,
+            [EmpConfig.Server.StoryCharaCopies] = r.StoryCharaCopies,
             [EmpConfig.Server.GuestBuild] = r.AllowGuestBuild,
             [EmpConfig.Server.HostManagesBase] = r.HostManagesBase,
             [EmpConfig.Server.Duels] = r.AllowDuels,

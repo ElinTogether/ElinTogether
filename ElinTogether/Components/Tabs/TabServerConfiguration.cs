@@ -94,6 +94,7 @@ internal class TabServerConfiguration : TabEmpBase
         ["team_found_cooldown"] = ["teams", "team_leaders"],
         ["spawn_zone"] = ["teams", "independent_travel"],
         ["team_own_guilds"] = ["team_own_story"],
+        ["story_chara_copies"] = ["team_own_story"],
         ["night_passes"] = ["own_sleep"],
         ["living_world"] = ["world_time"],
         ["absent_quests_wait"] = ["personal_quests"],

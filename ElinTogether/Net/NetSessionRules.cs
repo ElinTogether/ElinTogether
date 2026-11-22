@@ -585,6 +585,13 @@ public class NetSessionRules
     [Key(163)]
     public bool NoCheats { get; set; }
 
+    /// <summary>
+    ///     With TeamOwnStory: each story owner has its own Loytel (issue 63), see TeamOwnStory.CharaCopies. An older
+    ///     host sends none: one Loytel for the world, as it was
+    /// </summary>
+    [Key(171)]
+    public bool StoryCharaCopies { get; set; }
+
     public static NetSessionRules Default => new() {
         AllowTakeover = EmpConfig.Server.Takeover.Value,
         SoftRecall = EmpConfig.Server.SoftRecall.Value,
@@ -631,6 +638,7 @@ public class NetSessionRules
         ShareLogForReports = EmpConfig.Server.ShareLogForReports.Value,
         CommonsStartLand = EmpConfig.Server.CommonsStartLand.Value,
         TeamOwnGuilds = EmpConfig.Server.TeamOwnGuilds.Value,
+        StoryCharaCopies = Helper.TeamOwnStory.CopiesWanted,
         ClientOnlyMods = EmpConfig.Server.ClientOnlyMods.Value,
         TownLife = EmpConfig.Server.TownLife.Value,
         ShopsFromEveryPlayer = EmpConfig.Server.ShopsFromEveryPlayer.Value,

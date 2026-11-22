@@ -114,6 +114,14 @@ internal static class TeamOwnStory
     /// </summary>
     internal static bool Guilds => On && (KeepsBook ? EmpConfig.Server.TeamOwnGuilds.Value : NetSession.Instance.Rules is { TeamOwnGuilds: true });
 
+    /// <summary>
+    ///     Host option "Story characters per team" (issue 63, on by default, always on for the public server), with the
+    ///     story box: each owner has its own Loytel (<see cref="LoytelOf" />). Off: one Loytel for the world as before
+    /// </summary>
+    internal static bool CharaCopies => On && (KeepsBook ? CopiesWanted : NetSession.Instance.Rules is { StoryCharaCopies: true });
+
+    internal static bool CopiesWanted => EmpConfig.Server.StoryCharaCopies.Value || StoryOwner.OfficialHosting;
+
     // a quest of the story's quest log: with the guilds, the guild quests too
     private static bool InLog(Quest? quest, bool guilds)
     {
@@ -613,6 +621,11 @@ internal static class TeamOwnStory
     /// </summary>
     internal static bool Shown(Chara chara)
     {
+        // (issue 63: a Loytel of another owner's story is not this game's, even in a party)
+        if (chara.id == "loytel") {
+            return chara.GetInt(LoytelOwnerKey) is var tag && (tag == 0 || !CharaCopies || ViewerOwner is not { } viewer || tag == viewer);
+        }
+
         if (chara.id is not ("ashland" or "fiama" or "farris") || !On || chara.IsPCParty || EClass.game?.quests is not { } quests ||
             EClass.game.IsSurvival) {
             return true;
@@ -871,25 +884,50 @@ internal static class TeamOwnStory
         }
 
         _nextDebt = UnityEngine.Time.unscaledTime + 10f;
-        if (!EClass.game.quests.IsCompleted("pre_debt_runaway") || EClass.game.cards.globalCharas.Find("loytel") is not { } loytel) {
+        var copies = CharaCopies;
+        var world = copies ? null : EClass.game.cards.globalCharas.Find("loytel");
+        if (!EClass.game.quests.IsCompleted("pre_debt_runaway") || (!copies && world is null)) {
             return;
         }
 
         var host = NetSession.Instance.Transport as ElinNetHost;
         var owners = (host?.PeerCharas().Select(p => p.CharaUid) ?? []).Append(EClass.pc.uid).Where(uid => !ServerAvatar.IsUid(uid)).Select(OwnerOf).Distinct().ToList();
-        foreach (var owner in owners.Where(o => !HasDebt(o))) {
+        foreach (var owner in owners) {
+            // (issue 63: each story its own Loytel first, a story of an old world already in debt too)
+            if ((copies ? LoytelOf(owner, true) : world) is not { } loytel) {
+                continue;
+            }
+
+            if (HasDebt(owner)) {
+                // (an old world: a debt started before the copies names the world's Loytel, hidden from this story now)
+                if (copies && owner == CurrentOwner && EClass.game.quests.Get<QuestDebt>() is { } debt && debt.person?.uidChara != loytel.uid) {
+                    debt.SetClient(loytel, false);
+                    EmpLog.Information("Story {Owner}'s debt now names its own Loytel", StoryOwner.Name(owner));
+                } else if (copies && owner != CurrentOwner) {
+                    using (As(owner)) {
+                        if (EClass.game.quests.Get<QuestDebt>() is { } other && other.person?.uidChara != loytel.uid) {
+                            other.SetClient(loytel, false);
+                            EmpLog.Information("Story {Owner}'s debt now names its own Loytel", StoryOwner.Name(owner));
+                        }
+                    }
+                }
+
+                continue;
+            }
+
             using (As(owner)) {
                 var quest = Quest.Create("debt").SetClient(loytel, false);
                 EClass.game.quests.list.Insert(0, quest);
             }
 
             EmpLog.Information("Story {Owner} has no debt quest after the runaway: it gets one", StoryOwner.Name(owner));
+            var line = (copies ? "emp_team_story_own_loytel" : "emp_team_story_caught_up_debt").lang();
             foreach (var player in StoryPlayers(owner)) {
                 if (player.IsPC) {
-                    Msg.SayRaw("emp_team_story_caught_up_debt".lang());
+                    Msg.SayRaw(line);
                 } else if (host is not null) {
                     foreach (var (to, _) in host.PeerCharas().Where(p => p.CharaUid == player.uid)) {
-                        host.SendDeltaTo(to, new MsgSayDelta { Text = "emp_team_story_caught_up_debt".lang(), R = 1f, G = 1f, B = 1f, A = 1f });
+                        host.SendDeltaTo(to, new MsgSayDelta { Text = line, R = 1f, G = 1f, B = 1f, A = 1f });
                     }
                 }
             }
@@ -913,6 +951,159 @@ internal static class TeamOwnStory
 
         var bundle = Of(owner, true);
         return bundle.Completed.Contains("debt") || Read(bundle.Quests).Concat(Read(bundle.Offers)).Any(q => q is QuestDebt);
+    }
+
+    // ---- each story its own Loytel (issue 63, "Story characters per team")
+
+    // (int keys: a string key on "the player" also writes the shared dialog flags)
+    // the story owner a Loytel belongs to; none on the world's one before a story took him
+    private const int LoytelOwnerKey = 47110003;
+
+    // 1 on a Loytel made for a story, none on the world's own
+    private const int LoytelCopyKey = 47110004;
+
+    // the owner whose Loytel this game shows and finds: on the host the story being played, on a guest its own
+    private static int? ViewerOwner => KeepsBook ? CurrentOwner : EClass.pc is { } pc ? OwnerOf(pc.uid) : null;
+
+    private static bool _debtStarting;
+    private static bool _finding;
+    private static float _waitSince = -1f;
+
+    // (QuestDebt.OnStart: the story starting its debt takes the world's Loytel when no story has him yet)
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(QuestDebt), nameof(QuestDebt.OnStart))]
+    private static void BeforeDebtStart()
+    {
+        _debtStarting = true;
+    }
+
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(QuestDebt), nameof(QuestDebt.OnStart))]
+    private static void AfterDebtStart()
+    {
+        _debtStarting = false;
+    }
+
+    /// <summary>
+    ///     The game looks Loytel up by id (QuestDebt, his dialog, the quests he gives): the one of the story being
+    ///     played, when it has one. A copy is made here only as a debt starts (elsewhere the game may be walking the
+    ///     global charas); the others in <see cref="DebtCatchUp" />
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(CardManager.GlobalCharaList), nameof(CardManager.GlobalCharaList.Find), typeof(string))]
+    private static bool FindOwnLoytel(string id, ref Chara? __result)
+    {
+        if (id != "loytel" || _finding || !CharaCopies || EClass.game?.cards is null || ViewerOwner is not { } owner) {
+            return true;
+        }
+
+        _finding = true;
+        try {
+            // (a story with no Loytel yet gets its own here: falling back to the game's lookup handed it another
+            // story's, which pre_debt and Vernis' quests then moved away from that story's base)
+            __result = KeepsBook ? LoytelOf(owner, true) : OwnLoytelHere(owner);
+        } finally {
+            _finding = false;
+        }
+
+        return __result is null;
+    }
+
+    // a guest: its owner's Loytel among what the host sent it
+    private static Chara? OwnLoytelHere(int owner)
+    {
+        return EClass.game.cards.globalCharas.Values.Concat(EClass._map?.charas ?? [])
+            .FirstOrDefault(c => c.id == "loytel" && c.GetInt(LoytelOwnerKey) == owner);
+    }
+
+    /// <summary>
+    ///     In the game that keeps the book: that owner's own Loytel. Until the runaway is over the world's one is
+    ///     everyone's (none here). Then the world's Loytel is the story's that took him (its debt started him; in an
+    ///     old world whose companion he is, whose land he lives in, else the world owner's), and with make every other
+    ///     owner gets a copy of its own (<see cref="ElinNetHost.StoryLoytels" />)
+    /// </summary>
+    internal static Chara? LoytelOf(int owner, bool make)
+    {
+        var charas = EClass.game.cards.globalCharas;
+        var mine = ElinNetHost.StoryLoytels;
+        if (mine.TryGetValue(owner, out var uid)) {
+            if (charas.Find(uid) is { id: "loytel" } own) {
+                return own;
+            }
+
+            mine.Remove(owner);
+        }
+
+        if (!EClass.game.quests.IsCompleted("pre_debt_runaway") ||
+            charas.Values.FirstOrDefault(c => c.id == "loytel" && c.GetInt(LoytelCopyKey) == 0) is not { } world) {
+            return null;
+        }
+
+        if (!mine.ContainsValue(world.uid)) {
+            // (still waiting in Olvina for the debt start of the story that ended the runaway: two minutes at most)
+            if (!_debtStarting && world.noMove) {
+                var now = UnityEngine.Time.unscaledTime;
+                if (_waitSince < 0f || now < _waitSince) {
+                    _waitSince = now;
+                }
+
+                if (now - _waitSince < 120f) {
+                    return null;
+                }
+            }
+
+            var taker = _debtStarting ? owner : TakerOf(world);
+            if (!mine.ContainsKey(taker)) {
+                mine[taker] = world.uid;
+                world.SetInt(LoytelOwnerKey, taker);
+                _waitSince = -1f;
+                EmpLog.Information("The world's Loytel is the story of {Owner}'s", Name(taker));
+                if (taker == owner) {
+                    return world;
+                }
+            }
+        }
+
+        // (a copy whose map entry was lost is found again by its tags, never made twice)
+        if (charas.Values.FirstOrDefault(c => c.id == "loytel" && c.GetInt(LoytelCopyKey) == 1 && c.GetInt(LoytelOwnerKey) == owner) is { } kept) {
+            mine[owner] = kept.uid;
+            return kept;
+        }
+
+        return make ? MakeLoytel(owner) : null;
+    }
+
+    // an old world: the story the world's Loytel already lives with
+    private static int TakerOf(Chara world)
+    {
+        if (world.CompanionOwnerUid is not 0 and var player) {
+            return OwnerOf(player);
+        }
+
+        return Teams.LandOwnerOf(world.homeZone) is not 0 and var land ? land : WorldOwner;
+    }
+
+    // a Loytel of that owner's story, where QuestDebt.OnStart puts him: by the player starting the debt, else at the
+    // owner's base (a land of its own, or a player's home), else where the game puts him before the debt
+    private static Chara MakeLoytel(int owner)
+    {
+        var copy = CharaGen.Create("loytel");
+        copy.SetGlobal();
+        copy.SetInt(LoytelOwnerKey, owner);
+        copy.SetInt(LoytelCopyKey, 1);
+        ElinNetHost.StoryLoytels[owner] = copy.uid;
+        var home = Teams.LandsOf(owner).Select(z => EClass.game.spatials.Find(z)).FirstOrDefault(z => z?.branch is not null) ??
+                   StoryPlayers(owner).Select(p => p.homeBranch?.owner).FirstOrDefault(z => z is not null);
+        // (always the owner's base: QuestDebt.OnStart only knows the local pc, which may be another story's player)
+        if (home is not null) {
+            copy.MoveHome(home);
+            home.branch.AddMemeber(copy);
+        } else {
+            copy.MoveHome("olvina", 59, 66);
+        }
+
+        EmpLog.Information("Story {Owner} gets a Loytel of its own: {Uid} in {Zone}", Name(owner), copy.uid, copy.currentZone?.id);
+        return copy;
     }
 
     // ---- the guilds, each owner's

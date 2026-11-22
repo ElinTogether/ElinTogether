@@ -207,6 +207,17 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     Host option "Story characters per team" (issue 63, <see cref="TeamOwnStory.CharaCopies" />): story owner ->
+    ///     the uid of its own Loytel (the world's one for the story that took him, a copy for every other)
+    /// </summary>
+    [ElinGameIOProperty("story_loytels")]
+    internal static Dictionary<int, int> StoryLoytels
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     Chara uid -> the story steps ("quest id:phase") whose rewards that player had: once per player, whatever
     ///     team it plays the step with (team hopping farms nothing)
     /// </summary>

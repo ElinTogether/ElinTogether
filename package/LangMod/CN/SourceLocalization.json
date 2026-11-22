@@ -1803,5 +1803,8 @@
     "LangGeneral.emp_ui_lobby_password_ask.text": "此游戏需要密码。请输入房主告诉你的密码。",
     "LangGeneral.emp_ui_lobby_password_wrong.text": "密码错误。请重新输入。",
     "LangGeneral.emp_dc_lobby_password.text": "此游戏需要密码。",
-    "LangGeneral.emp_dc_lobby_password_wrong.text": "密码错误。"
+    "LangGeneral.emp_dc_lobby_password_wrong.text": "密码错误。",
+    "LangGeneral.emp_ui_sv_cfg_story_chara_copies.text": "剧情角色按队伍分开",
+    "LangGeneral.emp_ui_sv_desc_story_chara_copies.text": "配合各自剧情：每个玩家或队伍都有自己的洛伊特（债务、商店、在据点的位置）。第一个开始债务的剧情保留世界上的洛伊特，其他剧情各自在据点得到一个。每个游戏只看到自己的。关闭：世界只有一个洛伊特。",
+    "LangGeneral.emp_team_story_own_loytel.text": "你的剧情现在有自己的洛伊特（在你的据点，没有据点则在奥尔维纳）。你的剧情欠他一笔自己的债，向他偿还。"
 }
