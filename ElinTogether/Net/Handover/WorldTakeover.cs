@@ -93,6 +93,8 @@ internal static class WorldTakeover
             if (WorldHandover.Mine() is not { } copy) {
                 EmpLog.Warning("World not taken over, nothing changed: {Why}", "no whole copy of the world");
                 State = "failed: no whole copy of the world";
+                // (issue 78: the friend went back to the title with no word)
+                EmpPop.Block("emp_takeover_failed".lang());
                 yield break;
             }
 
@@ -107,6 +109,8 @@ internal static class WorldTakeover
                 var why = laying.IsFaulted ? laying.Exception!.GetBaseException().Message : laying.Result;
                 EmpLog.Warning("World not taken over, nothing changed: {Why}", why);
                 State = "failed: " + why;
+                // (issue 78: the friend went back to the title with no word)
+                EmpPop.Block("emp_takeover_failed".lang());
                 yield break;
             }
 

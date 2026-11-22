@@ -201,6 +201,12 @@ internal partial class ElinNetHost
 
     // the guests are given that long to get the last save, then the host leaves whatever they have
     private const float LastCopySeconds = 15f;
+
+    // (GitHub issue 78: a save of 18 MB on a slow upload took longer than 15 s, the friend's takeover failed 4 times
+    // in 6) past that, the host waits on while the save still goes out, up to this, and gives up once nothing moved
+    // for LastCopyStallSeconds
+    private const float LastCopyMaxSeconds = 90f;
+    private const float LastCopyStallSeconds = 10f;
     private static bool _leaving;
 
     /// <summary>
@@ -316,8 +322,21 @@ internal partial class ElinNetHost
             }
 
             // every frame instead of a few times a second: nothing else of the host is worth its upload now
-            while (this != null && watch.Elapsed.TotalSeconds < LastCopySeconds && !(given = LastCopyGiven(since))) {
+            var lastMove = 0.0;
+            var lastLeft = -1L;
+            while (this != null && !(given = LastCopyGiven(since))) {
                 Safely(PumpWorldCopy);
+                var left = CopyLeft();
+                if (left != lastLeft) {
+                    lastLeft = left;
+                    lastMove = watch.Elapsed.TotalSeconds;
+                }
+
+                var now = watch.Elapsed.TotalSeconds;
+                if (now >= LastCopyMaxSeconds || (now >= LastCopySeconds && (left == 0 || now - lastMove >= LastCopyStallSeconds))) {
+                    break;
+                }
+
                 yield return null;
             }
 
@@ -364,6 +383,19 @@ internal partial class ElinNetHost
                Socket.Peers.Where(Playing).All(p =>
                    _worldCopyGiven.TryGetValue(p.Id, out var had) && had == latest.Manifest.Saved &&
                    !(_worldCopyLinks.TryGetValue(p.Id, out var link) && link.Sending is not null));
+    }
+
+    // how much of the last save is still on its way: the guests still being sent a copy, and what Steam holds for them
+    private long CopyLeft()
+    {
+        long left = 0;
+        foreach (var link in _worldCopyLinks.Values) {
+            if (link.Sending is not null && link.Peer.IsConnected) {
+                left += 1 + Unacked(link.Peer);
+            }
+        }
+
+        return left;
     }
 
     /// <summary>
