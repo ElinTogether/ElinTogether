@@ -1371,6 +1371,65 @@ internal static class Teams
         Zones.Remove(zoneUid);
         ZoneRules.Remove(zoneUid);
         EClass.game.spatials.Find(zoneUid)?.SetInt(SoloCheckedKey, 1);
+        EClass.game.spatials.Find(zoneUid)?.SetInt(ReleasedKey, 1);
+    }
+
+    // (issue 79) a land its team let go: a deed read in it makes it the reader's team's
+    private const int ReleasedKey = 47110005;
+
+    /// <summary>
+    ///     GitHub issue 79: a land of a disbanded team is nobody's, and the game refuses a deed in a land that is
+    ///     already a base: the reader's new team could never have it again. A deed read in a land of nobody (released by
+    ///     its team, or first claimed by the reader itself) makes it the reader's team's (or its own in no team)
+    /// </summary>
+    internal static bool MayAdopt(Zone? zone, Chara reader)
+    {
+        return zone is not null && BasesOwned && zone.mainFaction == EClass.pc.faction && zone.instance is null && !Commons.Is(zone) &&
+               LandOwnerOf(zone) == 0 &&
+               // (the marks are the host's: a guest asks, the host checks them again in Adopt)
+               (!KeepsBook || zone.GetInt(ReleasedKey) == 1 || zone.GetInt(BaseIncome.ClaimerKey) == reader.uid);
+    }
+
+    /// <summary>
+    ///     In the game that keeps the book: the reader's deed is spent and the land is its team's
+    /// </summary>
+    internal static bool Adopt(Zone zone, Chara reader)
+    {
+        if (!KeepsBook || !MayAdopt(zone, reader) || LandCapReached(reader) || !TeamRanks.MayClaim(reader) ||
+            reader.things.List(t => t.trait is TraitDeed, true).FirstOrDefault() is not { } deed) {
+            return false;
+        }
+
+        deed.ModNum(-1);
+        Zones[zone.uid] = StoryOwner.Of(TeamOf(reader.uid), reader.uid);
+        ZoneRules.Remove(zone.uid);
+        zone.SetInt(ReleasedKey, 0);
+        zone.SetInt(BaseIncome.ClaimerKey, reader.uid);
+        EmpLog.Information("Land {ZoneUid} of nobody taken with a deed by {CharaUid}, team {TeamId}", zone.uid, reader.uid, TeamOf(reader.uid));
+        Tell();
+        return true;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPriority(Priority.First)]
+    [HarmonyPatch(typeof(TraitDeed), nameof(TraitDeed.OnRead))]
+    private static bool OnReadDeedInLandOfNobody(Chara c)
+    {
+        if (!c.IsPC || ElinDelta.IsApplying || !MayAdopt(EClass._zone, c)) {
+            return true;
+        }
+
+        var zone = EClass._zone;
+        Dialog.YesNo("emp_team_land_adopt".lang(), () => {
+            if (KeepsBook) {
+                if (Adopt(zone, c)) {
+                    Msg.Say("emp_team_land_adopted".lang());
+                }
+            } else if (NetSession.Instance.Connection is ElinNetClient client) {
+                client.Delta.AddRemote(new ClaimZoneDelta { ZoneUid = zone.uid, Adopt = true });
+            }
+        });
+        return false;
     }
 
     /// <summary>

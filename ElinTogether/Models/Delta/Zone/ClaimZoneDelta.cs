@@ -43,6 +43,12 @@ public class ClaimZoneDelta : ElinDelta
     [Key(3)]
     public bool Claimed { get; init; }
 
+    /// <summary>
+    ///     A deed read in a land of nobody (issue 79): the land becomes the sender's team's, see Teams.Adopt
+    /// </summary>
+    [Key(4)]
+    public bool Adopt { get; init; }
+
     protected override void OnApply(ElinNetBase net)
     {
         if (net is not ElinNetHost { IsZoneSession: false } host) {
@@ -55,6 +61,14 @@ public class ClaimZoneDelta : ElinDelta
                 EmpLog.Information("Respawn point set to the land claimed, {ZoneFullName}", claimed.ZoneFullName);
             }
 
+            return;
+        }
+
+        if (Adopt) {
+            var reader = host.PlayerChara(OriginPeer);
+            var land = game.spatials.Find(ZoneUid) as Zone;
+            var taken = reader is not null && land is not null && reader.currentZone == land && Teams.Adopt(land, reader);
+            host.SendDeltaTo(OriginPeer, taken ? new ClaimZoneDelta { ZoneUid = ZoneUid, Claimed = true } : new ClaimZoneDelta { ZoneUid = ZoneUid, Refused = true });
             return;
         }
 
