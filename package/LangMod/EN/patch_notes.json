@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.54",
+    "date": "2026-11-22",
+    "title": "each team its own Loytel and Farris",
+    "bullets": [
+      "New host setting \"Story characters per team\" (on by default, always on in the public world), with \"Each player or team lives its own story\": Loytel and Farris were single characters of the world.",
+      "When a guest recruited Farris, he joined the base where the host stood (and that place could become a base). He now joins the guest's base.",
+      "Checked on Elin 23.362, the new Stable: every patch of the mod applies."
+    ]
+  },
+  {
     "version": "1.0.50",
     "date": "2026-11-21",
     "title": "songs after a fight, other mods' broken parts",
