@@ -71,6 +71,7 @@ internal static class SharedQuests
     internal static Quest? Find(int uid, string? id)
     {
         var quests = EClass.game.quests;
+        QuestListRepair.Clean(quests, "a quest message");
         return quests.list.Find(q => q.uid == uid) ??
                quests.globalList.Find(q => q.uid == uid) ??
                (uid < 0 && id is not null ? quests.list.Find(q => q.id == id) : null);

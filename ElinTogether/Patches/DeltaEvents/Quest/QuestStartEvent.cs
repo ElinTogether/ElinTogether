@@ -1,3 +1,4 @@
+using ElinTogether.LangMod;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -11,6 +12,16 @@ internal class QuestStartEvent
     [HarmonyPrefix]
     internal static bool OnClientStart(Quest q, ref Quest __result)
     {
+        // (GitHub issue 82: a guest took that board's quest while the host's own board dialog was open on the same
+        // giver, whose quest the host then let go; the dialog's Accept still ran with no quest: the game put an empty
+        // entry in the quest log, every quest message threw and the save no longer loaded. Now it is just taken)
+        if (q is null) {
+            EmpLog.Information("Quest start with no quest refused (taken by another player meanwhile)");
+            Msg.Say("emp_ui_quest_taken".lang());
+            __result = null!;
+            return false;
+        }
+
         if (NetSession.Instance.Connection is not ElinNetClient client) {
             return true;
         }
@@ -60,7 +71,7 @@ internal class QuestStartEvent
     [HarmonyPostfix]
     internal static void OnStart(Quest q)
     {
-        if (ElinDelta.IsApplying) {
+        if (q is null || ElinDelta.IsApplying) {
             return;
         }
 
