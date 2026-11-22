@@ -218,6 +218,17 @@ internal partial class ElinNetHost
     }
 
     /// <summary>
+    ///     The same for Farris: story owner -> the uid of its own Farris (the world's one for the story that met him, a
+    ///     copy for every other)
+    /// </summary>
+    [ElinGameIOProperty("story_farrises")]
+    internal static Dictionary<int, int> StoryFarrises
+    {
+        get => field ??= [];
+        set;
+    }
+
+    /// <summary>
     ///     Chara uid -> the story steps ("quest id:phase") whose rewards that player had: once per player, whatever
     ///     team it plays the step with (team hopping farms nothing)
     /// </summary>

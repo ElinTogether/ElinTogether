@@ -21,9 +21,17 @@ internal static class NymelleFarrisRepair
     private const string Farris = "farris";
 
     [HarmonyPrefix]
-    internal static void Before(Zone_Nymelle __instance, out bool __state)
+    internal static bool Before(Zone_Nymelle __instance, out bool __state)
     {
+        __state = false;
+        // (issue 63, "Story characters per team": each story its own Farris, the game's one-per-world code is not run)
+        if (__instance.lv == -2 && Helper.TeamOwnStory.CharaCopies) {
+            Helper.TeamOwnStory.FarrisOnFloor(__instance);
+            return false;
+        }
+
         __state = __instance.lv == -2 && EClass.game.cards.globalCharas.Find(Farris) is null;
+        return true;
     }
 
     [HarmonyPostfix]
@@ -46,8 +54,7 @@ internal static class NymelleFarrisRepair
                 return;
             }
 
-            var at = EClass._map.props.installed.Find<TraitStairsLocked>()?.pos ??
-                     EClass._map.GetCenterPos().GetNearestPoint(allowBlock: false, allowChara: false);
+            var at = Spot();
             farris = Create(0);
             EClass._zone.AddCard(farris, at.x, at.z);
             EmpLog.Information("Nymelle's second floor was visited without Farris, the story waiting for her: made at {X},{Z}",
@@ -63,6 +70,15 @@ internal static class NymelleFarrisRepair
                 Z = farris.pos.z,
             });
         }
+    }
+
+    /// <summary>
+    ///     Where Zone_Nymelle.OnBeforeSimulate puts Farris on the floor being played: its locked stairs
+    /// </summary>
+    internal static Point Spot()
+    {
+        return EClass._map.props.installed.Find<TraitStairsLocked>()?.pos ??
+               EClass._map.GetCenterPos().GetNearestPoint(allowBlock: false, allowChara: false);
     }
 
     /// <summary>

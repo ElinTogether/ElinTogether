@@ -1070,9 +1070,9 @@ internal partial class EmpConfig
             "Server",
             "StoryCharaCopies",
             true,
-            "With 'Each player or team lives its own story': each player or team gets its own copy of the story characters it needs (for now Loytel: his debt, his mart, his place at the base). The first story to start the debt keeps the world's Loytel; every other one gets its own, at its base. Each game shows only its own. Always on for the Elin Together public server\n" +
-            "Otherwise one Loytel for the world: he stays in the base of the first story that took the debt\n" +
-            "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍拥有自己需要的剧情角色副本（目前为洛伊特）。关闭时世界只有一个洛伊特");
+            "With 'Each player or team lives its own story': each player or team gets its own copy of the story characters it needs (for now Loytel: his debt, his mart, his place at the base; and Farris: each story meets and recruits its own in Nymelle). The first story to start the debt keeps the world's Loytel, the first to meet Farris the world's Farris; every other one gets its own. Each game shows only its own. Always on for the Elin Together public server\n" +
+            "Otherwise one Loytel and one Farris for the world: they stay in the base of the first story that took them\n" +
+            "配合“每个玩家或队伍经历自己的剧情”：每个玩家或队伍拥有自己需要的剧情角色副本（目前为洛伊特和法里斯）。关闭时世界只有一个洛伊特和一个法里斯");
 
         Server.GlobalChat = config.Bind(
             "Server",

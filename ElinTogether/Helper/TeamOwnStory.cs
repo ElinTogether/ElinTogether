@@ -116,7 +116,8 @@ internal static class TeamOwnStory
 
     /// <summary>
     ///     Host option "Story characters per team" (issue 63, on by default, always on for the public server), with the
-    ///     story box: each owner has its own Loytel (<see cref="LoytelOf" />). Off: one Loytel for the world as before
+    ///     story box: each owner has its own Loytel (<see cref="LoytelOf" />) and Farris (<see cref="FarrisOf" />). Off: one of each for
+    ///     the world as before
     /// </summary>
     internal static bool CharaCopies => On && (KeepsBook ? CopiesWanted : NetSession.Instance.Rules is { StoryCharaCopies: true });
 
@@ -621,9 +622,21 @@ internal static class TeamOwnStory
     /// </summary>
     internal static bool Shown(Chara chara)
     {
-        // (issue 63: a Loytel of another owner's story is not this game's, even in a party)
+        // (issue 63: a Loytel or Farris of another owner's story is not this game's, even in a party)
+        if (chara.id is "loytel" or "farris" && CharaCopies && ViewerOwner is { } viewer) {
+            var tag = chara.GetInt(StoryOwnerKey);
+            if (tag != 0 && tag != viewer) {
+                return false;
+            }
+
+            // (a guest: a Farris no story took yet is not shown next to its own)
+            if (tag == 0 && chara.id == "farris" && !KeepsBook && OwnCopyHere("farris", viewer, EClass._map?.charas ?? []) is not null) {
+                return false;
+            }
+        }
+
         if (chara.id == "loytel") {
-            return chara.GetInt(LoytelOwnerKey) is var tag && (tag == 0 || !CharaCopies || ViewerOwner is not { } viewer || tag == viewer);
+            return true;
         }
 
         if (chara.id is not ("ashland" or "fiama" or "farris") || !On || chara.IsPCParty || EClass.game?.quests is not { } quests ||
@@ -747,7 +760,8 @@ internal static class TeamOwnStory
     /// <summary>
     ///     Nymelle's floors play their story once (the guardian and Fiama only come at the first visit, Farris is
     ///     recruited into one base): a player whose story is behind, standing on a floor another story already
-    ///     cleared, would be stuck there. Its story takes the step on (no second recruit), with a line, and its players
+    ///     cleared, would be stuck there. Its story takes the step on (no second recruit; with the story characters each story
+    ///     meets its own Farris instead), with a line, and its players
     ///     get what the story gave meanwhile (the ledger of story rewards, one parcel each)
     /// </summary>
     private static void CatchUp()
@@ -766,8 +780,14 @@ internal static class TeamOwnStory
             var mine = ExplorationOf(owner.Key);
             var best = ElinNetHost.TeamStoryBundles.Keys.Append(LocalOwner ?? SeedOwner).Distinct()
                 .Where(o => o != owner.Key && o != SeedOwner).Select(ExplorationOf).DefaultIfEmpty(-1).Max();
+            // (issue 63: each story meets its own Farris, made on the floor this game plays; a floor a guest holds, that
+            // guest's game makes it, NymelleFarrisRepair)
+            if (zone.lv == -2 && CharaCopies && mine <= QuestExploration.Started && zone == EClass._zone && FarrisOf(owner.Key, false) is null) {
+                MakeFarris(owner.Key, zone);
+            }
+
             var what = zone.lv switch {
-                -2 when mine == QuestExploration.Started && best >= QuestExploration.AfterMeetFarris &&
+                -2 when !CharaCopies && mine == QuestExploration.Started && best >= QuestExploration.AfterMeetFarris &&
                         EClass.game.cards.globalCharas.Find("farris") is { } farris && farris.currentZone != zone => "farris",
                 _ when zone.IsBossLv && mine == QuestExploration.AfterMeetFarrisAtHome && best >= QuestExploration.AfterDefeatNymelleBoss => "boss",
                 _ when zone.IsCrystalLv && mine is >= QuestExploration.AfterDefeatNymelleBoss and < QuestExploration.AfterCrystalTalk &&
@@ -953,16 +973,16 @@ internal static class TeamOwnStory
         return bundle.Completed.Contains("debt") || Read(bundle.Quests).Concat(Read(bundle.Offers)).Any(q => q is QuestDebt);
     }
 
-    // ---- each story its own Loytel (issue 63, "Story characters per team")
+    // ---- each story its own Loytel and Farris (issue 63, "Story characters per team")
 
     // (int keys: a string key on "the player" also writes the shared dialog flags)
-    // the story owner a Loytel belongs to; none on the world's one before a story took him
-    private const int LoytelOwnerKey = 47110003;
+    // the story owner a Loytel or Farris belongs to; none on the world's one before a story took him
+    private const int StoryOwnerKey = 47110003;
 
-    // 1 on a Loytel made for a story, none on the world's own
-    private const int LoytelCopyKey = 47110004;
+    // 1 on a Loytel or Farris made for a story, none on the world's own
+    private const int StoryCopyKey = 47110004;
 
-    // the owner whose Loytel this game shows and finds: on the host the story being played, on a guest its own
+    // the owner whose Loytel and Farris this game shows and finds: on the host the story being played, on a guest its own
     private static int? ViewerOwner => KeepsBook ? CurrentOwner : EClass.pc is { } pc ? OwnerOf(pc.uid) : null;
 
     private static bool _debtStarting;
@@ -985,15 +1005,17 @@ internal static class TeamOwnStory
     }
 
     /// <summary>
-    ///     The game looks Loytel up by id (QuestDebt, his dialog, the quests he gives): the one of the story being
-    ///     played, when it has one. A copy is made here only as a debt starts (elsewhere the game may be walking the
-    ///     global charas); the others in <see cref="DebtCatchUp" />
+    ///     The game looks Loytel and Farris up by id (QuestDebt, their dialogs, the quests they give, Vernis): the one of
+    ///     the story being played, when it has one. A Loytel copy is made here only as a debt starts (elsewhere the game
+    ///     may be walking the global charas), the others in <see cref="DebtCatchUp" />. Farris: never another story's;
+    ///     none until this story's own came in Nymelle, unless the story is past meeting him (a story caught up before
+    ///     the copies gets one as met)
     /// </summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(CardManager.GlobalCharaList), nameof(CardManager.GlobalCharaList.Find), typeof(string))]
-    private static bool FindOwnLoytel(string id, ref Chara? __result)
+    private static bool FindOwnStoryChara(string id, ref Chara? __result)
     {
-        if (id != "loytel" || _finding || !CharaCopies || EClass.game?.cards is null || ViewerOwner is not { } owner) {
+        if (id is not ("loytel" or "farris") || _finding || !CharaCopies || EClass.game?.cards is null || ViewerOwner is not { } owner) {
             return true;
         }
 
@@ -1001,19 +1023,20 @@ internal static class TeamOwnStory
         try {
             // (a story with no Loytel yet gets its own here: falling back to the game's lookup handed it another
             // story's, which pre_debt and Vernis' quests then moved away from that story's base)
-            __result = KeepsBook ? LoytelOf(owner, true) : OwnLoytelHere(owner);
+            __result = !KeepsBook ? OwnCopyHere(id, owner, EClass.game.cards.globalCharas.Values.Concat(EClass._map?.charas ?? [])) :
+                // (Farris too: QuestVernis step 5 uses the lookup without a null check)
+                id == "loytel" ? LoytelOf(owner, true) : FarrisOf(owner, true);
         } finally {
             _finding = false;
         }
 
-        return __result is null;
+        return __result is null && id == "loytel";
     }
 
-    // a guest: its owner's Loytel among what the host sent it
-    private static Chara? OwnLoytelHere(int owner)
+    // that owner's Loytel or Farris among these (a guest: among what the host sent it)
+    private static Chara? OwnCopyHere(string id, int owner, IEnumerable<Chara> charas)
     {
-        return EClass.game.cards.globalCharas.Values.Concat(EClass._map?.charas ?? [])
-            .FirstOrDefault(c => c.id == "loytel" && c.GetInt(LoytelOwnerKey) == owner);
+        return charas.FirstOrDefault(c => c.id == id && c.GetInt(StoryOwnerKey) == owner);
     }
 
     /// <summary>
@@ -1026,16 +1049,12 @@ internal static class TeamOwnStory
     {
         var charas = EClass.game.cards.globalCharas;
         var mine = ElinNetHost.StoryLoytels;
-        if (mine.TryGetValue(owner, out var uid)) {
-            if (charas.Find(uid) is { id: "loytel" } own) {
-                return own;
-            }
-
-            mine.Remove(owner);
+        if (Mapped(mine, "loytel", owner) is { } own) {
+            return own;
         }
 
         if (!EClass.game.quests.IsCompleted("pre_debt_runaway") ||
-            charas.Values.FirstOrDefault(c => c.id == "loytel" && c.GetInt(LoytelCopyKey) == 0) is not { } world) {
+            charas.Values.FirstOrDefault(c => c.id == "loytel" && c.GetInt(StoryCopyKey) == 0) is not { } world) {
             return null;
         }
 
@@ -1054,8 +1073,7 @@ internal static class TeamOwnStory
 
             var taker = _debtStarting ? owner : TakerOf(world);
             if (!mine.ContainsKey(taker)) {
-                mine[taker] = world.uid;
-                world.SetInt(LoytelOwnerKey, taker);
+                Tag(mine, world, taker, false);
                 _waitSince = -1f;
                 EmpLog.Information("The world's Loytel is the story of {Owner}'s", Name(taker));
                 if (taker == owner) {
@@ -1064,16 +1082,50 @@ internal static class TeamOwnStory
             }
         }
 
-        // (a copy whose map entry was lost is found again by its tags, never made twice)
-        if (charas.Values.FirstOrDefault(c => c.id == "loytel" && c.GetInt(LoytelCopyKey) == 1 && c.GetInt(LoytelOwnerKey) == owner) is { } kept) {
-            mine[owner] = kept.uid;
-            return kept;
-        }
-
-        return make ? MakeLoytel(owner) : null;
+        return Kept(mine, "loytel", owner) ?? (make ? MakeLoytel(owner) : null);
     }
 
-    // an old world: the story the world's Loytel already lives with
+    // that owner's entry in the map, while its character is still in the world
+    private static Chara? Mapped(Dictionary<int, int> mine, string id, int owner)
+    {
+        if (!mine.TryGetValue(owner, out var uid)) {
+            return null;
+        }
+
+        if (EClass.game.cards.globalCharas.Find(uid) is { } own && own.id == id) {
+            return own;
+        }
+
+        mine.Remove(owner);
+        return null;
+    }
+
+    // (a copy whose map entry was lost is found again by its tags, never made twice)
+    private static Chara? Kept(Dictionary<int, int> mine, string id, int owner)
+    {
+        if (EClass.game.cards.globalCharas.Values.FirstOrDefault(c => c.id == id && c.GetInt(StoryCopyKey) == 1 && c.GetInt(StoryOwnerKey) == owner) is not
+            { } kept) {
+            return null;
+        }
+
+        mine[owner] = kept.uid;
+        return kept;
+    }
+
+    // that owner's from now on (a guest's own Farris: no map, the host keeps it)
+    private static void Tag(Dictionary<int, int>? mine, Chara chara, int owner, bool copy)
+    {
+        chara.SetInt(StoryOwnerKey, owner);
+        if (copy) {
+            chara.SetInt(StoryCopyKey, 1);
+        }
+
+        if (mine is not null) {
+            mine[owner] = chara.uid;
+        }
+    }
+
+    // an old world: the story the world's Loytel or Farris already lives with
     private static int TakerOf(Chara world)
     {
         if (world.CompanionOwnerUid is not 0 and var player) {
@@ -1083,19 +1135,22 @@ internal static class TeamOwnStory
         return Teams.LandOwnerOf(world.homeZone) is not 0 and var land ? land : WorldOwner;
     }
 
+    // the owner's base: a land of its own, or a player's home
+    private static Zone? BaseOf(int owner)
+    {
+        return Teams.LandsOf(owner).Select(z => EClass.game.spatials.Find(z)).FirstOrDefault(z => z?.branch is not null) ??
+               StoryPlayers(owner).Select(p => p.homeBranch?.owner).FirstOrDefault(z => z is not null);
+    }
+
     // a Loytel of that owner's story, where QuestDebt.OnStart puts him: by the player starting the debt, else at the
     // owner's base (a land of its own, or a player's home), else where the game puts him before the debt
     private static Chara MakeLoytel(int owner)
     {
         var copy = CharaGen.Create("loytel");
         copy.SetGlobal();
-        copy.SetInt(LoytelOwnerKey, owner);
-        copy.SetInt(LoytelCopyKey, 1);
-        ElinNetHost.StoryLoytels[owner] = copy.uid;
-        var home = Teams.LandsOf(owner).Select(z => EClass.game.spatials.Find(z)).FirstOrDefault(z => z?.branch is not null) ??
-                   StoryPlayers(owner).Select(p => p.homeBranch?.owner).FirstOrDefault(z => z is not null);
+        Tag(ElinNetHost.StoryLoytels, copy, owner, true);
         // (always the owner's base: QuestDebt.OnStart only knows the local pc, which may be another story's player)
-        if (home is not null) {
+        if (BaseOf(owner) is { } home) {
             copy.MoveHome(home);
             home.branch.AddMemeber(copy);
         } else {
@@ -1104,6 +1159,142 @@ internal static class TeamOwnStory
 
         EmpLog.Information("Story {Owner} gets a Loytel of its own: {Uid} in {Zone}", Name(owner), copy.uid, copy.currentZone?.id);
         return copy;
+    }
+
+    /// <summary>
+    ///     In the game that keeps the book: that owner's own Farris. The world's Farris (made at the first visit of
+    ///     Nymelle's second floor) is the story's that met him (in an old world whose companion he is, whose land he
+    ///     lives in, else the world owner's); not met yet, the first story that looks for him while it still needs him.
+    ///     With make, an owner with none gets a copy as met (<see cref="MakeFarris" />)
+    /// </summary>
+    internal static Chara? FarrisOf(int owner, bool make)
+    {
+        var mine = ElinNetHost.StoryFarrises;
+        if (Mapped(mine, "farris", owner) is { } own) {
+            return own;
+        }
+
+        if (EClass.game.cards.globalCharas.Values.FirstOrDefault(c => c.id == "farris" && c.GetInt(StoryCopyKey) == 0 && !mine.ContainsValue(c.uid)) is
+            { } world) {
+            int? taker = world.GetInt(StoryOwnerKey) is not 0 and var tagged ? tagged :
+                !Unmet(world) ? TakerOf(world) :
+                ExplorationOf(owner) <= QuestExploration.Started ? owner : null;
+            if (taker is { } took && !mine.ContainsKey(took)) {
+                Tag(mine, world, took, false);
+                EmpLog.Information("The world's Farris is the story of {Owner}'s", Name(took));
+                if (took == owner) {
+                    return world;
+                }
+            }
+        }
+
+        return Kept(mine, "farris", owner) ?? (make ? MakeFarris(owner, null) : null);
+    }
+
+    // still waiting in Nymelle to be met (Zone_Nymelle.OnBeforeSimulate, DramaOutcome.QuestExploration_MeetFarris)
+    private static bool Unmet(Chara farris)
+    {
+        return farris.currentZone is Zone_Nymelle && farris.HasEditorTag(EditorTag.AINoMove);
+    }
+
+    /// <summary>
+    ///     A Farris of that owner's story, as the game makes him: on Nymelle's second floor (the one this game plays)
+    ///     by its locked stairs, waiting; without a floor, as met: at home in the world's start
+    ///     (QuestExploration_MeetFarris), in the owner's base once recruited (_MeetFarris2)
+    /// </summary>
+    internal static Chara MakeFarris(int owner, Zone? floor)
+    {
+        var copy = Patches.NymelleFarrisRepair.Create(0);
+        Tag(KeepsBook ? ElinNetHost.StoryFarrises : null, copy, owner, true);
+        if (floor is not null) {
+            var at = Patches.NymelleFarrisRepair.Spot().GetNearestPoint(allowBlock: false, allowChara: false);
+            floor.AddCard(copy, at.x, at.z);
+        } else {
+            copy.RemoveEditorTag(EditorTag.AINoMove);
+            copy.RemoveEditorTag(EditorTag.Invulnerable);
+            if (ExplorationOf(owner) >= QuestExploration.AfterMeetFarrisAtHome && BaseOf(owner) is { } home) {
+                copy.MoveHome(home);
+                home.branch.AddMemeber(copy);
+            } else if (EClass.game.StartZone is { } start) {
+                copy.MoveHome(start);
+            }
+        }
+
+        EmpLog.Information("Story {Owner} gets a Farris of its own: {Uid} in {Zone}", Name(owner), copy.uid, copy.currentZone?.id);
+        return copy;
+    }
+
+    /// <summary>
+    ///     Zone_Nymelle.OnBeforeSimulate on the second floor, in the game that plays it (the host, or a player holding
+    ///     the floor): the story played here meets its own Farris. The host's other stories on the floor get theirs in
+    ///     <see cref="CatchUp()" />; a guest holding the floor tells the host of its own (<see cref="NymelleFarrisDelta" />)
+    /// </summary>
+    internal static void FarrisOnFloor(Zone_Nymelle floor)
+    {
+        var session = NetSession.Instance;
+        if ((session.Transport is ElinNetClient && !session.IsZoneAuthority) || ViewerOwner is not { } owner) {
+            return;
+        }
+
+        if (KeepsBook) {
+            if (FarrisOf(owner, false) is null && EClass.game.quests.GetPhase<QuestExploration>() <= QuestExploration.Started) {
+                MakeFarris(owner, floor);
+            }
+
+            return;
+        }
+
+        var farris = OwnCopyHere("farris", owner, EClass.game.cards.globalCharas.Values);
+        if (farris is null) {
+            if (EClass.game.quests.GetPhase<QuestExploration>() > QuestExploration.Started) {
+                return;
+            }
+
+            farris = MakeFarris(owner, floor);
+        }
+
+        if (session.Transport is ElinNetClient main && farris.currentZone == floor) {
+            main.SendWhileAway(new NymelleFarrisDelta {
+                ZoneUid = floor.uid,
+                Uid = farris.uid,
+                X = farris.pos.x,
+                Z = farris.pos.z,
+                Owner = owner,
+            });
+        }
+    }
+
+    /// <summary>
+    ///     The host, told by a guest holding the floor of the Farris its story has there: may it be that owner's? One
+    ///     the host had for that owner, still waiting in Nymelle, gives way (the guest is the one who talks to its
+    ///     own); not when that owner already met another one
+    /// </summary>
+    internal static bool FarrisToldBy(int owner, int uid)
+    {
+        var mine = ElinNetHost.StoryFarrises;
+        if ((Mapped(mine, "farris", owner) ?? Kept(mine, "farris", owner)) is not { } known) {
+            return true;
+        }
+
+        // (not one this game shows right now: a teammate of the host's on the same floor)
+        if (known.uid == uid || !Unmet(known) || known.currentZone == EClass._zone) {
+            return false;
+        }
+
+        mine.Remove(owner);
+        if (known.GetInt(StoryCopyKey) == 1) {
+            known.Destroy();
+        } else {
+            known.SetInt(StoryOwnerKey, 0);
+        }
+
+        EmpLog.Information("Story {Owner}'s Farris {Old} gives way to {Uid}, met in its player's game", Name(owner), known.uid, uid);
+        return true;
+    }
+
+    internal static void TagFarris(Chara farris, int owner)
+    {
+        Tag(ElinNetHost.StoryFarrises, farris, owner, true);
     }
 
     // ---- the guilds, each owner's
