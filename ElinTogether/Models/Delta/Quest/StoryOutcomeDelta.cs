@@ -113,6 +113,20 @@ public class StoryOutcomeDelta : ElinDelta
                 }
 
                 return;
+            // (the game recruits Farris into the branch of "the active zone": the host's, wherever the host stands, and
+            // claims it when it has none. A guest's talk recruits him into the branch where that guest stands, else
+            // its home; issue 63, each story's own Farris)
+            case nameof(DramaOutcome.QuestExploration_MeetFarris2)
+                when sender is not null && sender != pc && target is not null &&
+                     (sender.currentZone?.branch ?? sender.homeBranch) is { } senderBranch:
+                game.quests.Get<QuestExploration>()?.ChangePhase(2);
+                senderBranch.Recruit(target);
+                if (game.quests.Main is null) {
+                    game.quests.Start("main");
+                }
+
+                game.quests.Main!.ChangePhase(300);
+                return;
             case nameof(DramaOutcome.QuestExploration_AfterCrystal) when away:
                 // the crystal room is on the player's map, only who goes home is about the world
                 if (game.cards.globalCharas.Find("fiama") is { } fiama) {
