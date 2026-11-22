@@ -143,6 +143,18 @@ internal static class EmpAutoHost
     private static bool _claimTold;
 
     /// <summary>
+    ///     GitHub issue 81: "Open to friends" clicked in a world whose land is not claimed yet (a new world, before
+    ///     Ash's claim): it is opened as soon as the land is claimed, and the player is told how
+    /// </summary>
+    internal static void OpenOnceClaimed()
+    {
+        HostAfterClaim = Game.id;
+        _claimTold = true;
+        EmpLog.Information("World {Id}: opened to multiplayer once its land is claimed (asked before the claim)", Game.id);
+        EmpPop.Pop("emp_ui_open_after_claim".lang());
+    }
+
+    /// <summary>
     ///     Game.StartNewGame has run (NewWorldPatch)
     /// </summary>
     internal static void OnNewGame()

@@ -400,9 +400,9 @@ internal class TabPlay : TabEmpBase
         card.TextSmall("emp_ui_play_host_desc".lang(), FontColor.Gray);
         var buttons = card.ButtonRow();
         var start = buttons.RowButton("emp_ui_sv_start".lang(), StartServerFromPanel);
-        // (it would fail without a land: greyed, the reason on hover, UX audit 2026-11-01)
+        // (without a land: the click asks for the world to open once the land is claimed, issue 81; it was greyed and
+        // players did not see why)
         if (EClass.player.chara?.homeBranch?.owner is null) {
-            start.interactable = false;
             start.SetTooltipLang("emp_ui_sv_start_needs_land".lang());
         }
         if (SaveDepot.Enabled && Game.id != SaveDepot.WorldId) {
@@ -706,6 +706,12 @@ internal class TabPlay : TabEmpBase
 
     private static void StartServerFromPanel()
     {
+        if (EClass.player.chara?.homeBranch?.owner is null) {
+            EmpAutoHost.OpenOnceClaimed();
+            LayerElinTogether.Instance?.Close();
+            return;
+        }
+
         // (with the box "hidden server", the world starts in a second, hidden game and this one joins it)
         if (HiddenServer.TryStart(() => NetSession.Instance.InitializeComponent<ElinNetHost>().StartServer())) {
             LayerElinTogether.Instance?.Close();

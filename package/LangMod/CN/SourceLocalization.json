@@ -1806,5 +1806,10 @@
     "LangGeneral.emp_dc_lobby_password_wrong.text": "密码错误。",
     "LangGeneral.emp_ui_sv_cfg_story_chara_copies.text": "剧情角色按队伍分开",
     "LangGeneral.emp_ui_sv_desc_story_chara_copies.text": "配合各自剧情：每个玩家或队伍都有自己的洛伊特（债务、商店、在据点的位置）。第一个开始债务的剧情保留世界上的洛伊特，其他剧情各自在据点得到一个。每个游戏只看到自己的。关闭：世界只有一个洛伊特。",
-    "LangGeneral.emp_team_story_own_loytel.text": "你的剧情现在有自己的洛伊特（在你的据点，没有据点则在奥尔维纳）。你的剧情欠他一笔自己的债，向他偿还。"
+    "LangGeneral.emp_team_story_own_loytel.text": "你的剧情现在有自己的洛伊特（在你的据点，没有据点则在奥尔维纳）。你的剧情欠他一笔自己的债，向他偿还。",
+    "LangGeneral.emp_ui_quest_taken.text": "这个委托已经被其他玩家接下了。",
+    "LangGeneral.emp_takeover_failed.text": "主机已离开，但这里无法接管世界（你的世界副本不完整）。主机再次打开世界即可继续游玩。",
+    "LangGeneral.emp_team_land_adopt.text": "这片土地现在不属于任何人。要用土地产权证把它变成你队伍的土地吗？",
+    "LangGeneral.emp_team_land_adopted.text": "这片土地现在属于你的队伍了。",
+    "LangGeneral.emp_ui_open_after_claim.text": "请先获得土地：在草原和阿修兰德交谈。土地一归你，这个世界就会自动向好友开放。"
 }
