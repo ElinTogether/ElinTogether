@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.0.59",
+    "date": "2026-11-22",
+    "title": "saves that load again, friend takeover, land deeds",
+    "bullets": [
+      "A world that no longer loaded (issue 82): when a guest took a quest from a board while the host had the same board open, the host's \"Accept\" added an empty quest.",
+      "Friend takeover when the host leaves (issue 78): the host gave its friends only 15 seconds to receive its last save.",
+      "A land of a disbanded team (issue 79): it could never be claimed again, even by the same players.",
+      "\"Open to friends\" on a new world (issue 81): the button did nothing until the land was claimed."
+    ]
+  },
+  {
     "version": "1.0.54",
     "date": "2026-11-22",
     "title": "each team its own Loytel and Farris",
