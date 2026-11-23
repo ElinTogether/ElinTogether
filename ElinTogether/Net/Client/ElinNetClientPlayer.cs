@@ -467,6 +467,9 @@ internal partial class ElinNetClient
             EmpLog.Warning(ex, "Failed to restore equipment or ability layout after save probe");
         }
 
+        // (the hotbars' spells point at the tokens just made, issues 83, 85, 86)
+        OwnSettings.RebindAbilities(remoteChara);
+
         ui.RemoveLayer<LayerTitle>();
         ui.ShowCover();
         //scene.Init(Scene.Mode.StartGame);

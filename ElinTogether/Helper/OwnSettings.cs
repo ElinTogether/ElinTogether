@@ -175,6 +175,12 @@ internal static class OwnSettings
             Hot(kept.Hotbars, (item, bar, page, slot) => {
                 switch (item) {
                     case HotItemThing { thing: not null } hot:
+                        // (issues 83, 85, 86: a spell's token is each game's own, made again with another number when
+                        // a world comes in: kept by the ability it stands for)
+                        if (hot.thing.trait is TraitAbility && !hot.thing.c_idAbility.IsEmpty()) {
+                            kept.HotAbilities[$"{bar},{page},{slot}"] = hot.thing.c_idAbility;
+                        }
+
                         kept.HotRefs.Add([bar, page, slot, hot.thing.uid]);
                         held.Add((hot, hot.thing, null));
                         hot.thing = null;
@@ -424,10 +430,18 @@ internal static class OwnSettings
                 bar?.actor = null;
             }
 
+            _abilitySlots.Clear();
             Hot(hotbars, (item, bar, page, slot) => {
                 var noted = kept.HotRefs.Find(r => r[0] == bar && r[1] == page && r[2] == slot)?[3] ?? 0;
                 switch (item) {
                     case HotItemThing hot:
+                        if (kept.HotAbilities.TryGetValue($"{bar},{page},{slot}", out var ability)) {
+                            // its token comes after the world, see RebindAbilities
+                            _abilitySlots.Add((bar, page, slot, ability));
+                            hotbars.bars[bar].pages[page].items[slot] = null;
+                            break;
+                        }
+
                         hot.thing = things.Find(t => t.uid == (hot.thing?.uid ?? noted));
                         if (hot.thing is null) {
                             hotbars.bars[bar].pages[page].items[slot] = null;
@@ -492,6 +506,43 @@ internal static class OwnSettings
             EmpLog.Warning(ex, "Could not open the windows again after the world was replaced");
         } finally {
             SoundManager.ignoreSounds = false;
+        }
+    }
+
+    // the hotbar slots of spells and abilities waiting for their tokens (Carry, then RebindAbilities)
+    private static readonly List<(int Bar, int Page, int Slot, string Alias)> _abilitySlots = [];
+
+    /// <summary>
+    ///     Issues 83, 85, 86: once the player's ability tokens are made again in the world received, the hotbar slots
+    ///     of spells and abilities point at them again (a spell with no token gets the game's own act item)
+    /// </summary>
+    internal static void RebindAbilities(Chara chara)
+    {
+        if (_abilitySlots.Count == 0) {
+            return;
+        }
+
+        try {
+            var hotbars = EClass.player.hotbars;
+            var tokens = chara.things.Flatten().Where(t => t.trait is TraitAbility).ToList();
+            foreach (var (bar, page, slot, alias) in _abilitySlots) {
+                var items = hotbars?.bars?.ElementAtOrDefault(bar)?.pages?.ElementAtOrDefault(page)?.items;
+                if (items is null || slot >= items.Count || items[slot] is not null) {
+                    continue;
+                }
+
+                if (tokens.FirstOrDefault(t => t.c_idAbility == alias) is { } token) {
+                    items[slot] = new HotItemThing { thing = token };
+                } else if (EClass.sources.elements.alias.TryGetValue(alias, out var row)) {
+                    items[slot] = new HotItemAct(row);
+                }
+            }
+
+            EmpLog.Debug("Hotbar: {Count} spell(s) and abilities put back", _abilitySlots.Count);
+        } catch (Exception ex) {
+            EmpLog.Warning(ex, "Could not put the spells back on the hotbars");
+        } finally {
+            _abilitySlots.Clear();
         }
     }
 
@@ -647,6 +698,9 @@ internal static class OwnSettings
         // the cards and zones the items of the hotbars point at, by number: bar, page, slot, number
         public HotbarManager? Hotbars;
         public List<int[]> HotRefs = [];
+
+        // the spells and abilities of the hotbars ("bar,page,slot" -> ability alias): their tokens are each game's own
+        public Dictionary<string, string> HotAbilities = [];
 
         // the counts the game keeps for "the player" that are this player's own, see DialogFlagSync
         public Dictionary<string, int>? Flags;

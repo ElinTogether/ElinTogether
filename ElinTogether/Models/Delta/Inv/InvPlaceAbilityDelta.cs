@@ -21,7 +21,8 @@ public class InvPlaceAbilityDelta : ElinDelta
             return;
         }
 
-        if (!host.ActiveRemoteCharas.TryGetValue(OriginPeer, out var chara)) {
+        // (the character kept for the player while it is away counts too: its layout set while away)
+        if (host.PlayerChara(OriginPeer) is not { } chara) {
             EmpLog.Warning("Dropping {DeltaType} from peer {PeerIndex}, no registered chara",
                 nameof(InvPlaceAbilityDelta), OriginPeer);
             return;

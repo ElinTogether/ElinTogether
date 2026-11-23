@@ -20,7 +20,11 @@ internal static class CardAddThingEvent
             return;
         }
 
-        if (NetSession.Instance.Connection is ElinNetClient client) {
+        // (issues 83, 85, 86: away on a map it holds, the player's game is that map's host: the layout of its spells
+        // never reached the world, which made its tokens again from the old one when it came back)
+        var main = NetSession.Instance.Connection as ElinNetClient ??
+                   (NetSession.Instance is { IsAway: true, Transport: ElinNetClient away } ? away : null);
+        if (main is not null) {
             foreach (var ab in _pendingAbilityFakeCards) {
                 if (ab.isDestroyed || string.IsNullOrEmpty(ab.c_idAbility) || ab.GetRootCard() != EClass.pc) {
                     continue;
@@ -34,9 +38,14 @@ internal static class CardAddThingEvent
                 var layout = CollectLayout();
                 EmpLog.Debug("Reporting ability layout, {LayoutCount} entries", layout.Count);
 
-                client.Delta.AddRemote(new InvPlaceAbilityDelta {
+                var report = new InvPlaceAbilityDelta {
                     Layout = layout,
-                });
+                };
+                if (NetSession.Instance.Connection is ElinNetClient client) {
+                    client.Delta.AddRemote(report);
+                } else {
+                    main.SendWhileAway(report);
+                }
             }
         }
 
@@ -112,6 +121,12 @@ internal static class CardAddThingEvent
             NetSession.Instance.Transport is ElinNetClient { MirrorsWorldBoxes: true } travelling &&
             travelling.ForwardShippingDeposit(t, 0, box)) {
             return false;
+        }
+
+        // (issues 83, 85, 86: alone on a map of its own there is no connection; a spell laid on the belt there is told
+        // to the world all the same, see FlushPendingAbilityFakeCard)
+        if (t.trait is TraitAbility && __instance.IsPC && NetSession.Instance is { IsAway: true, Connection: null }) {
+            AbilityLayoutDirty = true;
         }
 
         if (NetSession.Instance.Connection is not { } connection || ElinDelta.IsRemoteStateLanding) {

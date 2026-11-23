@@ -12,6 +12,11 @@ internal static class CardDestroyEvent
     internal static void OnDestroy(Card __instance)
     {
         if (NetSession.Instance.Connection is not { } connection) {
+            // (a spell taken off the belt alone on a map of its own: the layout is told to the world, issues 83, 85, 86)
+            if (__instance is Thing { trait: TraitAbility } && __instance.GetRootCard() == EClass.pc && NetSession.Instance.IsAway) {
+                CardAddThingEvent.AbilityLayoutDirty = true;
+            }
+
             return;
         }
 

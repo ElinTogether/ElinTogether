@@ -48,6 +48,8 @@ internal class CoreSynchronizationContext : SynchronizationContext
             // bench 2026-10-28, the away guest's date stood still in living world)
             if (NetSession.Instance.IsAway) {
                 LivingWorld.Update();
+                // (the layout of its belt's spells, told to the world while away)
+                CardAddThingEvent.FlushPendingAbilityFakeCard();
             }
 
             return;
