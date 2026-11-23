@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.0.62",
+    "date": "2026-11-23",
+    "title": "spells stay on the hotbar",
+    "bullets": [
+      "Spells on the hotbar (issues 83, 85, 86): a guest who set spells on its tool belt while alone on a map of its own could lose them when it came back to the host's map (tools stayed).",
+      "Public world: the project owner's Steam account, playing a character named ADMIN, has moderation powers there (invincible, top stats, console commands and travel, and it makes no shared time pass)."
+    ]
+  },
+  {
     "version": "1.0.59",
     "date": "2026-11-22",
     "title": "saves that load again, friend takeover, land deeds",
