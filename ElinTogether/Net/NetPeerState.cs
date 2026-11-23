@@ -72,6 +72,13 @@ public class NetPeerState
     [Key(12)]
     public bool Idle { get; set; }
 
+    /// <summary>
+    ///     The owner's admin character of the public world, as the host decided it from this peer's Steam id
+    ///     (Helper.OwnerAdmin): it counts in no shared speed
+    /// </summary>
+    [Key(13)]
+    public bool OwnerAdmin { get; set; }
+
     public Chara? FindChara()
     {
         return EClass.pc?.party?.members.Find(c => c?.uid == CharaUid);

@@ -55,7 +55,8 @@ public class WorldTimeReportDelta : ElinDelta
 
         // away from the keyboard: the clock of its map runs on its own, it does not pull the world's date
         // (council 2026-10-26). A trip is an act of its own, which ends its idleness anyway
-        if (PlayerIdle.IsIdle(OriginPeer)) {
+        // nor does the owner's admin character move it (Helper.OwnerAdmin)
+        if (PlayerIdle.IsIdle(OriginPeer) || Helper.OwnerAdmin.IsPeer(host, OriginPeer)) {
             return;
         }
 

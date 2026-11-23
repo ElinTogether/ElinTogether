@@ -38,7 +38,8 @@ internal static class EmptyWorld
             }
 
             foreach (var player in session.CurrentPlayers) {
-                if (player.Index != 0 && !PlayerIdle.IsIdle(player.Index)) {
+                // (the owner's admin character makes no time pass, see Helper.OwnerAdmin)
+                if (player.Index != 0 && !PlayerIdle.IsIdle(player.Index) && !player.OwnerAdmin) {
                     return false;
                 }
             }

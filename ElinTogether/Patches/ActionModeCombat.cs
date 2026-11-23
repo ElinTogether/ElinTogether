@@ -403,7 +403,8 @@ public class ActionModeCombat
             return;
         }
 
-        if (chara.ai is not GoalRemote { child: not null }) {
+        // the owner's admin character gives the others no turns (Helper.OwnerAdmin)
+        if (chara.ai is not GoalRemote { child: not null } || Helper.OwnerAdmin.Is(chara)) {
             return;
         }
 
@@ -465,7 +466,7 @@ public class ActionModeCombat
 
         _pcActedThisRound = true;
 
-        if (NetSession.Instance.Connection is ElinNetHost) {
+        if (NetSession.Instance.Connection is ElinNetHost && !Helper.OwnerAdmin.Is(__instance)) {
             ReportPlayerTurn(__instance.uid, __instance.actTime);
         }
     }

@@ -86,7 +86,14 @@ internal class GameSynchronizationContext : SynchronizationContext
         var minSpeed = int.MaxValue;
         var maxSpeed = int.MinValue;
         var allZero = true;
+        var adminSpeed = 0;
         for (var i = 0; i < players.Count; i++) {
+            // (the owner's admin character sets nobody's pace, see Helper.OwnerAdmin; alone, its own)
+            if (players[i].OwnerAdmin) {
+                adminSpeed = players[i].Speed;
+                continue;
+            }
+
             var speed = players[i].Speed;
             if (speed != 0) {
                 allZero = false;
@@ -102,7 +109,7 @@ internal class GameSynchronizationContext : SynchronizationContext
         }
 
         if (allZero) {
-            RefSpeed = pc.Speed;
+            RefSpeed = adminSpeed > 0 ? adminSpeed : pc.Speed;
             return;
         }
 

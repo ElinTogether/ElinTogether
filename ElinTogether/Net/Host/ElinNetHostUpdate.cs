@@ -414,6 +414,10 @@ internal partial class ElinNetHost
         foreach (var peer in Socket.Peers) {
             if (States.TryGetValue(peer.Id, out var state)) {
                 state.Idle = PlayerIdle.IsIdle(peer.Id);
+                state.OwnerAdmin = Helper.OwnerAdmin.IsPeer(this, peer.Id);
+                if (state.OwnerAdmin && PlayerChara(peer.Id) is { } admin) {
+                    Helper.OwnerAdmin.Keep(admin);
+                }
                 state.LastPingMs = peer.Stat.LastPingMs;
                 state.AvgPingMs = peer.Stat.AvgPingMs;
                 state.ConnectionQualityLocal = peer.Stat.ConnectionQualityLocal;

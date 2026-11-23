@@ -38,7 +38,8 @@ internal partial class ElinNetHost
     /// </summary>
     // the players that told their speed (a 0 is one that did not yet: it slowed everyone, and no player at all
     // threw), upstream 6f0fda1
-    public int SharedSpeed => (int)States.Values.Where(s => s.Speed > 0).Select(s => s.Speed).DefaultIfEmpty(0).Average();
+    // (the owner's admin character makes no time pass, see Helper.OwnerAdmin)
+    public int SharedSpeed => (int)States.Values.Where(s => s.Speed > 0 && !s.OwnerAdmin).Select(s => s.Speed).DefaultIfEmpty(0).Average();
 
     [ElinGameIOProperty("remote_chara")]
     internal static Dictionary<ulong, int> SavedRemoteCharas

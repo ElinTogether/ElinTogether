@@ -22,7 +22,8 @@ internal static class NoCheatsPatch
     [HarmonyPatch(typeof(CoreDebug), nameof(CoreDebug.CheatEnabled))]
     internal static bool OnCheatEnabled(ref bool __result)
     {
-        if (!On) {
+        // the owner's admin character of the public world keeps the game's cheats (Helper.OwnerAdmin)
+        if (!On || Helper.OwnerAdmin.IsMe) {
             return true;
         }
 
@@ -34,7 +35,7 @@ internal static class NoCheatsPatch
     [HarmonyPatch(typeof(CoreDebug), nameof(CoreDebug.Cheat))]
     internal static bool OnCheat(ref string __result)
     {
-        if (!On) {
+        if (!On || Helper.OwnerAdmin.IsMe) {
             return true;
         }
 

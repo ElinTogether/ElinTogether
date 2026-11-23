@@ -442,6 +442,7 @@ internal partial class ElinNetHost
         hash.Add(s.Turbo);
         hash.Add(s.Talking);
         hash.Add(s.Idle);
+        hash.Add(s.OwnerAdmin);
         hash.Add(s.AvgPingMsWire / 25);
         hash.Add(s.ConnectionQualityLocalWire / 10);
         hash.Add(s.ConnectionQualityRemoteWire / 10);

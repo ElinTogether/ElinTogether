@@ -30,6 +30,11 @@ public class WorldTravelStepDelta : ElinDelta
             return;
         }
 
+        // the owner's admin character travels without moving the world's date (Helper.OwnerAdmin)
+        if (Helper.OwnerAdmin.IsPeer(host, OriginPeer)) {
+            return;
+        }
+
         if (Minutes is <= 0 or > WorldTravelClock.MaxStepMinutes) {
             EmpLog.Warning("World time: player {Peer} reported a step of {Minutes} minute(s), refused",
                 OriginPeer, Minutes);
