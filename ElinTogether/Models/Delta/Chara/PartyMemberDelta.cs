@@ -21,8 +21,18 @@ public class PartyMemberDelta : ElinDelta
 
     internal override string? OnHostPermit(ElinNetHost host, Chara? sender)
     {
-        // one sends away its own companions only
-        return NoCharacter(sender) ?? NotOwned(sender, Member, "member");
+        // one sends away its own companions only; and (GitHub issue 87) a pet of no player, a resident of a base this
+        // player may build on: residents lose their owner tag (ReplaceResidents), a guest's own base pets were refused
+        if (NoCharacter(sender) is { } none) {
+            return none;
+        }
+
+        if (Member?.Find() is Chara { IsPCFaction: true, IsPlayer: false } pet && pet.GetInt(Helper.CompanionHelper.OwnerKey) == 0 &&
+            pet.homeBranch?.owner is Zone home && Helper.Teams.CanTouch(sender!, home)) {
+            return null;
+        }
+
+        return NotOwned(sender, Member, "member");
     }
 
     protected override void OnApply(ElinNetBase net)
