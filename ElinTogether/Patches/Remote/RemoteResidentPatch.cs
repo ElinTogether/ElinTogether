@@ -133,6 +133,16 @@ internal static class RemoteResidentPatch
             return;
         }
 
+        // (GitHub issue 87: a guest holding its own map alone put pets in the reserve there; the reserve is the
+        // world's, the host never heard of it and gave the pets back to the base. Not while away)
+        if (kind == BaseRequestKind.Reserve && ReserveHeldAway) {
+            action = () => {
+                SE.Beep();
+                EmpPop.Pop("emp_reserve_away".lang());
+            };
+            return;
+        }
+
         var id = kind == BaseRequestKind.Maid && branch.uidMaid == c.uid ? 0 : c.uid;
         var value = kind == BaseRequestKind.MemberType
             ? (int)(idLang == "daMakeResident" ? FactionMemberType.Default : FactionMemberType.Livestock)
@@ -151,6 +161,9 @@ internal static class RemoteResidentPatch
         }
     }
 
+    // a guest's game holding a map alone (or for others): the world's reserve is not this game's to change
+    private static bool ReserveHeldAway => NetSession.Instance is { IsZoneAuthority: true, Transport: ElinNetClient };
+
     /// <summary>
     ///     Calling someone back from the reserve (the window of the hearth stone)
     /// </summary>
@@ -158,6 +171,20 @@ internal static class RemoteResidentPatch
     [HarmonyPatch(typeof(ListPeopleCallReserve), nameof(ListPeopleCallReserve.OnClick))]
     private static bool OnCallBack(Chara c)
     {
+        if (ReserveHeldAway) {
+            SE.Beep();
+            EmpPop.Pop("emp_reserve_away".lang());
+            return false;
+        }
+
+        // (issue 87: called back at the stone of the commons, a guest's pet became a resident of the commons, by the
+        // public spawn, and nobody's: called back at a base of its own)
+        if (RemoteBasePaidPatch.IsRequester && Helper.Commons.Is(EClass._zone)) {
+            SE.Beep();
+            EmpPop.Pop("emp_reserve_commons".lang());
+            return false;
+        }
+
         if (RemoteBasePaidPatch.IsRequester) {
             BaseRequestDelta.Send(BaseRequestKind.Recruit, c.uid.ToString());
             return false;

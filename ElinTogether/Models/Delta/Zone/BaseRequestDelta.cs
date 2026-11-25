@@ -285,6 +285,11 @@ public class BaseRequestDelta : ElinDelta
                 return false;
             }
 
+            // (issue 87: never into the commons, where it stood by the public spawn as nobody's)
+            if (Kind == BaseRequestKind.Recruit && Helper.Commons.Is(_zone)) {
+                return false;
+            }
+
             if (Kind == BaseRequestKind.Recruit) {
                 // the sender's recruit: an achievement for it (LOMIAS2, MELILITH...) is the sender's, not the host's
                 using (Helper.PlayerAchievements.For(sender)) {

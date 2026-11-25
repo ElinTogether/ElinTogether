@@ -1811,5 +1811,7 @@
     "LangGeneral.emp_takeover_failed.text": "主机已离开，但这里无法接管世界（你的世界副本不完整）。主机再次打开世界即可继续游玩。",
     "LangGeneral.emp_team_land_adopt.text": "这片土地现在不属于任何人。要用土地产权证把它变成你队伍的土地吗？",
     "LangGeneral.emp_team_land_adopted.text": "这片土地现在属于你的队伍了。",
-    "LangGeneral.emp_ui_open_after_claim.text": "请先获得土地：在草原和阿修兰德交谈。土地一归你，这个世界就会自动向好友开放。"
+    "LangGeneral.emp_ui_open_after_claim.text": "请先获得土地：在草原和阿修兰德交谈。土地一归你，这个世界就会自动向好友开放。",
+    "LangGeneral.emp_reserve_away.text": "这里无法更改预备队：请在主机的地图上时再更改。",
+    "LangGeneral.emp_reserve_commons.text": "不能在公共土地的石头上召回宠物：请使用你自己据点的石头。"
 }
