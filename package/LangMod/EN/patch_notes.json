@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.0.66",
+    "date": "2026-11-25",
+    "title": "pets, the reserve and the commons",
+    "bullets": [
+      "A friend's pet revived by your pet (or anyone's spell) went into your party. A revived pet now goes back to its owner.",
+      "The reserve (Stone of Covenant) while a player is alone on a map of its own (issue 87): pets put there never reached the world, so they came back to the base by themselves and could crowd it.",
+      "The shared Meadow (host setting \"Meadow is everyone's\"): it already paid no bills.",
+      "Stalls: the host's own goods sold in a stall are now paid to the host, like a guest's (on the shared Meadow they went to the world's bank)."
+    ]
+  },
+  {
     "version": "1.0.62",
     "date": "2026-11-23",
     "title": "spells stay on the hotbar",
