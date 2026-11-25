@@ -41,15 +41,19 @@ internal static class BaseIncome
     {
         __state = default;
         var uid = dest.GetInt(SellerKey);
+        // (the host's own sale is its own as well, council 2026-11-25: on the commons it went to the world bank while a
+        // guest's same goods paid the guest)
         if (Host is null || !dest.isSale || uid == 0 ||
-            Host.ActiveRemoteCharas.Values.FirstOrDefault(c => c.uid == uid) is not { } seller) {
+            (uid == EClass.pc.uid ? EClass.pc : Host.ActiveRemoteCharas.Values.FirstOrDefault(c => c.uid == uid)) is not { } seller) {
             return;
         }
 
         var price = dest.GetPrice(CurrencyType.Money, true, PriceType.PlayerShop);
-        int sellerPrice;
-        using (Models.RemoteCraft.AsCrafter(seller, false)) {
-            sellerPrice = dest.GetPrice(CurrencyType.Money, true, PriceType.PlayerShop);
+        var sellerPrice = price;
+        if (!seller.IsPC) {
+            using (Models.RemoteCraft.AsCrafter(seller, false)) {
+                sellerPrice = dest.GetPrice(CurrencyType.Money, true, PriceType.PlayerShop);
+            }
         }
 
         __state = (EClass.Branch.incomeShop, price, sellerPrice, uid);
@@ -112,6 +116,14 @@ internal static class BaseIncome
         var bank = owners.Length == 0;
 
         Pay(ref __instance.incomeShop, ref __instance.statistics.shop, "getIncomeShop", false);
+        // (council 2026-11-25: the commons earns no inn and no tourism income, as it pays no bill: nothing to farm on a
+        // land everyone shares)
+        if (Commons.Is(zone)) {
+            __instance.incomeInn = 0;
+            __instance.incomeTourism = 0;
+            return false;
+        }
+
         Pay(ref __instance.incomeInn, ref __instance.statistics.inn, "getIncomeInn", true);
         Pay(ref __instance.incomeTourism, ref __instance.statistics.tourism, "getIncomeTourism", true);
         return false;

@@ -322,8 +322,10 @@ internal static class CardSettingEvent
     internal static void OnSaleSet(Card __instance, bool __state)
     {
         if (__instance.isSale != __state) {
-            // (a guest's sale is marked after this, when the host applies it)
-            __instance.SetInt(Helper.BaseIncome.SellerKey, 0);
+            // (a guest's sale is marked after this, when the host applies it; the host's own is the host's, council
+            // 2026-11-25)
+            __instance.SetInt(Helper.BaseIncome.SellerKey, __instance.isSale && !Models.ElinDelta.IsApplying &&
+                NetSession.Instance.Connection is ElinNetHost { IsZoneSession: false } ? EClass.pc.uid : 0);
             Tell(__instance, CardSettingDelta.Sale);
         }
     }
