@@ -1,3 +1,4 @@
+using System.Linq;
 using ElinTogether.Helper;
 using ElinTogether.Models;
 using ElinTogether.Net;
@@ -20,8 +21,24 @@ internal static class RemoteRevivePatch
     internal static void OnGetRevived(Chara __instance, out ScopeExit? __state)
     {
         __state = null;
-        // same rule as an ally made on the way: the player whose delta is applied or whose turn runs
-        if (CharaMakeAllyEvent.Recruiter(__instance) is not { } who) {
+        // (Steam comment 2026-11-23: a friend's pet revived by my pet joined MY party. A companion with an owner goes
+        // back to its owner, whoever revived it; the host's own goes to the host as the game does)
+        Chara? who;
+        var owner = __instance.CompanionOwnerUid;
+        if (owner != 0 && NetSession.Instance.Connection is ElinNetHost host) {
+            if (owner == EClass.pc.uid) {
+                // (the host's own: no guest whose turn runs or delta applies takes it, see Recruiter)
+                __state = CharaMakeAllyEvent.GiftsFor(EClass.pc);
+                return;
+            }
+
+            who = host.ActiveRemoteCharas.Values.FirstOrDefault(c => c.uid == owner) ?? CharaMakeAllyEvent.Recruiter(__instance);
+        } else {
+            // same rule as an ally made on the way: the player whose delta is applied or whose turn runs
+            who = CharaMakeAllyEvent.Recruiter(__instance);
+        }
+
+        if (who is null) {
             return;
         }
 
